@@ -160,8 +160,10 @@ fossil ticket list fields                # valid field names
 fossil ticket set UUID login USER \
     mimetype text/x-fossil-wiki \
     icomment "Proposed fix in branch [/timeline?r=NAME|NAME]. Cause: ..."
-fossil ticket set UUID status Closed resolution Fixed login USER
+fossil ticket set UUID status Closed resolution Fixed login USER \
+    closer USER closedate $(fossil sql "SELECT julianday('now')")
 fossil ticket add title "..." type Bug status Open \
+    resolution None priority "5 Medium" assignee nobody closer nobody is_private 0 \
     login USER submitter USER \
     mimetype text/x-fossil-wiki icomment "..."
 fossil test-wiki-render FILE             # preview wiki markup first
@@ -169,6 +171,7 @@ fossil test-wiki-render FILE             # preview wiki markup first
 
 Common traps:
 
+- The command line does not run the TH1 code of the web forms, so fields the forms fill in by themselves stay empty. When closing (status Closed or Deleted), set `closer` and `closedate` too, or the ticket has no close date. When adding a ticket, set the defaults of the new-ticket form (`resolution None`, `priority "5 Medium"`, `assignee nobody`, `closer nobody`, `is_private 0`).
 - `cmimetype` is the mimetype of the ticket *description*. Setting it instead of `mimetype` posts the comment as unformatted plain text.
 - Use `icomment`, not `+icomment`, when the same change sets other fields. Otherwise the artifact is malformed and silently never shows up.
 - In wiki markup `[...]` is a link, even inside `<tt>` and `<code>`. Wrap Tcl substitutions like `[winfo id .]` in `<nowiki>` or `<verbatim>`.
