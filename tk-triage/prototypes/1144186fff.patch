@@ -1,0 +1,88 @@
+Index: tests/unixEmbed.test
+==================================================================
+--- tests/unixEmbed.test
++++ tests/unixEmbed.test
+@@ -1313,10 +1313,47 @@
+     update
+     set result
+ } -cleanup {
+     deleteWindows
+ } -result {.main.b {pushed .main.b} .embed.b {pushed .embed.b}}
++test unixEmbed-11.3 {root coordinates of a toplevel with menubar embedded in another process} -constraints {
++    unix
++} -setup {
++    deleteWindows
++    set script [makeFile {
++	menu .mb -tearoff 0
++	.mb add cascade -label File -menu .mb.f
++	menu .mb.f -tearoff 0
++	. configure -menu .mb
++	pack [label .l -text Embedded]
++	update
++	after 500 {
++	    puts "[winfo rooty .] [winfo rooty .#mb] [winfo height .#mb]"
++	    flush stdout
++	    gets stdin
++	    exit
++	}
++    } embedmenu.tcl]
++} -body {
++    toplevel .main
++    wm geometry .main +100+100
++    frame .main.f -container 1 -width 200 -height 200
++    pack .main.f
++    update
++    set f [open "|[list [interpreter] $script -use [winfo id .main.f]]" r+]
++    fileevent $f readable {set line [gets $f]}
++    set timer [after 10000 {set line timeout}]
++    vwait line
++    after cancel $timer
++    lassign $line top mbtop mbheight
++    list [expr {$mbtop - [winfo rooty .main.f]}] \
++	    [expr {$top - [winfo rooty .main.f] - $mbheight}]
++} -cleanup {
++    catch {puts $f {}; close $f}
++    removeFile embedmenu.tcl
++    deleteWindows
++} -result {0 0}
+ 
+ test unixEmbed-12.1 {deleted windows are recorded only in embedded toplevels} -constraints {
+     unix notAqua memory
+ } -setup {
+     deleteWindows
+
+Index: unix/tkUnixWm.c
+==================================================================
+--- unix/tkUnixWm.c
++++ unix/tkUnixWm.c
+@@ -5868,11 +5868,13 @@
+ 	    }
+ 	    otherPtr = Tk_GetOtherWindow((Tk_Window)winPtr);
+ 	    if (otherPtr == NULL) {
+ 		/*
+ 		 * The container window is not in the same application. Query
+-		 * the X server.
++		 * the X server.  The result already includes the offset of
++		 * the toplevel in its wrapper (the menubar height), which was
++		 * added above.
+ 		 */
+ 
+ 		Window root, dummyChild;
+ 		int rootX, rootY;
+ 
+@@ -5880,12 +5882,12 @@
+ 		if (root == None) {
+ 		    root = RootWindowOfScreen(Tk_Screen((Tk_Window) winPtr));
+ 		}
+ 		XTranslateCoordinates(winPtr->display, winPtr->window,
+ 			root, 0, 0, &rootX, &rootY, &dummyChild);
+-		x += rootX;
+-		y += rootY;
++		x += rootX - winPtr->changes.x - winPtr->changes.border_width;
++		y += rootY - winPtr->changes.y - winPtr->changes.border_width;
+ 		break;
+ 	    } else {
+ 		/*
+ 		 * The container window is in the same application. Let's
+ 		 * query its coordinates.
+

@@ -1,0 +1,200 @@
+Index: generic/tkCanvText.c
+==================================================================
+--- generic/tkCanvText.c
++++ generic/tkCanvText.c
+@@ -850,10 +850,50 @@
+ }
+ 
+ /*
+  *--------------------------------------------------------------
+  *
++ * DrawableCoord, ClampShort --
++ *
++ *	Helpers for DisplayCanvText: convert a canvas coordinate to a
++ *	drawable coordinate without clipping it to 16 bits, and clip a
++ *	drawable coordinate to 16 bits.
++ *
++ *--------------------------------------------------------------
++ */
++
++static int
++DrawableCoord(
++    double coord,
++    int origin)
++{
++    double tmp = ((coord >= 0) ? floor(coord + 0.5) : ceil(coord - 0.5))
++	    - origin;
++
++    if (tmp > INT_MAX/2) {
++	return INT_MAX/2;
++    } else if (tmp < -(INT_MAX/2)) {
++	return -(INT_MAX/2);
++    }
++    return (int) tmp;
++}
++
++static short
++ClampShort(
++    double coord)
++{
++    if (coord > SHRT_MAX) {
++	return SHRT_MAX;
++    } else if (coord < SHRT_MIN) {
++	return SHRT_MIN;
++    }
++    return (short) coord;
++}
++
++/*
++ *--------------------------------------------------------------
++ *
+  * DisplayCanvText --
+  *
+  *	This function is invoked to draw a text item in a given drawable.
+  *
+  * Results:
+@@ -877,11 +917,11 @@
+ 				 * redisplayed (not used). */
+ {
+     TextItem *textPtr;
+     Tk_CanvasTextInfo *textInfoPtr;
+     Tcl_Size selFirstChar, selLastChar;
+-    short drawableX, drawableY;
++    int drawableX, drawableY;
+     Pixmap stipple;
+     Tk_State state = itemPtr->state;
+ 
+     textPtr = (TextItem *) itemPtr;
+     textInfoPtr = textPtr->textInfoPtr;
+@@ -914,12 +954,22 @@
+ 	Tk_CanvasSetOffset(canvas, textPtr->gc, &textPtr->tsoffset);
+     }
+ 
+     selFirstChar = TCL_INDEX_NONE;
+     selLastChar = 0;
+-    Tk_CanvasDrawableCoords(canvas, textPtr->drawOrigin[0],
+-	    textPtr->drawOrigin[1], &drawableX, &drawableY);
++
++    /*
++     * The text is drawn in chunks and glyphs, which are clipped to the 16 bit
++     * coordinate range separately, so its origin is not clipped here as
++     * Tk_CanvasDrawableCoords() does, otherwise a text item which starts far
++     * outside of that range would be drawn shifted.
++     */
++
++    drawableX = DrawableCoord(textPtr->drawOrigin[0],
++	    Canvas(canvas)->drawableXOrigin);
++    drawableY = DrawableCoord(textPtr->drawOrigin[1],
++	    Canvas(canvas)->drawableYOrigin);
+ 
+     Tcl_Size numChars = textPtr->textObj ? Tcl_GetCharLength(textPtr->textObj) : 0;
+     if (textInfoPtr->selItemPtr == itemPtr) {
+ 	selFirstChar = textInfoPtr->selectFirst;
+ 	selLastChar = textInfoPtr->selectLast;
+@@ -961,18 +1011,18 @@
+ 		}
+ 		dx1 = x - textInfoPtr->selBorderWidth;
+ 		dy1 = y;
+ 		dx2 = width + 2 * textInfoPtr->selBorderWidth;
+ 		dy2 = height;
+-		points[0].x = (short)(drawableX + dx1*c + dy1*s);
+-		points[0].y = (short)(drawableY + dy1*c - dx1*s);
+-		points[1].x = (short)(drawableX + (dx1+dx2)*c + dy1*s);
+-		points[1].y = (short)(drawableY + dy1*c - (dx1+dx2)*s);
+-		points[2].x = (short)(drawableX + (dx1+dx2)*c + (dy1+dy2)*s);
+-		points[2].y = (short)(drawableY + (dy1+dy2)*c - (dx1+dx2)*s);
+-		points[3].x = (short)(drawableX + dx1*c + (dy1+dy2)*s);
+-		points[3].y = (short)(drawableY + (dy1+dy2)*c - dx1*s);
++		points[0].x = ClampShort(drawableX + dx1*c + dy1*s);
++		points[0].y = ClampShort(drawableY + dy1*c - dx1*s);
++		points[1].x = ClampShort(drawableX + (dx1+dx2)*c + dy1*s);
++		points[1].y = ClampShort(drawableY + dy1*c - (dx1+dx2)*s);
++		points[2].x = ClampShort(drawableX + (dx1+dx2)*c + (dy1+dy2)*s);
++		points[2].y = ClampShort(drawableY + (dy1+dy2)*c - (dx1+dx2)*s);
++		points[3].x = ClampShort(drawableX + dx1*c + (dy1+dy2)*s);
++		points[3].y = ClampShort(drawableY + (dy1+dy2)*c - dx1*s);
+ 		Tk_Fill3DPolygon(Tk_CanvasTkwin(canvas), drawable,
+ 			textInfoPtr->selBorder, points, 4,
+ 			textInfoPtr->selBorderWidth, TK_RELIEF_RAISED);
+ 		x = 0;
+ 	    }
+@@ -998,18 +1048,18 @@
+ 	    Tk_GetPixelsFromObj(NULL, Tk_CanvasTkwin(canvas), textInfoPtr->insertWidthObj, &textInfoPtr->insertWidth);
+ 	    dx1 = x - (textInfoPtr->insertWidth / 2);
+ 	    dy1 = y;
+ 	    dx2 = textInfoPtr->insertWidth;
+ 	    dy2 = height;
+-	    points[0].x = (short)(drawableX + dx1*c + dy1*s);
+-	    points[0].y = (short)(drawableY + dy1*c - dx1*s);
+-	    points[1].x = (short)(drawableX + (dx1+dx2)*c + dy1*s);
+-	    points[1].y = (short)(drawableY + dy1*c - (dx1+dx2)*s);
+-	    points[2].x = (short)(drawableX + (dx1+dx2)*c + (dy1+dy2)*s);
+-	    points[2].y = (short)(drawableY + (dy1+dy2)*c - (dx1+dx2)*s);
+-	    points[3].x = (short)(drawableX + dx1*c + (dy1+dy2)*s);
+-	    points[3].y = (short)(drawableY + (dy1+dy2)*c - dx1*s);
++	    points[0].x = ClampShort(drawableX + dx1*c + dy1*s);
++	    points[0].y = ClampShort(drawableY + dy1*c - dx1*s);
++	    points[1].x = ClampShort(drawableX + (dx1+dx2)*c + dy1*s);
++	    points[1].y = ClampShort(drawableY + dy1*c - (dx1+dx2)*s);
++	    points[2].x = ClampShort(drawableX + (dx1+dx2)*c + (dy1+dy2)*s);
++	    points[2].y = ClampShort(drawableY + (dy1+dy2)*c - (dx1+dx2)*s);
++	    points[3].x = ClampShort(drawableX + dx1*c + (dy1+dy2)*s);
++	    points[3].y = ClampShort(drawableY + (dy1+dy2)*c - dx1*s);
+ 
+ 	    Tk_SetCaretPos(Tk_CanvasTkwin(canvas), points[0].x, points[0].y,
+ 		    height);
+ 	    if (textInfoPtr->cursorOn) {
+ 		Tk_GetPixelsFromObj(NULL, Tk_CanvasTkwin(canvas), textInfoPtr->insertBorderWidthObj, &textInfoPtr->insertBorderWidth);
+
+Index: unix/tkUnixFont.c
+==================================================================
+--- unix/tkUnixFont.c
++++ unix/tkUnixFont.c
+@@ -1136,28 +1136,40 @@
+ 	    thisSubFontPtr = lastSubFontPtr;
+ 	}
+ 	if ((thisSubFontPtr != lastSubFontPtr)
+ 		|| (p == end) || (p-source > 200)) {
+ 	    if (p > source) {
++		/*
++		 * X coordinates are 16 bit values. Do not draw the runs which
++		 * start outside of that range, they would be drawn at a wrapped
++		 * position.
++		 */
++
++		int outside = (x < SHRT_MIN || y < SHRT_MIN || y > SHRT_MAX);
++
+ 		do_width = (needWidth || (p != end)) ? 1 : 0;
+ 		familyPtr = lastSubFontPtr->familyPtr;
+ 
+ 		(void)Tcl_UtfToExternalDString(familyPtr->encoding, source,
+ 			p - source, &runString);
+ 		if (familyPtr->isTwoByteFont) {
+-		    XDrawString16(display, drawable, gc, x, y,
+-			    (XChar2b *) Tcl_DStringValue(&runString),
+-			    Tcl_DStringLength(&runString) / 2);
++		    if (!outside) {
++			XDrawString16(display, drawable, gc, x, y,
++				(XChar2b *) Tcl_DStringValue(&runString),
++				Tcl_DStringLength(&runString) / 2);
++		    }
+ 		    if (do_width) {
+ 			x += XTextWidth16(lastSubFontPtr->fontStructPtr,
+ 				(XChar2b *) Tcl_DStringValue(&runString),
+ 				Tcl_DStringLength(&runString) / 2);
+ 		    }
+ 		} else {
+-		    XDrawString(display, drawable, gc, x, y,
+-			    Tcl_DStringValue(&runString),
+-			    Tcl_DStringLength(&runString));
++		    if (!outside) {
++			XDrawString(display, drawable, gc, x, y,
++				Tcl_DStringValue(&runString),
++				Tcl_DStringLength(&runString));
++		    }
+ 		    if (do_width) {
+ 			x += XTextWidth(lastSubFontPtr->fontStructPtr,
+ 				Tcl_DStringValue(&runString),
+ 				Tcl_DStringLength(&runString));
+ 		    }
+

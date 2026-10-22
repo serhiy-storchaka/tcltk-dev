@@ -1,0 +1,34 @@
+Index: generic/ttk/ttkElements.c
+==================================================================
+--- generic/ttk/ttkElements.c
++++ generic/ttk/ttkElements.c
+@@ -489,14 +489,10 @@
+     XColor *color = Tk_GetColorFromObj(tkwin, colorObj);
+     XGCValues gcValues;
+     GC gc;
+     Display *disp = Tk_Display(tkwin);
+ 
+-    if (thickness < 1 && solid) {
+-	thickness = 1;
+-    }
+-
+     gcValues.foreground = color->pixel;
+     gc = Tk_GetGC(tkwin, GCForeground, &gcValues);
+ 
+     if (solid) {
+ 	if (b.width >= 2*thickness && b.height >= 2*thickness) {
+@@ -563,10 +559,13 @@
+     int focusThickness = 0;
+     int focusSolid = 0;
+ 
+     if (state & TTK_STATE_FOCUS) {
+ 	TkGetScaledPixelValue(NULL, tkwin, focus->focusThicknessObj, &focusThickness);
++	if (focusThickness < 1) {
++	    return;
++	}
+ 	Tcl_GetBooleanFromObj(NULL, focus->focusSolidObj, &focusSolid);
+ 	DrawFocusRing(tkwin, d, focus->focusColorObj, focusThickness,
+ 	    focusSolid, b);
+     }
+ }
+

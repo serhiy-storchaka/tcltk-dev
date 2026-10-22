@@ -1,0 +1,19 @@
+Index: doc/canvas.n
+==================================================================
+--- doc/canvas.n
++++ doc/canvas.n
+@@ -153,10 +153,13 @@
+ topmost item whose drawn area covers the position of
+ the mouse cursor (different item types interpret this in varying ways; see the
+ individual item type documentation for details).
+ If the mouse is not in the canvas widget or is not over
+ an item, then no item has the \fBcurrent\fR tag.
++.PP
++While a mouse button is pressed, the current item does not change, so that
++all mouse events are directed to the item on which the button was pressed.
+ .PP
+ When specifying items in canvas widget commands, if the
+ specifier is an integer then it is assumed to refer to
+ the single item with that id.
+ If the specifier is not an integer, then it is assumed to
+

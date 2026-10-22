@@ -1,0 +1,132 @@
+Index: doc/wm.n
+==================================================================
+--- doc/wm.n
++++ doc/wm.n
+@@ -361,10 +361,11 @@
+ The \fIwindow\fR will be unmapped from the screen and will no longer
+ be managed by \fBwm\fR.  Windows created with the \fBtoplevel\fR
+ command will be treated like \fBframe\fR windows once they are no
+ longer managed by \fBwm\fR, however, the \fB\-menu\fR configuration will be
+ remembered and the menus will return once the widget is managed again.
++If \fIwindow\fR is ".", an error is raised.
+ .\" METHOD: frame
+ .TP
+ \fBwm frame \fIwindow\fR
+ .
+ If \fIwindow\fR has been reparented by the window manager into a
+
+Index: macosx/tkMacOSXWm.c
+==================================================================
+--- macosx/tkMacOSXWm.c
++++ macosx/tkMacOSXWm.c
+@@ -2610,17 +2610,24 @@
+  *----------------------------------------------------------------------
+  */
+ 
+ static int
+ WmForgetCmd(
+-    TCL_UNUSED(Tk_Window),		/* Main window of the application. */
++    Tk_Window mainWin,		/* Main window of the application. */
+     TkWindow *winPtr,			/* Toplevel or Frame to work with */
+-    TCL_UNUSED(Tcl_Interp *),		/* Current interpreter. */
++    Tcl_Interp *interp,		/* Current interpreter. */
+     TCL_UNUSED(Tcl_Size),		/* Number of arguments. */
+     TCL_UNUSED(Tcl_Obj *const *))	/* Argument objects. */
+ {
+     Tk_Window frameWin = (Tk_Window)winPtr;
++
++    if (frameWin == mainWin) {
++	Tcl_SetObjResult(interp, Tcl_NewStringObj(
++		"window \".\" can not be forgotten", TCL_INDEX_NONE));
++	Tcl_SetErrorCode(interp, "TK", "WM", "FORGET", ".", (char *)NULL);
++	return TCL_ERROR;
++    }
+ 
+     /*
+      * Tk ticket c77b426d: avoid panic on usage after wm forget
+      */
+ 
+
+Index: tests/wm.test
+==================================================================
+--- tests/wm.test
++++ tests/wm.test
+@@ -2686,10 +2686,13 @@
+     lappend res [winfo ismapped .m]
+ } -cleanup {
+     destroy .m
+     unset res
+ } -result {1 1}
++test wm-forget-3 {bug [9ab6e37e1a] - [wm forget .] segfault} -body {
++    wm forget .
++} -returnCodes error -result {window "." can not be forgotten}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+
+Index: unix/tkUnixWm.c
+==================================================================
+--- unix/tkUnixWm.c
++++ unix/tkUnixWm.c
+@@ -1820,17 +1820,24 @@
+  *----------------------------------------------------------------------
+  */
+ 
+ static int
+ WmForgetCmd(
+-    TCL_UNUSED(Tk_Window),		/* Main window of the application. */
++    Tk_Window mainWin,		/* Main window of the application. */
+     TkWindow *winPtr,		/* Toplevel or Frame to work with */
+-    TCL_UNUSED(Tcl_Interp *),		/* Current interpreter. */
++    Tcl_Interp *interp,		/* Current interpreter. */
+     TCL_UNUSED(Tcl_Size),			/* Number of arguments. */
+     TCL_UNUSED(Tcl_Obj *const *))	/* Argument objects. */
+ {
+     Tk_Window frameWin = (Tk_Window) winPtr;
++
++    if (frameWin == mainWin) {
++	Tcl_SetObjResult(interp, Tcl_NewStringObj(
++		"window \".\" can not be forgotten", TCL_INDEX_NONE));
++	Tcl_SetErrorCode(interp, "TK", "WM", "FORGET", ".", (char *)NULL);
++	return TCL_ERROR;
++    }
+ 
+     /*
+      * Tk ticket c77b426d: avoid panic on usage after wm forget
+      */
+ 
+
+Index: win/tkWinWm.c
+==================================================================
+--- win/tkWinWm.c
++++ win/tkWinWm.c
+@@ -3832,17 +3832,24 @@
+  *----------------------------------------------------------------------
+  */
+ 
+ static int
+ WmForgetCmd(
+-    TCL_UNUSED(Tk_Window),	/* Main window of the application. */
++    Tk_Window mainWin,	/* Main window of the application. */
+     TkWindow *winPtr,		/* Toplevel or Frame to work with */
+-    TCL_UNUSED(Tcl_Interp *),		/* Current interpreter. */
++    Tcl_Interp *interp,		/* Current interpreter. */
+     TCL_UNUSED(Tcl_Size),		/* Number of arguments. */
+     TCL_UNUSED(Tcl_Obj *const *))	/* Argument objects. */
+ {
+     Tk_Window frameWin = (Tk_Window) winPtr;
++
++    if (frameWin == mainWin) {
++	Tcl_SetObjResult(interp, Tcl_NewStringObj(
++		"window \".\" can not be forgotten", TCL_INDEX_NONE));
++	Tcl_SetErrorCode(interp, "TK", "WM", "FORGET", ".", (char *)NULL);
++	return TCL_ERROR;
++    }
+ 
+     /*
+      * Tk ticket c77b426d: avoid panic on usage after wm forget
+      */
+ 
+

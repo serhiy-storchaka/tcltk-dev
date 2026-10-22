@@ -1,0 +1,29 @@
+Index: tests/canvPs.test
+==================================================================
+--- tests/canvPs.test
++++ tests/canvPs.test
+@@ -178,11 +178,10 @@
+     .c create window 50 180 -anchor nw -window .c.e
+ 
+     # Strong realization fixes for embedded window (XGetImage BadMatch)
+     wm geometry . 800x600+100+100
+     update
+-    update idletasks
+     wm deiconify .
+     raise .
+     focus .c.e
+ 
+     .c postscript -file $bar
+@@ -204,11 +203,10 @@
+     .c create window 50 180 -anchor nw -window .c.e
+ 
+     # Same strong realization fixes
+     wm geometry . 800x600+100+100
+     update
+-    update idletasks
+     wm deiconify .
+     raise .
+     focus .c.e
+ 
+     .c postscript -file $bar
+

@@ -1,0 +1,39 @@
+Index: unix/tkUnixWm.c
+==================================================================
+--- unix/tkUnixWm.c
++++ unix/tkUnixWm.c
+@@ -6008,20 +6008,23 @@
+ 		wmPtr = wmPtr->nextPtr) {
+ 	    if (wmPtr->winPtr->mainPtr == NULL) {
+ 		continue;
+ 	    }
+ 	    if (child == wmPtr->reparent) {
+-		if (PointInWindow(x, y, wmPtr)) {
+-		    goto gotToplevel;
+-		} else {
+-
+-		    /*
+-		     * Return NULL if the point is in the title bar or border.
+-		     */
+-
+-		    return NULL;
+-		}
++		/*
++		 * The window manager may have reparented several toplevels
++		 * into the same window, so if the point is not in this one,
++		 * check the others and then descend into the window.  If the
++		 * point is in the title bar or border, the descent will not
++		 * find a toplevel.  childX and childY are relative to the
++		 * (virtual) root here, like the position of the toplevel.
++		 */
++
++		if (PointInWindow(childX, childY, wmPtr)) {
++		    goto gotToplevel;
++		}
++		continue;
+ 	    }
+ 	    if (wmPtr->wrapperPtr != NULL) {
+ 		if (child == wmPtr->wrapperPtr->window) {
+ 		    goto gotToplevel;
+ 		} else if (wmPtr->winPtr->flags & TK_EMBEDDED &&
+
