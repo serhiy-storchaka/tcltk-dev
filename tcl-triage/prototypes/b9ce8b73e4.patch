@@ -1,0 +1,49 @@
+Index: doc/msgcat.n
+==================================================================
+--- doc/msgcat.n
++++ doc/msgcat.n
+@@ -24,11 +24,11 @@
+ \fB::msgcat::mclocale \fR?\fInewLocale\fR?
+ .sp
+ \fB::msgcat::mcpreferences\fR
+ .sp
+ .VS "TIP 412"
+-\fB::msgcat::mcloadedlocales subcommand\fR ?\fIlocale\fR?
++\fB::msgcat::mcloadedlocales subcommand\fR
+ .VE "TIP 412"
+ \fB::msgcat::mcload \fIdirname\fR
+ \fB::msgcat::mcset \fIlocale src-string \fR?\fItranslate-string\fR?
+ \fB::msgcat::mcmset \fIlocale src-trans-list\fR
+ \fB::msgcat::mcflset \fIsrc-string \fR?\fItranslate-string\fR?
+@@ -140,27 +140,25 @@
+ cannot be set independently.  For example, if the
+ current locale is en_US_funky, then \fB::msgcat::mcpreferences\fR
+ returns \fB{en_us_funky en_us en {}}\fR.
+ .\" COMMAND: mcloadedlocales
+ .TP
+-\fB::msgcat::mcloadedlocales subcommand\fR ?\fIlocale\fR?
++\fB::msgcat::mcloadedlocales subcommand\fR
+ .
+ This group of commands manage the list of loaded locales for packages not setting a package locale.
+ .PP
+ .RS
+-The subcommand \fBget\fR returns the list of currently loaded locales.
+-.PP
+-The subcommand \fBpresent\fR requires the argument \fIlocale\fR and returns true, if this locale is loaded.
++The subcommand \fBloaded\fR returns the list of currently loaded locales.
+ .PP
+ The subcommand \fBclear\fR removes all locales and their data, which are not in the current preference list.
+ .RE
+ .\" COMMAND: mcload
+ .TP
+ \fB::msgcat::mcload \fIdirname\fR
+ .VS "TIP 412"
+ Searches the specified directory for files that match
+-the language specifications returned by \fB::msgcat::mcloadedlocales get\fR
++the language specifications returned by \fB::msgcat::mcloadedlocales loaded\fR
+ (or \fBmsgcat::mcpackagelocale preferences\fR if a package locale is set)
+ (note that these are all lowercase), extended by the file extension
+ .QW .msg .
+ Each matching file is
+ read in order, assuming a UTF-8 encoding.  The file contents are
+

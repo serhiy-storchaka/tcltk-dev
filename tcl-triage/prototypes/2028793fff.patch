@@ -1,0 +1,23 @@
+Index: doc/interp.n
+==================================================================
+--- doc/interp.n
++++ doc/interp.n
+@@ -121,10 +121,17 @@
+ which is a child of interpreter
+ .QW \fBa\fR ,
+ which is a child of the invoking interpreter.  An empty list specifies
+ the interpreter invoking the command.  \fIsrcCmd\fR gives the name of
+ a new command, which will be created in the source interpreter.
++If \fIsrcCmd\fR contains no namespace qualifiers, the command is
++created in the global namespace of the source interpreter, even when
++\fBinterp alias\fR is called from another namespace.  A relative name
++that contains qualifiers, such as
++.QW \fBa::b\fR ,
++is resolved relative to the current namespace of the source interpreter,
++and any namespaces in it that do not exist yet are created.
+ \fITargetPath\fR and \fItargetCmd\fR specify a target interpreter
+ and command, and the \fIarg\fR arguments, if any, specify additional
+ arguments to \fItargetCmd\fR which are prepended to any arguments specified
+ in the invocation of \fIsrcCmd\fR.
+ \fITargetCmd\fR may be undefined at the time of this call, or it may
+

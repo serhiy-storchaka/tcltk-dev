@@ -1,0 +1,175 @@
+Index: generic/regc_locale.c
+==================================================================
+--- generic/regc_locale.c
++++ generic/regc_locale.c
+@@ -899,10 +899,39 @@
+ 
+     ERR(REG_ECOLLATE);
+     return 0;
+ }
+ 
++/*
++ * Case counterparts not reachable through Tcl_UniCharToLower/ToUpper/ToTitle
++ * of a character: {fold, other} where fold is ToLower(ToUpper(other)).
++ * Generated from the Tcl case tables; regenerate when they change.
++ */
++
++static const struct {
++    chr fold;
++    chr other;
++} caseExtras[] = {
++    {0x0069, 0x0130}, {0x0069, 0x0131}, {0x006B, 0x212A}, {0x0073, 0x017F},
++    {0x03BC, 0x00B5}, {0x00E5, 0x212B}, {0x03B9, 0x0345}, {0x03B9, 0x1FBE},
++    {0x03B2, 0x03D0}, {0x03B5, 0x03F5}, {0x03B8, 0x03D1}, {0x03B8, 0x03F4},
++    {0x03BA, 0x03F0}, {0x03C0, 0x03D6}, {0x03C1, 0x03F1}, {0x03C3, 0x03C2},
++    {0x03C6, 0x03D5}, {0x03C9, 0x2126}, {0x0432, 0x1C80}, {0x0434, 0x1C81},
++    {0x043E, 0x1C82}, {0x0441, 0x1C83}, {0x0442, 0x1C84}, {0x0442, 0x1C85},
++    {0x044A, 0x1C86}, {0x0463, 0x1C87}, {0xA64B, 0x1C88}, {0x1E61, 0x1E9B},
++    {0x00DF, 0x1E9E}, {0x026B, 0x2C62}, {0x027D, 0x2C64}, {0x023A, 0x2C65},
++    {0x023E, 0x2C66}, {0x0251, 0x2C6D}, {0x0271, 0x2C6E}, {0x0250, 0x2C6F},
++    {0x0252, 0x2C70}, {0x023F, 0x2C7E}, {0x0240, 0x2C7F}, {0x0265, 0xA78D},
++    {0x0266, 0xA7AA}, {0x025C, 0xA7AB}, {0x0261, 0xA7AC}, {0x026C, 0xA7AD},
++    {0x026A, 0xA7AE}, {0x029E, 0xA7B0}, {0x0287, 0xA7B1}, {0x029D, 0xA7B2},
++    {0x0282, 0xA7C5}, {0x0264, 0xA7CB}, {0x019B, 0xA7DC}, {0x0277, 0xA7DD},
++    {0x027C, 0xA7E2},
++};
++#define NUM_CASE_EXTRAS (sizeof(caseExtras)/sizeof(caseExtras[0]))
++
++#define CaseFold(c) Tcl_UniCharToLower(Tcl_UniCharToUpper(c))
++
+ /*
+  - range - supply cvec for a range, including legality check
+  ^ static struct cvec *range(struct vars *, celt, celt, int);
+  */
+ static struct cvec *
+@@ -911,10 +940,11 @@
+     celt a,			/* range start */
+     celt b,			/* range end, might equal a */
+     int cases)			/* case-independent? */
+ {
+     int nchrs;
++    size_t i, j;
+     struct cvec *cv;
+     celt c, lc, uc, tc;
+ 
+     if (a != b && !before(a, b)) {
+ 	ERR(REG_ERANGE);
+@@ -932,11 +962,11 @@
+      * When case-independent, it's hard to decide when cvec ranges are usable,
+      * so for now at least, we won't try. We allocate enough space for two
+      * case variants plus a little extra for the two title case variants.
+      */
+ 
+-    nchrs = (b - a + 1)*2 + 4;
++    nchrs = (b - a + 1)*2 + 4 + 3*NUM_CASE_EXTRAS;
+ 
+     cv = getcvec(v, nchrs, 0);
+     NOERRN();
+ 
+     for (c=a; c<=b; c++) {
+@@ -951,10 +981,25 @@
+ 	    addchr(cv, uc);
+ 	}
+ 	if (c != tc && tc != uc) {
+ 	    addchr(cv, tc);
+ 	}
++    }
++    for (i = 0; i < NUM_CASE_EXTRAS; i++) {
++	chr f = caseExtras[i].fold;
++	int in = (f >= a && f <= b);
++
++	for (j = 0; !in && j < NUM_CASE_EXTRAS; j++) {
++	    c = caseExtras[j].other;
++	    in = (caseExtras[j].fold == f && c >= a && c <= b);
++	}
++	c = Tcl_UniCharToUpper(f);
++	if (in || (c >= a && c <= b)) {
++	    addchr(cv, f);
++	    addchr(cv, c);
++	    addchr(cv, caseExtras[i].other);
++	}
+     }
+ 
+     return cv;
+ }
+ 
+@@ -1260,25 +1305,47 @@
+     struct vars *v,		/* context */
+     pchr pc)			/* character to get case equivs of */
+ {
+     struct cvec *cv;
+     chr c = (chr)pc;
+-    chr lc, uc, tc;
++    chr lc, uc, tc, f;
++    size_t i;
++    int found = 0;
+ 
+     lc = Tcl_UniCharToLower(c);
+     uc = Tcl_UniCharToUpper(c);
+     tc = Tcl_UniCharToTitle(c);
+ 
+     if (tc != uc) {
+-	cv = getcvec(v, 3, 0);
++	cv = getcvec(v, 6 + NUM_CASE_EXTRAS, 0);
+ 	addchr(cv, tc);
+     } else {
+-	cv = getcvec(v, 2, 0);
++	cv = getcvec(v, 5 + NUM_CASE_EXTRAS, 0);
+     }
+     addchr(cv, lc);
+     if (lc != uc) {
+ 	addchr(cv, uc);
++    }
++    if (c != lc && c != uc && c != tc) {
++	addchr(cv, c);
++    }
++
++    /*
++     * Add the members of the case class that the mappings above miss,
++     * e.g. U+212A KELVIN SIGN for "k" or "K".
++     */
++
++    f = CaseFold(c);
++    for (i = 0; i < NUM_CASE_EXTRAS; i++) {
++	if (caseExtras[i].fold == f) {
++	    if (!found) {
++		addchr(cv, f);
++		addchr(cv, Tcl_UniCharToUpper(f));
++		found = 1;
++	    }
++	    addchr(cv, caseExtras[i].other);
++	}
+     }
+     return cv;
+ }
+ 
+ /*
+
+Index: tests/regexp.test
+==================================================================
+--- tests/regexp.test
++++ tests/regexp.test
+@@ -1278,10 +1278,22 @@
+     regsub -all -command {(.)(.)(.)(.)(.)(.)(.)(.)(.)(.)(.)} abcdefghijkABCDEFGHIJK {apply {args {
+ 	lindex $args end
+     }}}
+ } kK
+ 
++test regexp-33.1 {regexp -nocase: KELVIN SIGN, bug b989a6a0e0} {
++    set res {}
++    foreach p {k k{1} k+ {[k]} {[k]+} K+ \u212a {[\u212a]} {[a-z]} {[\u2100-\u2130]}} {
++	lappend res [regexp -nocase "^$p\$" \u212a][regexp -nocase "^$p\$" k][regexp -nocase "^$p\$" K]
++    }
++    set res
++} {111 111 111 111 111 111 111 111 111 111}
++test regexp-33.2 {regexp -nocase: other case counterparts, bug b989a6a0e0} {
++    list [regexp -nocase {^[s]+$} s\u017fS] [regexp -nocase {^\u017f+$} sS] \
++	[regexp -nocase {^[\u03c3]+$} \u03c2\u03a3] [regexp {^[k]$} \u212a]
++} {1 1 1 0}
++
+ # cleanup
+ ::tcltest::cleanupTests
+ return
+ 
+ # Local Variables:
+

@@ -1,0 +1,632 @@
+<title>Tcl Bug Triage: Not tested</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Untouched open Tcl bug tickets: Not tested</h1>
+  <p class="sub">Triage of 773 open and Pending Bug tickets of Tcl with no comment or check-in from me on 2026-10-16 (in Tcl's workflow Pending means "resolved, waiting for confirmation"). Reproduced on Linux (main 9.1 tip, 9.0 tip, 8.7b1, 8.6 tip, 8.5, 8.4 and old releases), on FreeBSD, NetBSD, OpenBSD and OpenIndiana VMs for platform tickets, and on a Windows 11 VM. Rows marked <span class="patch">patch</span> link to a prototype patch (276 in all, in <a href="https://github.com/serhiy-storchaka/tcltk-dev/tree/main/tcl-triage/prototypes">tcl-triage/prototypes</a>). Updated 2026-10-22: the emoji before each ticket id shows its progress.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">307</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">177</span> Already fixed</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">115</span> Not a bug / RFE</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">67</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">63</span> Docs</a><a class="navchip c-win cur" href="not-tested.html" aria-current="page"><span class="n">44</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">44</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, subsystem, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="win"><h2><span class="dot c-win"></span>Needs Windows <span class="cnt">4</span></h2><details class="t" id="e5c21e566f" data-s="e5c21e566f inconsistent handling of glob -nocomplain 37. file system needs-windows (unresolved: the smb enoent error does not occur against a windows 11 smb server; needs the reporter&#x27;s server type); windows eacces case not testable as the elevated ssh admin (a deny list-directory ace does not stop listing)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>e5c21e566f</span><span class="yr">2025</span><span class="ti">inconsistent handling of glob -nocomplain</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/e5c21e566f.patch">patch</a><span class="vd">NEEDS-WINDOWS (unresolved: the SMB ENOENT error does not occur against a Windows 11 SMB server; needs the reporter's server type); Windows EACCES c…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/e5c21e566f">Open ticket e5c21e566f</a> · 37. File System · filed 2025-08-13</p><div class="lab">Full verdict</div><p>NEEDS-WINDOWS (unresolved: the SMB ENOENT error does not occur against a Windows 11 SMB server; needs the reporter's server type); Windows EACCES case not testable as the elevated ssh admin (a DENY list-directory ACE does not stop listing)</p><ul>
+<li><span class="k">Platform</span> generic (EACCES part) + Windows (ENOENT on SMB part)
+</li>
+<li><span class="k">Tested</span> Linux, dir <code>priv</code> mode 000: <code>glob -nocomplain -directory priv *</code> → "couldn't read directory "priv/": permission denied"; <code>-directory priv/.</code> and <code>priv/sub</code> → empty, no error (main, 9.0.5, 8.6.18, 8.5.0, 8.6.0); 8.4.20 → empty for all.
+</li>
+<li><span class="k">Cause</span> unix/tclUnixFile.c TclpMatchInDirectory: a failed stat() of the directory (ENOENT or EACCES) is silently "no match", but a failed opendir() is an error, so the result depends on which of the two calls fails. Windows (win/tclWinFile.c TclpMatchInDirectory): the directory passes GetFileAttributesW, then FindFirstFileExW fails with a code not in IsNoSuchFileError() (only FILE_NOT_FOUND, PATH_NOT_FOUND, INVALID_NAME) but which Tcl_WinConvertError maps to ENOENT (e.g. ERROR_NO_MORE_FILES, ERROR_BAD_NETPATH, ERROR_BAD_NET_NAME, which SMB servers return) → the reported "no such file or directory" error, with the pattern appended to the "directory" name.
+</li>
+<li><span class="k">Prototype</span> prototypes/e5c21e566f.patch (32 lines, Windows only, syntax-checked with mingw, not run; no test — needs SMB): treat any FindFirstFileExW error that maps to ENOENT as "no match". EACCES part: none (design question; dgp wants real errors reported, so the fix would be the opposite direction or a new option needing a TIP).
+</li>
+<li><span class="k">Suggested ticket comment</span> On Windows the error comes from FindFirstFileExW() returning a code that maps to ENOENT but is not in IsNoSuchFileError() (likely ERROR_NO_MORE_FILES/ERROR_BAD_NETPATH from SMB). Proposed fix: treat every ENOENT-class error as "no match" (patch available, needs testing on an SMB share). The EACCES inconsistency is because stat() failure is silent but opendir() failure is an error.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 4</div><ul>
+<li><span class="k">Platform</span> generic (EACCES part, see result-41.md) + Windows (ENOENT on SMB)
+</li>
+<li><span class="k">Verdict</span> NEEDS-WINDOWS (unresolved: the SMB ENOENT error does not occur against a Windows 11 SMB server; needs the reporter's server type); Windows EACCES case not testable as the elevated ssh admin (a DENY list-directory ACE does not stop listing)
+</li>
+<li><span class="k">Tested</span> VM work-win4/e5c.tcl on 9.1b1 and 8.6.18: <code>glob -nocomplain -directory &lt;d&gt; *.ext</code> returns an empty list without error for a missing local dir, <code>//localhost/C$/&lt;missing&gt;</code>, <code>//localhost/C$/no/such/deep/path</code>, <code>//localhost/nosuchshare/x</code>, and a dir with a DENY(RD) ACE (listed anyway). Related: for paths longer than MAX_PATH 9.x glob silently returns nothing (see <a class="h" href="reproduced.html#3eace1b21f">3eace1b21f</a>).
+</li>
+<li><span class="k">Cause</span> (from Linux analysis) win/tclWinFile.c TclpMatchInDirectory treats only FILE_NOT_FOUND/PATH_NOT_FOUND/INVALID_NAME as "no match"; other ENOENT-class codes from SMB servers become errors
+</li>
+<li><span class="k">Prototype</span> prototypes/e5c21e566f.patch (existing, Windows only) now compiled with MSVC 2022 on tcl-wt91: builds cleanly; the cases above unchanged; fileName, fileSystem, fCmd, cmdAH 0 failed, winFCmd 3 failures as unpatched. The SMB case itself remains untested.
+</li>
+<li><span class="k">Suggested ticket comment</span> Against a Windows 11 SMB server (\\localhost\C$, missing dirs, missing share) glob -nocomplain returns an empty list on 8.6.18 and 9.1. Which SMB server gave the error? The proposed patch (treat every ENOENT-class FindFirstFileExW error as "no match") compiles and passes the file tests on Windows.
+</li></ul></div></div></details><details class="t" id="184358681b" data-s="184358681b file readable/writable does not work with windows offline files 16. commands a-h needs-windows (unresolved: offline files needs the csc service and an offline-available share, i.e. system configuration changes not allowed on this vm; cscservice is stopped/manual)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>184358681b</span><span class="yr">2017</span><span class="ti">file readable/writable does not work with Windows Offline Files</span><span class="vd">NEEDS-WINDOWS (unresolved: Offline Files needs the CSC service and an offline-available share, i.e. system configuration changes not allowed on thi…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/184358681b">Open ticket 184358681b</a> · 16. Commands A-H · filed 2017-06-13</p><div class="lab">Full verdict</div><p>NEEDS-WINDOWS (unresolved: Offline Files needs the CSC service and an offline-available share, i.e. system configuration changes not allowed on this VM; CscService is stopped/manual)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> code reading of win/tclWinFile.c:NativeAccess on main/9.0/8.6; Unix is unaffected (access(2)). Repro: win/184358681b.tcl <code>&lt;file-on-offline-share&gt; ?&lt;dir&gt;?</code> (needs a share made "Always available offline", synced, then Work offline).
+</li>
+<li><span class="k">Cause</span> in 8.6.6, NativeAccess decided R/W access only via GetFileSecurityW + AccessCheck, which fails for the Client-Side-Caching copy when offline. Since branch fix-1613456fff, a regular file is first checked with CreateFileW(GENERIC_READ/WRITE), which should work offline; directories still use GetFileSecurityW/AccessCheck and may still report 0.
+</li>
+<li><span class="k">Prototype</span> none (needs a Windows Offline Files setup to confirm first)
+</li>
+<li><span class="k">Suggested ticket comment</span> Since 8.6.9 (<a class="h" href="https://core.tcl-lang.org/tcl/info/92c4bfbe32">92c4bfbe32</a>) file readable/writable open the file with CreateFileW instead of only checking the ACL, which should cover offline files; directories still use the ACL check. Can you retest with a current release?
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 4</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NEEDS-WINDOWS (unresolved: Offline Files needs the CSC service and an offline-available share, i.e. system configuration changes not allowed on this VM; CscService is stopped/manual)
+</li>
+<li><span class="k">Tested</span> not run (win/184358681b.tcl needs a synced offline share)
+</li>
+<li><span class="k">Cause</span> see result-36.md (8.6.9+ NativeAccess opens regular files with CreateFileW; directories still use the ACL check)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> (as in result-36.md) Since 8.6.9 (<a class="h" href="https://core.tcl-lang.org/tcl/info/92c4bfbe32">92c4bfbe32</a>) file readable/writable open the file with CreateFileW instead of only checking the ACL, which should cover offline files; directories still use the ACL check. Can you retest with a current release?
+</li></ul></div></div></details><details class="t" id="2913585fff" data-s="2913585fff [win32] serial channel blocks indefinitely on write 25. channel system needs-windows (unresolved: the vm has no serial port — all four virtualbox uarts are off and no com0com is installed; adding one needs a vm configuration change while the user is running it)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2913585fff</span><span class="yr">2009</span><span class="ti">[win32] serial channel blocks indefinitely on write</span><span class="vd">NEEDS-WINDOWS (unresolved: the VM has no serial port — all four VirtualBox UARTs are off and no com0com is installed; adding one needs a VM configu…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2913585fff">Open ticket 2913585fff</a> · 25. Channel System · filed 2009-12-13</p><div class="lab">Full verdict</div><p>NEEDS-WINDOWS (unresolved: the VM has no serial port — all four VirtualBox UARTs are off and no com0com is installed; adding one needs a VM configuration change while the user is running it)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> code reading: win/tclWinSerial.c on main still sets WriteTotalTimeoutConstant/Multiplier to 0 and SerialBlockingWrite waits in GetOverlappedResult(..., TRUE); open.n still says -timeout does not affect writes. Unix not checked (no serial hardware; a pty has no flow control).
+</li>
+<li><span class="k">Cause</span> (by reading) SerialBlockingWrite waits forever for a write that the flow control never lets through; the writer thread then keeps the handle open after [close].
+</li>
+<li><span class="k">Prototype</span> none (needs the Windows repro first; possible fix is to forward a write timeout to SetCommTimeouts)
+</li>
+<li><span class="k">Repro</span> win/2913585fff.tcl <code>?COMn?</code> — needs a COM port with no peer (VirtualBox serial port in "Disconnected"/host pipe mode with no reader, or com0com with the other side closed). It runs the write+close in a child with -handshake rtscts, blocking 0 and 1, and reports HANG / REOPEN-FAILED; prints a VERDICT line and exits by itself.
+</li>
+<li><span class="k">Suggested ticket comment</span> (after the Windows run) Still present on 9.x: a pending serial write with no flow control never finishes, and [close] then hangs (non-blocking) or leaves the port open (blocking).
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 2</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NEEDS-WINDOWS (unresolved: the VM has no serial port — all four VirtualBox UARTs are off and no com0com is installed; adding one needs a VM configuration change while the user is running it)
+</li>
+<li><span class="k">Tested</span> nothing new (GetPortNames is empty on the VM)
+</li>
+<li><span class="k">Cause</span> (by reading, see the Linux analysis) win/tclWinSerial.c sets zero write timeouts and SerialBlockingWrite waits in GetOverlappedResult(..., TRUE)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> none yet; to test, power the VM off, enable UART1 in "Disconnected" mode (or a host pipe with no reader) and run win/2913585fff.tcl COM1.
+</li></ul></div></div></details><details class="t" id="2049971fff" data-s="2049971fff clock command doesn&#x27;t reflect windows time zone changes 06. time measurement needs-windows (by code reading, still present in main, 9.0, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2049971fff</span><span class="yr">2008</span><span class="ti">clock command doesn't reflect Windows time zone changes</span><span class="vd">NEEDS-WINDOWS (by code reading, still present in main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2049971fff">Open ticket 2049971fff</a> · 06. Time Measurement · filed 2008-08-13</p><div class="lab">Full verdict</div><p>NEEDS-WINDOWS (by code reading, still present in main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> read generic/tclClock.c and library/clock.tcl on main; on Linux checked that touching env(TZ) clears the cached system zone after the 1 s refresh
+</li>
+<li><span class="k">Cause</span> the system zone is cached (9.0+: ClockGetSystemTimeZone keyed on TzsetIfNecessary's epoch; 8.6: ::tcl::clock::CachedSystemTimeZone). On Windows without TZ, the epoch changes only when TCL_TZ/TZ changes, so a registry time zone change is never noticed. The 2008 workaround (unset CachedSystemTimeZone) no longer works in 9.0. The 9.0 workaround: <code>set env(TZ) :UTC; clock format 0; unset env(TZ)</code>.
+</li>
+<li><span class="k">Prototype</span> none (needs a WM_SETTINGCHANGE/registry-change hook or a periodic GuessWindowsTimeZone; a design decision)
+</li>
+<li><span class="k">Repro</span> win/2049971fff.tcl (changes the system zone with tzutil and restores it; needs admin, so ask before running it on a VM someone uses)
+</li>
+<li><span class="k">Suggested ticket comment</span> Still cached in 9.0, now in the C engine. The old workaround (unset ::tcl::clock::CachedSystemTimeZone) no longer applies; touching env(TZ) works instead. This should become an RFE, or be fixed by checking the registry zone when the 1 s TZ refresh fires.
+</li></ul></div></details></section>
+<section class="grp" data-cat="cant"><h2><span class="dot c-cant"></span>Cannot test <span class="cnt">40</span></h2><details class="t" id="15d60c0d2e" data-s="15d60c0d2e make fails for tk8.6.16 on macos 69. other cannot-test (macos). this looks like the user&#x27;s environment, plus a side bug in tcltk-man2html that reproduces on linux." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>15d60c0d2e</span><span class="yr">2025</span><span class="ti">make fails for tk8.6.16 on macOS</span><span class="vd">CANNOT-TEST (macOS). This looks like the user's environment, plus a side bug in tcltk-man2html that reproduces on Linux.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/15d60c0d2e">Open ticket 15d60c0d2e</a> · 69. Other · filed 2025-07-24</p><div class="lab">Full verdict</div><p>CANNOT-TEST (macOS). This looks like the user's environment, plus a side bug in tcltk-man2html that reproduces on Linux.</p><ul>
+<li><span class="k">Platform</span> macOS (build)
+</li>
+<li><span class="k">Tested</span> code reading of tk8.6 unix/Makefile.in, configure.in and tcl.m4; the side issue on Linux with tcltk-man2html.tcl from 8.6 and 9.0. The ticket's attachments (config.log, make install output) are missing from the repository: "cannot resolve name".
+</li>
+<li><span class="k">Cause</span> --enable-framework adds <code>html-tk</code> to <code>make install</code>. BUILD_HTML runs $(BUILD_TCLSH) = ${TCL_BIN_DIR}/tclsh. With --with-tcl=/usr/local/tcl8.6.16/lib (an install dir) no tclsh exists there, so it falls back to TCL_EXE (SC_PROG_TCLSH = the first tclsh* on $PATH). On this machine that is an old 8.6.6 tclsh, with no TCL_LIBRARY set, and it finds /usr/local/lib/tcl8.6/init.tcl from a newer install: "have 8.6.6, need exactly 8.6.16". Tk itself is installed; only the HTML docs step is affected. Side bug: tools/tcltk-man2html.tcl takes the *newest* <code>tk*</code> sibling of --srcdir (<code>lsort ... end</code> in 8.6, findversion in 9.x). That is why the 8.6.16 install says "using Tk source directory tk9.0.2" and builds 9.0.2 HTML docs. Reproduced on Linux with sibling tk8.6.18 and tk9.0.5 trees: both the 8.6 and the 9.0 scripts pick tk9.0.5.
+</li>
+<li><span class="k">Prototype</span> none. The main failure is environmental. The man2html part needs Tk's Makefile to pass <code>--useversion</code> (or the script to prefer the srcdir it is run from), which is a Tk/Tcl Makefile change to decide on.
+</li>
+<li><span class="k">Suggested ticket comment</span> The error comes from the HTML docs step of a framework install. With --with-tcl pointing at an install dir there is no build tclsh, so make uses the first tclsh on PATH, here an old 8.6.6 one. Workaround: <code>make install TCL_EXE=/usr/local/tcl8.6.16/bin/tclsh8.6</code> (or point --with-tcl at the Tcl build dir). Separately, tcltk-man2html.tcl picks the newest tk* directory next to the source tree, which is why the tk9.0.2 docs were built.
+</li></ul></div></details><details class="t" id="ba4a2704d0" data-s="ba4a2704d0 make fails for tk9.0.2 on unix 69. other cannot-test (macos). same cause as 15d60c0d2e (duplicate)." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>ba4a2704d0</span><span class="yr">2025</span><span class="ti">make fails for tk9.0.2 on unix</span><span class="vd">CANNOT-TEST (macOS). Same cause as <a class="h" href="#15d60c0d2e">15d60c0d2e</a> (duplicate).</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/ba4a2704d0">Open ticket ba4a2704d0</a> · 69. Other · filed 2025-07-24</p><div class="lab">Full verdict</div><p>CANNOT-TEST (macOS). Same cause as <a class="h" href="#15d60c0d2e">15d60c0d2e</a> (duplicate).</p><ul>
+<li><span class="k">Platform</span> macOS (build)
+</li>
+<li><span class="k">Tested</span> code reading (as for <a class="h" href="#15d60c0d2e">15d60c0d2e</a>). The error text again names an 8.6.6 tclsh (init.tcl search path /usr/tcl8.6.6/library) while installing Tk 9.0.2.
+</li>
+<li><span class="k">Cause</span> the framework <code>make install</code> runs html-tk through TCL_EXE = the first tclsh on PATH (an old 8.6.6), because --with-tcl=/usr/local/tcl9.0.2/lib has no build tclsh. Not a Tk build failure as such.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Same cause as <a class="h" href="https://core.tcl-lang.org/tcl/info/15d60c0d2e">15d60c0d2e</a>: the HTML docs step of the framework install runs an old 8.6.6 tclsh found on PATH. Use <code>make install TCL_EXE=/usr/local/tcl9.0.2/bin/tclsh9.0</code>, or configure Tk with --with-tcl pointing at the Tcl build directory. Suggest closing as a duplicate of <a class="h" href="https://core.tcl-lang.org/tcl/info/15d60c0d2e">15d60c0d2e</a>.
+</li></ul></div></details><details class="t" id="57f27dbe1a" data-s="57f27dbe1a sporadic failure in httppipeline-3.9h-normal 29. http package cannot-test (needs the external test server test-tcl-http.kerlin.org, constraint serverneeded; no outside network allowed)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>57f27dbe1a</span><span class="yr">2024</span><span class="ti">Sporadic failure in httpPipeline-3.9h-normal</span><span class="vd">CANNOT-TEST (needs the external test server test-tcl-http.kerlin.org, constraint serverNeeded; no outside network allowed)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/57f27dbe1a">Open ticket 57f27dbe1a</a> · 29. http Package · filed 2024-05-12</p><div class="lab">Full verdict</div><p>CANNOT-TEST (needs the external test server test-tcl-http.kerlin.org, constraint serverNeeded; no outside network allowed)</p><ul>
+<li><span class="k">Platform</span> generic (tests)
+</li>
+<li><span class="k">Tested</span> test code reading only (tests/httpPipeline.test sections 4–5, RunTest)
+</li>
+<li><span class="k">Cause</span> unknown. The pattern (tokens 2..9 all got error "X" right after the request was sent, then all overlapped) looks like the persistent connection being closed by the server/at EOF while the pipelined queue was being written. That is related to, but not necessarily the same as, <a class="h" href="reproduced.html#05b158ed56">05b158ed56</a> (a reused socket closed between geturl and OpenSocket); unverified.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot be run without the kerlin.org test server. If the main session wants to pursue it, a local httpd with 1 s keep-alive timeout and the ?delay/close query semantics (section 4 of httpPipeline.test) would allow running httpPipeline-3.9h repeatedly (N&gt;=40) with and without the <a class="h" href="reproduced.html#05b158ed56">05b158ed56</a> prototype.
+</li></ul></div></details><details class="t" id="25dddef818" data-s="25dddef818 macosx gnumakefile does not use settings provided 53. configuration and build tools cannot-test (macos)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>25dddef818</span><span class="yr">2024</span><span class="ti">MacOSX GNUmakefile does not use settings provided</span><span class="vd">CANNOT-TEST (macOS)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/25dddef818">Open ticket 25dddef818</a> · 53. Configuration and Build Tools · filed 2024-04-16</p><div class="lab">Full verdict</div><p>CANNOT-TEST (macOS)</p><ul>
+<li><span class="k">Platform</span> macOS
+</li>
+<li><span class="k">Tested</span> code reading on main. macosx/GNUmakefile runs ../unix/configure itself with fixed --enable-framework --enable-dtrace --disable-zipfs plus <code>${CONFIGURE_ARGS} ${EXTRA_CONFIGURE_ARGS}</code>; options given to a separate macosx/configure run are not used by it (the GNUmakefile is meant to be driven via <code>make EXTRA_CONFIGURE_ARGS=...</code>, see macosx/README). The "unrecognized options framework/dtrace" warnings in sub-makefiles come from unix/configure.ac forwarding all of its arguments to bundled packages via PKG_CFG_ARGS (same mechanism as <a class="h" href="reproduced.html#17ffc49790">17ffc49790</a>) - harmless warnings.
+</li>
+<li><span class="k">Cause</span> design of macosx/GNUmakefile (configure args are make variables, not taken from a prior configure run).
+</li>
+<li><span class="k">Prototype</span> none (macOS-only, needs design; no macOS here)
+</li>
+<li><span class="k">Suggested ticket comment</span> The GNUmakefile takes configure options through <code>make EXTRA_CONFIGURE_ARGS="..."</code> rather than from a separate macosx/configure run; the framework/dtrace warnings come from passing Tcl's configure arguments on to the bundled packages and are harmless. Would documenting EXTRA_CONFIGURE_ARGS more prominently be enough?
+</li></ul></div></details><details class="t" id="1e8185c7fb" data-s="1e8185c7fb www.tcl-lang.org pages in need of update 69. other cannot-test (no network; the website source is not in any local repository)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1e8185c7fb</span><span class="yr">2023</span><span class="ti">www.tcl-lang.org pages in need of update</span><span class="vd">CANNOT-TEST (no network; the website source is not in any local repository)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1e8185c7fb">Open ticket 1e8185c7fb</a> · 69. Other · filed 2023-12-24</p><div class="lab">Full verdict</div><p>CANNOT-TEST (no network; the website source is not in any local repository)</p><ul>
+<li><span class="k">Platform</span> site (www.tcl-lang.org, not in tcl.fossil)
+</li>
+<li><span class="k">Tested</span> nothing. aku said on 2024-01-08 that the home page and /doc/ items are fixed. The rest (compile howto, platforms page, about/language.html, ActiveState links) needs someone with website access.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> (for whoever maintains www) The home-page and /doc/ items were reported fixed. Can you check the remaining pages: compile.html, platforms.html, about/language.html and the ActiveState links? Then close or split this ticket.
+</li></ul></div></details><details class="t" id="bbe7c6ff9e" data-s="bbe7c6ff9e zipfs failures on macos with password protected zip files - new builtin commands cannot-test (macos) — still present: tests/zipfs.test on main still skips the password tests on darwin (constraint bbe7c6ff9e)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>bbe7c6ff9e</span><span class="yr">2023</span><span class="ti">zipfs failures on MacOS with password protected zip files</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/bbe7c6ff9e.patch">patch</a><span class="vd">CANNOT-TEST (macOS) — still present: tests/zipfs.test on main still skips the password tests on Darwin (constraint <a class="h" href="#bbe7c6ff9e">bbe7c6ff9e</a>)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/bbe7c6ff9e">Open ticket bbe7c6ff9e</a> · - New Builtin Commands · filed 2023-09-21</p><div class="lab">Full verdict</div><p>CANNOT-TEST (macOS) — still present: tests/zipfs.test on main still skips the password tests on Darwin (constraint <a class="h" href="#bbe7c6ff9e">bbe7c6ff9e</a>)</p><ul>
+<li><span class="k">Platform</span> macOS
+</li>
+<li><span class="k">Tested</span> Linux main (passes); code inspection
+</li>
+<li>Cause (hypothesis): generic/tclZipfs.c is always compiled against the bundled compat/zlib headers (Makefile: <code>-I$(ZLIB_DIR)</code>), but on macOS it is linked with the system libz; the traditional PKWARE decryption keys use <code>crc32tab = get_crc_table()</code>, and only the password paths (init_keys/zdecode) use that table, which matches exactly the failing tests (wrong keys → garbage → "invalid CRC"/"decompression error"). Apple's libz need not return a standard 256-entry table there.
+</li>
+<li><span class="k">Prototype</span> prototypes/bbe7c6ff9e.patch (44 lines, speculative; zipfs.test passes on Linux): use the static <code>crc_table</code> from the bundled crc32.h that tclZipfs.c already includes instead of get_crc_table(), and re-enable the tests on Darwin so a CI run on macOS (core-* tag) validates it.
+</li>
+<li><span class="k">Suggested ticket comment</span> Only the decryption keys use get_crc_table(), and tclZipfs.c is compiled with the bundled zlib headers but linked with the system libz on macOS. Proposed (untested on macOS) fix: use the bundled crc_table directly; the patch re-enables the tests so macOS CI can confirm.
+</li></ul></div></details><details class="t" id="8d71525c18" data-s="8d71525c18 expect 5.45.4 + tcl 8.6.13 segfault on macos 13 (ventura) 45. parsing and eval cannot-test (macos 13 on arm)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>8d71525c18</span><span class="yr">2023</span><span class="ti">expect 5.45.4 + tcl 8.6.13 segfault on macOS 13 (Ventura)</span><span class="vd">CANNOT-TEST (macOS 13 on ARM)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/8d71525c18">Open ticket 8d71525c18</a> · 45. Parsing and Eval · filed 2023-02-17</p><div class="lab">Full verdict</div><p>CANNOT-TEST (macOS 13 on ARM)</p><ul>
+<li><span class="k">Platform</span> macOS
+</li>
+<li><span class="k">Tested</span> code reading of unix/tclUnixPipe.c on 8.6 tip
+</li>
+<li><span class="k">Cause</span> crash is inside dyld's <code>_dyld_fork_child</code> atfork handler in the child after fork() in TclpCreateProcess, i.e. in the OS/expect environment, not in Tcl code. Since 8.6.14 (42d3f0cdb9, 2023-07-26, fix for <a class="h" href="https://core.tcl-lang.org/tcl/info/c54e4a1aeb">c54e4a1aeb</a>) TclpCreateProcess prefers vfork() when available, which macOS has, so the fork()+atfork path from the backtrace is no longer taken by Tcl's exec.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> The crash is in dyld's fork-child handler, outside Tcl. Since 8.6.14 &amp;#91;exec&amp;#93; uses vfork() instead of fork() where available (see <a class="h" href="https://core.tcl-lang.org/tcl/info/c54e4a1aeb">c54e4a1aeb</a>), so this path should be gone; can someone on macOS 13+ ARM confirm with expect built against 8.6.14 or later? Otherwise suggest closing.
+</li></ul></div></details><details class="t" id="055ed8476a" data-s="055ed8476a load-10.1 fails 37. file system cannot-test (8.5 only — 8.5 is no longer maintained; needs a host with a noexec temp dir, which requires root to set up)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>055ed8476a</span><span class="yr">2021</span><span class="ti">load-10.1 fails</span><span class="vd">CANNOT-TEST (8.5 only — 8.5 is no longer maintained; needs a host with a noexec temp dir, which requires root to set up)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/055ed8476a">Open ticket 055ed8476a</a> · 37. File System · filed 2021-12-13</p><div class="lab">Full verdict</div><p>CANNOT-TEST (8.5 only — 8.5 is no longer maintained; needs a host with a noexec temp dir, which requires root to set up)</p><ul>
+<li><span class="k">Platform</span> unix (CentOS 7, core-8-5-branch only)
+</li>
+<li><span class="k">Tested</span> code comparison only: 8.5 and 8.6 both copy the library to a temporary directory before dlopen
+</li>
+<li><span class="k">Cause</span> "failed to map segment from shared object: Operation not permitted" is what dlopen reports for a file on a noexec mount, i.e. /tmp was mounted noexec on that machine; 8.5 and 8.6 use the same temp-file logic, so the 8.6 pass was probably an environment difference (TMPDIR) rather than a code fix.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> The error is dlopen() refusing a file on a noexec /tmp; 8.5 and 8.6 use the same temp location logic (TMPDIR first). As 8.5 is no longer maintained, propose closing as Out of Date.
+</li></ul></div></details><details class="t" id="c837eb353e" data-s="c837eb353e 64 bit build of tcl coredumps in aix 47. bytecode compiler cannot-test (aix/xlc)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>c837eb353e</span><span class="yr">2021</span><span class="ti">64 bit build of TCL coredumps in AIX</span><span class="vd">CANNOT-TEST (AIX/xlc)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/c837eb353e">Open ticket c837eb353e</a> · 47. Bytecode Compiler · filed 2021-03-17</p><div class="lab">Full verdict</div><p>CANNOT-TEST (AIX/xlc)</p><ul>
+<li><span class="k">Platform</span> unix (AIX 7.1, xlc 64-bit)
+</li>
+<li><span class="k">Tested</span> none (no AIX). Reading: JUMP_PEEPHOLE_F/JUMP_PEEPHOLE_V in generic/tclExecute.c are unchanged in structure on main/9.0/8.6; the macros are plain pointer arithmetic on <code>pc</code>, gcc/clang/MSVC are fine. The reporter's workaround (disable the peephole for _AIX) points to an xlc optimizer/codegen bug rather than a Tcl bug; the reported CFLAGS was <code>-g</code> only, so it may also be the computed-goto-free switch in xlc.
+</li>
+<li><span class="k">Cause</span> unknown; probably compiler (xlc -q64) miscompiling TEBCresume.
+</li>
+<li><span class="k">Prototype</span> none (cannot verify; reporter's one-line <code>#if !defined(TCL_COMPILE_DEBUG) &amp;&amp; !defined(_AIX)</code> is the obvious candidate if someone with AIX confirms on 8.6.18/9.0)
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot test without AIX. Could you retry with 8.6.18 or 9.0.4, and say which xlc version? If it still crashes, does it also crash with gcc on AIX? That would tell whether a <code>!defined(_AIX)</code> guard (or rather an xlc version check) is the right fix.
+</li></ul></div></details><details class="t" id="7cd721e9ea" data-s="7cd721e9ea mkdtemp() unavailable on solaris 2.8 37. file system cannot-test (solaris 8; illumos has mkdtemp() in stdlib.h). prototype verified on illumos with the fallback forced." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>7cd721e9ea</span><span class="yr">2020</span><span class="ti">mkdtemp() unavailable on Solaris 2.8</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/7cd721e9ea.patch">patch</a><span class="vd">CANNOT-TEST (Solaris 8; illumos has mkdtemp() in stdlib.h). Prototype verified on illumos with the fallback forced.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/7cd721e9ea">Open ticket 7cd721e9ea</a> · 37. File System · filed 2020-06-19</p><div class="lab">Full verdict</div><p>CANNOT-TEST (Solaris 8; illumos has mkdtemp() in stdlib.h). Prototype verified on illumos with the fallback forced.</p><ul>
+<li><span class="k">Platform</span> build
+</li>
+<li><span class="k">Tested</span> main (30d8ccce48) on Linux, configured with ac_cv_func_mkdtemp=no in a separate build dir to exercise the fallback: libtcl defines its own mkdtemp, <code>file tempdir</code> works (dir created, mode 0700, error path OK), cmdAH.test passes (17001/0 failed). Normal build still uses glibc's mkdtemp.
+</li>
+<li><span class="k">Cause</span> missing compat fallback for mkdtemp(), which only became POSIX in 2008.
+</li>
+<li><span class="k">Prototype</span> prototypes/7cd721e9ea.patch (69 hand-edited lines, 62 of them the new compat/mkdtemp.c modeled on compat/mkstemp.c; plus AC_REPLACE_FUNCS(mkdtemp ...), Makefile.in rule, tclConfig.h.in, declaration in tclUnixPort.h; regenerated configure with autoconf 2.73). No test (fallback only builds on systems lacking mkdtemp).
+</li>
+<li><span class="k">Suggested ticket comment</span> Proposed fix: a compat/mkdtemp.c used via AC_REPLACE_FUNCS, like compat/mkstemp.c (mkdir() with EEXIST retry is race-free). Tested on Linux by forcing ac_cv_func_mkdtemp=no; needs someone with Solaris 8 to confirm, if that platform still matters.
+</li></ul><div class="winrun"><div class="lab">Unix VMs, run 1</div><ul>
+<li><span class="k">Platform</span> build
+</li>
+<li><span class="k">Verdict</span> CANNOT-TEST (Solaris 8; illumos has mkdtemp() in stdlib.h). Prototype verified on illumos with the fallback forced.
+</li>
+<li><span class="k">Tested</span> OpenIndiana, gcc 14.3, prototypes/7cd721e9ea.patch applied to main (out-of-tree builds). Normal configure: "checking for mkdtemp... yes", libtcl uses the libc mkdtemp (UNDEF). With <code>ac_cv_func_mkdtemp=no</code>: compat/mkdtemp.c is compiled without warnings and libtcl defines mkdtemp. In both builds <code>file tempdir</code> creates /var/tmp/tcl_XXXXXX with mode 0700, <code>file tempdir /tmp/tdx</code> works, the error path says "can't create temporary directory: no such file or directory", and cmdAH.test passes (17001 total, 0 failed).
+</li>
+<li><span class="k">Cause</span> unix/tclUnixFCmd.c:TclpCreateTemporaryDirectory uses mkdtemp() and configure does not check for it.
+</li>
+<li><span class="k">Prototype</span> prototypes/7cd721e9ea.patch (69 hand-edited lines; unchanged). Note: like compat/mkstemp.c, the fallback exports a global <code>mkdtemp</code> symbol from libtcl.
+</li>
+<li><span class="k">Suggested ticket comment</span> Proposed fix: compat/mkdtemp.c via AC_REPLACE_FUNCS, like mkstemp. Verified on OpenIndiana with the fallback forced (<code>ac_cv_func_mkdtemp=no</code>): file tempdir and cmdAH.test work. Solaris 8 itself was not tested.
+</li></ul></div></div></details><details class="t" id="5d5c6dbded" data-s="5d5c6dbded broken links on www.tcl.tk 69. other cannot-test (no network; website source not available locally)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>5d5c6dbded</span><span class="yr">2020</span><span class="ti">Broken links on www.tcl.tk</span><span class="vd">CANNOT-TEST (no network; website source not available locally)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/5d5c6dbded">Open ticket 5d5c6dbded</a> · 69. Other · filed 2020-05-16</p><div class="lab">Full verdict</div><p>CANNOT-TEST (no network; website source not available locally)</p><ul>
+<li><span class="k">Platform</span> site (www.tcl.tk / www.tcl-lang.org)
+</li>
+<li><span class="k">Tested</span> nothing. The report dates from 2020 and lists mostly conference-page and ActiveState links. Overlaps with <a class="h" href="#1e8185c7fb">1e8185c7fb</a>.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> (for the website maintainer) Many of these are old conference pages and dead third-party links. Can someone with website access re-run a link checker and close this ticket, or merge it with <a class="h" href="https://core.tcl-lang.org/tcl/info/1e8185c7fb">1e8185c7fb</a>?
+</li></ul></div></details><details class="t" id="e67618079f" data-s="e67618079f win rdp forwarded serial port: setting -sysbuffer gives &quot;can&#x27;t setup comm buffers: invalid argument&quot; 27. channel types cannot-test (needs a serial port forwarded over rdp to windows)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>e67618079f</span><span class="yr">2020</span><span class="ti">Win rdp forwarded serial port: setting -sysbuffer gives "can't setup comm buffers: invalid argument"</span><span class="vd">CANNOT-TEST (needs a serial port forwarded over RDP to Windows)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/e67618079f">Open ticket e67618079f</a> · 27. Channel Types · filed 2020-04-22</p><div class="lab">Full verdict</div><p>CANNOT-TEST (needs a serial port forwarded over RDP to Windows)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> code reading only (win/tclWinSerial.c SerialSetOptionProc, unchanged since 2020 apart from error conversion).
+</li>
+<li><span class="k">Cause</span> -sysbuffer calls SetupComm() and then GetCommState/SetCommState() to adjust XonLim/XoffLim; the RDP serial redirector driver rejects SetupComm sizes (ERROR_INVALID_PARAMETER) and SetCommState (ERROR_DEV_NOT_EXIST / "no such device"), as it also does for -handshake. Driver limitation rather than a Tcl bug. Jan's attempt <a class="h" href="https://core.tcl-lang.org/tcl/info/8b444e9115">8b444e9115</a> (branch bug-e67618079, 2020-04-22) did not help per the reporter and was never merged.
+</li>
+<li><span class="k">Prototype</span> none (no hardware; driver-specific)
+</li>
+<li><span class="k">Suggested ticket comment</span> The errors come straight from SetupComm()/SetCommState() of the RDP serial redirector, which seems not to support these calls. Branch bug-e67618079 did not help and is unmerged; unless someone with such a setup can test, this is probably a driver limitation.
+</li></ul></div></details><details class="t" id="07d9a95304" data-s="07d9a95304 &quot;tdbc::mysql configure&quot; fails with mysql 8.0.3 81. bundled packages cannot-test (no tdbcmysql sources/repository and no mysql server available offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>07d9a95304</span><span class="yr">2018</span><span class="ti">"tdbc::mysql configure" fails with MySQL 8.0.3</span><span class="vd">CANNOT-TEST (no tdbcmysql sources/repository and no MySQL server available offline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/07d9a95304">Open ticket 07d9a95304</a> · 81. Bundled Packages · filed 2018-10-11</p><div class="lab">Full verdict</div><p>CANNOT-TEST (no tdbcmysql sources/repository and no MySQL server available offline)</p><ul>
+<li><span class="k">Platform</span> generic (bundled package tdbc::mysql)
+</li>
+<li><span class="k">Tested</span> none; the tdbcmysql sources are not in the local repositories (pkgs/ in the Tcl trees is empty, there is no tdbcmysql.fossil) and there is no mysqld/mariadbd installed
+</li>
+<li><span class="k">Cause</span> tdbcmysql.c reads the session variable @@TX_ISOLATION in ConnectionConfigure, which MySQL 8.0.3 removed (the replacement is @@TRANSACTION_ISOLATION, available since 5.7.20)
+</li>
+<li><span class="k">Prototype</span> none (package lives in the separate tdbcmysql repository)
+</li>
+<li><span class="k">Suggested ticket comment</span> This belongs to the tdbcmysql repository. Someone with a MySQL 8 server should check whether the current tdbcmysql release still queries @@tx_isolation; if so, the fix is to use @@transaction_isolation when the server version is 5.7.20 or newer.
+</li></ul></div></details><details class="t" id="35a1bb1873" data-s="35a1bb1873 test failure - socket-14.0.0 + socket-14.2 on macos 69. other cannot-test (macos)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>35a1bb1873</span><span class="yr">2017</span><span class="ti">Test Failure - socket-14.0.0 + socket-14.2 on Macos</span><span class="vd">CANNOT-TEST (macOS)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/35a1bb1873">Open ticket 35a1bb1873</a> · 69. Other · filed 2017-11-07</p><div class="lab">Full verdict</div><p>CANNOT-TEST (macOS)</p><ul>
+<li><span class="k">Platform</span> macOS
+</li>
+<li><span class="k">Tested</span> Linux main: socket.test passes completely (run together with the event tests above); no macOS machine. The 2017 failures (empty <code>-error</code> after the async connect to an IPv4-only server via "localhost", and no writable event on refused connect) were seen on High Sierra with 8.7 at <a class="h" href="https://core.tcl-lang.org/tcl/info/84de05583b">84de05583b</a>.
+</li>
+<li><span class="k">Cause</span> unknown; likely the macOS (kqueue/CoreFoundation) notifier or getaddrinfo ordering ::1 before 127.0.0.1 for localhost in the async connect fallback (unix/tclUnixSock.c TcpConnect). The tests now carry <code>localhost_v4</code> constraints.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Ticket is from 2017 (8.7a1 era). Does <code>make test TESTFLAGS="-file socket.test -match socket-14.*"</code> still fail on a current macOS with 9.0/main? If not, this can be closed.
+</li></ul></div></details><details class="t" id="0b39decc76" data-s="0b39decc76 clock.test 50.2 fails for negative values in irix: broken mktime() 06. time measurement cannot-test (irix/mipspro)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>0b39decc76</span><span class="yr">2017</span><span class="ti">clock.test 50.2 fails for negative values in IRIX: broken mktime()</span><span class="vd">CANNOT-TEST (IRIX/MIPSPro)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/0b39decc76">Open ticket 0b39decc76</a> · 06. Time Measurement · filed 2017-01-11</p><div class="lab">Full verdict</div><p>CANNOT-TEST (IRIX/MIPSPro)</p><ul>
+<li><span class="k">Platform</span> unix (IRIX)
+</li>
+<li><span class="k">Tested</span> none; code read only. main still calls mktime() for :localtime scans (generic/tclClock.c ConvertLocalToUTCUsingC)
+</li>
+<li><span class="k">Cause</span> IRIX libc mktime() returns -1 for all pre-epoch times; platform bug, not Tcl's.
+</li>
+<li><span class="k">Prototype</span> none (obsolete platform; a compat mktime would be needed)
+</li>
+<li><span class="k">Suggested ticket comment</span> This is an IRIX libc limitation (mktime() rejects pre-1970 values). IRIX is no longer a supported platform; suggest closing as Won't Fix.
+</li></ul></div></details><details class="t" id="bf029ced86" data-s="bf029ced86 binary.test 40.3 signed nan fails on irix/mips machines 48. number handling cannot-test (mips/risc-v hardware; no qemu-riscv64 here) — test still expects `1 -nan*` on main, 9.0 and 8.6; x86-64 passes" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>bf029ced86</span><span class="yr">2017</span><span class="ti">binary.test 40.3 signed NaN fails on IRIX/MIPS machines</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/bf029ced86.patch">patch</a><span class="vd">CANNOT-TEST (MIPS/RISC-V hardware; no qemu-riscv64 here) — test still expects <code>1 -NaN*</code> on main, 9.0 and 8.6; x86-64 passes</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/bf029ced86">Open ticket bf029ced86</a> · 48. Number Handling · filed 2017-01-11</p><div class="lab">Full verdict</div><p>CANNOT-TEST (MIPS/RISC-V hardware; no qemu-riscv64 here) — test still expects <code>1 -NaN*</code> on main, 9.0 and 8.6; x86-64 passes</p><ul>
+<li><span class="k">Platform</span> generic (test portability; affects MIPS R4400/R10000 and RISC-V, per the 2026-10-13 comment)
+</li>
+<li><span class="k">Tested</span> read binary.test on main/9.0/8.6; ran the patched binary.test on main (x86-64)
+</li>
+<li><span class="k">Cause</span> generic/tclBinary.c:ScanNumber returns <code>Tcl_NewDoubleObj(fvalue)</code>; the float→double widening may drop the sign of a NaN (RISC-V fcvt.d.s always gives the canonical +NaN), and IEEE 754 leaves that sign unspecified.
+</li>
+<li><span class="k">Prototype</span> prototypes/bf029ced86.patch (4 changed lines, test binary-40.3 now <code>-match regexp -result {^1 -?NaN}</code> plus a comment); binary.test passes on x86-64. (A code alternative, building the double bits by hand for NaN floats, would also keep the sign and payload, but seems unnecessary.)
+</li>
+<li><span class="k">Suggested ticket comment</span> The sign of a NaN after float→double conversion is not defined (RISC-V always gives +NaN). Proposed: binary-40.3 accepts both NaN and -NaN.
+</li></ul></div></details><details class="t" id="40ef293eed" data-s="40ef293eed path intrep invalidation triggered by [cd] too aggressive? 37. file system cannot-test (needs trofs, not available offline). core behaviour unchanged." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>40ef293eed</span><span class="yr">2016</span><span class="ti">Path intrep invalidation triggered by [cd] too aggressive?</span><span class="vd">CANNOT-TEST (needs trofs, not available offline). Core behaviour unchanged.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/40ef293eed">Open ticket 40ef293eed</a> · 37. File System · filed 2016-04-26</p><div class="lab">Full verdict</div><p>CANNOT-TEST (needs trofs, not available offline). Core behaviour unchanged.</p><ul>
+<li><span class="k">Platform</span> generic (VFS)
+</li>
+<li><span class="k">Tested</span> code reading on main (30d8ccce48) and 8.6: generic/tclIOUtil.c:Tcl_FSChdir still calls Tcl_FSMountsChanged(NULL) when the new cwd is in a different filesystem than the old one (since <a class="h" href="https://core.tcl-lang.org/tcl/info/48beab9ffd">48beab9ffd</a>, 2015-06-23). That bumps theFilesystemEpoch and invalidates every cached path intrep; Tcl_FSConvertToPathType/TclFSEpochOk then re-resolve paths, which re-enters the filesystem's pathInFilesystem proc.
+</li>
+<li><span class="k">Cause</span> the crash was infinite recursion in trofs (PathInFilesystem -&gt; FetchDirFromCache -&gt; Tcl_FSGetInternalRep -&gt; PathInFilesystem); dgp's 2016 patch to trofs fixes it there. The question left open is a design one: whether a cross-filesystem cd needs to invalidate everything.
+</li>
+<li><span class="k">Prototype</span> none (design question; the crash fix belongs to trofs)
+</li>
+<li><span class="k">Suggested ticket comment</span> Core still invalidates all path intreps on a cd that crosses filesystems (<a class="h" href="https://core.tcl-lang.org/tcl/info/48beab9ffd">48beab9ffd</a>); the crash itself was fixed on the trofs side by the patch below. Unless someone wants to make the invalidation per-filesystem (the unused fsPtr argument of Tcl_FSMountsChanged), this could be closed or turned into an RFE.
+</li></ul></div></details><details class="t" id="4db0832c5b" data-s="4db0832c5b source build aix with xlc make test -&gt; segmentation fault 53. configuration and build tools cannot-test (aix/xlc not available)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>4db0832c5b</span><span class="yr">2015</span><span class="ti">Source build AIX with xlc make test -&gt; Segmentation fault</span><span class="vd">CANNOT-TEST (AIX/xlc not available)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/4db0832c5b">Open ticket 4db0832c5b</a> · 53. Configuration and Build Tools · filed 2015-06-24</p><div class="lab">Full verdict</div><p>CANNOT-TEST (AIX/xlc not available)</p><ul>
+<li><span class="k">Platform</span> build (AIX 7.1, xlc 12.1, OBJECT_MODE=64, Tcl 8.6.4)
+</li>
+<li><span class="k">Tested</span> none; report has no backtrace or failing test name
+</li>
+<li><span class="k">Cause</span> unknown
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> There is no AIX system to test on, and the report has no failing test or backtrace. If it still happens with 8.6.18 or 9.0, please run <code>make test TESTFLAGS="-verbose bpe"</code> to find the test and attach a dbx backtrace; otherwise suggest closing.
+</li></ul></div></details><details class="t" id="e3da32d816" data-s="e3da32d816 max os x [glob] returns the decomposed filenames 44. utf-8 strings cannot-test (macos) — no normalization code in glob/filesystem paths on main (unix/, macosx/, tclfilename.c, tclioutil.c), so behaviour is unchanged" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>e3da32d816</span><span class="yr">2015</span><span class="ti">max os x [glob] returns the decomposed filenames</span><span class="vd">CANNOT-TEST (macOS) — no normalization code in glob/filesystem paths on main (unix/, macosx/, tclFileName.c, tclIOUtil.c), so behaviour is unchanged</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/e3da32d816">Open ticket e3da32d816</a> · 44. UTF-8 Strings · filed 2015-04-21</p><div class="lab">Full verdict</div><p>CANNOT-TEST (macOS) — no normalization code in glob/filesystem paths on main (unix/, macosx/, tclFileName.c, tclIOUtil.c), so behaviour is unchanged</p><ul>
+<li><span class="k">Platform</span> macOS
+</li>
+<li><span class="k">Tested</span> code reading on main; checked the new 9.1 command
+</li>
+<li><span class="k">Cause</span> HFS+ stores names in NFD and glob returns them as is. APFS (macOS 10.13+) keeps names in the form they were created with, so the reporter's script is likely to print "equal" on current macOS.
+</li>
+<li><span class="k">Prototype</span> none (macOS; leaving glob as is is the intended design, per dkf)
+</li>
+<li><span class="k">Suggested ticket comment</span> Tcl 9.1 adds &amp;#91;unicode tonfc&amp;#93; (TIP 726), so &lt;code&gt;unicode tonfc &amp;#91;glob ...&amp;#93;&lt;/code&gt; is the iconv workaround in pure Tcl; glob itself is meant to keep returning the names as stored. Suggest closing once someone confirms on 9.1 / APFS.
+</li></ul></div></details><details class="t" id="17a26ddf66" data-s="17a26ddf66 fcmd-27.5 and 27.6 fail because permission to set attribute is denied 37. file system cannot-test (needs a file whose group cannot be re-set by the owner, e.g. inherited from a setgid dir of a foreign group on nfs/idmapped storage; on local linux fs a no-op chgrp to the current gid is always allowed); tests unchanged on main, 9.0, 8.6" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>17a26ddf66</span><span class="yr">2014</span><span class="ti">fCmd-27.5 and 27.6 fail because permission to set attribute is denied</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/17a26ddf66.patch">patch</a><span class="vd">CANNOT-TEST (needs a file whose group cannot be re-set by the owner, e.g. inherited from a setgid dir of a foreign group on NFS/idmapped storage; o…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/17a26ddf66">Open ticket 17a26ddf66</a> · 37. File System · filed 2014-10-22</p><div class="lab">Full verdict</div><p>CANNOT-TEST (needs a file whose group cannot be re-set by the owner, e.g. inherited from a setgid dir of a foreign group on NFS/idmapped storage; on local Linux fs a no-op chgrp to the current gid is always allowed); tests unchanged on main, 9.0, 8.6</p><ul>
+<li><span class="k">Platform</span> unix
+</li>
+<li><span class="k">Tested</span> main on Linux: [file attributes f -group &lt;current&gt;] succeeds; user namespaces are blocked here so the foreign-group case could not be set up
+</li>
+<li><span class="k">Cause</span> tests/fCmd.test fCmd-27.5/27.6 re-set the first attributes returned, which on Unix are -group (and -owner); SetGroupAttribute does chown(path, -1, gid), which can fail with EPERM when the group name resolves to a gid the user may not set.
+</li>
+<li><span class="k">Prototype</span> prototypes/17a26ddf66.patch (6 changed lines, tests fCmd-27.5/27.6 now drop -group with [dict remove]; fCmd.test passes)
+</li>
+<li><span class="k">Suggested ticket comment</span> The tests pick -group, which is not always settable by the file owner. Proposed fix: drop -group from the attribute list in fCmd-27.5/27.6 (patch available, not committed).
+</li></ul></div></details><details class="t" id="d19aef1487" data-s="d19aef1487 does not cross-compile for ios 6 - patch included. 52. portability support cannot-test (ios sdk) — first half fixed since 8.6.2 (a41a431706, 2014-07-31)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>d19aef1487</span><span class="yr">2014</span><span class="ti">Does not cross-compile for iOS 6 - patch included.</span><span class="vd">CANNOT-TEST (iOS SDK) — first half FIXED since 8.6.2 (a41a431706, 2014-07-31)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/d19aef1487">Open ticket d19aef1487</a> · 52. Portability Support · filed 2014-07-29</p><div class="lab">Full verdict</div><p>CANNOT-TEST (iOS SDK) — first half FIXED since 8.6.2 (a41a431706, 2014-07-31)</p><ul>
+<li><span class="k">Platform</span> build (iOS cross-compile)
+</li>
+<li><span class="k">Tested</span> main built on Linux out of tree with <code>--disable-load</code>: compiles cleanly, <code>load</code> gives "dynamic loading is not currently available". tclLoadNone.c TclpLoadMemory now matches the tclInt.h prototype on main, 9.0 and 8.6.
+</li>
+<li><span class="k">Cause</span> the TclpLoadMemory signature mismatch in tclLoadNone.c (the generic part) was fixed by jan.nijtmans in a41a431706 "Fix part of <a class="h" href="https://core.tcl-lang.org/tcl/info/d19aef1487">d19aef1487</a>". The remaining part, unix/tclUnixPort.h <code>#if defined(__APPLE__) &amp;&amp; defined(__DYNAMIC__)</code> → <code>&lt;crt_externs.h&gt;</code>/_NSGetEnviron, is unchanged on main/9.0/8.6. The reporter's <code>TARGET_OS_MAC</code> guard would not help anyway: TARGET_OS_MAC is 1 on iOS too, so the test would have to be <code>!TARGET_OS_IPHONE</code> / <code>TARGET_OS_OSX</code>. The <code>ios</code> branch (ba55cebfc9, 2014) was never merged and was closed in 2022.
+</li>
+<li><span class="k">Prototype</span> none (cannot verify without an iOS SDK; iOS is not a supported platform)
+</li>
+<li><span class="k">Suggested ticket comment</span> The --disable-load part was fixed in <a class="h" href="https://core.tcl-lang.org/tcl/info/a41a431706">a41a431706</a>. The remaining environ/_NSGetEnviron guard in unix/tclUnixPort.h is iOS-only and nobody can test it. Suggest closing as "Out of date" unless someone with an iOS toolchain can confirm that a <code>!TARGET_OS_IPHONE</code> guard is still needed.
+</li></ul></div></details><details class="t" id="c4e230f29b" data-s="c4e230f29b unixeventfork-1.1 hangs on os x 01. notifier cannot-test (macos)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>c4e230f29b</span><span class="yr">2013</span><span class="ti">unixeventfork-1.1 hangs on OS X</span><span class="vd">CANNOT-TEST (macOS)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/c4e230f29b">Open ticket c4e230f29b</a> · 01. Notifier · filed 2013-08-03</p><div class="lab">Full verdict</div><p>CANNOT-TEST (macOS)</p><ul>
+<li><span class="k">Platform</span> macOS
+</li>
+<li><span class="k">Tested</span> unixforkevent-1.1 with <code>-constraints nonPortable</code> passes on Linux main. On macOS the test is still constrained <code>{testfork nonPortable}</code>, so it is skipped by default and no longer hangs the suite.
+</li>
+<li><span class="k">Cause</span> (macOS) CoreFoundation is not fork-safe without exec. macosx/tclMacOSXNotify.c:AtForkChild now resets the locks, drops the inherited runLoop/source/timer and restarts the notifier thread, which may have improved this since 2013; not verifiable here. Branch bug-<a class="h" href="#c4e230f29b">c4e230f29b</a> (2013) only holds the test hardening, no notifier fix.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> The test is marked nonPortable and passes on Linux; macosx/tclMacOSXNotify.c AtForkChild has since been reworked to reset the run loop in the child. Someone with macOS could run <code>make test TESTFLAGS="-file unixForkEvent.test -constraints nonPortable"</code>; if it passes, this can be closed.
+</li></ul></div></details><details class="t" id="3077617fff" data-s="3077617fff error trying to make on aix 5.3 53. configuration and build tools cannot-test (aix); the cause is still present on main/9.0/8.6 by code reading" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3077617fff</span><span class="yr">2010</span><span class="ti">error trying to make on aix 5.3</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/3077617fff.patch">patch</a><span class="vd">CANNOT-TEST (AIX); the cause is still present on main/9.0/8.6 by code reading</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3077617fff">Open ticket 3077617fff</a> · 53. Configuration and Build Tools · filed 2010-09-28</p><div class="lab">Full verdict</div><p>CANNOT-TEST (AIX); the cause is still present on main/9.0/8.6 by code reading</p><ul>
+<li><span class="k">Platform</span> build (AIX + gcc)
+</li>
+<li><span class="k">Tested</span> read unix/tcl.m4 <code>AIX-*</code> (non-ia64) on main. For gcc, SHLIB_LD is <code>${CC} -shared -Wl,-bexpall</code> with no <code>-brtl</code>. <code>LDFLAGS="$LDFLAGS -brtl"</code> is added only in the non-gcc (xlc) branch.
+</li>
+<li><span class="k">Cause</span> without run-time linking (-brtl) the AIX linker resolves <code>-ltcl8.5</code> only to <code>libtcl8.5.a</code>, never <code>.so</code>. So <code>gcc ... -ltcl8.5</code> fails although libtcl8.5.so was built (reporter's <code>ls</code> confirms). The xlc path works because it adds -brtl.
+</li>
+<li><span class="k">Prototype</span> prototypes/3077617fff.patch (1 hand-edited line in tcl.m4 + regenerated configure with autoconf 2.73: adds <code>LDFLAGS="$LDFLAGS -Wl,-brtl"</code> in the gcc branch). Untested; needs an AIX box.
+</li>
+<li><span class="k">Suggested ticket comment</span> With gcc, tcl.m4 does not pass -brtl to the AIX linker (only the xlc branch does), so <code>-ltcl8.5</code> cannot find libtcl8.5.so. Proposed fix: add <code>-Wl,-brtl</code> to LDFLAGS for gcc too. Needs testing by someone with AIX.
+</li></ul></div></details><details class="t" id="3075025fff" data-s="3075025fff 8.6 head testsuite failures on windows none cannot-test (winxp/msvc6 test failures from 2010; partly fixed: filesystem-1.3/1.4 fixed by [a47641a031], 8.6.6, per apnadkarni)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3075025fff</span><span class="yr">2010</span><span class="ti">8.6 head testsuite failures on windows</span><span class="vd">CANNOT-TEST (WinXP/MSVC6 test failures from 2010; partly fixed: filesystem-1.3/1.4 fixed by <a class="h" href="https://core.tcl-lang.org/tcl/info/a47641a031">a47641a031</a>, 8.6.6, per apnadkarni)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3075025fff">Open ticket 3075025fff</a> · None · filed 2010-09-24</p><div class="lab">Full verdict</div><p>CANNOT-TEST (WinXP/MSVC6 test failures from 2010; partly fixed: filesystem-1.3/1.4 fixed by <a class="h" href="https://core.tcl-lang.org/tcl/info/a47641a031">a47641a031</a>, 8.6.6, per apnadkarni)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> none (Windows; the report is about 2010 trunk on WinXP)
+</li>
+<li><span class="k">Cause</span> environment-dependent test failures (UAC/permissions, timing in async-4.3).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> filesystem-1.3/1.4 were fixed in 8.6.6 (<a class="h" href="https://core.tcl-lang.org/tcl/info/a47641a031">a47641a031</a>); the remaining ones (async-4.3, tcltest-2.0, winFCmd-1.38) were reported on WinXP/MSVC6 in 2010. Current failures on Windows 10/11 should get new tickets; suggest closing this one as out of date.
+</li></ul></div></details><details class="t" id="2782814fff" data-s="2782814fff sample cvs snapshots contain old data 70. sample extension cannot-test (the sampleextension repository and the old cvs nightly tarballs are not available here). this is also not a tcl core issue." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2782814fff</span><span class="yr">2009</span><span class="ti">sample CVS snapshots contain old data</span><span class="vd">CANNOT-TEST (the sampleextension repository and the old CVS nightly tarballs are not available here). This is also not a Tcl core issue.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2782814fff">Open ticket 2782814fff</a> · 70. Sample Extension · filed 2009-04-28</p><div class="lab">Full verdict</div><p>CANNOT-TEST (the sampleextension repository and the old CVS nightly tarballs are not available here). This is also not a Tcl core issue.</p><ul>
+<li><span class="k">Platform</span> site (sampleextension snapshots)
+</li>
+<li><span class="k">Tested</span> nothing to test locally. In 2014 aku checked sample-20101214.tar.gz and the sampleextension Fossil repo and found no nested stale "sample" directory. The CVS nightly snapshots no longer exist.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> The CVS snapshots are gone, and the sampleextension Fossil repository has no stale nested copy (checked by aku in 2014). Closing as out of date. Please file sampleextension issues in its own repository.
+</li></ul></div></details><details class="t" id="2093902fff" data-s="2093902fff expect-spawn plink works in 8.4.16 but fails in 8.5.4 none cannot-test (expect for windows 5.43 binary from 8.4 copied into activestate 8.5.4; third-party package, error only in an attached screenshot)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2093902fff</span><span class="yr">2008</span><span class="ti">Expect-spawn plink works in 8.4.16 but fails in 8.5.4</span><span class="vd">CANNOT-TEST (Expect for Windows 5.43 binary from 8.4 copied into ActiveState 8.5.4; third-party package, error only in an attached screenshot)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2093902fff">Open ticket 2093902fff</a> · None · filed 2008-09-04</p><div class="lab">Full verdict</div><p>CANNOT-TEST (Expect for Windows 5.43 binary from 8.4 copied into ActiveState 8.5.4; third-party package, error only in an attached screenshot)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> likely an Expect binary built for 8.4 used under 8.5 (not a Tcl core issue); the error text is only in the screenshot attachment.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> This is about the Windows port of Expect (a separate package) copied from an 8.4 installation into 8.5.4; it is not a Tcl core bug. Closing as third-party.
+</li></ul></div></details><details class="t" id="2032862fff" data-s="2032862fff headers broken for mac os x framework 50. embedding support cannot-test (macos); the cause is still present in main by code reading" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2032862fff</span><span class="yr">2008</span><span class="ti">headers broken for Mac OS X framework</span><span class="vd">CANNOT-TEST (macOS); the cause is still present in main by code reading</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2032862fff">Open ticket 2032862fff</a> · 50. Embedding Support · filed 2008-07-30</p><div class="lab">Full verdict</div><p>CANNOT-TEST (macOS); the cause is still present in main by code reading</p><ul>
+<li><span class="k">Platform</span> macOS
+</li>
+<li><span class="k">Tested</span> code reading on main: private headers still use quoted includes of public headers (generic/tclPort.h <code>#include "tcl.h"</code>, tclInt.h <code>"tclPort.h"</code>), and for the framework build unix/configure.ac puts them in a separate <code>PrivateHeaders</code> directory (PRIVATE_INCLUDE_DIR="${libdir}/PrivateHeaders"; install-private-headers in unix/Makefile.in copies them unchanged).
+</li>
+<li><span class="k">Cause</span> unix/Makefile.in install-private-headers + framework layout from configure.ac.
+</li>
+<li><span class="k">Prototype</span> none (macOS only; needs a decision on the framework layout, which should be tested on a Mac)
+</li>
+<li><span class="k">Suggested ticket comment</span> Still applies to 9.x by reading the code: PrivateHeaders/tclPort.h includes "tcl.h", which lives in Headers/. Needs someone with macOS to test a fix (framework-style includes or -I to the Headers dir in tclConfig.sh).
+</li></ul></div></details><details class="t" id="2010028fff" data-s="2010028fff tcl 8.5.2 test failures in x86_64 interix 38. init - library - autoload cannot-test (interix)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2010028fff</span><span class="yr">2008</span><span class="ti">TCL 8.5.2 test failures in x86_64 Interix</span><span class="vd">CANNOT-TEST (Interix)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2010028fff">Open ticket 2010028fff</a> · 38. Init - Library - Autoload · filed 2008-07-03</p><div class="lab">Full verdict</div><p>CANNOT-TEST (Interix)</p><ul>
+<li><span class="k">Platform</span> unix (Interix/SUA on Windows Server 2008)
+</li>
+<li><span class="k">Tested</span> none. Interix/SUA was removed from Windows (deprecated in 8/2012, gone in 8.1/2012 R2), and the reporter's toolchain ran an "l2ll" source rewriter turning long into long long, which plausibly explains the integer-conversion failures. Attachments not checked.
+</li>
+<li><span class="k">Cause</span> unknown; most likely platform/toolchain-specific (LLP64 compiler with an LP64 rewriting wrapper).
+</li>
+<li><span class="k">Prototype</span> none (obsolete platform)
+</li>
+<li><span class="k">Suggested ticket comment</span> Interix/SUA no longer exists in any supported Windows version and the report is against 8.5.2; closing as out of date. Please reopen with a current platform if similar failures show up.
+</li></ul></div></details><details class="t" id="2003130fff" data-s="2003130fff failing fcmd.test tests on new fileserver 37. file system cannot-test (nfs server that returns eisdir); reproduced with an ld_preload shim that maps rename()&#x27;s enotempty/eexist to eisdir: fcmd-6.16, 6.18, 9.9, 9.13 fail exactly as reported" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2003130fff</span><span class="yr">2008</span><span class="ti">failing fCmd.test tests on new fileserver</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/2003130fff.patch">patch</a><span class="vd">CANNOT-TEST (NFS server that returns EISDIR); reproduced with an LD_PRELOAD shim that maps rename()'s ENOTEMPTY/EEXIST to EISDIR: fCmd-6.16, 6.18, …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2003130fff">Open ticket 2003130fff</a> · 37. File System · filed 2008-06-26</p><div class="lab">Full verdict</div><p>CANNOT-TEST (NFS server that returns EISDIR); reproduced with an LD_PRELOAD shim that maps rename()'s ENOTEMPTY/EEXIST to EISDIR: fCmd-6.16, 6.18, 9.9, 9.13 fail exactly as reported</p><ul>
+<li><span class="k">Platform</span> unix
+</li>
+<li><span class="k">Tested</span> main (wt build) with work-a5/shim/eisdir.so, using the fCmd.test from branch fCmd-test-constraints (ed6326c9e3). On main these 4 tests never run at all: <code>notWine</code> isn't defined in fCmd.test, so they are always skipped. That's <a class="h" href="https://core.tcl-lang.org/tcl/info/300724b80c">300724b80c</a>, fixed only on the unmerged branch fCmd-test-constraints (0049270a8b, 2026-10-12). 8.6's fCmd.test has no notWine constraint.
+</li>
+<li><span class="k">Cause</span> unix/tclUnixFCmd.c:DoRenameFile maps ENOTEMPTY to EEXIST but passes through the EISDIR that some NFS servers return for directory onto non-empty directory (POSIX allows EISDIR only when the source is not a directory).
+</li>
+<li><span class="k">Prototype</span> prototypes/2003130fff.patch (13 changed lines, no new test: EISDIR can't be triggered without a shim; verified with the shim and the branch's fCmd.test, 0 failures; main fCmd.test passes)
+</li>
+<li><span class="k">Suggested ticket comment</span> The EISDIR comes from rename() on some NFS servers. POSIX allows it only when the source is not a directory. Proposed fix: DoRenameFile maps EISDIR to EEXIST when the source is a directory (checked with an LD_PRELOAD shim, fCmd-6.16/6.18/9.9/9.13). Note that on main these tests are currently skipped because of the missing <code>notWine</code> definition <a class="h" href="https://core.tcl-lang.org/tcl/info/300724b80c">300724b80c</a>.
+</li></ul></div></details><details class="t" id="1945538fff" data-s="1945538fff stalling async reads with package tls 26. channel transforms cannot-test (needs the tls extension, not installed here; the reporter&#x27;s stall scripts live on the old sourceforge tls tracker #1945535, not in this repository)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1945538fff</span><span class="yr">2008</span><span class="ti">Stalling async reads with package TLS</span><span class="vd">CANNOT-TEST (needs the TLS extension, not installed here; the reporter's stall scripts live on the old SourceForge TLS tracker #1945535, not in thi…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1945538fff">Open ticket 1945538fff</a> · 26. Channel Transforms · filed 2008-04-18</p><div class="lab">Full verdict</div><p>CANNOT-TEST (needs the TLS extension, not installed here; the reporter's stall scripts live on the old SourceForge TLS tracker #1945535, not in this repository)</p><ul>
+<li><span class="k">Platform</span> generic (TLS extension)
+</li>
+<li><span class="k">Tested</span> none; ticket history read
+</li>
+<li><span class="k">Cause</span> Per the 2010 analysis, the stall happens when a script-level read leaves data buffered inside the TLS layer (OpenSSL / TLS's own buffer) while the base socket has nothing more to read, so no readable event fires again. Generic Tcl has no way to see data held privately by a transform; a transform must schedule its own timer/notification (as tclZlib.c and tclIORTrans.c do). The "false positive readable" half was documented and split off as 3436609 (closed 2013).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> The remaining stall is a matter for the TLS extension's watch/notification of its own buffered data (the core zlib and reflected transforms schedule a timer for this). Suggest retesting with current TclTLS (2.x) and moving the issue to its tracker if it still stalls; otherwise close.
+</li></ul></div></details><details class="t" id="1483314fff" data-s="1483314fff qnx6 - make test problems 52. portability support cannot-test (qnx6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1483314fff</span><span class="yr">2006</span><span class="ti">QNX6 - make test problems</span><span class="vd">CANNOT-TEST (QNX6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1483314fff">Open ticket 1483314fff</a> · 52. Portability Support · filed 2006-05-07</p><div class="lab">Full verdict</div><p>CANNOT-TEST (QNX6)</p><ul>
+<li><span class="k">Platform</span> unix (QNX 6.3.2)
+</li>
+<li><span class="k">Tested</span> code reading. The main complaint (buggy libc strtod) no longer applies: since 8.5 Tcl parses numbers with its own generic/tclStrToD.c, and there are no strtod() calls in generic/ or unix/ in 8.6 or main; compat/strtod.c/fixstrtod no longer exist. The other failures (clock, fCmd) were 8.4.12 environment issues per the reporter.
+</li>
+<li><span class="k">Cause</span> QNX 6 libc strtod (8.4 only).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Tcl 8.5+ no longer uses the C library strtod, so the suggested fixstrtod workaround is obsolete. If someone still builds on QNX, please report <code>make test</code> results for 8.6.18 or 9.0.4 in a new ticket. Closing.
+</li></ul></div></details><details class="t" id="1113452fff" data-s="1113452fff tk_mainloop processes wm_device_change infinitely often. 02. event loops cannot-test (needs tcl embedded in a thread of macromedia director mx 2004; nothing to reproduce with plain tclsh/wish)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1113452fff</span><span class="yr">2005</span><span class="ti">Tk_MainLoop processes WM_DEVICE_CHANGE infinitely often.</span><span class="vd">CANNOT-TEST (needs Tcl embedded in a thread of Macromedia Director MX 2004; nothing to reproduce with plain tclsh/wish)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1113452fff">Open ticket 1113452fff</a> · 02. Event Loops · filed 2005-01-31</p><div class="lab">Full verdict</div><p>CANNOT-TEST (needs Tcl embedded in a thread of Macromedia Director MX 2004; nothing to reproduce with plain tclsh/wish)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> code reading of win/tclWinNotify.c (main): Tcl_WaitForEvent still does PeekMessage/GetMessage/TranslateMessage/DispatchMessage for any thread message, which is correct; a message that comes back endlessly has to be re-posted by some window of the host application (as davygrvy suggested), not by Tcl. 0x0118 is WM_SYSTIMER (caret blink timer).
+</li>
+<li><span class="k">Cause</span> probably the host application's window in that thread re-posting WM_DEVICECHANGE; no Tcl defect shown.
+</li>
+<li><span class="k">Prototype</span> none (the reporter's patch, dropping WM_DEVICECHANGE/0x0118, would break legitimate handlers)
+</li>
+<li><span class="k">Suggested ticket comment</span> No reproducer outside Macromedia Director, and Tcl's notifier only dispatches what the thread's queue delivers; the endless re-posting most likely comes from a host window in that thread. Closing as out of date; please reopen with a standalone reproducer.
+</li></ul></div></details><details class="t" id="1021580fff" data-s="1021580fff tcl compile errors on tru64 unix 4.0f 06. time measurement cannot-test (tru64 unix; obsolete)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1021580fff</span><span class="yr">2004</span><span class="ti">TCL Compile Errors on Tru64 UNIX 4.0F</span><span class="vd">CANNOT-TEST (Tru64 UNIX; obsolete)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1021580fff">Open ticket 1021580fff</a> · 06. Time Measurement · filed 2004-09-03</p><div class="lab">Full verdict</div><p>CANNOT-TEST (Tru64 UNIX; obsolete)</p><ul>
+<li><span class="k">Platform</span> build
+</li>
+<li><span class="k">Tested</span> read the attachment (present in the repository) and unix/tclUnixTime.c in 8.6/main
+</li>
+<li><span class="k">Cause</span> K&amp;R definitions of TclpGmtime/TclpLocaltime with <code>TclpTime_t tt</code> did not match the prototypes (promotmatch). TclpTime_t is gone, and the functions now have ANSI definitions taking <code>const time_t *</code>, so the error cannot recur. Tru64 is long dead and its cc is not supported by Tcl 8.6/9.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> The code in question (TclpTime_t, K&amp;R definitions) was removed long ago, and Tru64 is unsupported. Suggest closing as Out of Date.
+</li></ul></div></details><details class="t" id="956587ffff" data-s="956587ffff unixfcmd fails on osf1 (current cvs) 37. file system cannot-test (osf1/tru64 is a dead platform with no vm)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>956587ffff</span><span class="yr">2004</span><span class="ti">unixFCmd fails on OSF1 (current cvs)</span><span class="vd">CANNOT-TEST (OSF1/Tru64 is a dead platform with no VM)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/956587ffff">Open ticket 956587ffff</a> · 37. File System · filed 2004-05-19</p><div class="lab">Full verdict</div><p>CANNOT-TEST (OSF1/Tru64 is a dead platform with no VM)</p><ul>
+<li><span class="k">Platform</span> unix (OSF1/Tru64)
+</li>
+<li><span class="k">Tested</span> unixFCmd-16.1 passes on Linux main
+</li>
+<li><span class="k">Cause</span> unknown. On OSF1 chown() to the file's current owner gave EPERM. The test now has the <code>unix notRoot</code> constraints.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Tru64/OSF1 is no longer a supported or testable platform, and unixFCmd-16.1 passes elsewhere. Propose to close as Out of Date.
+</li></ul></div></details><details class="t" id="931847ffff" data-s="931847ffff tclfsnormalizetouniquepath - incomplete? 37. file system cannot-test (needs nested non-native vfses whose normalizepathprocs hand off to each other). by code reading the limitation is still there: tclfsnormalizetouniquepath makes a single pass (native first, then each other fs once) and callers ignore the returned startat." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>931847ffff</span><span class="yr">2004</span><span class="ti">TclFSNormalizeToUniquePath - incomplete?</span><span class="vd">CANNOT-TEST (needs nested non-native VFSes whose normalizePathProcs hand off to each other). By code reading the limitation is still there: TclFSNo…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/931847ffff">Open ticket 931847ffff</a> · 37. File System · filed 2004-04-08</p><div class="lab">Full verdict</div><p>CANNOT-TEST (needs nested non-native VFSes whose normalizePathProcs hand off to each other). By code reading the limitation is still there: TclFSNormalizeToUniquePath makes a single pass (native first, then each other FS once) and callers ignore the returned startAt.</p><ul>
+<li><span class="k">Platform</span> generic (VFS)
+</li>
+<li><span class="k">Tested</span> code reading of main generic/tclIOUtil.c
+</li>
+<li><span class="k">Cause</span> generic/tclIOUtil.c:TclFSNormalizeToUniquePath does not loop the way vincentdarley sketched in 2004.
+</li>
+<li><span class="k">Prototype</span> none (design change; needs a nested VFS to test)
+</li>
+<li><span class="k">Suggested ticket comment</span> Still a single-pass normalization in 9.x; it only matters for nested non-native VFSes. Keep it as a design note together with 941872, or close as RFE.
+</li></ul></div></details><details class="t" id="922766ffff" data-s="922766ffff compile errors on lynxos 3.1.0 53. configuration and build tools cannot-test (lynxos)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>922766ffff</span><span class="yr">2004</span><span class="ti">compile errors on LynxOS 3.1.0</span><span class="vd">CANNOT-TEST (LynxOS)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/922766ffff">Open ticket 922766ffff</a> · 53. Configuration and Build Tools · filed 2004-03-24</p><div class="lab">Full verdict</div><p>CANNOT-TEST (LynxOS)</p><ul>
+<li><span class="k">Platform</span> unix (LynxOS 3.1.0 PowerPC)
+</li>
+<li><span class="k">Tested</span> code reading only. The tclClock.c part is obsolete (FormatClock and the <code>timezone</code> manipulation were removed by the 8.5 clock rewrite). tclPosixStr.c in 8.6 and main still has unguarded <code>case EBADMSG:</code> and <code>case ENOTSUP:</code>, so a platform where EBADMSG == ENOTSUP would still fail with "duplicate case value". The <code>-lbsd</code> link need is not handled in tcl.m4 (no LynxOS case).
+</li>
+<li><span class="k">Cause</span> generic/tclPosixStr.c Tcl_ErrnoId/Tcl_ErrnoMsg: duplicate errno values on LynxOS 3.1.
+</li>
+<li><span class="k">Prototype</span> none (platform unavailable, 20+-year-old OS; the attached 8.4.6 patch is against code that no longer exists apart from the EBADMSG guard)
+</li>
+<li><span class="k">Suggested ticket comment</span> LynxOS 3.1 is long obsolete and nobody can test it; the clock part no longer applies. Closing unless someone can still build on a current LynxOS release and report.
+</li></ul></div></details><details class="t" id="853302ffff" data-s="853302ffff compiler warning on tru64unix 5.1a 52. portability support cannot-test (tru64)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>853302ffff</span><span class="yr">2003</span><span class="ti">compiler warning on Tru64Unix 5.1A</span><span class="vd">CANNOT-TEST (Tru64)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/853302ffff">Open ticket 853302ffff</a> · 52. Portability Support · filed 2003-12-03</p><div class="lab">Full verdict</div><p>CANNOT-TEST (Tru64)</p><ul>
+<li><span class="k">Platform</span> unix (Tru64 5.1A, vendor cc)
+</li>
+<li><span class="k">Tested</span> none; the attached log is warnings from 8.4.5 sources, which have been largely rewritten since.
+</li>
+<li><span class="k">Cause</span> n/a (warning list, no specific bug)
+</li>
+<li><span class="k">Prototype</span> none (no compiler/platform; Tru64 is EOL since 2012)
+</li>
+<li><span class="k">Suggested ticket comment</span> The warnings are against 8.4.5 sources that no longer exist in this form, and Tru64 is long out of support. Closing; current warnings from a modern compiler are welcome as a new ticket.
+</li></ul></div></details><details class="t" id="837257ffff" data-s="837257ffff ebusy failures in &#x27;make test&#x27; 37. file system cannot-test (needs an nfs-mounted build dir; no nfs here and mounting needs root)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>837257ffff</span><span class="yr">2003</span><span class="ti">EBUSY failures in 'make test'</span><span class="vd">CANNOT-TEST (needs an NFS-mounted build dir; no NFS here and mounting needs root)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/837257ffff">Open ticket 837257ffff</a> · 37. File System · filed 2003-11-06</p><div class="lab">Full verdict</div><p>CANNOT-TEST (needs an NFS-mounted build dir; no NFS here and mounting needs root)</p><ul>
+<li><span class="k">Platform</span> unix (NFS)
+</li>
+<li><span class="k">Tested</span> the fCmd tests named in the ticket pass on local ext4 with main
+</li>
+<li><span class="k">Cause</span> unix/tclUnixFCmd.c:DoRenameFile just reports what rename(2) returns. Linux NFS clients give EBUSY when the target directory is still referenced (silly-rename/dentry in use), so this is filesystem behaviour, not a Tcl bug. DoRenameFile maps only ENOTEMPTY/EIO/EINVAL.
+</li>
+<li><span class="k">Prototype</span> none (mapping EBUSY to EEXIST would hide real "busy" errors)
+</li>
+<li><span class="k">Suggested ticket comment</span> Tcl only reports the EBUSY that rename(2) gives over NFS. The tests pass on local filesystems. Propose to close unless someone can still reproduce it on a current NFS setup.
+</li></ul></div></details><details class="t" id="823330ffff" data-s="823330ffff decomposed unicode handling not transparent in glob on osx 44. utf-8 strings cannot-test (macos)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>823330ffff</span><span class="yr">2003</span><span class="ti">decomposed unicode handling not transparent in glob on OSX</span><span class="vd">CANNOT-TEST (macOS)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/823330ffff">Open ticket 823330ffff</a> · 44. UTF-8 Strings · filed 2003-10-14</p><div class="lab">Full verdict</div><p>CANNOT-TEST (macOS)</p><ul>
+<li><span class="k">Platform</span> macOS
+</li>
+<li><span class="k">Tested</span> code/doc reading only. Tcl still does no normalization on file names. Tcl 9.1 adds [unicode tonfc/tonfd] (TIP 726, main only, in 9.1.0), the script-level workaround the 2003 discussion asked for. On APFS (macOS 10.13+) names keep the form they were created with; the fully decomposed names this ticket is about came from HFS+.
+</li>
+<li><span class="k">Cause</span> HFS+ stores names as NFD; [glob] returns them unchanged, so [string equal] with NFC literals fails.
+</li>
+<li><span class="k">Prototype</span> none (macOS-only; any fix is a design decision on normalizing native names)
+</li>
+<li><span class="k">Suggested ticket comment</span> Since 9.1, [unicode tonfc] (TIP 726) lets scripts normalize names returned by [glob]; APFS no longer forces NFD. Suggest closing unless someone wants Tcl to normalize native names itself.
+</li></ul></div></details><details class="t" id="811991ffff" data-s="811991ffff hp-ux 11i looks for man pages in wrong place. 53. configuration and build tools cannot-test (hp-ux)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>811991ffff</span><span class="yr">2003</span><span class="ti">HP-UX 11i looks for man pages in wrong place.</span><span class="vd">CANNOT-TEST (HP-UX)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/811991ffff">Open ticket 811991ffff</a> · 53. Configuration and Build Tools · filed 2003-09-24</p><div class="lab">Full verdict</div><p>CANNOT-TEST (HP-UX)</p><ul>
+<li><span class="k">Platform</span> unix (HP-UX 11i)
+</li>
+<li><span class="k">Tested</span> code reading: unix/Makefile.in still installs section n pages into <code>$(mandir)/mann</code> with <code>.n</code> suffix (MANN_INSTALL_DIR), no HP-UX special case.
+</li>
+<li><span class="k">Cause</span> HP-UX man(1) uses <code>mannew</code>/<code>.new</code> for section n; Tcl installs <code>mann</code>/<code>.n</code> everywhere.
+</li>
+<li><span class="k">Prototype</span> none (platform unavailable; HP-UX 11i is end of life)
+</li>
+<li><span class="k">Suggested ticket comment</span> Still installs into mann/*.n on all platforms. HP-UX users can set MANN_INSTALL_DIR at install time and rename; given HP-UX's status we don't plan a special case. Closing unless someone with HP-UX submits a patch.
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch and of the Unix and Windows VM runs.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

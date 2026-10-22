@@ -1,0 +1,159 @@
+Index: library/http/http.tcl
+==================================================================
+--- library/http/http.tcl
++++ library/http/http.tcl
+@@ -1747,10 +1747,27 @@
+ 
+     set sockOld $state(sock)
+ 
+     dict unset socketCoEvent($state(socketinfo)) $token
+     unset -nocomplain state(socketcoro)
++
++    if {$state(reusing) && ![info exists socketMapping($state(socketinfo))]} {
++	# The persistent socket that geturl decided to reuse has been closed
++	# since then (e.g. by CheckEof when the server timed out the idle
++	# connection).  Open a new connection instead.
++	variable TmpSockCounter
++	Log "persistent socket $sockOld for $state(socketinfo) was closed\
++		- open a new one - token $token"
++	set state(reusing) 0
++	set sockOld HTTP_PLACEHOLDER_[incr TmpSockCounter]
++	set state(sock) $sockOld
++	if {$state(-timeout) > 0} {
++	    set state(after) [after $state(-timeout) \
++		    [list http::reset $token timeout]]
++	}
++	set DoLater [PreparePersistentConnection $token]
++    }
+ 
+     # The [return] in the script below results in code 2, which is not an
+     # error.
+     if {[catch {
+ 	if {$state(reusing)} {
+@@ -3619,11 +3636,14 @@
+ 		    }
+ 		    Log ^X$tk end of response (error) - token $token
+ 		    Finish $token $msg
+ 		    return
+ 		}
+-	    } elseif {$nsl >= 0} {
++	    } elseif {$nsl > 0} {
++		# An empty line is ignored here: it can be the CRLF left over
++		# from the previous chunked response on a persistent socket.
++		# If eof follows, the request must still be replayed.
+ 		##Log - connecting 1 - token $token
+ 		set state(state) "header"
+ 	    } elseif {    ([catch {eof $sock} tmp] || $tmp)
+ 		       && [info exists state(reusing)]
+ 		       && $state(reusing)
+
+Index: tests/http.test
+==================================================================
+--- tests/http.test
++++ tests/http.test
+@@ -728,10 +728,40 @@
+     resetWhileOpening 1
+ } -result {- reset {} {}}
+ test http-4.18.$ThreadLevel {reset while the socket command runs the event loop} -body {
+     resetWhileOpening 0
+ } -result {reset reset {} {}}
++
++test http-4.19.$ThreadLevel {keepalive socket closed by the server before reuse (bug [05b158ed56])} -setup {
++    # The server announces keep-alive, but closes the connection after each
++    # response, as if the idle connection timed out.
++    proc closingServer {ch args} {
++	fconfigure $ch -blocking 0 -translation {crlf binary}
++	fileevent $ch readable [list apply {{ch} {
++	    if {[catch {gets $ch line} n] || [eof $ch]} {
++		catch {close $ch}
++	    } elseif {$n == 0} {
++		puts -nonewline $ch "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nok"
++		catch {close $ch}
++	    }
++	}} $ch]
++    }
++    set srv [socket -server closingServer -myaddr 127.0.0.1 0]
++    set srvurl http://127.0.0.1:[lindex [fconfigure $srv -sockname] 2]/
++} -body {
++    set result {}
++    for {set i 0} {$i < 3} {incr i} {
++	set token [http::geturl $srvurl -keepalive 1 -timeout 5000]
++	lappend result [http::status $token] [http::data $token]
++	http::cleanup $token
++    }
++    set result
++} -cleanup {
++    close $srv
++    rename closingServer {}
++    unset -nocomplain srv srvurl result i token
++} -result {ok ok ok ok ok ok}
+ 
+ test http-5.1.$ThreadLevel {http::formatQuery} {
+     http::formatQuery name1 value1 name2 "value two"
+ } {name1=value1&name2=value%20two}
+ # test http-5.2 obsoleted by 5.4 and 5.5 with http 2.5
+
+Index: tests/http11.test
+==================================================================
+--- tests/http11.test
++++ tests/http11.test
+@@ -1057,10 +1057,58 @@
+     close $chan
+     removeFile testfile.tmp
+     halt_httpd
+ } -result {status ok code {HTTP/1.1 200 OK} crc ok connection close query-length 122880}
+ 
++test http11-5.1.$ThreadLevel "reuse persistent socket after server restart, bug 3764f4e81f" -setup {
++    proc restart_httpd {port {old {}}} {
++	if {$old ne ""} {
++	    # Wait until the old server has exited.
++	    fconfigure $old -blocking 1
++	    puts $old quit
++	    read $old
++	    close $old
++	}
++	if {$port eq ""} {
++	    return
++	}
++	set h [open |[list [interpreter] -encoding utf-8 \
++		[file join [pwd] [file dirname [info script]] httpd11.tcl] \
++		$port] r+]
++	fconfigure $h -buffering line
++	gets $h
++	return $h
++    }
++    set s [socket -server {} -myaddr localhost 0]
++    set port [lindex [fconfigure $s -sockname] 2]
++    close $s
++    set chan [open [makeFile {} testfile.tmp] wb+]
++    set res {}
++} -body {
++    set h [restart_httpd $port]
++    set tok [http::geturl http://localhost:$port/testdoc.html \
++		 -keepalive 1 -channel $chan -timeout 5000]
++    lappend res [http::status $tok]
++    http::cleanup $tok
++    # No event loop between the restart and the next request.
++    foreach i {1 2 3} {
++	set h [restart_httpd $port $h]
++	set tok [http::geturl http://localhost:$port/testdoc.html \
++		     -keepalive 1 -timeout 5000]
++	lappend res [http::status $tok] [check_crc $tok]
++	http::cleanup $tok
++    }
++    set res
++} -cleanup {
++    catch {http::cleanup $tok}
++    restart_httpd {} $h
++    close $chan
++    removeFile testfile.tmp
++    rename restart_httpd {}
++    unset -nocomplain h s port chan res tok i
++} -result {ok ok ok ok ok ok ok}
++
+ # -------------------------------------------------------------------------
+ 
+ # Eliminate valgrind "still reachable" reports on outstanding "Detached"
+ # structures in the detached list which stem from PipeClose2Proc not waiting
+ # around for background processes to complete, meaning that previous calls to
+

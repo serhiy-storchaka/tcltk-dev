@@ -1,0 +1,77 @@
+Index: win/tclWinFile.c
+==================================================================
+--- win/tclWinFile.c	
++++ win/tclWinFile.c	
+@@ -163,10 +163,11 @@
+ 			    REPARSE_DATA_BUFFER *buffer);
+ static int		NativeMatchType(int isDrive, DWORD attr,
+ 			    const WCHAR *nativeName, Tcl_GlobTypeData *types);
+ static int		WinIsDrive(const char *name, size_t nameLen);
+ static size_t		WinIsReserved(const char *path);
++static int		WinIsRemotePath(const char *path);
+ static Tcl_Obj *	WinReadLink(const WCHAR *LinkSource);
+ static Tcl_Obj *	WinReadLinkDirectory(const WCHAR *LinkDirectory);
+ static int		WinLink(const WCHAR *LinkSource,
+ 			    const WCHAR *LinkTarget, int linkAction);
+ static int		WinSymLinkDirectory(const WCHAR *LinkDirectory,
+@@ -1341,10 +1342,40 @@
+ 	return 3;
+     }
+     return 0;
+ }
+ 
++/*
++ *----------------------------------------------------------------------
++ *
++ * WinIsRemotePath --
++ *
++ *	Is the (UTF-8, absolute) path on a network drive or a UNC path?
++ *
++ *----------------------------------------------------------------------
++ */
++
++static int
++WinIsRemotePath(
++    const char *path)
++{
++    if ((path[0] == '/' || path[0] == '\\')
++	    && (path[1] == '/' || path[1] == '\\')) {
++	return path[2] != '?' && path[2] != '.';
++    }
++    if (path[0] != '\0' && path[1] == ':') {
++	WCHAR root[4];
++
++	root[0] = (unsigned char) path[0];
++	root[1] = ':';
++	root[2] = '\\';
++	root[3] = '\0';
++	return GetDriveTypeW(root) == DRIVE_REMOTE;
++    }
++    return 0;
++}
++
+ /*
+  *----------------------------------------------------------------------
+  *
+  * NativeMatchType --
+  *
+@@ -2751,14 +2782,17 @@
+ 	    /*
+ 	     * Check for symlinks, except at last component of path (we don't
+ 	     * follow final symlinks). Also a drive (C:/) for example, may
+ 	     * sometimes have the reparse flag set for some reason I don't
+ 	     * understand. We therefore don't perform this check for drives.
++	     * Don't follow links on network drives either: their targets are
++	     * paths on the server, not on this machine [Bug 8527d8becf].
+ 	     */
+ 
+ 	    if (cur != 0 && !isDrive &&
+-		    data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT){
++		    data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT
++		    && !WinIsRemotePath(path)) {
+ 		Tcl_Obj *to = WinReadLinkDirectory(nativePath);
+ 
+ 		if (to != NULL) {
+ 		    /*
+ 		     * Read the reparse point ok. Now, reparse points need not
+

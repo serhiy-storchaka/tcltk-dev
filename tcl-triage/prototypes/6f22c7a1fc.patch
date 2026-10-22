@@ -1,0 +1,22 @@
+--- a/tcl.m4
++++ b/tcl.m4
+@@ -3530,14 +3530,15 @@
+ 		list="$list `ls -d ${TCL_SRC_DIR}/generic 2>/dev/null`"
+ 	    fi
+ 
+-	    # Check order: pkg --prefix location, Tcl's --prefix location,
+-	    # relative to directory of tclConfig.sh.
++	    # Check order: Tcl's --prefix location, relative to directory of
++	    # tclConfig.sh, pkg --prefix location. The pkg --prefix location
++	    # comes last, since it may contain headers of another Tcl version.
+ 
+ 	    eval "temp_includedir=${includedir}"
+ 	    list="$list \
+-		`ls -d ${temp_includedir}        2>/dev/null` \
+ 		`ls -d ${TCL_PREFIX}/include     2>/dev/null` \
+-		`ls -d ${TCL_BIN_DIR}/../include 2>/dev/null`"
++		`ls -d ${TCL_BIN_DIR}/../include 2>/dev/null` \
++		`ls -d ${temp_includedir}        2>/dev/null`"
+ 	    if test "${TEA_PLATFORM}" != "windows" -o "$GCC" = "yes"; then
+ 		list="$list /usr/local/include /usr/include"
+ 		if test x"${TCL_INCLUDE_SPEC}" != x ; then

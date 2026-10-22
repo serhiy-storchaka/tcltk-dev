@@ -1,0 +1,57 @@
+Index: library/package.tcl
+==================================================================
+--- library/package.tcl
++++ library/package.tcl
+@@ -283,10 +283,15 @@
+ 		    # As a performance optimization, if we are creating direct
+ 		    # load packages, don't bother figuring out the set of commands
+ 		    # created by the new packages.  We only need that list for
+ 		    # setting up the autoloading used in the non-direct case.
+ 		    if {!$direct} {
++			# Remember the global commands the file itself created
++			# (including its own [namespace import]s).
++
++			set srcCmds [uplevel #0 {info commands}]
++
+ 			# See what new namespaces appeared, and import commands
+ 			# from them.  Only exported commands go into the index.
+ 
+ 			foreach x [GetAllNamespaces] {
+ 			    if {![info exists namespaces($x)]} {
+@@ -314,11 +319,13 @@
+ 
+ 				if {$x ne $abs} {
+ 				    # Name changed during qualification
+ 
+ 				    dict set newCmds $abs 1
+-				    dict unset newCmds $x
++				    if {$x ni $srcCmds} {
++					dict unset newCmds $x
++				    }
+ 				}
+ 			    }
+ 			}
+ 		    }
+ 
+
+Index: tests/pkgMkIndex.test
+==================================================================
+--- tests/pkgMkIndex.test
++++ tests/pkgMkIndex.test
+@@ -613,13 +613,13 @@
+     return true
+ }
+ namespace import ::fubar::foo
+ } [file join pkg import.tcl]
+ 
+-test pkgMkIndex-11.1 {conflicting namespace imports} {
++test pkgMkIndex-11.1 {conflicting namespace imports, bug 219279} {
+     pkgtest::runIndex -lazy $fullPkgPath import.tcl
+-} {0 {{fubar:1.0 {tclPkgSetup {import.tcl source ::fubar::foo}}}}}
++} {0 {{fubar:1.0 {tclPkgSetup {import.tcl source {::fubar::foo foo}}}}}}
+ 
+ removeFile [file join pkg import.tcl]
+ 
+ # Verify that the auto load list generated is correct even when there is a
+ # proc name conflict between two namespaces (ie, ::foo::baz and ::bar::baz)
+

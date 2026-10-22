@@ -1,0 +1,53 @@
+Index: generic/tclInterp.c
+==================================================================
+--- generic/tclInterp.c
++++ generic/tclInterp.c
+@@ -1818,10 +1818,18 @@
+ 		Tcl_GetGlobalNamespace(nextAliasPtr->targetInterp),
+ 		/*flags*/ 0);
+ 	if (aliasCmd == NULL) {
+ 	    return TCL_OK;
+ 	}
++
++	/*
++	 * Follow [namespace import] links too. [Bug 1017004]
++	 */
++
++	if (TclGetOriginalCommand(aliasCmd) != NULL) {
++	    aliasCmd = TclGetOriginalCommand(aliasCmd);
++	}
+ 	aliasCmdPtr = (Command *) aliasCmd;
+ 	if (aliasCmdPtr == cmdPtr) {
+ 	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 		    "cannot define or rename alias \"%s\": would create a loop",
+ 		    Tcl_GetCommandName(cmdInterp, cmd)));
+
+Index: tests/interp.test
+==================================================================
+--- tests/interp.test
++++ tests/interp.test
+@@ -833,10 +833,23 @@
+     interp create x
+     interp alias x a x b
+     x eval rename a c
+     list [catch {x eval rename c b} msg] $msg
+ } {1 {cannot define or rename alias "b": would create a loop}}
++test interp-17.7 {alias loop prevention through namespace import, bug 1017004} -setup {
++    catch {interp delete x}
++    interp create x
++} -body {
++    x eval {
++	namespace eval ns namespace export alias
++	interp alias {} ns::alias {} ns::target
++	namespace import ns::alias
++	list [catch {interp alias {} ns::target {} alias} msg] $msg
++    }
++} -cleanup {
++    interp delete x
++} -result {1 {cannot define or rename alias "target": would create a loop}}
+ 
+ #
+ # Test robustness of Tcl_DeleteInterp when applied to a child interpreter.
+ # If there are bugs in the implementation these tests are likely to expose
+ # the bugs as a core dump.
+

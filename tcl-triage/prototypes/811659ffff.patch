@@ -1,0 +1,42 @@
+Index: library/tcltest/tcltest.tcl
+==================================================================
+--- library/tcltest/tcltest.tcl
++++ library/tcltest/tcltest.tcl
+@@ -2425,14 +2425,11 @@
+     }
+     if {$constraints eq {}} {
+ 	# If we're limited to the listed constraints and there aren't
+ 	# any listed, then we shouldn't run the test.
+ 	if {[limitConstraints]} {
+-	    AddToSkippedBecause userSpecifiedLimitConstraint
+-	    if {$testLevel == 1} {
+-		incr numTests(Skipped)
+-	    }
++	    _noticeSkipped $name userSpecifiedLimitConstraint
+ 	    return 1
+ 	}
+     } else {
+ 	# "constraints" argument exists;
+ 	# make sure that the constraints are satisfied.
+
+Index: tests/tcltest.test
+==================================================================
+--- tests/tcltest.test
++++ tests/tcltest.test
+@@ -273,10 +273,15 @@
+ test tcltest-5.2 {tcltest -constraints 'knownBug' -limitconstraints 1} {unixOrWin} {
+     set result [child msg test.tcl -constraints knownBug -verbose 'p' -limitconstraints 1]
+     list $result [regexp a-1.0 $msg] [regexp b-1.0 $msg] [regexp c-1.0 $msg] \
+ 	    [regexp "Total.+4.+Passed.+1.+Skipped.+3.+Failed.+0" $msg]
+ } {0 0 0 1 1}
++test tcltest-5.2a {-limitconstraints 1 -verbose 's' reports skipped tests, bug 811659} {unixOrWin} {
++    set result [child msg test.tcl -constraints knownBug -verbose 's' -limitconstraints 1]
++    list $result [regexp {a-1.0 SKIPPED: userSpecifiedLimitConstraint} $msg] \
++	    [regexp {d-1.0 SKIPPED: userSpecifiedLimitConstraint} $msg]
++} {0 1 1}
+ 
+ test tcltest-5.3 {testConstraint - constraint empty (tcltest::safeFetch)}  {
+     -body {
+ 	set r1 [testConstraint tcltestFakeConstraint]
+ 	set r2 [testConstraint tcltestFakeConstraint 4]
+

@@ -1,0 +1,24 @@
+Index: doc/info.n
+==================================================================
+--- doc/info.n
++++ doc/info.n
+@@ -205,11 +205,17 @@
+ For type \fBproc\fR, the name of the procedure containing the command.
+ .IP \fBlambda\fR
+ For a command in a script evaluated as the body of an unnamed routine via the
+ \fBapply\fR command, the definition of that routine.
+ .IP \fBlevel\fR
+-For a frame that corresponds to a level, (to be determined).
++The level of the variable frame in which the command was executed, counted
++up from the current level, i.e. \fB0\fR or a positive number in the form
++accepted by \fBuplevel\fR (so \fBuplevel\fR \fIlevel\fR evaluates a script in
++that command's context).  Commands like \fBeval\fR or \fBsource\fR that do not
++create a new level share the level of their caller.  This entry is present
++only if that variable frame is reachable from the current level; for example
++it can be missing for frames hidden by \fBuplevel\fR.
+ .PP
+ When a command can be traced to its literal definition in some script, e.g.
+ procedures nested in statically defined procedures, and literal eval scripts in
+ files or statically defined procedures, its type is \fBsource\fR and its
+ location is the absolute line number in the script.  Otherwise, its type is
+

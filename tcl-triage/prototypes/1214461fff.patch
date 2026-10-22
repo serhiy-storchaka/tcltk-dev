@@ -1,0 +1,61 @@
+Index: generic/tclEncoding.c
+==================================================================
+--- generic/tclEncoding.c
++++ generic/tclEncoding.c
+@@ -758,10 +758,32 @@
+ 	encodingPtr->refCount++;
+ 	Tcl_MutexUnlock(&encodingMutex);
+ 	return (Tcl_Encoding) encodingPtr;
+     }
+     Tcl_MutexUnlock(&encodingMutex);
++
++    /*
++     * Encoding names are case-insensitive (see RFC 2978). All encodings
++     * that come with Tcl have lower-case names, so retry with that.
++     */
++
++    for (const char *p = name; *p != '\0'; p++) {
++	if (isupper(UCHAR(*p))) {
++	    Tcl_DString ds;
++	    Tcl_Encoding encoding;
++
++	    Tcl_DStringInit(&ds);
++	    Tcl_DStringAppend(&ds, name, TCL_INDEX_NONE);
++	    Tcl_UtfToLower(Tcl_DStringValue(&ds));
++	    encoding = Tcl_GetEncoding(NULL, Tcl_DStringValue(&ds));
++	    Tcl_DStringFree(&ds);
++	    if (encoding != NULL) {
++		return encoding;
++	    }
++	    break;
++	}
++    }
+ 
+     return LoadEncodingFile(interp, name);
+ }
+ 
+ /*
+
+Index: tests/encoding.test
+==================================================================
+--- tests/encoding.test
++++ tests/encoding.test
+@@ -64,10 +64,17 @@
+ } {{fromutf }}
+ test encoding-1.3 {Tcl_GetEncoding: load encoding} {
+     list [encoding convertto jis0208 乎] \
+ 	[encoding convertfrom jis0208 8C]
+ } "8C 乎"
++test encoding-1.4 {Tcl_GetEncoding: names are case-insensitive, bug 1214461} -body {
++    list [encoding convertfrom ISO8859-1 \xE9] [encoding convertfrom CP1251 \xC0] \
++	[encoding convertto UTF-8 \xE9] [encoding convertto Utf-16LE A]
++} -result [list \xE9 \u0410 \xC3\xA9 A\x00]
++test encoding-1.5 {Tcl_GetEncoding: unknown mixed-case name} -body {
++    encoding convertto Foo-Bar abc
++} -returnCodes error -result {unknown encoding "Foo-Bar"}
+ 
+ test encoding-2.1 {Tcl_FreeEncoding: refcount == 0} {
+     encoding convertto jis0208 乎
+ } {8C}
+ test encoding-2.2 {Tcl_FreeEncoding: refcount != 0} -setup {
+

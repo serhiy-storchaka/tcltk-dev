@@ -1,0 +1,78 @@
+Index: generic/tclCompExpr.c
+==================================================================
+--- generic/tclCompExpr.c
++++ generic/tclCompExpr.c
+@@ -2390,14 +2390,21 @@
+ 	    Tcl_Size target;
+ 	    Tcl_BytecodeLabel pc1, pc2;
+ 
+ 	    switch (nodePtr->lexeme) {
+ 	    case START:
+-	    case QUESTION:
+ 		if (convert && (nodePtr == rootPtr)) {
+ 		    OP(		TRY_CVT_TO_NUMERIC);
+ 		}
++		break;
++	    case QUESTION:
++		/*
++		 * A QUESTION node is the root only when a constant subexpression
++		 * is precomputed. Leave its value alone, as in the non-constant
++		 * case; the enclosing START converts it if needed. [3107983]
++		 */
++
+ 		break;
+ 	    case OPEN_PAREN:
+ 
+ 		/* do nothing */
+ 		break;
+@@ -2563,11 +2570,17 @@
+ 		    TclEmitPush(idx, envPtr);
+ 		} else {
+ 		    TclCompileSyntaxError(interp, envPtr);
+ 		}
+ 		Tcl_RestoreInterpState(interp, save);
+-		convert = false;
++
++		/*
++		 * The precomputed value may be a string from a ?: branch, so let
++		 * the root convert it, as it would for a literal.
++		 */
++
++		convert = true;
+ 	    } else {
+ 		nodePtr = nodes + next;
+ 	    }
+ 	}
+     }
+
+Index: tests/compExpr.test
+==================================================================
+--- tests/compExpr.test
++++ tests/compExpr.test
+@@ -404,10 +404,25 @@
+ 	# + $def\\
+ 	+ $ghi
+     }}]
+ } -result {loadStk loadStk add}
+ 
++test compExpr-9.1 {constant ?: as function argument is not converted, bug 3107983} -setup {
++    proc tcl::mathfunc::compExprFoo x {return <$x>}
++    proc compExprP {} {
++	set x 1
++	list [expr {compExprFoo($x ? " 0x42 " : " 0x41 ")}] \
++	    [expr {compExprFoo(1 ? " 0x42 " : " 0x41 ")}] \
++	    [expr {1 ? " 0x42 " : " 0x41 "}] [expr {(1 ? " 0x42 " : "a") + 1}]
++    }
++} -body {
++    compExprP
++} -cleanup {
++    rename compExprP {}
++    rename tcl::mathfunc::compExprFoo {}
++} -result {{< 0x42 >} {< 0x42 >} 66 67}
++
+ # cleanup
+ catch {unset a}
+ catch {unset b}
+ catch {rename extract ""}
+ ::tcltest::cleanupTests
+

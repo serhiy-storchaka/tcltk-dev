@@ -1,0 +1,101 @@
+Index: generic/tclInterp.c
+==================================================================
+--- generic/tclInterp.c
++++ generic/tclInterp.c
+@@ -2661,10 +2661,35 @@
+  * Side effects:
+  *	Assigns to the pointer variable passed in, if not NULL.
+  *
+  *----------------------------------------------------------------------
+  */
++
++/*
++ *----------------------------------------------------------------------
++ *
++ * ChildNameKey --
++ *
++ *	Returns the key under which a child interpreter name is stored in the
++ *	childTable. The interpreter command is always created relative to the
++ *	global namespace, so "foo" and "::foo" name the same command and must
++ *	name the same interpreter. [Bug 66c2e8c974]
++ *
++ *----------------------------------------------------------------------
++ */
++
++static const char *
++ChildNameKey(
++    const char *name)
++{
++    if (name[0] == ':' && name[1] == ':') {
++	while (*name == ':') {
++	    name++;
++	}
++    }
++    return name;
++}
+ 
+ static Tcl_Interp *
+ GetInterp(
+     Tcl_Interp *interp,		/* Interp. to start search from. */
+     Tcl_Obj *pathPtr)		/* List object containing name of interp. to
+@@ -2683,11 +2708,11 @@
+ 
+     searchInterp = interp;
+     for (i = 0; i < objc; i++) {
+ 	parentInfoPtr = INTERP_INFO(searchInterp);
+ 	hPtr = Tcl_FindHashEntry(&parentInfoPtr->parent.childTable,
+-		TclGetString(objv[i]));
++		ChildNameKey(TclGetString(objv[i])));
+ 	if (hPtr == NULL) {
+ 	    searchInterp = NULL;
+ 	    break;
+ 	}
+ 	childPtr = (Child *) Tcl_GetHashValue(hPtr);
+@@ -2801,12 +2826,12 @@
+     if (safe == 0) {
+ 	safe = Tcl_IsSafe(parentInterp);
+     }
+ 
+     parentInfoPtr = INTERP_INFO(parentInterp);
+-    hPtr = Tcl_CreateHashEntry(&parentInfoPtr->parent.childTable, path,
+-	    &isNew);
++    hPtr = Tcl_CreateHashEntry(&parentInfoPtr->parent.childTable,
++	    ChildNameKey(path), &isNew);
+     if (isNew == 0) {
+ 	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 		"interpreter named \"%s\" already exists, cannot create",
+ 		path));
+ 	return NULL;
+
+Index: tests/interp.test
+==================================================================
+--- tests/interp.test
++++ tests/interp.test
+@@ -161,10 +161,26 @@
+     expr {$anothernum - $thenum}
+ } 1
+ test interp-2.13 {correct default when no $path arg is given} -body {
+     interp create --
+ } -match regexp -result {interp[0-9]+}
++test interp-2.14 {"foo" and "::foo" are the same interp, bug 66c2e8c974} -body {
++    interp create foo
++    foo eval {set a abc}
++    list [catch {interp create ::foo} msg] $msg [interp exists ::foo] \
++	    [::foo eval {set a}] [lsearch -all -inline [interp children] *foo]
++} -cleanup {
++    interp delete foo
++} -result {1 {interpreter named "::foo" already exists, cannot create} 1 abc foo}
++test interp-2.15 {"foo" and "::foo" are the same interp, bug 66c2e8c974} -body {
++    interp create ::foo
++    interp create {foo bar}
++    list [interp exists foo] [interp exists {::foo ::bar}] \
++	    [lsearch -all -inline [interp children] *foo]
++} -cleanup {
++    interp delete ::foo
++} -result {1 1 foo}
+ 
+ foreach i [interp children] {
+     interp delete $i
+ }
+ 
+

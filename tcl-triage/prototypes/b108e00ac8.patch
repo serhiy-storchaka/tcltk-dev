@@ -1,0 +1,217 @@
+Index: generic/tclExecute.c
+==================================================================
+--- generic/tclExecute.c
++++ generic/tclExecute.c
+@@ -4226,10 +4226,14 @@
+ 	    }
+ 	    TRACE_ERROR(interp);
+ 	    goto gotError;
+ 	}
+ 	if (TclIsVarConstant(varPtr)) {
++	    if (TclConstValueDiffers(varPtr, objPtr)) {
++		msgPart = "constant has a different value";
++		goto constError;
++	    }
+ 	    TRACE_APPEND("already constant\n");
+ 	    NEXT_INST_V(pcAdjustment, cleanup, 0);
+ 	}
+ 	if (TclIsVarArray(varPtr)) {
+ 	    msgPart = "variable is array";
+
+Index: generic/tclInt.h
+==================================================================
+--- generic/tclInt.h
++++ generic/tclInt.h
+@@ -3570,10 +3570,11 @@
+ 			    int *codePtr, int *levelPtr);
+ MODULE_SCOPE Tcl_Obj *	TclNoErrorStack(Tcl_Interp *interp, Tcl_Obj *options);
+ MODULE_SCOPE bool	TclNokia770Doubles(void);
+ MODULE_SCOPE void	TclNsDecrRefCount(Namespace *nsPtr);
+ MODULE_SCOPE bool	TclNamespaceDeleted(Namespace *nsPtr);
++MODULE_SCOPE int	TclConstValueDiffers(Var *varPtr, Tcl_Obj *valuePtr);
+ MODULE_SCOPE void	TclObjVarErrMsg(Tcl_Interp *interp, Tcl_Obj *part1Ptr,
+ 			    Tcl_Obj *part2Ptr, const char *operation,
+ 			    const char *reason, Tcl_Size index);
+ #ifndef TCL_NO_DEPRECATED
+ MODULE_SCOPE Tcl_ObjCmdProc TclObjInterpProc;
+
+Index: generic/tclVar.c
+==================================================================
+--- generic/tclVar.c
++++ generic/tclVar.c
+@@ -139,10 +139,11 @@
+ static const char MISSINGNAME[] =	"missing variable name";
+ static const char ISARRAYELEMENT[] =
+ 	"name refers to an element in an array";
+ static const char ISCONST[] =		"variable is a constant";
+ static const char EXISTS[] =		"variable already exists";
++static const char CONSTDIFF[] =		"constant has a different value";
+ 
+ /*
+  * A test to see if we are in a call frame that has local variables. This is
+  * true if we are inside a procedure body.
+  */
+@@ -4887,10 +4888,34 @@
+  * Side effects:
+  *	See the user documentation.
+  *
+  *----------------------------------------------------------------------
+  */
++
++/*
++ *----------------------------------------------------------------------
++ *
++ * TclConstValueDiffers --
++ *
++ *	Checks whether redefining the constant in varPtr with valuePtr would
++ *	change its value (string comparison).
++ *
++ *----------------------------------------------------------------------
++ */
++
++int
++TclConstValueDiffers(
++    Var *varPtr,		/* An existing constant. */
++    Tcl_Obj *valuePtr)		/* The new value. */
++{
++    Tcl_Obj *oldPtr = varPtr->value.objPtr;
++
++    if (oldPtr == valuePtr) {
++	return 0;
++    }
++    return TclStringCmp(oldPtr, valuePtr, 1, 0, -1) != 0;
++}
+ 
+ int
+ Tcl_ConstObjCmd(
+     TCL_UNUSED(void *),
+     Tcl_Interp *interp,		/* Current interpreter. */
+@@ -4924,14 +4949,21 @@
+ 	Tcl_SetErrorCode(interp, "TCL", "LOOKUP", "CONST", (char *)NULL);
+ 	return TCL_ERROR;
+     }
+ 
+     /*
+-     * If already exists, either a constant (no problem) or an error.
++     * If already exists, either a constant with the same value (no problem)
++     * or an error.
+      */
+     if (!TclIsVarUndefined(varPtr)) {
+ 	if (TclIsVarConstant(varPtr)) {
++	    if (TclConstValueDiffers(varPtr, objv[2])) {
++		TclObjVarErrMsg(interp, part1Ptr, NULL, "make constant",
++			CONSTDIFF, -1);
++		Tcl_SetErrorCode(interp, "TCL", "LOOKUP", "CONST", (char *)NULL);
++		return TCL_ERROR;
++	    }
+ 	    return TCL_OK;
+ 	}
+ 	TclObjVarErrMsg(interp, part1Ptr, NULL, "make constant", EXISTS, -1);
+ 	Tcl_SetErrorCode(interp, "TCL", "LOOKUP", "CONST", (char *)NULL);
+ 	return TCL_ERROR;
+
+Index: tests/var.test
+==================================================================
+--- tests/var.test
++++ tests/var.test
+@@ -1591,15 +1591,22 @@
+ 	array set X {a b}
+ 	const X(b) 1
+ 	return $X(b)
+     }}
+ } -returnCodes error -result {can't make constant "X(b)": name refers to an element in an array}
+-test var-26.10.1 {const: unmodifiable by const but not an error} {
++test var-26.10.1 {const: redefining with another value, bug b108e00ac8} -body {
+     apply {{} {
+ 	const X 1
+ 	const X 2
+ 	return $X
++    }}
++} -returnCodes error -result {can't make constant "X": constant has a different value}
++test var-26.10.3 {const: redefining with the same value is not an error} {
++    apply {{} {
++	const X 1
++	const X [expr {0 + 1}]
++	return $X
+     }}
+ } 1
+ test var-26.10.2 {const: unmodifiable by const but not an error} {
+     apply {{} {
+ 	lmap x {1 2 3} {
+@@ -1667,11 +1674,11 @@
+     apply {{} {
+ 	trace add variable X write {apply {args {
+ 	    lappend ::traces $args
+ 	}}}
+ 	const X gorp
+-	const X foo
++	const X gorp
+ 	catch {set X bar}
+ 	list $X $::traces
+     }}
+ } -result {gorp {{X {} write}}} -cleanup {
+     unset -nocomplain traces
+@@ -1760,15 +1767,22 @@
+ 	array set X {a b}
+ 	$const X(b) 1
+ 	return $X(b)
+     }} const
+ } -returnCodes error -result {can't make constant "X(b)": name refers to an element in an array}
+-test var-27.10.1 {const: unmodifiable by const but not an error} {
++test var-27.10.1 {const: redefining with another value, bug b108e00ac8} -body {
+     apply {const {
+ 	$const X 1
+ 	$const X 2
+ 	return $X
++    }} const
++} -returnCodes error -result {can't make constant "X": constant has a different value}
++test var-27.10.3 {const: redefining with the same value is not an error} {
++    apply {const {
++	$const X 1
++	$const X [expr {0 + 1}]
++	return $X
+     }} const
+ } 1
+ test var-27.10.2 {const: unmodifiable by const but not an error} {
+     apply {const {
+ 	lmap x {1 2 3} {
+@@ -1836,11 +1850,11 @@
+     apply {const {
+ 	trace add variable X write {apply {args {
+ 	    lappend ::traces $args
+ 	}}}
+ 	$const X gorp
+-	$const X foo
++	$const X gorp
+ 	catch {set X bar}
+ 	list $X $::traces
+     }} const
+ } -result {gorp {{X {} write}}} -cleanup {
+     unset -nocomplain traces
+@@ -2157,11 +2171,11 @@
+ 	lappend consts [lsort [info consts]] [info constant X]
+ 	const X 1
+ 	lappend consts [lsort [info consts]] [info constant X]
+ 	const Y 2
+ 	lappend consts [lsort [info consts]]
+-	const X 3
++	const X 1
+ 	lappend consts [lsort [info consts]]
+     }}
+ } {{} 0 X 1 {X Y} {X Y}}
+ test var-30.2 {info constant and info consts} {
+     apply {{} {
+@@ -2168,11 +2182,11 @@
+ 	lappend consts [lsort [info consts X]]
+ 	const X 1
+ 	lappend consts [lsort [info consts X]]
+ 	const Y 2
+ 	lappend consts [lsort [info consts X]]
+-	const X 3
++	const X 1
+ 	lappend consts [lsort [info consts X]]
+     }}
+ } {{} X X X}
+ test var-30.3 {info constant and info consts} {
+     apply {{} {
+

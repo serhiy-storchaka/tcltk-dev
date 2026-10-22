@@ -1,0 +1,41 @@
+Index: doc/IntObj.3
+==================================================================
+--- doc/IntObj.3
++++ doc/IntObj.3
+@@ -143,10 +143,16 @@
+ to the integral value provided by the other argument.  The \fIobjPtr\fR
+ argument must point to an unshared Tcl value.  Any attempt to set the
+ value of a shared Tcl value violates Tcl's copy-on-write policy.  Any
+ existing string representation or internal representation in the unshared
+ Tcl value will be freed as a consequence of setting the new value.
++.PP
++\fBTcl_NewBignumObj\fR and \fBTcl_SetBignumObj\fR take over the
++memory held by \fIbigValue\fR: on return, \fIbigValue\fR has been
++cleared and no longer holds its original value. The caller must not use
++it again unless it re-initializes it; calling \fBmp_clear\fR on it is
++harmless but not needed.
+ .PP
+ The \fBTcl_GetIntForIndex\fR routine attempts to retrieve an index
+ value from the Tcl value \fIobjPtr\fR.  If the attempt succeeds,
+ then \fBTCL_OK\fR is returned, and the value is written to the
+ storage provided by the caller.  The attempt might fail if
+@@ -182,10 +188,18 @@
+ value to be moved instead of copied, which should be more efficient.
+ If anything later in the caller requires
+ \fIobjPtr\fR to continue to hold the same value, then
+ \fBTcl_GetBignumFromObj\fR must be chosen.
+ .PP
++The \fBmp_int\fR value passed to \fBTcl_GetBignumFromObj\fR,
++\fBTcl_TakeBignumFromObj\fR and \fBTcl_InitBignumFromDouble\fR must not
++have been initialized by the caller; these routines initialize it.  When
++they succeed, the caller owns the resulting value and must release its
++memory with \fBmp_clear\fR when it is no longer needed (or pass it to
++\fBTcl_NewBignumObj\fR or \fBTcl_SetBignumObj\fR, which take it over).
++When they fail, \fIbigValue\fR is not initialized and must not be cleared.
++.PP
+ The \fBTcl_InitBignumFromDouble\fR routine is a utility procedure
+ that extracts the integer part of \fIdoubleValue\fR and stores that
+ integer value in the \fBmp_int\fR value \fIbigValue\fR.
+ .SH "REFERENCE COUNT MANAGEMENT"
+ .PP
+

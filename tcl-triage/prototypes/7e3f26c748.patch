@@ -1,0 +1,130 @@
+Index: generic/tclCkalloc.c
+==================================================================
+--- generic/tclCkalloc.c
++++ generic/tclCkalloc.c
+@@ -69,11 +69,11 @@
+ 				 * of this field will be larger than one. */
+ };
+ 
+ static struct mem_header *allocHead = NULL;  /* List of allocated structures */
+ 
+-#define GUARD_VALUE  0x61
++#define GUARD_VALUE  0x61	/* See also TCL_FREED_REFCOUNT in tclInt.h */
+ 
+ /*
+  * The following macro determines the amount of guard space *above* each chunk
+  * of memory.
+  */
+
+Index: generic/tclDisassemble.c
+==================================================================
+--- generic/tclDisassemble.c
++++ generic/tclDisassemble.c
+@@ -861,11 +861,11 @@
+ 	if (!objPtr) {
+ 	    Tcl_Panic("InnerContext: bad tos -- appending null object");
+ 	}
+ 	if ((objPtr->refCount <= 0)
+ #ifdef TCL_MEM_DEBUG
+-		|| (objPtr->refCount == 0x61616161)
++		|| (objPtr->refCount == (Tcl_Size)TCL_FREED_REFCOUNT)
+ #endif
+ 	) {
+ 	    Tcl_Panic("InnerContext: bad tos -- appending freed object %p",
+ 		    objPtr);
+ 	}
+
+Index: generic/tclInt.h
+==================================================================
+--- generic/tclInt.h
++++ generic/tclInt.h
+@@ -4440,10 +4440,19 @@
+ 
+ #else /* TCL_MEM_DEBUG */
+ MODULE_SCOPE void	TclDbInitNewObj(Tcl_Obj *objPtr, const char *file,
+ 			    int line);
+ 
++/*
++ * The value of a reference count in memory freed by Tcl_DbCkfree, which fills
++ * it with GUARD_VALUE (0x61) bytes: 0x61616161 or 0x6161616161616161,
++ * depending on the width of size_t. A real reference count never gets that
++ * high, since it would need that many pointers to the object.
++ */
++
++# define TCL_FREED_REFCOUNT ((size_t)-1 / 0xFF * 0x61)
++
+ # define TclDbNewObj(objPtr, file, line) \
+     do { \
+ 	TclIncrObjsAllocated();						\
+ 	(objPtr) = (Tcl_Obj *)						\
+ 		Tcl_DbCkalloc(sizeof(Tcl_Obj), (file), (line));		\
+
+Index: generic/tclObj.c
+==================================================================
+--- generic/tclObj.c
++++ generic/tclObj.c
+@@ -337,18 +337,11 @@
+ 				 * structure can be freed when refCount
+ 				 * becomes zero. */
+ } ResolvedCmdName;
+ 
+ #ifdef TCL_MEM_DEBUG
+-/*
+- * Filler matches the value used for filling freed memory in tclCkalloc.
+- * On 32-bit systems, the ref counts do not cross 0x7fffffff. On 64-bit
+- * implementations, ref counts will never reach this value (unless explicitly
+- * incremented without actual references!)
+- */
+-#define FREEDREFCOUNTFILLER \
+-    (Tcl_Size)(sizeof(objPtr->refCount) == 4 ? 0xe8e8e8e8 : 0xe8e8e8e8e8e8e8e8)
++#define FREEDREFCOUNTFILLER ((Tcl_Size)TCL_FREED_REFCOUNT)
+ #endif
+ 
+ /*
+  *-------------------------------------------------------------------------
+  *
+
+Index: generic/tclPreserve.c
+==================================================================
+--- generic/tclPreserve.c
++++ generic/tclPreserve.c
+@@ -365,11 +365,11 @@
+ {
+     HandleStruct *handlePtr;
+ 
+     handlePtr = (HandleStruct *) handle;
+ #ifdef TCL_MEM_DEBUG
+-    if (handlePtr->refCount == 0x61616161) {
++    if (handlePtr->refCount == TCL_FREED_REFCOUNT) {
+ 	Tcl_Panic("using previously disposed TclHandle %p", handlePtr);
+     }
+     if (handlePtr->ptr2 != handlePtr->ptr) {
+ 	Tcl_Panic("someone has changed the block referenced by the handle %p\nfrom %p to %p",
+ 		handlePtr, handlePtr->ptr2, handlePtr->ptr);
+@@ -408,11 +408,11 @@
+ {
+     HandleStruct *handlePtr;
+ 
+     handlePtr = (HandleStruct *) handle;
+ #ifdef TCL_MEM_DEBUG
+-    if (handlePtr->refCount == 0x61616161) {
++    if (handlePtr->refCount == TCL_FREED_REFCOUNT) {
+ 	Tcl_Panic("using previously disposed TclHandle %p", handlePtr);
+     }
+     if ((handlePtr->ptr != NULL) && (handlePtr->ptr != handlePtr->ptr2)) {
+ 	Tcl_Panic("someone has changed the block referenced by the handle %p\nfrom %p to %p",
+ 		handlePtr, handlePtr->ptr2, handlePtr->ptr);
+@@ -449,11 +449,11 @@
+ {
+     HandleStruct *handlePtr;
+ 
+     handlePtr = (HandleStruct *) handle;
+ #ifdef TCL_MEM_DEBUG
+-    if (handlePtr->refCount == 0x61616161) {
++    if (handlePtr->refCount == TCL_FREED_REFCOUNT) {
+ 	Tcl_Panic("using previously disposed TclHandle %p", handlePtr);
+     }
+     if ((handlePtr->ptr != NULL) && (handlePtr->ptr != handlePtr->ptr2)) {
+ 	Tcl_Panic("someone has changed the block referenced by the handle %p\nfrom %p to %p",
+ 		handlePtr, handlePtr->ptr2, handlePtr->ptr);
+

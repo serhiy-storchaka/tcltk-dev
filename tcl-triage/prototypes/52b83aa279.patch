@@ -1,0 +1,149 @@
+Index: generic/tclIOUtil.c
+==================================================================
+--- generic/tclIOUtil.c
++++ generic/tclIOUtil.c
+@@ -1673,10 +1673,52 @@
+  *	is evaluated iPtr->scriptFile is a reference to pathPtr, and after the
+  *	evaluation completes, has its original value restored again.
+  *
+  *----------------------------------------------------------------------
+  */
++
++/*
++ *----------------------------------------------------------------------
++ *
++ * SetReadFileError --
++ *
++ *	Closes the channel and sets the interpreter result to the error
++ *	message for a failed read of a script file. For an encoding error,
++ *	the line number of the invalid byte sequence is reported.
++ *
++ *----------------------------------------------------------------------
++ */
++
++static void
++SetReadFileError(
++    Tcl_Interp *interp,
++    Tcl_Channel chan,
++    Tcl_Obj *pathPtr,
++    Tcl_Obj *objPtr)		/* Data read before the error. */
++{
++    int code = Tcl_GetErrno();
++    Tcl_Size length, i, line = 1;
++    const char *data;
++
++    Tcl_CloseEx(interp, chan, 0);
++    Tcl_SetErrno(code);
++    if (code == EILSEQ) {
++	data = TclGetStringFromObj(objPtr, &length);
++	for (i = 0; i < length; i++) {
++	    if (data[i] == '\n') {
++		line++;
++	    }
++	}
++	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
++		"couldn't read file \"%s\": %s at line %" TCL_SIZE_MODIFIER "d",
++		TclGetString(pathPtr), Tcl_PosixError(interp), line));
++    } else {
++	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
++		"couldn't read file \"%s\": %s",
++		TclGetString(pathPtr), Tcl_PosixError(interp)));
++    }
++}
+ 
+ int
+ Tcl_FSEvalFile(
+     Tcl_Interp *interp,		/* Interpreter that evaluates the script. */
+     Tcl_Obj *pathPtr)		/* Pathname of file containing the script.
+@@ -1750,14 +1792,11 @@
+     /*
+      * Read first character of stream to check for utf-8 BOM
+      */
+ 
+     if (Tcl_ReadChars(chan, objPtr, 1, 0) == TCL_IO_FAILURE) {
+-	Tcl_CloseEx(interp, chan, 0);
+-	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+-		"couldn't read file \"%s\": %s",
+-		TclGetString(pathPtr), Tcl_PosixError(interp)));
++	SetReadFileError(interp, chan, pathPtr, objPtr);
+ 	goto end;
+     }
+     string = TclGetString(objPtr);
+ 
+     /*
+@@ -1765,14 +1804,11 @@
+      * Otherwise, replace them. [Bug 3466099]
+      */
+ 
+     if (Tcl_ReadChars(chan, objPtr, TCL_INDEX_NONE,
+ 	    memcmp(string, "\xEF\xBB\xBF", 3)) == TCL_IO_FAILURE) {
+-	Tcl_CloseEx(interp, chan, 0);
+-	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+-		"couldn't read file \"%s\": %s",
+-		TclGetString(pathPtr), Tcl_PosixError(interp)));
++	SetReadFileError(interp, chan, pathPtr, objPtr);
+ 	goto end;
+     }
+ 
+     if (Tcl_CloseEx(interp, chan, 0) != TCL_OK) {
+ 	goto end;
+@@ -1886,14 +1922,11 @@
+     /*
+      * Read first character of stream to check for utf-8 BOM
+      */
+ 
+     if (Tcl_ReadChars(chan, objPtr, 1, 0) == TCL_IO_FAILURE) {
+-	Tcl_CloseEx(interp, chan, 0);
+-	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+-		"couldn't read file \"%s\": %s",
+-		TclGetString(pathPtr), Tcl_PosixError(interp)));
++	SetReadFileError(interp, chan, pathPtr, objPtr);
+ 	Tcl_DecrRefCount(objPtr);
+ 	return TCL_ERROR;
+     }
+     string = TclGetString(objPtr);
+ 
+@@ -1902,14 +1935,11 @@
+      * Otherwise, replace them. [Bug 3466099]
+      */
+ 
+     if (Tcl_ReadChars(chan, objPtr, TCL_INDEX_NONE,
+ 	    memcmp(string, "\xEF\xBB\xBF", 3)) == TCL_IO_FAILURE) {
+-	Tcl_CloseEx(interp, chan, 0);
+-	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+-		"couldn't read file \"%s\": %s",
+-		TclGetString(pathPtr), Tcl_PosixError(interp)));
++	SetReadFileError(interp, chan, pathPtr, objPtr);
+ 	Tcl_DecrRefCount(objPtr);
+ 	return TCL_ERROR;
+     }
+ 
+     if (Tcl_CloseEx(interp, chan, 0) != TCL_OK) {
+
+Index: tests/source.test
+==================================================================
+--- tests/source.test
++++ tests/source.test
+@@ -286,10 +286,21 @@
+     source -encoding iso8859-1 $sourcefile
+     €
+ } -cleanup {
+     removeFile source.file
+ } -returnCodes error -result {invalid command name "€"}
++test source-7.7 {source: invalid utf-8 reports line number, bug 52b83aa279} -setup {
++    set sourcefile [makeFile {} source.file]
++    file delete $sourcefile
++    set f [open $sourcefile wb]
++    puts -nonewline $f "set x 1\nif 0 \{\n set y \xB0\n\}\n"
++    close $f
++} -body {
++    source $sourcefile
++} -cleanup {
++    removeFile source.file
++} -returnCodes error -match glob -result {couldn't read file "*": invalid or incomplete multibyte or wide character at line 3}
+ 
+ test source-8.1 {source and coroutine/yield} -setup {
+     set sourcefile [makeFile {} source.file]
+     file delete $sourcefile
+ } -body {
+

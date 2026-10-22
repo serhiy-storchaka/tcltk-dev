@@ -1,0 +1,40 @@
+Index: macosx/GNUmakefile
+==================================================================
+--- macosx/GNUmakefile
++++ macosx/GNUmakefile
+@@ -130,10 +130,13 @@
+ install-${PROJECT}:	target = ${INSTALL_TARGET}
+ clean-${PROJECT} distclean-${PROJECT} test-${PROJECT}: \
+ 			target = $*
+ 
+ DO_MAKE			= +${MAKE} -C "${OBJ_DIR}" ${target} ${MAKE_ARGS_V} ${MAKE_ARGS} ${EXTRA_MAKE_ARGS}
++# clean targets must not fail when this build style was never configured
++DO_MAKE_CLEAN		= +test ! -f "${OBJ_DIR}/Makefile" || \
++			  ${MAKE} -C "${OBJ_DIR}" ${target} ${MAKE_ARGS_V} ${MAKE_ARGS} ${EXTRA_MAKE_ARGS}
+ 
+ #-------------------------------------------------------------------------------------------------------
+ # build rules
+ 
+ ${PROJECT}:
+@@ -190,18 +193,18 @@
+ 	    fi; \
+ 	fi
+ endif
+ 
+ clean-${PROJECT}: %-${PROJECT}:
+-	${DO_MAKE}
++	${DO_MAKE_CLEAN}
+ 	rm -rf "${SYMROOT}"/{${PRODUCT_NAME}.framework,${TCLSH},tcltest}
+ 	rm -f "${OBJ_DIR}"{"${LIBDIR}","${BINDIR}"} && \
+ 	rmdir -p "${OBJ_DIR}"$(dir $(subst ${space},\ ,${LIBDIR})) 2>&- || true && \
+ 	rmdir -p "${OBJ_DIR}"$(dir $(subst ${space},\ ,${BINDIR})) 2>&- || true
+ 
+ distclean-${PROJECT}: %-${PROJECT}: clean-${PROJECT}
+-	${DO_MAKE}
++	${DO_MAKE_CLEAN}
+ 	rm -rf "${OBJ_DIR}"
+ 
+ test-${PROJECT}: %-${PROJECT}: build-${PROJECT}
+ 	${DO_MAKE}
+ 
+

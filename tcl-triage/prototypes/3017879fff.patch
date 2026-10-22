@@ -1,0 +1,117 @@
+Index: generic/tclBasic.c
+==================================================================
+--- generic/tclBasic.c
++++ generic/tclBasic.c
+@@ -175,10 +175,12 @@
+ 			    Tcl_Interp *interp, int code);
+ static int		CheckDoubleResult(Tcl_Interp *interp, double dResult);
+ static void		DeleteCoroutine(void *clientData);
+ static Tcl_FreeProc	DeleteInterpProc;
+ static void		DeleteOpCmdClientData(void *clientData);
++static void		ResetImportCompileProcs(Command *cmdPtr,
++			    CompileProc *compileProc);
+ static Tcl_ObjCmdProc2	DivModObjCmd;
+ #ifdef USE_DTRACE
+ static Tcl_ObjCmdProc2	DTraceObjCmd;
+ static Tcl_NRPostProc	DTraceCmdReturn;
+ #else
+@@ -2717,10 +2719,11 @@
+ 	cmdPtr->importRefPtr = oldRefPtr;
+ 	while (oldRefPtr != NULL) {
+ 	    Command *refCmdPtr = oldRefPtr->importedCmdPtr;
+ 	    dataPtr = (ImportedCmdData *)refCmdPtr->objClientData2;
+ 	    dataPtr->realCmdPtr = cmdPtr;
++	    ResetImportCompileProcs(refCmdPtr, cmdPtr->compileProc);
+ 	    oldRefPtr = oldRefPtr->nextPtr;
+ 	}
+     }
+ 
+     /*
+@@ -3015,10 +3018,11 @@
+ 
+ 	    dataPtr = (ImportedCmdData*)refCmdPtr->objClientData2;
+ 	    cmdPtr->refCount++;
+ 	    TclCleanupCommandMacro(dataPtr->realCmdPtr);
+ 	    dataPtr->realCmdPtr = cmdPtr;
++	    ResetImportCompileProcs(refCmdPtr, cmdPtr->compileProc);
+ 	    oldRefPtr = oldRefPtr->nextPtr;
+ 	}
+     }
+ 
+     /*
+@@ -3290,10 +3294,38 @@
+   done:
+     TclDecrRefCount(oldFullName);
+     return result;
+ }
+ 
++/*
++ *----------------------------------------------------------------------
++ *
++ * ResetImportCompileProcs --
++ *
++ *	An imported command copies the compileProc of its target when it is
++ *	created. When the target is redefined and the import is relinked to
++ *	the new command, update that copy (recursively for imports of the
++ *	import), so that callers are not compiled with the old one, e.g. the
++ *	no-op of an empty proc. [Bug 3017879]
++ *
++ *----------------------------------------------------------------------
++ */
++
++static void
++ResetImportCompileProcs(
++    Command *cmdPtr,		/* Imported command. */
++    CompileProc *compileProc)	/* compileProc of its new target. */
++{
++    ImportRef *refPtr;
++
++    cmdPtr->compileProc = compileProc;
++    for (refPtr = cmdPtr->importRefPtr; refPtr != NULL;
++	    refPtr = refPtr->nextPtr) {
++	ResetImportCompileProcs(refPtr->importedCmdPtr, compileProc);
++    }
++}
++
+ /*
+  *----------------------------------------------------------------------
+  *
+  * Tcl_SetCommandInfo --
+  *
+
+Index: tests/namespace.test
+==================================================================
+--- tests/namespace.test
++++ tests/namespace.test
+@@ -457,10 +457,30 @@
+     namespace origin two::cmd
+ } -cleanup {
+     namespace delete one two three
+ } -returnCodes error -match glob -result {import pattern * would create a loop*}
+ 
++test namespace-9.10 {Tcl_Import: redefining an imported empty proc [Bug 3017879]} -setup {
++    namespace eval one {
++	namespace export cmd
++	proc cmd args {}
++    }
++    namespace eval two {
++	namespace export cmd
++	namespace import ::one::cmd
++	proc test {} {cmd x}
++    }
++    namespace eval three {
++	namespace import ::two::cmd
++	proc test {} {cmd y}
++    }
++} -body {
++    list [two::test] [three::test] [proc one::cmd args {return $args}] \
++	    [two::test] [three::test]
++} -cleanup {
++    namespace delete one two three
++} -result {{} {} {} x y}
+ test namespace-10.1 {Tcl_ForgetImport, check for valid namespaces} {
+     catch {namespace delete {*}[namespace children :: test_ns_*]}
+     list [catch {namespace forget xyzzy::*} msg] $msg
+ } {1 {unknown namespace in namespace forget pattern "xyzzy::*"}}
+ test namespace-10.2 {Tcl_ForgetImport, ignores patterns that don't match} {
+

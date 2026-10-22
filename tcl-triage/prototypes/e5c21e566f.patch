@@ -1,0 +1,32 @@
+Index: win/tclWinFile.c
+==================================================================
+--- win/tclWinFile.c
++++ win/tclWinFile.c
+@@ -1082,21 +1082,24 @@
+ 
+ 	if (handle == INVALID_HANDLE_VALUE) {
+ 	    DWORD err = GetLastError();
+ 
+ 	    Tcl_DStringFree(&ds);
+-	    if (IsNoSuchFileError(err)) {
++	    Tcl_WinConvertError(err);
++	    if (Tcl_GetErrno() == ENOENT) {
+ 		/*
+ 		 * We used our 'pattern' above, and matched nothing. This
+ 		 * means we just return TCL_OK, indicating no results found.
++		 * Besides ERROR_FILE_NOT_FOUND, network file systems may
++		 * report this as e.g. ERROR_NO_MORE_FILES or ERROR_BAD_NETPATH,
++		 * all of which map to ENOENT.
+ 		 */
+ 
+ 		Tcl_DStringFree(&dsOrig);
+ 		return TCL_OK;
+ 	    }
+ 
+-	    Tcl_WinConvertError(err);
+ 	    if (interp != NULL) {
+ 		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 			"couldn't read directory \"%s\": %s",
+ 			Tcl_DStringValue(&dsOrig), Tcl_PosixError(interp)));
+ 	    }
+

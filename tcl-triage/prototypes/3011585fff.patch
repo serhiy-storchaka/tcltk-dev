@@ -1,0 +1,19 @@
+Index: library/clock.tcl
+==================================================================
+--- library/clock.tcl
++++ library/clock.tcl
+@@ -1020,13 +1020,10 @@
+ 		    }
+ 		    Z {			# The name of the time zone
+ 			append formatString %s
+ 			append substituents { [dict get $date tzName]}
+ 		    }
+-		    % {			# A literal percent character
+-			append formatString %%
+-		    }
+ 		    default {		# An unknown escape sequence
+ 			append formatString %% $char
+ 		    }
+ 		}
+ 	    }
+

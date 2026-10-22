@@ -1,0 +1,145 @@
+Index: generic/tclCmdAH.c
+==================================================================
+--- generic/tclCmdAH.c
++++ generic/tclCmdAH.c
+@@ -2517,10 +2517,11 @@
+     iterPtr->cond = objv[2];
+     iterPtr->body = objv[4];
+     iterPtr->next = objv[3];
+     iterPtr->msg  = "\n    (\"for\" body line %d)";
+     iterPtr->word = 4;
++    iterPtr->constCond = TclForConstCond(iterPtr->cond);
+ 
+     TclNRAddCallback(interp, ForSetupCallback, iterPtr, NULL, NULL, NULL);
+ 
+     /*
+      * TIP #280. Make invoking context available to initial script.
+@@ -2545,10 +2546,29 @@
+ 	return result;
+     }
+     TclNRAddCallback(interp, TclNRForIterCallback, iterPtr, NULL, NULL, NULL);
+     return TCL_OK;
+ }
++
++/*
++ * If the loop condition is a plain boolean constant such as "1", there is no
++ * need to compile it as an expression on every iteration. Doing so would also
++ * make a shared literal shimmer between its numeric and exprcode
++ * representations (bug [3260718]).
++ */
++
++int
++TclForConstCond(
++    Tcl_Obj *cond)
++{
++    int value;
++
++    if (Tcl_GetBooleanFromObj(NULL, cond, &value) != TCL_OK) {
++	return -1;
++    }
++    return value;
++}
+ 
+ int
+ TclNRForIterCallback(
+     void *data[],
+     Tcl_Interp *interp,
+@@ -2565,10 +2585,16 @@
+ 	 * Otherwise, any error message will be appended to the result of the
+ 	 * last evaluation.
+ 	 */
+ 
+ 	Tcl_ResetResult(interp);
++	if (iterPtr->constCond >= 0) {
++	    TclNewIntObj(boolObj, iterPtr->constCond);
++	    TclNRAddCallback(interp, ForCondCallback, iterPtr, boolObj,
++		    NULL, NULL);
++	    return TCL_OK;
++	}
+ 	TclNewObj(boolObj);
+ 	TclNRAddCallback(interp, ForCondCallback, iterPtr, boolObj,
+ 		NULL, NULL);
+ 	return Tcl_NRExprObj(interp, iterPtr->cond, boolObj);
+     case TCL_BREAK:
+
+Index: generic/tclCmdMZ.c
+==================================================================
+--- generic/tclCmdMZ.c
++++ generic/tclCmdMZ.c
+@@ -5390,10 +5390,11 @@
+     iterPtr->cond = objv[1];
+     iterPtr->body = objv[2];
+     iterPtr->next = NULL;
+     iterPtr->msg  = "\n    (\"while\" body line %d)";
+     iterPtr->word = 2;
++    iterPtr->constCond = TclForConstCond(iterPtr->cond);
+ 
+     TclNRAddCallback(interp, TclNRForIterCallback, iterPtr,
+ 	    NULL, NULL, NULL);
+     return TCL_OK;
+ }
+
+Index: generic/tclInt.h
+==================================================================
+--- generic/tclInt.h
++++ generic/tclInt.h
+@@ -3243,10 +3243,11 @@
+ MODULE_SCOPE Tcl_ObjCmdProc2 TclNRUplevelObjCmd;
+ MODULE_SCOPE Tcl_NRPostProc TclUplevelCallback;
+ MODULE_SCOPE Tcl_ObjCmdProc2 TclNRWhileObjCmd;
+ 
+ MODULE_SCOPE Tcl_NRPostProc TclNRForIterCallback;
++MODULE_SCOPE int	TclForConstCond(Tcl_Obj *cond);
+ MODULE_SCOPE Tcl_NRPostProc TclNRCoroutineActivateCallback;
+ MODULE_SCOPE Tcl_ObjCmdProc2 TclNRTailcallObjCmd;
+ MODULE_SCOPE Tcl_NRPostProc TclNRTailcallEval;
+ MODULE_SCOPE Tcl_ObjCmdProc2 TclNRCoroutineObjCmd;
+ MODULE_SCOPE Tcl_ObjCmdProc2 TclNRYieldObjCmd;
+@@ -3278,10 +3279,12 @@
+     Tcl_Obj *cond;		/* Loop condition expression. */
+     Tcl_Obj *body;		/* Loop body. */
+     Tcl_Obj *next;		/* Loop step script, NULL for 'while'. */
+     const char *msg;		/* Error message part. */
+     Tcl_Size word;		/* Index of the body script in the command */
++    int constCond;		/* 0 or 1 if cond is a constant boolean, -1
++				 * if it must be evaluated as expression. */
+ } ForIterData;
+ 
+ /* TIP #357 - Structure doing the bookkeeping of handles for Tcl_LoadFile
+  *            and Tcl_FindSymbol. This structure corresponds to an opaque
+  *            typedef in tcl.h */
+
+Index: tests/while.test
+==================================================================
+--- tests/while.test
++++ tests/while.test
+@@ -689,10 +689,28 @@
+     }
+     append result [p]
+ } -cleanup {
+     unset result i
+ } -result {00}
++
++test while-8.1 {constant condition of uncompiled while is not compiled, bug 3260718} -setup {
++    set body {if {[incr n] >= 3} break}
++} -body {
++    set n 0
++    set cond [string trim " 1"]
++    while $cond $body
++    list $n [lindex [::tcl::unsupported::representation $cond] 3]
++} -cleanup {
++    unset -nocomplain body n cond
++} -result {3 int}
++test while-8.2 {constant false condition of uncompiled while} -body {
++    set n 0
++    while [string trim " 0"] {incr n}
++    set n
++} -cleanup {
++    unset -nocomplain n
++} -result 0
+ 
+ # cleanup
+ ::tcltest::cleanupTests
+ return
+ 
+

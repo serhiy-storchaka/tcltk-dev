@@ -1,0 +1,24 @@
+Index: unix/tclUnixFCmd.c
+==================================================================
+--- unix/tclUnixFCmd.c
++++ unix/tclUnixFCmd.c
+@@ -598,14 +598,17 @@
+     close(srcFd);
+     if ((close(dstFd) != 0) || (nread == -1)) {
+ 	unlink(dst);					/* INTL: Native. */
+ 	return TCL_ERROR;
+     }
+-    if (!dontCopyAtts && CopyFileAtts(src, dst, statBufPtr) == TCL_ERROR) {
++    if (!dontCopyAtts && CopyFileAtts(src, dst, statBufPtr) == TCL_ERROR
++	    && errno != EPERM) {
+ 	/*
+ 	 * The copy succeeded, but setting the permissions failed, so be in a
+ 	 * consistent state, we remove the file that was created by the copy.
++	 * EPERM means that we do not own the new file (e.g. on a vfat mount
++	 * with a fixed uid); keep the copy then, as cp(1) does. [Bug 731062]
+ 	 */
+ 
+ 	unlink(dst);					/* INTL: Native. */
+ 	return TCL_ERROR;
+     }
+

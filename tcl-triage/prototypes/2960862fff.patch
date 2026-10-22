@@ -1,0 +1,173 @@
+Index: generic/tclLoad.c
+==================================================================
+--- generic/tclLoad.c
++++ generic/tclLoad.c
+@@ -110,10 +110,40 @@
+ }
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
++ * NormalizedFileName --
++ *
++ *	Returns the name under which a library file is recorded: the
++ *	normalized path if the file exists, so that the same file loaded
++ *	through different paths is recognized [Bug 2960862]. Otherwise (e.g.
++ *	a name to be found on the system search path) the name as given.
++ *
++ *----------------------------------------------------------------------
++ */
++
++static const char *
++NormalizedFileName(
++    Tcl_Obj *pathPtr,
++    Tcl_DString *dsPtr)		/* Initialized DString to hold the result. */
++{
++    const char *name = TclGetString(pathPtr);
++
++    if (name[0] != '\0' && Tcl_FSAccess(pathPtr, F_OK) == 0) {
++	Tcl_Obj *normPtr = Tcl_FSGetNormalizedPath(NULL, pathPtr);
++
++	if (normPtr != NULL) {
++	    name = TclGetString(normPtr);
++	}
++    }
++    return Tcl_DStringAppend(dsPtr, name, TCL_INDEX_NONE);
++}
++
++/*
++ *----------------------------------------------------------------------
++ *
+  * Tcl_LoadObjCmd --
+  *
+  *	This function is invoked to process the "load" Tcl command. See the
+  *	user documentation for details on what it does.
+  *
+@@ -133,11 +163,11 @@
+     Tcl_Size objc,		/* Number of arguments. */
+     Tcl_Obj *const *objv)	/* Argument objects. */
+ {
+     Tcl_Interp *target;
+     LoadedLibrary *libraryPtr, *defaultPtr;
+-    Tcl_DString pfx, tmp, initName, safeInitName;
++    Tcl_DString pfx, tmp, initName, safeInitName, fileName;
+     Tcl_DString unloadName, safeUnloadName;
+     InterpLibrary *ipFirstPtr, *ipPtr;
+     int code;
+     bool namesMatch, filesMatch;
+     Tcl_Size offset;
+@@ -180,11 +210,12 @@
+ 	return TCL_ERROR;
+     }
+     if (Tcl_FSConvertToPathType(interp, objv[1]) != TCL_OK) {
+ 	return TCL_ERROR;
+     }
+-    fullFileName = TclGetString(objv[1]);
++    Tcl_DStringInit(&fileName);
++    fullFileName = NormalizedFileName(objv[1], &fileName);
+ 
+     Tcl_DStringInit(&pfx);
+     Tcl_DStringInit(&initName);
+     Tcl_DStringInit(&safeInitName);
+     Tcl_DStringInit(&unloadName);
+@@ -527,10 +558,11 @@
+     ipPtr->libraryPtr = libraryPtr;
+     ipPtr->nextPtr = ipFirstPtr;
+     Tcl_SetAssocData(target, ASSOC_KEY, LoadCleanupProc, ipPtr);
+ 
+   done:
++    Tcl_DStringFree(&fileName);
+     Tcl_DStringFree(&pfx);
+     Tcl_DStringFree(&initName);
+     Tcl_DStringFree(&safeInitName);
+     Tcl_DStringFree(&unloadName);
+     Tcl_DStringFree(&safeUnloadName);
+@@ -562,11 +594,11 @@
+     Tcl_Size objc,		/* Number of arguments. */
+     Tcl_Obj *const *objv)	/* Argument objects. */
+ {
+     Tcl_Interp *target;		/* Which interpreter to unload from. */
+     LoadedLibrary *libraryPtr;
+-    Tcl_DString pfx, tmp;
++    Tcl_DString pfx, tmp, fileName;
+     InterpLibrary *ipFirstPtr, *ipPtr;
+     Tcl_Size i;
+     int code;
+     bool keepLibrary = false, complain = true;
+     const char *fullFileName = "";
+@@ -621,11 +653,12 @@
+     }
+     if (Tcl_FSConvertToPathType(interp, objv[i]) != TCL_OK) {
+ 	return TCL_ERROR;
+     }
+ 
+-    fullFileName = TclGetString(objv[i]);
++    Tcl_DStringInit(&fileName);
++    fullFileName = NormalizedFileName(objv[i], &fileName);
+     Tcl_DStringInit(&pfx);
+     Tcl_DStringInit(&tmp);
+ 
+     prefix = NULL;
+     if (objc - i >= 2) {
+@@ -651,11 +684,12 @@
+     if (objc - i == 3) {
+ 	const char *childIntName = TclGetString(objv[i + 2]);
+ 
+ 	target = Tcl_GetChild(interp, childIntName);
+ 	if (target == NULL) {
+-	    return TCL_ERROR;
++	    code = TCL_ERROR;
++	    goto done;
+ 	}
+     }
+ 
+     /*
+      * Scan through the libraries that are currently loaded to see if the
+@@ -754,10 +788,11 @@
+     }
+ 
+     code = UnloadLibrary(interp, target, libraryPtr, fullFileName, keepLibrary, false);
+ 
+   done:
++    Tcl_DStringFree(&fileName);
+     Tcl_DStringFree(&pfx);
+     Tcl_DStringFree(&tmp);
+     if (!complain && (code != TCL_OK)) {
+ 	code = TCL_OK;
+ 	Tcl_ResetResult(interp);
+
+Index: tests/load.test
+==================================================================
+--- tests/load.test
++++ tests/load.test
+@@ -242,10 +242,29 @@
+ 	[list $dll $loaded] {
+     load [file join $testDir tcl9pkgooa$ext]
+     list [pkgooa_stubsok] [lsort [info commands pkgooa_*]]
+ } {1 pkgooa_stubsok}
+ 
++test load-12.1 {same file loaded through different paths (Bug 2960862)} -setup {
++    set dir [pwd]
++    interp create child
++} -constraints [list $dll $loaded] -body {
++    cd $testDir
++    load ./tcl9pkgc$ext Pkgc child
++    cd ..
++    load [file join [file tail $testDir] tcl9pkgc$ext] Pkgc child
++    load [file join $testDir . tcl9pkgc$ext] Pkgc child
++    lmap item [info loaded child] {
++	if {[lindex $item 1] ne "Pkgc"} continue
++	string equal [lindex $item 0] [file normalize [file join $testDir tcl9pkgc$ext]]
++    }
++} -cleanup {
++    cd $dir
++    interp delete child
++    unset dir
++} -result 1
++
+ # cleanup
+ unset ext
+ ::tcltest::cleanupTests
+ return
+ 
+

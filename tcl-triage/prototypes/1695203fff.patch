@@ -1,0 +1,38 @@
+Index: generic/tclParse.c
+==================================================================
+--- generic/tclParse.c
++++ generic/tclParse.c
+@@ -2173,10 +2173,12 @@
+ 
+ 	switch (tokenPtr->type) {
+ 	case TCL_TOKEN_TEXT:
+ 	    append = tokenPtr->start;
+ 	    appendByteLength = tokenPtr->size;
++	    TclAdvanceLines(&line, tokenPtr->start,
++		    tokenPtr->start + tokenPtr->size);
+ 	    break;
+ 
+ 	case TCL_TOKEN_BS:
+ 	    appendByteLength = TclParseBackslash(tokenPtr->start,
+ 		    tokenPtr->size, NULL, utfCharBytes);
+
+Index: tests/info.test
+==================================================================
+--- tests/info.test
++++ tests/info.test
+@@ -2639,10 +2639,14 @@
+ } -cleanup {
+     interp delete child
+ } -body {
+     child invokehidden info frame
+ } -result 1
++
++test info-42.0 {Bug 1695203: line of command substitution after newlines in word, direct eval} -constraints testevalex -body {
++    testevalex "list \"a\nb\n\[dict get \[info frame 0\] line\]\" \\\n\[dict get \[info frame 0\] line\]"
++} -result [list "a\nb\n3" 4]
+ 
+ # cleanup
+ catch {namespace delete test_ns_info1 test_ns_info2}
+ ::tcltest::cleanupTests
+ return
+

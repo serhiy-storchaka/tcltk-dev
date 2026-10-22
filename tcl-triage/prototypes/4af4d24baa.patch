@@ -1,0 +1,61 @@
+Index: library/clock.tcl
+==================================================================
+--- library/clock.tcl
++++ library/clock.tcl
+@@ -1095,16 +1095,17 @@
+ 			      * [registry get $rpath Bias] }] \
+ 		      [expr { -60
+ 				  * [registry get $rpath StandardBias] }] \
+ 		      [expr { -60 \
+ 				  * [registry get $rpath DaylightBias] }]]
+-	set stdtzi [registry get $rpath StandardStart]
++	# Zones without DST may have empty start values; treat them as zeros
++	set stdtzi [registry get $rpath StandardStart][binary format x16]
+ 	foreach ind {0 2 14 4 6 8 10 12} {
+ 	    binary scan $stdtzi @${ind}s val
+ 	    lappend data $val
+ 	}
+-	set daytzi [registry get $rpath DaylightStart]
++	set daytzi [registry get $rpath DaylightStart][binary format x16]
+ 	foreach ind {0 2 14 4 6 8 10 12} {
+ 	    binary scan $daytzi @${ind}s val
+ 	    lappend data $val
+ 	}
+     }] } {
+
+Index: tests/clock.test
+==================================================================
+--- tests/clock.test
++++ tests/clock.test
+@@ -37604,10 +37604,30 @@
+ 	    {-18000 0 3600 0 11 0 1 2 0 0 0 0 3 0 2 2 0 0 0} \
+ 	    America/New_York
+ 	::tcl::clock::ClearCaches
+     } \
+     -result {<-0500>+05:00:00<-0400>+04:00:00,M3.2.0/02:00:00,M11.1.0/02:00:00 {19:00:00 -0500} 1969}
++
++test clock-49.3 {GuessWindowsTimeZone - zone without DST, empty start values [4af4d24baa]} \
++    -constraints tcltzdata \
++    -setup {
++	::testClock::_setupRegistry
++	set saved $::testClock::reg
++	set rpath HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\TimeZoneInformation
++	dict set ::testClock::reg $rpath Bias 420
++	dict set ::testClock::reg $rpath StandardStart {}
++	dict set ::testClock::reg $rpath DaylightStart {}
++    } \
++    -body {
++	::tcl::clock::GuessWindowsTimeZone
++    } \
++    -cleanup {
++	set ::testClock::reg $saved
++	unset saved rpath
++	::testClock::_cleanupRegistry
++    } \
++    -result :America/Phoenix
+ 
+ test clock-50.1 {format / scan -1 as a local time} {
+     if {[catch {
+ 	clock scan \
+ 	    [clock format -1 -format %Y%m%d%H%M%S -timezone :localtime] \
+

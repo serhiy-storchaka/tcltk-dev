@@ -1,0 +1,64 @@
+Index: tests/exec.test
+==================================================================
+--- tests/exec.test
++++ tests/exec.test
+@@ -796,10 +796,25 @@
+     exec -encoding $enc -- [interpreter] $path(echobin) [binary encode hex [encoding convertto $enc \u4e4e\u68d9]]
+ } -result \u4e4e\u68d9
+ test exec-22.1 {exec -encoding invalid encoding} -body {
+     exec -encoding nosuchencoding -- [interpreter] $path(echobin) abc
+ } -result {unknown encoding "nosuchencoding"} -returnCodes error
++
++# Bug 2982713fff: SIGCHLD ignored by the parent process
++testConstraint haveBash [expr {[testConstraint unix] && [llength [auto_execok bash]]}]
++test exec-23.1 {exec when SIGCHLD is inherited as ignored} -constraints {
++    exec unix haveBash
++} -setup {
++    set script [makeFile {
++	catch {exec /bin/sh -c {exit 3}} -> opts
++	puts [lrange [dict get $opts -errorcode] 0 0][lindex [dict get $opts -errorcode] 2]
++    } exec-23.1.tcl]
++} -body {
++    exec bash -c {trap '' CHLD; exec "$@"} bash [interpreter] $script
++} -cleanup {
++    removeFile $script
++} -result CHILDSTATUS3
+ 
+ # ----------------------------------------------------------------------
+ # Tests specific to Windows which has more varied application types and
+ # search mechanism.
+ 
+
+Index: unix/tclUnixInit.c
+==================================================================
+--- unix/tclUnixInit.c
++++ unix/tclUnixInit.c
+@@ -365,10 +365,27 @@
+ 
+ #ifdef SIGPIPE
+     (void) signal(SIGPIPE, SIG_IGN);
+ #endif /* SIGPIPE */
+ 
++    /*
++     * If SIGCHLD is ignored (inherited from the parent process), terminated
++     * children are reaped automatically and [exec] cannot get their exit
++     * status. Restore the default handling in that case only.
++     */
++
++#ifdef SIGCHLD
++    {
++	struct sigaction sa;
++
++	if (sigaction(SIGCHLD, NULL, &sa) == 0 && !(sa.sa_flags & SA_SIGINFO)
++		&& sa.sa_handler == SIG_IGN) {
++	    (void) signal(SIGCHLD, SIG_DFL);
++	}
++    }
++#endif /* SIGCHLD */
++
+     /*
+      * Ignore SIGXFSZ too, so that writing a file beyond the file size limit
+      * (ulimit -f) fails with an error instead of killing the process.
+      */
+ 
+

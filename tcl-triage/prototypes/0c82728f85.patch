@@ -1,0 +1,56 @@
+Index: generic/tclListObj.c
+==================================================================
+--- generic/tclListObj.c
++++ generic/tclListObj.c
+@@ -1775,10 +1775,17 @@
+     Tcl_Size finalLen;
+ 
+     if (Tcl_IsShared(toObj)) {
+ 	Tcl_Panic("%s called with shared object", "TclListObjAppendElements");
+     }
++
++    if (elemCount > 0 && TclObjTypeHasProc(toObj, replaceProc)
++	    && TclObjTypeHasProc(toObj, lengthProc)) {
++	/* Abstract list with its own replace: let it keep its type. */
++	return TclObjTypeReplace(interp, toObj, TclObjTypeLength(toObj),
++		0, elemCount, elemObjv);
++    }
+ 
+     if (TclListObjGetRep(interp, toObj, &listRep) != TCL_OK) {
+ 	/* Cannot be converted to a list */
+ 	return TCL_ERROR;
+     }
+
+Index: tests/abstractlist.test
+==================================================================
+--- tests/abstractlist.test
++++ tests/abstractlist.test
+@@ -597,10 +597,27 @@
+     lappend res y-[lrange [tcl::unsupported::representation $y] 0 3]
+ 
+ } -cleanup {
+     unset res
+ } -result {{x-value is a arithseries} {y-value is a lgenseries} {0 -> 0} {1 -> 6} {2 -> 12} {3 -> 18} {4 -> 24} {5 -> 30} {6 -> 36} {7 -> 42} {8 -> 48} {9 -> 54} {10 -> 60} {11 -> 66} {12 -> 72} {13 -> 78} {14 -> 84} {15 -> 90} {16 -> 96} {x-value is a arithseries} {y-value is a lgenseries}}
++
++test abstractlist-bug-0c82728f85 {no shimmer appending to lstring} -constraints {testobj lstring} -setup {
++    proc appendCompiled {} {
++	set res {}
++	set b [lstring abc]; lappend b z
++	lappend res [testobj objtype $b] $b
++	set b [lstring abc]; lappend b y z
++	lappend res [testobj objtype $b] $b
++	set li linsert
++	set b [lstring abc]; set c [$li $b end z]
++	lappend res [testobj objtype $c] $c
++    }
++} -body {
++    appendCompiled
++} -cleanup {
++    rename appendCompiled {}
++} -result {lstring {a b c z} lstring {a b c y z} lstring {a b c z}}
+ 
+ # scalar values
+ test abstractlist-int {TclLengthOne: anti-shimmer of boolean, int, double, bignum} testobj {
+     set res {}
+     foreach i [list [expr {1+0}] [expr {true}] [expr {3.141592}] [expr {round(double(0x7fffffffffffffff))}]] {
+

@@ -1,0 +1,78 @@
+Index: library/tcltest/tcltest.tcl
+==================================================================
+--- library/tcltest/tcltest.tcl
++++ library/tcltest/tcltest.tcl
+@@ -399,10 +399,16 @@
+ 	    stderr -
+ 	    stdout {
+ 		set outputChannel $filename
+ 	    }
+ 	    default {
++		if {$filename in [chan names]} {
++		    # An already open channel, e.g. a reflected channel or a
++		    # socket [Bug 1528500].
++		    set outputChannel $filename
++		    return $outputChannel
++		}
+ 		set outputChannel [open $filename a]
+ 		if {$fullutf} {
+ 		    fconfigure $outputChannel -profile tcl8 -encoding utf-8
+ 		}
+ 		set ChannelsWeOpened($outputChannel) 1
+@@ -447,10 +453,16 @@
+ 	    stderr -
+ 	    stdout {
+ 		set errorChannel $filename
+ 	    }
+ 	    default {
++		if {$filename in [chan names]} {
++		    # An already open channel, e.g. a reflected channel or a
++		    # socket [Bug 1528500].
++		    set errorChannel $filename
++		    return $errorChannel
++		}
+ 		set errorChannel [open $filename a]
+ 		if {$fullutf} {
+ 		    fconfigure $errorChannel -profile tcl8 -encoding utf-8
+ 		}
+ 		set ChannelsWeOpened($errorChannel) 1
+
+Index: tests/tcltest.test
+==================================================================
+--- tests/tcltest.test
++++ tests/tcltest.test
+@@ -438,10 +438,33 @@
+     -result {stdout}
+     -cleanup {
+ 	set ::tcltest::outputChannel $of
+     }
+ }
++
++test tcltest-6.7.1 {tcltest::outputChannel, errorChannel - open channel, bug 1528500} {
++    -setup {
++	set of [outputChannel]
++	set ef [errorChannel]
++	set ::tcltest::outputChannel stdout
++	set ::tcltest::errorChannel stderr
++	set f [file tempfile]
++	set pwdFiles [glob -nocomplain -tails -directory [pwd] *]
++    }
++    -body {
++	list [expr {[outputChannel $f] eq $f}] [expr {[outputChannel] eq $f}] \
++	    [expr {[errorChannel $f] eq $f}] [expr {[errorChannel] eq $f}] \
++	    [file exists [file join [pwd] $f]] \
++	    [expr {[glob -nocomplain -tails -directory [pwd] *] eq $pwdFiles}]
++    }
++    -result {1 1 1 1 0 1}
++    -cleanup {
++	set ::tcltest::outputChannel $of
++	set ::tcltest::errorChannel $ef
++	close $f
++    }
++}
+ 
+ test tcltest-6.8 {tcltest::outputFile (implicit outputFile)} {
+     -setup {
+ 	set ef [makeFile {} efile]
+ 	set of [outputFile]
+

@@ -1,0 +1,29 @@
+Index: doc/info.n
+==================================================================
+--- doc/info.n
++++ doc/info.n
+@@ -266,16 +266,19 @@
+ .RE
+ .\" METHOD: level
+ .TP
+ \fBinfo level\fR ?\fIlevel\fR?
+ .
+-If \fInumber\fR is not given, the level this routine was called from.
++If \fIlevel\fR is not given, the level this routine was called from.
+ Otherwise returns the complete command active at the given level.  If
+-\fInumber\fR is greater than \fB0\fR, it is the desired level.  Otherwise, it
+-is \fInumber\fR levels up from the current level.  A complete command is the
++\fIlevel\fR is greater than \fB0\fR, it is the desired level.  Otherwise, it
++is \fIlevel\fR levels up from the current level.  A complete command is the
+ words in the command, with all substitutions performed, meaning that it is a
+-list.  See \fBuplevel\fR for more information on levels.
++list.  Only the procedure call frames of the current interpreter are counted:
++when a command is invoked through an alias from another interpreter, the
++callers in that interpreter are not visible.
++See \fBuplevel\fR for more information on levels.
+ .\" METHOD: library
+ .TP
+ \fBinfo library\fR
+ .
+ Returns the value of \fBtcl_library\fR, which is the name of the library
+

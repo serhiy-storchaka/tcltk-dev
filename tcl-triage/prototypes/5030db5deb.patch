@@ -1,0 +1,49 @@
+Index: generic/tclZipfs.c
+==================================================================
+--- generic/tclZipfs.c
++++ generic/tclZipfs.c
+@@ -6420,11 +6420,14 @@
+ 	"    }\n"
+ 	"    foreach file [::list {*}$normal {*}$hidden] {\n"
+ 	"        if {[file tail $file] in {. ..}} {\n"
+ 	"            continue\n"
+ 	"        }\n"
+-	"        lappend result $file {*}[Find $file]\n"
++	"        lappend result $file\n"
++	"        if {![catch {file type $file} type] && $type ne \"link\"} {\n"
++	"            lappend result {*}[Find $file]\n"
++	"        }\n"
+ 	"    }\n"
+ 	"    return $result\n"
+ 	"}\n"
+ 	"proc ::tcl::zipfs::find {directoryName} {\n"
+ 	"    return [lsort [Find $directoryName]]\n"
+
+Index: tests/zipfs.test
+==================================================================
+--- tests/zipfs.test
++++ tests/zipfs.test
+@@ -864,10 +864,22 @@
+     } -body {
+ 	cd [file dirname $dir]
+ 	# string equal [zipfs find [file tail $subdir]] [list subdir subdir/native]
+ 	zipfs find [file tail $dir]
+     } -result {zipfs-native-relative/subdir zipfs-native-relative/subdir/native}
++
++    test zipfs-find-native-links "zipfs find does not follow links, bug 5030db5deb" -setup {
++	set dir [makeDirectory zipfs-native-links]
++	file mkdir [file join $dir a] [file join $dir b]
++	close [open [file join $dir a f] w]
++	file link -symbolic [file join $dir a l] ../b
++	file link -symbolic [file join $dir b l] ../a
++    } -cleanup {
++	removeDirectory zipfs-native-links
++    } -constraints unix -body {
++	lmap f [zipfs find $dir] {string range $f [string length $dir/] end}
++    } -result {a a/f a/l b b/l}
+ 
+     #
+     # zipfs info
+     testnumargs "zipfs info" "filename" ""
+ 
+

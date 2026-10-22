@@ -1,0 +1,58 @@
+Index: library/http/http.tcl
+==================================================================
+--- library/http/http.tcl
++++ library/http/http.tcl
+@@ -5422,11 +5422,19 @@
+     CoLog "got $varName for $coroName"
+     set cmd [list ::http::cwaiter::CwaitHelper $varName $coroName $toe]
+     trace remove variable $varName write $cmd
+     after cancel $toe
+ 
+-    after 0 $coroName
++    # The coroutine may have been deleted meanwhile (e.g. by http::reset).
++    after 0 [list ::http::cwaiter::CwaitResume $coroName]
++    return
++}
++
++proc http::cwaiter::CwaitResume {coroName} {
++    if {[info commands $coroName] ne {}} {
++	$coroName
++    }
+     return
+ }
+ 
+ # ------------------------------------------------------------------------------
+ #  Proc http::cwaiter::LogInit
+
+Index: tests/http.test
+==================================================================
+--- tests/http.test
++++ tests/http.test
+@@ -608,10 +608,26 @@
+     http::reset $token
+     http::status $token
+ } -cleanup {
+     catch {http::cleanup $token}
+ } -result {reset}
++
++test http-4.11.1.$ThreadLevel {http::reset while waiting for socket thread} -setup {
++    set oldbgerror [interp bgerror {}]
++    set ::bgerrors {}
++    interp bgerror {} {apply {{msg opts} {lappend ::bgerrors $msg}}}
++} -body {
++    set token [http::geturl $url -keepalive 0 -command \#]
++    after idle [list http::reset $token]
++    after 500 {set ::done 1}
++    vwait ::done
++    list [http::status $token] $::bgerrors
++} -cleanup {
++    catch {http::cleanup $token}
++    interp bgerror {} $oldbgerror
++    unset -nocomplain token oldbgerror ::bgerrors ::done
++} -result {reset {}}
+ 
+ #	Longer timeout with reset.
+ test http-4.12.$ThreadLevel {http::Event} -body {
+     set token [http::geturl $url/?timeout=10 -keepalive 0 -command \#]
+     http::reset $token
+

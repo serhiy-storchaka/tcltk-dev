@@ -1,0 +1,24 @@
+Index: unix/tclUnixFCmd.c
+==================================================================
+--- unix/tclUnixFCmd.c
++++ unix/tclUnixFCmd.c
+@@ -1296,11 +1296,17 @@
+      * isn't currently handled. It would require another lstat(), or getuid().
+      */
+ 
+     if (chmod(dst, newMode)) {				/* INTL: Native. */
+ 	newMode &= ~(S_ISUID | S_ISGID);
+-	if (chmod(dst, newMode)) {			/* INTL: Native. */
++	if (chmod(dst, newMode) && (errno != EPERM)) {	/* INTL: Native. */
++	    /*
++	     * EPERM on a file we have just created means that the
++	     * filesystem (e.g. VFAT) cannot store these permissions; keep
++	     * the copy rather than failing. [Bug 1523045]
++	     */
++
+ 	    return TCL_ERROR;
+ 	}
+     }
+ 
+     tval.actime = Tcl_GetAccessTimeFromStat(statBufPtr);
+

@@ -1,0 +1,25 @@
+Index: doc/Object.3
+==================================================================
+--- doc/Object.3
++++ doc/Object.3
+@@ -217,10 +217,19 @@
+ must check for invalid representations
+ and mark representations invalid when necessary.
+ The procedure \fBTcl_InvalidateStringRep\fR is used
+ to mark a value's string representation invalid and to
+ free any storage associated with the old string representation.
++It must only be called on an unshared value (see \fBTcl_IsShared\fR),
++normally one that is about to be modified.
++Other holders of a shared value, such as the literal table or a variable,
++may keep pointers to its string representation, and they rely on it
++staying exactly as it is: a regenerated string representation is not
++guaranteed to be identical.
++A value that has a string representation must therefore keep it unchanged
++for as long as the value is shared, even when the string could be
++regenerated from the internal representation.
+ .PP
+ Values usually remain one type over their life,
+ but occasionally a value must be converted from one type to another.
+ For example, a C program might build up a string in a value
+ with repeated calls to \fBTcl_AppendToObj\fR,
+

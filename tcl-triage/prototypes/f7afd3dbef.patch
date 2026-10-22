@@ -1,0 +1,53 @@
+Index: generic/tclBasic.c
+==================================================================
+--- generic/tclBasic.c
++++ generic/tclBasic.c
+@@ -4907,11 +4907,20 @@
+     Namespace *currNsPtr = NULL;/* Used to check for and invoke any registered
+ 				 * unknown command handler for the current
+ 				 * namespace (TIP 181). */
+     Namespace *savedNsPtr = NULL;
+ 
+-    currNsPtr = varFramePtr->nsPtr;
++    /*
++     * Prefer the handler of the namespace the command was looked up in, if
++     * that was given explicitly (e.g. by [tailcall], [Bug f7afd3dbef]).
++     */
++
++    if ((lookupNsPtr != NULL) && (lookupNsPtr->unknownHandlerPtr != NULL)) {
++	currNsPtr = lookupNsPtr;
++    } else {
++	currNsPtr = varFramePtr->nsPtr;
++    }
+     if ((currNsPtr == NULL) || (currNsPtr->unknownHandlerPtr == NULL)) {
+ 	currNsPtr = iPtr->globalNsPtr;
+ 	if (currNsPtr == NULL) {
+ 	    Tcl_Panic("TEOV_NotFound: NULL global namespace pointer");
+ 	}
+
+Index: tests/tailcall.test
+==================================================================
+--- tests/tailcall.test
++++ tests/tailcall.test
+@@ -811,10 +811,20 @@
+ } -body {
+     testcmdinfo call child apply {{} {tailcall list x}}
+ } -cleanup {
+     interp delete child
+ } -result x
++test tailcall-bug-f7afd3dbef {tailcall uses the namespace unknown handler} -setup {
++    namespace eval ns1 {
++	proc u1 args {list unknown {*}$args}
++	namespace unknown u1
++    }
++} -body {
++    apply {{} {tailcall nosuchroutine a b} ns1}
++} -cleanup {
++    namespace delete ns1
++} -result {unknown nosuchroutine a b}
+ 
+ # cleanup
+ ::tcltest::cleanupTests
+ 
+ # Local Variables:
+

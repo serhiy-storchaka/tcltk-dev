@@ -1,0 +1,40 @@
+Index: library/msgs/he.msg
+==================================================================
+--- library/msgs/he.msg
++++ library/msgs/he.msg
+@@ -42,11 +42,11 @@
+         "ספטמבר"\
+         "אוקטובר"\
+         "נובמבר"\
+         "דצמבר"\
+         ""]
+-    ::msgcat::mcset he BCE "לסה"נ"
+-    ::msgcat::mcset he CE "לפסה"נ"
++    ::msgcat::mcset he BCE "לסה\"נ"
++    ::msgcat::mcset he CE "לפסה\"נ"
+     ::msgcat::mcset he DATE_FORMAT "%d/%m/%Y"
+     ::msgcat::mcset he TIME_FORMAT "%H:%M:%S"
+     ::msgcat::mcset he DATE_TIME_FORMAT "%d/%m/%Y %H:%M:%S %z"
+ }
+
+Index: tests/clock.test
+==================================================================
+--- tests/clock.test
++++ tests/clock.test
+@@ -38886,10 +38886,15 @@
+ 	[clock format 1993186799 -timezone {EST5EDT,J59,J300} \
+ 	     -format {%Y-%m-%d %H:%M:%S %z %Z}] \
+ 	[clock format 1993186800 -timezone {EST5EDT,J59,J300} \
+ 	     -format {%Y-%m-%d %H:%M:%S %z %Z}]
+ } {{2032-02-28 01:59:59 -0500 EST} {2032-02-28 03:00:00 -0400 EDT} {2033-02-28 01:59:59 -0500 EST} {2033-02-28 03:00:00 -0400 EDT}}
++
++test clock-71.2 {era names of the he locale contain a quote [Bug 3016135]} -body {
++    list [clock format 0 -gmt 1 -locale he -format %EE] \
++	[clock format -62200000000 -gmt 1 -locale he -format %EE]
++} -result [list "\u05dc\u05e4\u05e1\u05d4\"\u05e0" "\u05dc\u05e1\u05d4\"\u05e0"]
+ 
+ # cleanup
+ 
+ rename test {}
+ namespace import -force ::tcltest::*
+

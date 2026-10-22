@@ -1,0 +1,63 @@
+Index: generic/tclTimer.c
+==================================================================
+--- generic/tclTimer.c
++++ generic/tclTimer.c
+@@ -871,15 +871,26 @@
+ 	 */
+ 
+ 	afterPtr->id = tsdPtr->afterId;
+ 	tsdPtr->afterId += 1;
+ 	Tcl_GetTime(&wakeup);
+-	wakeup.sec += (long)(ms / 1000);
+-	wakeup.usec += ((long)(ms % 1000)) * 1000;
+-	if (wakeup.usec > 1000000) {
+-	    wakeup.sec++;
+-	    wakeup.usec -= 1000000;
++	if (ms / 1000 >= (Tcl_WideInt) (LONG_MAX - wakeup.sec)) {
++	    /*
++	     * Clamp a wakeup time that does not fit in Tcl_Time.sec (32-bit
++	     * long), otherwise it wraps around and blocks all later timers.
++	     * [Bug 96c3f3b47d]
++	     */
++
++	    wakeup.sec = LONG_MAX;
++	    wakeup.usec = 0;
++	} else {
++	    wakeup.sec += (long)(ms / 1000);
++	    wakeup.usec += ((long)(ms % 1000)) * 1000;
++	    if (wakeup.usec > 1000000) {
++		wakeup.sec++;
++		wakeup.usec -= 1000000;
++	    }
+ 	}
+ 	afterPtr->token = TclCreateAbsoluteTimerHandler(&wakeup,
+ 		AfterProc, afterPtr);
+ 	afterPtr->nextPtr = assocPtr->firstAfterPtr;
+ 	assocPtr->firstAfterPtr = afterPtr;
+
+Index: tests/timer.test
+==================================================================
+--- tests/timer.test
++++ tests/timer.test
+@@ -593,10 +593,20 @@
+     after 100 {lappend l 100; set done 1}
+     after -1 {lappend l -1}
+     vwait done
+     return $l
+ } -result {-1 100}
++test timer-11.3 {Bug 96c3f3b47d: [after] overflowing 32-bit Tcl_Time.sec} -body {
++    set b {}
++    set a [after 665544332211 {lappend b "far timer fired"}]
++    after 0 {lappend b ok}
++    after 100 set done 1
++    vwait done
++    return $b
++} -cleanup {
++    catch {after cancel $a}
++} -result ok
+ 
+ # cleanup
+ ::tcltest::cleanupTests
+ return
+ 
+

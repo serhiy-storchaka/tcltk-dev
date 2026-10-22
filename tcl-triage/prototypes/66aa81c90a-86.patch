@@ -1,0 +1,38 @@
+Index: win/tclWinLoad.c
+==================================================================
+--- win/tclWinLoad.c
++++ win/tclWinLoad.c
+@@ -66,7 +66,7 @@
+     HINSTANCE hInstance = NULL;
+     const WCHAR *nativeName;
+     Tcl_LoadHandle handlePtr;
+-    DWORD firstError;
++    DWORD firstError, secondError = ERROR_MOD_NOT_FOUND;
+     (void)flags;
+ 
+     /*
+@@ -99,6 +99,15 @@
+ 	nativeName = (WCHAR *)Tcl_WinUtfToTChar(Tcl_GetString(pathPtr), -1, &ds);
+ 	hInstance = LoadLibraryExW(nativeName, NULL,
+ 		LOAD_WITH_ALTERED_SEARCH_PATH);
++
++	/*
++	 * Get the error before Tcl_DStringFree: freeing memory may reset the
++	 * thread's last error (e.g. TlsGetValue clears it). [Bug 66aa81c90a]
++	 */
++
++	if (hInstance == NULL) {
++	    secondError = GetLastError();
++	}
+ 	Tcl_DStringFree(&ds);
+     }
+ 
+@@ -113,7 +122,7 @@
+ 	 */
+ 	if (firstError == ERROR_MOD_NOT_FOUND ||
+ 		firstError == ERROR_DLL_NOT_FOUND) {
+-	    lastError = GetLastError();
++	    lastError = secondError;
+ 	} else {
+ 	    lastError = firstError;
+ 	}

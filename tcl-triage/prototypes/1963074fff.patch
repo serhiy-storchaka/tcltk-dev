@@ -1,0 +1,86 @@
+Index: tests/fCmd.test
+==================================================================
+--- tests/fCmd.test
++++ tests/fCmd.test
+@@ -2400,10 +2400,17 @@
+     createfile foo.tmp
+     set attrs [file attributes foo.tmp]
+     file attributes foo.tmp {*}[lrange $attrs 0 3]
+ } -cleanup {
+     file delete -force -- foo.tmp
++} -result {}
++test fCmd-27.7 {TclFileAttrsCmd - setting unchanged owner and group [Bug 1963074]} -constraints {
++    unix notRoot
++} -body {
++    set f [file normalize /]
++    file attributes $f -owner [file attributes $f -owner] \
++	    -group [file attributes $f -group]
+ } -result {}
+ 
+ if {
+     [testConstraint win] &&
+     ($::tcl_platform(osVersion) < 5.0
+
+Index: unix/tclUnixFCmd.c
+==================================================================
+--- unix/tclUnixFCmd.c
++++ unix/tclUnixFCmd.c
+@@ -1488,10 +1488,11 @@
+     Tcl_Obj *attributePtr)	/* New group for file. */
+ {
+     Tcl_WideInt gid;
+     int result;
+     const char *native;
++    Tcl_StatBuf statBuf;
+ 
+     if (TclGetWideIntFromObj(NULL, attributePtr, &gid) != TCL_OK) {
+ 	Tcl_DString ds;
+ 	struct group *groupPtr = NULL;
+ 	const char *string;
+@@ -1520,10 +1521,19 @@
+ 	}
+ 	gid = groupPtr->gr_gid;
+     }
+ 
+     native = (const char *)Tcl_FSGetNativePath(fileName);
++
++    /*
++     * Setting the current group is a no-op. Skip chown(), which may fail
++     * if the user is not a member of that group. [Bug 1963074]
++     */
++
++    if (TclOSstat(native, &statBuf) == 0 && statBuf.st_gid == (gid_t) gid) {
++	return TCL_OK;
++    }
+     result = chown(native, (uid_t) -1, (gid_t) gid);	/* INTL: Native. */
+ 
+     if (result != 0) {
+ 	if (interp != NULL) {
+ 	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+@@ -1559,10 +1569,11 @@
+     Tcl_Obj *attributePtr)	/* New owner for file. */
+ {
+     Tcl_WideInt uid;
+     int result;
+     const char *native;
++    Tcl_StatBuf statBuf;
+ 
+     if (TclGetWideIntFromObj(NULL, attributePtr, &uid) != TCL_OK) {
+ 	Tcl_DString ds;
+ 	struct passwd *pwPtr = NULL;
+ 	const char *string;
+@@ -1591,10 +1602,13 @@
+ 	}
+ 	uid = pwPtr->pw_uid;
+     }
+ 
+     native = (const char *)Tcl_FSGetNativePath(fileName);
++    if (TclOSstat(native, &statBuf) == 0 && statBuf.st_uid == (uid_t) uid) {
++	return TCL_OK;
++    }
+     result = chown(native, (uid_t) uid, (gid_t) -1);	/* INTL: Native. */
+ 
+     if (result != 0) {
+ 	if (interp != NULL) {
+ 	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+

@@ -1,0 +1,56 @@
+Index: generic/tclLoad.c
+==================================================================
+--- generic/tclLoad.c
++++ generic/tclLoad.c
+@@ -896,13 +896,18 @@
+     if (IsStatic(libraryPtr)) {
+ 	goto done;
+     }
+ 
+     /*
+-     * The unload function was called succesfully.
++     * The unload function was called succesfully. With -keeplibrary, keep
++     * this interpreter's reference, so that unloading the library from other
++     * interpreters will not detach it from the process. [Bug 1111134]
+      */
+ 
++    if (keepLibrary) {
++	goto done;
++    }
+     Tcl_MutexLock(&libraryMutex);
+     if (Tcl_IsSafe(target)) {
+ 	libraryPtr->safeInterpRefCount--;
+ 
+ 	/*
+
+Index: tests/unload.test
+==================================================================
+--- tests/unload.test
++++ tests/unload.test
+@@ -295,10 +295,25 @@
+      } \
+     -body {
+ 	list [catch {unload simplefs:/tcl9pkgua$ext} msg] $msg
+     } \
+     -result {0 {}}
++
++test unload-6.1 {unload -keeplibrary keeps the library for other interps, bug 1111134} -setup {
++    interp create child-keep
++    interp create child-other
++    child-other eval {set pkgua_loaded {}; set pkgua_detached {}; set pkgua_unloaded {}}
++} -constraints [list $dll $loaded] -body {
++    load [file join $testDir tcl9pkgua$ext] Pkgua child-keep
++    load [file join $testDir tcl9pkgua$ext] Pkgua child-other
++    unload -keeplibrary [file join $testDir tcl9pkgua$ext] Pkgua child-keep
++    unload [file join $testDir tcl9pkgua$ext] Pkgua child-other
++    child-other eval {list $pkgua_loaded $pkgua_detached $pkgua_unloaded}
++} -cleanup {
++    interp delete child-keep
++    interp delete child-other
++} -result {. . {}}
+ 
+ # cleanup
+ interp delete child
+ interp delete child-trusted
+ unset ext
+

@@ -1,0 +1,57 @@
+Index: tests/winFCmd.test
+==================================================================
+--- tests/winFCmd.test
++++ tests/winFCmd.test
+@@ -1273,19 +1273,31 @@
+     file norm ///bar
+ } -result "${d}:/bar"
+ test winFCmd-16.9 {Windows file normalization} -constraints {win} -body {
+     file norm /bar/foo
+ } -result "${d}:/bar/foo"
++# Find a native volume other than the current one that we can cd to.
++# Do not assume it is C: or D: (bug 9d79d6b2f2).
++set dd {}
++if {[testConstraint win]} {
++    foreach vol [file volumes] {
++	if {[string toupper [string index $vol 0]] ne [string toupper $d]
++		&& [lindex [file system $vol] 0] eq "native"
++		&& ![catch {cd $vol}]} {
++	    set dd [string index $vol 0]
++	    break
++	}
++    }
++    cd $pwd
++}
++testConstraint otherDrive [expr {$dd ne ""}]
++# NB: The per-drive current directory is tracked by cmd.exe in hidden
++# environment variables; it is not available when started from PowerShell.
+ test winFCmd-16.10 {Windows file normalization} -constraints {
+-    win notInCIenv nonPortable
++    win notInCIenv otherDrive
+ } -setup {
+-    apply {d {
+-	# Try to find a native volume that isn't the current one.
+-	# NB: This can still fail; it's a proper wild west out there.
+-	if {$d eq "C"} { set dd "D" } else { set dd "C" }
+-	cd ${dd}:
+-    }} $d
++    cd ${dd}:
+ } -cleanup {
+     cd $pwd
+ } -body {
+     file norm ${d}:foo
+ } -result [file join $pwd foo]
+@@ -1413,11 +1425,11 @@
+ } -cleanup {
+     cd $pwd
+ } -result "permission denied"
+ 
+ cd $pwd
+-unset d pwd
++unset d dd pwd
+ 
+ test winFCmd-18.1 {Windows reserved path names} -constraints win -body {
+     file pathtype com1
+ } -result "absolute"
+ test winFCmd-18.1.2 {Windows reserved path names} -constraints win -body {
+

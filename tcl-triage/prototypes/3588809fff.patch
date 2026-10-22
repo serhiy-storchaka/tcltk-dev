@@ -1,0 +1,21 @@
+Index: doc/namespace.n
+==================================================================
+--- doc/namespace.n
++++ doc/namespace.n
+@@ -323,11 +323,14 @@
+ the global namespace.
+ The \fIscript\fR argument, if given, should be a well
+ formed list representing a command name and optional arguments. When
+ the handler is invoked, the full invocation line will be appended to the
+ script and the result evaluated in the context of the namespace. The
+-default handler for all namespaces is \fB::unknown\fR. If no argument
++default handler for the global namespace is \fB::unknown\fR. Other
++namespaces have no handler of their own by default (an empty \fIscript\fR),
++which means that the handler of the global namespace is used. Setting
++\fIscript\fR to an empty string restores this default. If no argument
+ is given, it returns the handler for the current namespace.
+ .\" METHOD: which
+ .TP
+ \fBnamespace which\fR ?\fB\-command\fR? ?\fB\-variable\fR? \fIname\fR
+ .
+

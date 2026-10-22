@@ -1,0 +1,40 @@
+Index: doc/tailcall.n
+==================================================================
+--- doc/tailcall.n
++++ doc/tailcall.n
+@@ -10,11 +10,11 @@
+ .BS
+ '\" Note:  do not modify the .SH NAME line immediately below!
+ .SH NAME
+ tailcall \- Replace the current procedure with another command
+ .SH SYNOPSIS
+-\fBtailcall \fIcommand\fR ?\fIarg ...\fR?
++\fBtailcall \fR?\fIcommand\fR? ?\fIarg ...\fR?
+ .BE
+ .SH DESCRIPTION
+ .PP
+ The \fBtailcall\fR command replaces the currently executing procedure, lambda
+ application, or method with another command. The \fIcommand\fR, which will
+@@ -24,12 +24,19 @@
+ .PP
+ .CS
+ return [uplevel 1 [list \fIcommand\fR ?\fIarg ...\fR?]]
+ .CE
+ .PP
+-This command may not be invoked from within an \fBuplevel\fR into a procedure
+-or inside a \fBcatch\fR inside a procedure or lambda.
++This command may not be invoked from within an \fBuplevel\fR into a procedure.
++.PP
++\fBtailcall\fR schedules \fIcommand\fR and then completes with the return
++code \fBTCL_RETURN\fR, like \fBreturn\fR. If that code is caught (e.g., by
++\fBcatch\fR or \fBtry\fR) the procedure keeps running, but \fIcommand\fR is
++still invoked in its place when it eventually returns, and the result of
++\fIcommand\fR becomes the result of the procedure. A later \fBtailcall\fR
++replaces a pending one; \fBtailcall\fR without arguments cancels a pending
++tailcall and returns an empty result.
+ '\" TODO: sort out the mess with the [try] command!
+ .SH EXAMPLE
+ .PP
+ Compute the factorial of a number.
+ .PP
+

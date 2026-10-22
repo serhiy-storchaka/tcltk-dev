@@ -1,0 +1,46 @@
+Index: tests/socket.test
+==================================================================
+--- tests/socket.test
++++ tests/socket.test
+@@ -167,18 +167,38 @@
+ 	set name [lindex $args 0]
+ 	puts "[lindex [time {uplevel [linsert $args 0 tcltest::test]}] 0] @@@ $name"
+     }
+ }
+ 
++# Check that a client can connect to a server on the address. Binding alone
++# is not enough: the address may exist on an interface that is down, and
++# then connect() fails or hangs. [Bug 3160902]
++proc canConnect {addr} {
++    if {[catch {socket -server {apply {{c args} {close $c}}} -myaddr $addr 0} s]} {
++	return 0
++    }
++    set ok 0
++    if {![catch {socket -async $addr [lindex [fconfigure $s -sockname] 2]} c]} {
++	fileevent $c writable {set ::connectProbe done}
++	set id [after 2000 {set ::connectProbe timeout}]
++	vwait ::connectProbe
++	after cancel $id
++	set ok [expr {$::connectProbe eq "done" && [fconfigure $c -error] eq ""}]
++	close $c
++    }
++    close $s
++    unset -nocomplain ::connectProbe
++    return $ok
++}
+ foreach {af localhost} [list \
+     inet [tcltests::localIPv4Address] \
+     inet6 [tcltests::localIPv6Address] \
+ ] {
+     # Check if the family is supported and set the constraint accordingly
+-    testConstraint supported_$af [expr {![catch {socket -server foo -myaddr $localhost 0} sock]}]
+-    catch {close $sock}
++    testConstraint supported_$af [canConnect $localhost]
+ }
++rename canConnect {}
+ 
+ set sock [socket -server foo -myaddr [tcltests::localDualStackAddress] 0]
+ set sockname [fconfigure $sock -sockname]
+ close $sock
+ testConstraint localhost_v4 [expr {[tcltests::localIPv4Address] in $sockname}]
+

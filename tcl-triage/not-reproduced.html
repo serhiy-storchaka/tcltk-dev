@@ -1,0 +1,1241 @@
+<title>Tcl Bug Triage: Not reproduced</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Untouched open Tcl bug tickets: Not reproduced</h1>
+  <p class="sub">Triage of 773 open and Pending Bug tickets of Tcl with no comment or check-in from me on 2026-10-16 (in Tcl's workflow Pending means "resolved, waiting for confirmation"). Reproduced on Linux (main 9.1 tip, 9.0 tip, 8.7b1, 8.6 tip, 8.5, 8.4 and old releases), on FreeBSD, NetBSD, OpenBSD and OpenIndiana VMs for platform tickets, and on a Windows 11 VM. Rows marked <span class="patch">patch</span> link to a prototype patch (276 in all, in <a href="https://github.com/serhiy-storchaka/tcltk-dev/tree/main/tcl-triage/prototypes">tcl-triage/prototypes</a>). Updated 2026-10-22: the emoji before each ticket id shows its progress.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">307</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">177</span> Already fixed</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">115</span> Not a bug / RFE</a><a class="navchip c-notrep cur" href="not-reproduced.html" aria-current="page"><span class="n">67</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">63</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">44</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="closed" aria-pressed="false"><span aria-hidden="true">✅</span> <span class="n">5</span> Closed</button><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">62</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, subsystem, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="notrep"><h2><span class="dot c-notrep"></span>Not reproduced <span class="cnt">67</span></h2><details class="t" id="bb9ca2fa95" data-s="bb9ca2fa95 (chan)io-29.26 fails on ubuntu 26.4 25. channel system not-reproduced (main, 9.0, 8.6 on ubuntu 26.04.1 locally)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>bb9ca2fa95</span><span class="yr">2026</span><span class="ti">(chan)io-29.26 fails on Ubuntu 26.4</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6 on Ubuntu 26.04.1 locally)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/bb9ca2fa95">Open ticket bb9ca2fa95</a> · 25. Channel System · filed 2026-08-25</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6 on Ubuntu 26.04.1 locally)</p><ul>
+<li><span class="k">Platform</span> unix (CI only)
+</li>
+<li><span class="k">Tested</span> io-29.26 with <code>-constraints notInCIenv</code> on own main build; the test body in a loop (300 iterations, 8 in parallel, with stdin/stdout/stderr closed) on main, 9.0.5, 8.6.18. Local <code>cat</code> is uutils 0.10.0 (rust-coreutils 0.10.0-1ubuntu2~26.04.1), which uses splice(); no SIGPIPE in any run.
+</li>
+<li><span class="k">Cause</span> unknown. The child <code>cat</code> gets SIGPIPE, so it writes after Tcl closed the read end. That points at the cat on the GitHub runner image (maybe an older uutils), not at Tcl.
+</li>
+<li><span class="k">Prototype</span> none (not reproducible here; the test is already skipped in CI with notInCIenv)
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce on Ubuntu 26.04.1 with uutils cat 0.10.0 (300 runs, also in parallel and with closed std channels) on main, 9.0 and 8.6. The CI runner's cat may behave differently; the notInCIenv constraint looks sufficient, or the test could use <code>gnucat</code> / a tclsh child when available.
+</li></ul></div></details><details class="t" id="c057378986" data-s="c057378986 exec-19.1 test failure on ubuntu (wsl) - new builtin commands not-reproduced (main, 9.0, 8.6 on native linux; 30/30 runs give 26, even with 30 copies in parallel). test bug, not a tcl bug" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>c057378986</span><span class="yr">2026</span><span class="ti">exec-19.1 test failure on Ubuntu (WSL)</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/c057378986.patch">patch</a><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6 on native Linux; 30/30 runs give 26, even with 30 copies in parallel). Test bug, not a Tcl bug</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/c057378986">Open ticket c057378986</a> · - New Builtin Commands · filed 2026-06-13</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6 on native Linux; 30/30 runs give 26, even with 30 copies in parallel). Test bug, not a Tcl bug</p><ul>
+<li><span class="k">Platform</span> unix (WSL)
+</li>
+<li><span class="k">Tested</span> standalone copy of the test, 10 runs each on main (own build), 9.0.5, 8.6.18 at the same time; strace on main
+</li>
+<li><span class="k">Cause</span> Tcl does its part. strace shows all four <code>&gt;&gt;</code>/<code>2&gt;&gt;</code> redirections opened with O_WRONLY|O_CREAT|O_APPEND (generic/tclPipe.c). The test reads the file size after a fixed <code>after 5000</code>, and 4 children that each run 3 × <code>sleep 1</code> finish late when process creation is slow (WSL on an NTFS mount, macOS). If one child starts 2.5 s late, the old test gives 24, which is the macOS result in <a class="h" href="https://core.tcl-lang.org/tcl/info/538ba1e615">538ba1e615</a>. I could not check whether drvfs/NTFS appends are really atomic; that needs WSL.
+</li>
+<li><span class="k">Prototype</span> prototypes/c057378986.patch (13 changed lines, test exec-19.1 itself): poll until the file reaches 26 bytes or 30 s pass, then wait another 0.5 s. The test now passes in ~4 s instead of 5 s, and passes with the 2.5 s delayed start. exec.test passes.
+</li>
+<li><span class="k">Suggested ticket comment</span> Tcl does open the file with O_APPEND (checked with strace). The test reads the size after a fixed 5 s, which is too short when process startup is slow. Proposed fix: make exec-19.1 wait until the output arrives (30 s timeout) instead of a fixed <code>after 5000</code>. If it still fails on WSL with that change, then appends to the NTFS mount are really being lost.
+</li></ul></div></details><details class="t" id="081338a2de" data-s="081338a2de tcl_setassocdata with tcl_interpdeleteproc segfaults on exit 41. memory allocation not-reproduced (main, 9.0.5, 8.6.18); no reporter script, needs info" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>081338a2de</span><span class="yr">2024</span><span class="ti">Tcl_SetAssocData with Tcl_InterpDeleteProc segfaults on exit</span><span class="vd">NOT-REPRODUCED (main, 9.0.5, 8.6.18); no reporter script, needs info</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/081338a2de">Open ticket 081338a2de</a> · 41. Memory Allocation · filed 2024-10-22</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0.5, 8.6.18); no reporter script, needs info</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> loadable extension (work-a6/assoc/assoc.c) setting assoc data with a delProc that frees data and calls Tcl_GetAssocData / Tcl_DeleteAssocData, loaded into main and child interps, then <code>interp delete</code> + <code>exit</code> (also TCL_FINALIZE_ON_EXIT=1), under valgrind: clean on all three. Embedding program (emb.c) doing Tcl_DeleteInterp+Tcl_Finalize: clean. Tcl_Finalize before Tcl_DeleteInterp, or Tcl_Release after Tcl_Finalize, panics, but in 8.6 as well (API misuse; 9.x shows SIGILL because its panic uses a trap where 8.6 calls abort).
+</li>
+<li><span class="k">Cause</span> unknown. The double free from <a class="h" href="https://core.tcl-lang.org/tcl/info/34870ab575">34870ab575</a> (Tcl_DeleteAssocData inside a delProc) was fixed before 9.0.0 (0aedd271b2, 2024-05-30), so it is not the cause for 9.0.1.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce on 9.0.5 or main: delProcs registered with Tcl_SetAssocData run cleanly (valgrind) on <code>interp delete</code>, on <code>exit</code> and with Tcl_DeleteInterp+Tcl_Finalize in an embedding app. Calling Tcl_DeleteInterp or Tcl_Release after Tcl_Finalize panics, but 8.6 does too. Can you post a minimal program and a backtrace? Otherwise we propose to close this.
+</li></ul></div></details><details class="t" id="718de2132f" data-s="718de2132f review use of strip on the stubs library 53. configuration and build tools not-reproduced (main, 8.6 on freebsd 15.1 with base llvm-strip 19.1.7; linux llvm 21 earlier)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>718de2132f</span><span class="yr">2023</span><span class="ti">review use of strip on the stubs library</span><span class="vd">NOT-REPRODUCED (main, 8.6 on FreeBSD 15.1 with base llvm-strip 19.1.7; Linux LLVM 21 earlier)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/718de2132f">Open ticket 718de2132f</a> · 53. Configuration and Build Tools · filed 2023-04-13</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 8.6 on FreeBSD 15.1 with base llvm-strip 19.1.7; Linux LLVM 21 earlier)</p><ul>
+<li><span class="k">Platform</span> build (FreeBSD/LLVM toolchain)
+</li>
+<li><span class="k">Tested</span> stub objects of main (tclStubLib, tclStubLibTbl, tclTomMathStubLib, tclOOStubLib) compiled with clang 21 -O2 -fPIC (they do contain 7 <code>.L</code> local symbols referenced by relocations), archived with llvm-ar-21; <code>llvm-strip-21 -x</code>, <code>llvm-strip-21 --strip-unneeded</code> and GNU <code>strip -x</code> all succeed, and llvm-strip -x keeps the referenced <code>.L</code> symbols. So current LLVM no longer errors out; the failure was LLVM 15 on FreeBSD 14 (2023). Main still has <code>INSTALL_STRIP_LIBRARY = strip -x</code> (unix/Makefile.in:154); the <code>--strip-unneeded</code> change was reverted (82baf7827f).
+</li>
+<li><span class="k">Cause</span> (was) older llvm-strip refusing to strip symbols referenced by relocations with -x.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> With LLVM 21 <code>llvm-strip -x</code> on libtclstub.a works and keeps the relocation-referenced .L symbols, so this looks like an old llvm-strip issue. To confirm on FreeBSD: <code>make install-strip</code> with the base llvm-strip; if it passes, this can be closed.
+</li>
+<li><span class="k">To run on the FreeBSD VM</span> build main with clang, <code>make install-strip INSTALL_ROOT=/tmp/x</code> and check it gets past installing libtclstub.a.
+</li></ul><div class="winrun"><div class="lab">Unix VMs, run 1</div><ul>
+<li><span class="k">Platform</span> build (FreeBSD/LLVM toolchain)
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 8.6 on FreeBSD 15.1 with base llvm-strip 19.1.7; Linux LLVM 21 earlier)
+</li>
+<li><span class="k">Tested</span> FreeBSD 15.1-RELEASE-p1 amd64, clang 19.1.7, /usr/bin/strip = llvm-strip 19.1.7 ("compatible with GNU strip"). <code>make install-strip INSTALL_ROOT=/tmp/...</code> succeeds on main and core-8-6-branch (both <code>--enable-symbols</code> and a default -O2 build); <code>strip -x libtclstub.a</code> exits 0 and keeps the relocation-referenced <code>.L</code> symbols (tclStubLib.o has 8 <code>.L</code> relocations on main, 5 on 8.6).
+</li>
+<li><span class="k">Cause</span> (was) llvm-strip 15 refusing <code>-x</code> on local symbols referenced by relocations; newer llvm-strip keeps them like GNU strip.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> On FreeBSD 15.1 with the base llvm-strip 19.1.7, <code>make install-strip</code> works on main and core-8-6-branch, and <code>strip -x</code> keeps the .L symbols referenced by relocations. So this was an llvm-strip 15 issue; suggest closing.
+</li></ul></div></div></details><details class="t" id="8798610883" data-s="8798610883 tclisinfinite(nan) returns true for msvc 52. portability support not-reproduced at script level (8.6.18 msvc 2022: all four nan/bignum comparisons give 0; 9.0/main also 0). the macro is still wrong in 8.6 generic/tclint.h, but it is not reachable from scripts" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>8798610883</span><span class="yr">2023</span><span class="ti">TclIsInfinite(NaN) returns true for MSVC</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/8798610883.patch">patch</a><span class="vd">NOT-REPRODUCED at script level (8.6.18 MSVC 2022: all four NaN/bignum comparisons give 0; 9.0/main also 0). The macro is still wrong in 8.6 generic…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/8798610883">Open ticket 8798610883</a> · 52. Portability Support · filed 2023-04-08</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED at script level (8.6.18 MSVC 2022: all four NaN/bignum comparisons give 0; 9.0/main also 0). The macro is still wrong in 8.6 generic/tclInt.h, but it is not reachable from scripts</p><ul>
+<li><span class="k">Platform</span> Windows (MSVC builds of 8.6 only)
+</li>
+<li><span class="k">Tested</span> code reading of 8.6/9.0/main tclInt.h; Linux 8.6.18/9.0.5 give the correct result for the repro; prototype test on 8.6 tip (Linux)
+</li>
+<li><span class="k">Cause</span> 8.6 generic/tclInt.h defines TclIsInfinite(d) as <code>!_finite(d)</code> for _MSC_VER, which is true for NaN. Of the call sites, only TclCompareTwoNumbers (double vs bignum, both directions) lets a NaN through, so <code>$nan &lt; 2<strong>70</code> and <code>2</strong>70 &gt; $nan</code> should return 1 on MSVC instead of 0. Other sites check TclIsNaN first or reject NaN earlier.
+</li>
+<li><span class="k">Prototype</span> prototypes/8798610883.patch (core-8-6-branch, 8 changed lines, test expr-bug-<a class="h" href="#8798610883">8798610883</a>); windows repro win/8798610883.tcl
+</li>
+<li><span class="k">Suggested ticket comment</span> In 8.6 only, <code>!_finite()</code> is true for NaN, so MSVC builds compare NaN with a bignum as ordered (TclCompareTwoNumbers). Proposed fix: add <code>&amp;&amp; !_isnan(d)</code> to the MSVC TclIsInfinite, with test expr-bug-<a class="h" href="#8798610883">8798610883</a>. 9.0 uses isinf() and is not affected.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Platform</span> Windows (MSVC builds of 8.6)
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED at script level (8.6.18 MSVC 2022: all four NaN/bignum comparisons give 0; 9.0/main also 0). The macro is still wrong in 8.6 generic/tclInt.h, but it is not reachable from scripts
+</li>
+<li><span class="k">Tested</span> VM 9.1b1, 9.0.5, 8.6.18 with win/8798610883.tcl; code reading of 8.6
+</li>
+<li><span class="k">Cause</span> the Linux analysis was wrong about the comparison path: in 8.6 TEBC (tclExecute.c ~6152) NaN operands of comparisons are handled before CompareTwoNumbers, so the NaN case never reaches TclIsInfinite there. The other call sites check TclIsNaN first or require d &gt;= 0. The only place left is the public Tcl_InitBignumFromDouble(NaN), where MSVC returns "integer value too large to represent" (arguably better than what the non-MSVC path does).
+</li>
+<li><span class="k">Prototype</span> prototypes/8798610883.patch is still a correct cleanup, but its test expr-bug-<a class="h" href="#8798610883">8798610883</a> passes without the fix on Windows, so it does not cover anything; drop the test or keep the one-line header fix only
+</li>
+<li><span class="k">Suggested ticket comment</span> In 8.6 the MSVC TclIsInfinite() is still true for NaN, but no script-level path reaches it with a NaN (comparisons handle NaN first), so there is no visible bug; 9.0 uses isinf(). The macro could be fixed with <code>&amp;&amp; !_isnan(d)</code> for cleanliness, or the ticket closed.
+</li></ul></div></div></details><details class="t" id="1f1b168626" data-s="1f1b168626 tcl 9 stringobj.3 - lengthptr not documented 69. other not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1f1b168626</span><span class="yr">2023</span><span class="ti">Tcl 9 StringObj.3 - lengthPtr not documented</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1f1b168626">Open ticket 1f1b168626</a> · 69. Other · filed 2023-01-27</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> rendered doc/StringObj.3 with <code>man -l</code> (run in doc/, so <code>.so man.macros</code> resolves) for main, the 9.0.0 tag and the 2023-01-27 revision 4fb77727c5. All show <code>Tcl_Size | int *lengthPtr (out)</code> (<code>size_t | int</code> in 2023) with its description. The source has always had <code>.AP ... *lengthPtr out</code>. The reporter's "missing name" came from their older man/groff (man 2.9.4).
+</li>
+<li><span class="k">Cause</span> n/a (renderer). Unrelated typo found nearby: the synopsis in main doc/StringObj.3:86 has <code>\fBTcl_IsEmpty\fR(\fIfIobjPtr\fR)</code>, which should be <code>\fIobjPtr</code>.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> lengthPtr is documented (<code>.AP "Tcl_Size \&amp;| int" *lengthPtr out</code>), and current groff renders it with the name. The missing name was a rendering problem in the old man version. Closing. (Separately, the Tcl_IsEmpty synopsis line has a stray "fI".)
+</li></ul></div></details><details class="t" id="a35d210bfc" data-s="a35d210bfc exec:ed process killed with parent 16. commands a-h not-reproduced (main, 9.0, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>a35d210bfc</span><span class="yr">2022</span><span class="ti">exec:ed process killed with parent</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/a35d210bfc">Open ticket a35d210bfc</a> · 16. Commands A-H · filed 2022-11-30</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> Linux 9.0.5 and 8.6.18 with win/a35d210bfc.tcl. It builds a chain of 4 generations, each doing <code>exec [info nameofexecutable] ... &amp;</code> and then exiting, and the last one must still be alive 3 s later. Both the tclsh and the Tk variant pass. (The Tk variant ran with withdrawn windows on the inherited DISPLAY=:0 rather than Xvfb, by mistake.)
+</li>
+<li><span class="k">Cause</span> unknown. On Windows, look at win/tclWinPipe.c:TclpCreateProcess (creation flags and console handling when the parent is a GUI/no-console process: the second generation is a wish started from wish).
+</li>
+<li><span class="k">Prototype</span> none (Windows-only)
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Linux. Repro for Windows (tclsh and Tk variants, prints a verdict line): win/a35d210bfc.tcl. Run it with both tclsh and wish from 9.0 and 8.6.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 3</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 9.0, 8.6)
+</li>
+<li><span class="k">Tested</span> VM, console: win/a35d210bfc.tcl tclsh variant (4 generations of <code>exec ... &amp;</code> then exit, the last must be alive 3 s later) OK on 9.1b1, 9.0.5, 8.6.18. Interactive session (scheduled task, wish started hidden by wscript, all windows withdrawn; work-win3/a35w.tcl): chains of 4 wish generations, each started with <code>exec [info nameofexecutable] ... &amp;</code> from a wish that then exits with <code>exit 0</code> or <code>destroy .</code>: all generations start and the last survives its parent, with wish 9.1b1, 9.0.5 and 8.6.18.
+</li>
+<li><span class="k">Cause</span> unknown; Tcl creates no job object, so the kill-with-parent most likely came from the reporter's environment (e.g. a launcher/terminal job with kill-on-close)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Windows 11 with wish 8.6.18, 9.0.5 and 9.1: a chain of four wish processes, each restarting itself with &amp;#91;exec ... &amp;&amp;#93; and then &amp;#91;destroy .&amp;#93;, keeps the newest one alive. How was the first wish started (Explorer, cmd, Windows Terminal, an IDE)? A job object of the launcher could explain it.
+</li></ul></div></div></details><details class="t" id="c5348d22cf" data-s="c5348d22cf font-4.14/font-4.16 fail in tk 8.7 on windows 44. utf-8 strings not-reproduced on tk 9.1b1 / 9.0.5 (both tests would pass); reproduced for font-4.16 on tk 8.6.18 (test expectation, not-a-bug in tcl)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>c5348d22cf</span><span class="yr">2022</span><span class="ti">font-4.14/font-4.16 fail in Tk 8.7 on Windows</span><span class="vd">NOT-REPRODUCED on Tk 9.1b1 / 9.0.5 (both tests would pass); REPRODUCED for font-4.16 on Tk 8.6.18 (test expectation, NOT-A-BUG in Tcl)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/c5348d22cf">Open ticket c5348d22cf</a> · 44. UTF-8 Strings · filed 2022-03-25</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED on Tk 9.1b1 / 9.0.5 (both tests would pass); REPRODUCED for font-4.16 on Tk 8.6.18 (test expectation, NOT-A-BUG in Tcl)</p><ul>
+<li><span class="k">Platform</span> Windows (Tk test suite)
+</li>
+<li><span class="k">Tested</span> Linux/X11 (Xvfb :71) with wish 9.1b1, 9.0.5, 8.6.18: <code>font actual {-family times} -family -- \U10000</code> returns the fallback font used for that char ("Noto Sans Linear B"), not the base family ("Nimbus Roman"). In Tk main and 9.0 tests/font.test, font-4.14 was rewritten (now expects an error for <code>-- 𐀀</code>, no constraint) and font-4.16 is still <code>{win knownBug}</code> expecting "times"; in Tk 8.6 both are <code>win</code> tests expecting "Times New Roman".
+</li>
+<li><span class="k">Cause</span> likely the test expectation: "font actual ... char" reports the font that actually renders the char, which for U+10000 is a fallback font on Windows too (Tcl 8.7+/9 handle U+10000 as one char, so the fallback search now happens).
+</li>
+<li><span class="k">Prototype</span> none; repro script win/c5348d22cf.tcl (prints the actual family and a VERDICT line).
+</li>
+<li><span class="k">Suggested ticket comment</span> On X11, font actual for U+10000 returns the fallback font ("Noto Sans Linear B"), which is correct behaviour; font-4.16 probably fails on Windows for the same reason (expectation, not Tcl). font-4.14 has been rewritten in the meantime. To be confirmed on Windows.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Platform</span> Windows (Tk test suite)
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED on Tk 9.1b1 / 9.0.5 (both tests would pass); REPRODUCED for font-4.16 on Tk 8.6.18 (test expectation, NOT-A-BUG in Tcl)
+</li>
+<li><span class="k">Tested</span> VM interactive desktop, wish of tk-ref91/tk-ref90/tk-ref86 running the test bodies directly (the tktest runs of font.test showed error dialogs on the desktop and were killed). 9.x: <code>font actual {-family times} -- 𐀀</code> gives the expected error "expected a single character" (font-4.14 passes); <code>font actual {-family times} -family -- \U10000</code> returns "times", which is font-4.16's expected result, but the test is still constrained <code>{win knownBug}</code>. 8.6: font-4.14 (<code>-family -- 𐀀</code>) gives "Times New Roman" (passes); font-4.16 gives "Malgun Gothic", not "Times New Roman" (fails).
+</li>
+<li><span class="k">Cause</span> 8.6 font-4.16: <code>font actual ... char</code> reports the fallback font that renders U+10000, so the expectation is wrong. On 9.x Windows, font actual reports the requested name ("times", not "Times New Roman") and gives no fallback for U+10000.
+</li>
+<li><span class="k">Prototype</span> none (Tk test changes: drop <code>knownBug</code> from font-4.16 in Tk 9.x; in 8.6 font-4.16 change the expected result or mark it knownBug)
+</li>
+<li><span class="k">Suggested ticket comment</span> With current Tk 9.0/9.1 on Windows 11, font-4.14 has been rewritten and passes, and the font-4.16 body returns "times" as expected, so its knownBug constraint can go. In 8.6, font-4.16 fails because font actual reports the fallback font for U+10000 ("Malgun Gothic"), so the expected result is wrong, not Tk.
+</li></ul></div></div></details><details class="t" id="95061fc746" data-s="95061fc746 line number discrepency 17. commands i-l not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>95061fc746</span><span class="yr">2021</span><span class="ti">Line number discrepency</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/95061fc746">Open ticket 95061fc746</a> · 17. Commands I-L · filed 2021-06-02</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main (own build), 8.6.18, 8.6.11 — <code>info frame -1</code> line for the command after a braced argument with backslash-newlines. Contexts tried: top-level <code>if</code>, <code>if</code> in a proc, foreach, <code>$cmd</code> (non-compiled if), switch, catch, if/else, if in while, namespace eval, uplevel #0, interp alias, and an execution trace on the first command. The second command always gets the right line (3 lines after the first). This matches sebres' 2021 result. The reporter said it is probably caused by their application's modified Tcl package.
+</li>
+<li><span class="k">Cause</span> unknown; the reporter could not give a plain-Tcl repro
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> No plain-Tcl repro in 2021, and none now: in all the contexts tried on 8.6.18 and 9.1, the line after a braced argument with continuation lines is correct. Suggest closing unless a self-contained script turns up.
+</li></ul></div></details><details class="t" id="a850726018" data-s="a850726018 epoll detection in cross-compile environments 01. notifier not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>a850726018</span><span class="yr">2020</span><span class="ti">epoll detection in cross-compile environments</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/a850726018">Open ticket a850726018</a> · 01. Notifier · filed 2020-06-19</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> build
+</li>
+<li><span class="k">Tested</span> code reading of unix/configure.ac on main, 9.0, 8.6-era and the 8.7a3 tag (identical logic); out-of-tree configure of main with <code>ac_cv_header_sys_epoll_h=no</code>.
+</li>
+<li><span class="k">Cause</span> configure.ac picks the notifier family with <code>uname -s</code> (build machine), but NOTIFIER_EPOLL is only defined if <code>AC_CHECK_HEADERS([sys/epoll.h])</code> succeeds with the configured (cross) compiler, so a sysroot without sys/epoll.h gets no NOTIFIER_EPOLL (also true in 8.7a3); the reported failure needs a sysroot that has the header but not the functions, or a stale config cache. The remaining real issue, <code>uname -s</code> instead of the host OS, applies to all of Tcl's unix configure (tcl.m4 SC_CONFIG_SYSTEM too) and has no small fix. A clean override exists: <code>ac_cv_header_sys_epoll_h=no ./configure</code> -&gt; "checking for sys/epoll.h... (cached) no", select notifier used.
+</li>
+<li><span class="k">Prototype</span> none (no failure without a mismatched sysroot; host detection is a configure-wide redesign)
+</li>
+<li><span class="k">Suggested ticket comment</span> NOTIFIER_EPOLL is only defined when sys/epoll.h is found by the configured compiler, so a sysroot lacking it should not get epoll. To force the select notifier, run configure with <code>ac_cv_header_sys_epoll_h=no</code> (no need to edit configure). Can you show config.log if it still happens?
+</li></ul></div></details><details class="t" id="60725611c9" data-s="60725611c9 ms vc: error during install of thread package - new builtin commands not-reproduced (8.6 tip + thread 2.8.13, msvc 2022, x86 and x64)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>60725611c9</span><span class="yr">2019</span><span class="ti">MS VC: error during install of thread package</span><span class="vd">NOT-REPRODUCED (8.6 tip + Thread 2.8.13, MSVC 2022, x86 and x64)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/60725611c9">Open ticket 60725611c9</a> · - New Builtin Commands · filed 2019-12-23</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (8.6 tip + Thread 2.8.13, MSVC 2022, x86 and x64)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> not on Linux (nmake/rc only). win/makefile.vc <code>install-pkgs</code> (8.6 tip) re-runs <code>nmake -f makefile.vc install</code> in each pkgs\*\win, which rebuilds thread.res; RC1109 means rc could not create the output file (e.g. intermediate dir missing or file locked). Nothing in the Tcl makefiles points to it.
+</li>
+<li><span class="k">Cause</span> unknown
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Repro</span> win/60725611c9.cmd (release + install with a forward-slash INSTALLDIR like the reporter; needs a source tree with pkgs\thread*)
+</li>
+<li><span class="k">Suggested ticket comment</span> Can you still reproduce this with 8.6.18 / 9.0.4? RC1109 means rc.exe could not create the .res file; please check whether the Release_VC* intermediate directory exists at that point.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 3</div><ul>
+<li><span class="k">Platform</span> build (Windows, nmake)
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (8.6 tip + Thread 2.8.13, MSVC 2022, x86 and x64)
+</li>
+<li><span class="k">Tested</span> VM: copies of tcl-wt86 (core-8-6-branch 5d910c9635) with thread-2-8-branch exported as pkgs\thread2.8.13, then the reporter's steps <code>nmake -f makefile.vc INSTALLDIR=%USERPROFILE%/tmp/tri3/inst6072-&lt;arch&gt; release</code> and <code>... install</code> (drive-less forward-slash INSTALLDIR) from vcvarsall x86 and x64 (work-win3/r6072.cmd): both succeed; install of pkgs\thread2.8.13 does not even re-run rc (thread.res was built by <code>release</code>). Copies deleted afterwards. 9.0 not tried.
+</li>
+<li><span class="k">Cause</span> unknown; RC1109 means rc.exe could not create the .res file (in 8.6.10 the install pass recompiled the resource, so a missing or locked intermediate directory, e.g. after the reporter's distclean/clean, is the likely trigger)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible with the current 8.6 branch and Thread 2.8.13 with MSVC 2022 (x86 and x64): <code>release</code> followed by <code>install</code> with a drive-less INSTALLDIR works and the install pass no longer rebuilds thread.res. Please reopen if it still happens with 8.6.18.
+</li></ul></div></div></details><details class="t" id="016be131a2" data-s="016be131a2 build test socket.test failed 53. configuration and build tools not-reproduced (main, 9.0, 8.6)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>016be131a2</span><span class="yr">2019</span><span class="ti">Build test socket.test failed</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/016be131a2">Open ticket 016be131a2</a> · 53. Configuration and Build Tools · filed 2019-11-27</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Out of Date)</strong></p><ul><li>💬 2026-10-20 <strong>serhiy.storchaka</strong>: Not reproducible any more. socket-14.11.0 and socket-14.11.1 passed 40 out of 40 runs each with MSVC 2022 and MSYS2 UCRT64 builds of main (9.1) on Windows 11 outside CI (in CI, 14.11.0 is skipped by the notWinCI constraint), run from an MSYS2 bash; 9.0.5 and 8.6.18 passed too, and close always reports the connect error. Closing as out of date; please reopen if it still fails in your setup.</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> Windows (MSVC build run from a Cygwin console, 9.0a1)
+</li>
+<li><span class="k">Tested</span> Linux main socket-14.11.* pass (5 runs); repro script on Linux 9.0.5/8.6.18: close always reports the connect error (10/10)
+</li>
+<li><span class="k">Cause</span> unknown; on that Windows setup the failed async connect was not reported by [close]. Since 7e401c5f6b (2020-11-17, dkf, "Test fails with Windows in CI, not MSVC") socket-14.11.0 has constraint notWinCI, so Windows CI never runs it — the failure may still exist. Related: <a class="h" href="https://core.tcl-lang.org/tcl/info/de232b49f2">de232b49f2</a>, and 1b9bd55b7a/c8daed39ac (2024, pooryorick, "sporadic failure of 14.11.0", backed out to mistake).
+</li>
+<li><span class="k">Prototype</span> none (needs Windows); repro win/016be131a2.tcl
+</li>
+<li><span class="k">Suggested ticket comment</span> socket-14.11.0 is skipped in Windows CI (notWinCI) since 2020, so this is unverified there. Needs a recheck with current 9.0/9.1 on Windows outside CI.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 9.0, 8.6)
+</li>
+<li><span class="k">Tested</span> VM repro script 10 runs each on 9.1b1, 9.0.5, 8.6.18 (close always reports "transport endpoint is not connected" / 8.6 "socket is not connected"); socket.test -match socket-14.11* with tcltest91 (14.11.0 and 14.11.1 pass; notWinCI is true outside CI) and tcltest86
+</li>
+<li><span class="k">Cause</span> unknown (9.0a1 era, Cygwin console)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> socket-14.11.0 passes with current 9.1, 9.0 and 8.6 builds on Windows 11 outside CI, and close always reports the connect error. Closing as out of date; reopen if it still fails in your setup.
+</li></ul></div></div></details><details class="t" id="00c62f6777" data-s="00c62f6777 build test env-4.3, env-4.4 and env-4.5 failed 53. configuration and build tools not-reproduced (main, 9.0, 8.6)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>00c62f6777</span><span class="yr">2019</span><span class="ti">Build test env-4.3, env-4.4 and env-4.5 failed</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/00c62f6777">Open ticket 00c62f6777</a> · 53. Configuration and Build Tools · filed 2019-11-27</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Out of Date)</strong></p><ul><li>💬 2026-10-20 <strong>serhiy.storchaka</strong>: Not reproducible any more. env-4.3 to env-4.5 (and all of env.test) pass on Windows 11 with MSVC 2022 and MSYS2 UCRT64 builds of main (9.1), run from an MSYS2 bash with and without LANG=C.UTF-8; with 9.0.5 and 8.6.18 too. OPTS=utfmax no longer exists: Tcl 9 always uses 4-byte UTF-8. Closing as out of date; please reopen if it still fails in your setup.</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> Windows (MSVC 2019 x64, 9.0a1, from a Cygwin console with LANG=C.UTF-8; also with OPTS=utfmax)
+</li>
+<li><span class="k">Tested</span> Linux main env.test passes; repro on Linux 9.0.5, 8.6.18 (LANG=C and C.UTF-8) passes
+</li>
+<li><span class="k">Cause</span> unknown; child tclsh printed nothing (exec failed or printenv script errored) in that setup
+</li>
+<li><span class="k">Prototype</span> none; repro win/00c62f6777.tcl (run also with LANG=C.UTF-8 set)
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce on Linux; env.test passes in Windows CI with 9.0 (utfmax is the default now). Please retest with 9.0.x; otherwise suggest closing.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 9.0, 8.6)
+</li>
+<li><span class="k">Tested</span> VM repro with and without LANG=C.UTF-8 on 9.1b1, 9.0.5, 8.6.18; env.test passes completely with tcltest91 and tcltest86
+</li>
+<li><span class="k">Cause</span> unknown (9.0a1, utfmax option that no longer exists)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> env-4.3 to 4.5 pass with current 9.1, 9.0 and 8.6 on Windows, also with LANG=C.UTF-8 set. Closing as out of date.
+</li></ul></div></div></details><details class="t" id="2d2a321244" data-s="2d2a321244 info frame does not correct recognize current type of execution scope 16. commands a-h not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2d2a321244</span><span class="yr">2019</span><span class="ti">info frame does not correct recognize current type of execution scope</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2d2a321244">Open ticket 2d2a321244</a> · 16. Commands A-H · filed 2019-03-15</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> the four snippets fed to tclsh on stdin and in a pty (interactive) on main build, 9.0.5, 8.7b1, 8.6.18 and 8.5.19, 8.6.0/5/8/9/10/11/12: every form (<code>info frame [info frame]</code>, <code>info frame 0</code>, inside <code>dict get</code>, inside <code>set</code>) gives <code>type proc</code> both in the proc and in its <code>namespace eval</code>. From a file all give <code>type source</code>. The <code>type eval</code> result in the ticket never appears.
+</li>
+<li><span class="k">Cause</span> none found. <code>type</code> describes where the command's text comes from (the literal ns body sits inside the proc body), not the kind of scope, as info.n says.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Can't reproduce with 8.5.19 to 9.1: all variants consistently report <code>type proc</code> (or <code>source</code> when run from a file); <code>type</code> describes where the script text comes from, not the kind of scope. The <code>eval</code> result was probably from a development branch. Suggest closing unless there is a script that still shows it.
+</li></ul></div></details><details class="t" id="2d34167e97" data-s="2d34167e97 sporadic segfault in stack test-case (heisenbug) 45. parsing and eval not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2d34167e97</span><span class="yr">2019</span><span class="ti">sporadic segfault in stack test-case (heisenbug)</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2d34167e97">Open ticket 2d34167e97</a> · 45. Parsing and Eval · filed 2019-03-06</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> the stack-3.1 script fed via stdin, 100 runs each on main (gcc), main (clang 22 build), 9.0 tip and 8.6 tip: 0 crashes. stack.test passes with the clang build.
+</li>
+<li><span class="k">Cause</span> unknown. The only reports are two Travis clang jobs from 2019, likely from C-stack exhaustion near the 10000 recursion limit on a small CI stack.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproduced in 100 runs each on main (gcc and clang), 9.0 and 8.6, and nothing new since 2019. Suggest closing as "Works for me" unless it shows up in CI again.
+</li></ul></div></details><details class="t" id="0d3963254c" data-s="0d3963254c leaktest failure none not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>0d3963254c</span><span class="yr">2018</span><span class="ti">leaktest failure</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/0d3963254c">Open ticket 0d3963254c</a> · None · filed 2018-03-14</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> generic (seen only on macOS 10.12 in 2018)
+</li>
+<li><span class="k">Tested</span> <code>--enable-symbols=mem</code> builds on Linux of main (full suite, all 522078 tests: only the 25 known zipfs.test failures caused by TCL_LIBRARY=&lt;wt&gt;/library) and of core-8-6-branch tip (full suite: 45088 tests, 0 failures, stringComp-14.2 passes; on main the test is string.test stringComp-14.22.*). Not tested on macOS. pointsman could not reproduce it on macOS 10.13 either.
+</li>
+<li><span class="k">Cause</span> unknown
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> With --enable-symbols=mem builds of the current 8.6 and main, the whole test suite (including stringComp-14.2 / stringComp-14.22.*) passes on Linux, and it did not reproduce on macOS 10.13 in 2018. Suggest closing as works-for-me.
+</li></ul></div></details><details class="t" id="538ba1e615" data-s="538ba1e615 test failure - exec-19.1 - on macos - new builtin commands not-reproduced (main, 9.0, 8.6 on linux); cannot-test (macos). the test is skipped on the macos ci with `noosxci` (74eb0415b0, 2020-11-16), not fixed" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>538ba1e615</span><span class="yr">2017</span><span class="ti">Test Failure - exec-19.1 - On MacOS</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6 on Linux); CANNOT-TEST (macOS). The test is skipped on the macOS CI with <code>noosxCI</code> (74eb0415b0, 2020-11-16), not fixed</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/538ba1e615">Open ticket 538ba1e615</a> · - New Builtin Commands · filed 2017-11-07</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6 on Linux); CANNOT-TEST (macOS). The test is skipped on the macOS CI with <code>noosxCI</code> (74eb0415b0, 2020-11-16), not fixed</p><ul>
+<li><span class="k">Platform</span> macOS (generic test timing)
+</li>
+<li><span class="k">Tested</span> same runs as <a class="h" href="#c057378986">c057378986</a>. The result "24" (one line missing) is reproduced exactly on Linux by starting one of the four children 2.5 s late.
+</li>
+<li><span class="k">Cause</span> same as <a class="h" href="https://core.tcl-lang.org/tcl/info/c057378986">c057378986</a>: the fixed <code>after 5000</code> in exec-19.1 is too short on a slow or busy machine. Tcl does set O_APPEND.
+</li>
+<li><span class="k">Prototype</span> prototypes/c057378986.patch (shared with <a class="h" href="#c057378986">c057378986</a>; 13 changed lines). If it works, the <code>noosxCI</code> constraint could be dropped.
+</li>
+<li><span class="k">Suggested ticket comment</span> Same cause as <a class="h" href="https://core.tcl-lang.org/tcl/info/c057378986">c057378986</a>: exec-19.1 waits a fixed 5 s, and a child that starts late loses its last line in the count, not in the file (a 2.5 s delayed start gives exactly 24 on Linux). Proposed fix: poll for the output with a 30 s timeout, see the patch on <a class="h" href="https://core.tcl-lang.org/tcl/info/c057378986">c057378986</a>.
+</li></ul></div></details><details class="t" id="58053c93b3" data-s="58053c93b3 test failure - tcltest-8.4 - on msys builds of core-8-branch 34. tcltest package not-reproduced (main, 8.6; msvc builds)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>58053c93b3</span><span class="yr">2017</span><span class="ti">Test Failure - tcltest-8.4 - On MSYS builds of core-8-branch</span><span class="vd">NOT-REPRODUCED (main, 8.6; MSVC builds)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/58053c93b3">Open ticket 58053c93b3</a> · 34. tcltest Package · filed 2017-11-07</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Works For Me)</strong></p><ul><li>💬 2026-10-20 <strong>serhiy.storchaka</strong>: Not reproducible any more. tcltest-8.4 passes on Windows 11 with MSYS2 UCRT64 builds of main (9.1) and core-8-6-branch, as well as with MSVC builds, also for an elevated administrator and on an SMB path. The test was reworked since 2017 to use testchmod (which really denies writes) and the notFAT/notWsl constraints.</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 8.6; MSVC builds)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> main on Linux: tcltest-8.4 passes; win/58053c93b3.tcl gives "is not writable" as expected. Since 2017 the test was changed: it now uses testchmod 0o444 plus <code>file attributes -readonly</code>, and constraints {unixOrWin notRoot notFAT notWsl} (<a class="h" href="https://core.tcl-lang.org/tcl/info/1cb4cb2fe2">1cb4cb2fe2</a>, 2023-03-02, for the constraint line)
+</li>
+<li><span class="k">Cause</span> on Windows a read-only attribute on a directory does not stop writes; whether testchmod's ACL change works depends on the user (administrator) and on the file system (the report used a network drive O:)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Repro</span> <code>win/58053c93b3.tcl</code> (run with tcltest.exe from the build dir, on a local NTFS drive and if possible on a mapped network drive); prints the FS, the method used, whether the directory is still writable, and a VERDICT line
+</li>
+<li><span class="k">Suggested ticket comment</span> tcltest-8.4 has since been changed (testchmod plus the notFAT/notWsl constraints). Does it still fail on a current MSYS2 build? On a network drive Windows may ignore the permission change, in which case the test should be skipped there.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 3</div><ul>
+<li><span class="k">Platform</span> Windows (test suite)
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 8.6; MSVC builds)
+</li>
+<li><span class="k">Tested</span> VM, elevated administrator account: tcltest.test -match tcltest-8.4 PASSED with tcltest91.exe (9.1b1) and tcltest86.exe (8.6.18). win/58053c93b3.tcl: with testchmod the directory is rejected as "not writable" and really cannot be written, on local NTFS and on an SMB path (\\localhost\C$\..., no drive mapping), 9.1b1 and 8.6.18; with plain tclsh (only <code>file attributes -readonly</code>) the directory stays writable, which is why the test now relies on testchmod. No MinGW/MSYS2 build of Tcl was made (testchmod in win/tclWinTest.c is the same code for both compilers).
+</li>
+<li><span class="k">Cause</span> the 2017 failure came from the old test setup (read-only attribute only); the test was reworked to testchmod + notFAT/notWsl constraints (<a class="h" href="https://core.tcl-lang.org/tcl/info/1cb4cb2fe2">1cb4cb2fe2</a>)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> tcltest-8.4 passes on Windows 11 with current 8.6 and 9.1 test builds, also for an elevated administrator and on an SMB share: the test now uses testchmod, which really denies writes. Closing unless it still fails on a current MSYS2 build.
+</li></ul></div></div></details><details class="t" id="93da2e42b9" data-s="93da2e42b9 test failure - iortrans-11.1 + iortrans-11.2 - on msys builds of core-8-branch 20. [interp] not-reproduced (main with msys2 ucrt64 gcc and msvc; 8.6 msvc)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>93da2e42b9</span><span class="yr">2017</span><span class="ti">Test Failure - iortrans-11.1 + iortrans-11.2 - On MSYS builds of core-8-branch</span><span class="vd">NOT-REPRODUCED (main with MSYS2 UCRT64 gcc and MSVC; 8.6 MSVC)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/93da2e42b9">Open ticket 93da2e42b9</a> · 20. [interp] · filed 2017-11-07</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main with MSYS2 UCRT64 gcc and MSVC; 8.6 MSVC)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> Linux main and 8.6: iortrans-11.1/11.2/11.3 pass, and a /proc/PID/fd check at every removeFile call shows tempchanfile is already closed by cleanup time, so there is no fd leak on Unix.
+</li>
+<li>Cause (suspected): the tests move the channel to another interp with <code>testchannel cut/splice</code>, so <code>tempdone</code>'s <code>catch {close $tempchan}</code> in the main interp does nothing. The file is closed only when the child interp/transform is torn down; if that happens later on Windows (or leaks), <code>removeFile</code> fails with EACCES because Windows cannot delete an open file.
+</li>
+<li><span class="k">Repro</span> win/93da2e42b9.tcl. Run it with the build's tcltest.exe: <code>tcltest.exe <a class="h" href="#93da2e42b9">93da2e42b9</a>.tcl C:/path/to/tcl/tests</code>. It runs ioTrans.test -match iortrans-11.* in %TEMP% and prints a VERDICT line.
+</li>
+<li><span class="k">Prototype</span> none (depends on the Windows result)
+</li>
+<li><span class="k">Suggested ticket comment</span> (after the Windows run) Passes on Linux; on Windows the cleanup fails because tempchanfile is still open after the channel was spliced into another interp.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main with MSYS2 UCRT64 gcc and MSVC; 8.6 MSVC)
+</li>
+<li><span class="k">Tested</span> win/93da2e42b9.tcl 3× with a MinGW (UCRT64) tcltest.exe of main, once each with MSVC tcltest91/tcltest86; full ioTrans.test with all three: 72 passed, 34 skipped (thread), 0 failed, no leftover tempchanfile
+</li>
+<li><span class="k">Cause</span> unknown; possibly fixed by later channel/transform cleanup changes
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> iortrans-11.1/11.2 pass with current main built with MSYS2 gcc (and with MSVC, also 8.6), and the temp file is deleted. Closing as out of date.
+</li></ul></div></div></details><details class="t" id="32c5740a4d" data-s="32c5740a4d undesirable [lappend] performance as list_max is reached 14. list object not-reproduced (all tested) — the demo itself was fixed by dgp&#x27;s 2015-11-30 trunk commit (realloc in tcl_listobjreplace, roadmap item 1); the ticket stayed open only for the cosmetic items 2–3" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>32c5740a4d</span><span class="yr">2015</span><span class="ti">Undesirable [lappend] performance as LIST_MAX is reached</span><span class="vd">NOT-REPRODUCED (all tested) — the demo itself was fixed by dgp's 2015-11-30 trunk commit (realloc in Tcl_ListObjReplace, roadmap item 1); the ticke…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/32c5740a4d">Open ticket 32c5740a4d</a> · 14. List Object · filed 2015-11-17</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested) — the demo itself was fixed by dgp's 2015-11-30 trunk commit (realloc in Tcl_ListObjReplace, roadmap item 1); the ticket stayed open only for the cosmetic items 2–3</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> work-a1/32c5.tcl (dgp's global-level <code>lappend my_list A</code> variant, i.e. the INST_LAPPEND_LIST_STK path). 8.6.18: a steady ~25 s per 50M elements all the way to LIST_MAX (536870909, then a clean "max length of a Tcl list" error), 0.06 s per 100k at 402.6M–403.4M where the slowdown used to start. Main (debug build): linear, ~84 s per 50M up to 200M; with 64-bit Tcl_Size its LIST_MAX is out of reach.
+</li>
+<li><span class="k">Cause</span> (historical) Tcl_ListObjReplace copied the list on every growth instead of trying realloc. The 9.0 list rewrite (ListStore with shared growth code) also covers dgp's item 3, the refactoring.
+</li>
+<li><span class="k">Prototype</span> none (nothing left to fix)
+</li>
+<li><span class="k">Suggested ticket comment</span> Rechecked: growth stays linear up to LIST_MAX on 8.6.18 and on main (where LIST_MAX is 64-bit). The list code refactoring came with 9.0's new list implementation. Suggest closing.
+</li></ul></div></details><details class="t" id="60c12e1499" data-s="60c12e1499 tests socket-1[45]\* need replacing. 27. channel types not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>60c12e1499</span><span class="yr">2015</span><span class="ti">Tests socket-1[45]\* need replacing.</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/60c12e1499">Open ticket 60c12e1499</a> · 27. Channel Types · filed 2015-08-02</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> generic (test suite)
+</li>
+<li><span class="k">Tested</span> <code>-match socket-1[45].*</code> of socket.test on main (own build), 9.0 tip and 8.6 tip tcltest, Linux: all pass (main 28+9, 9.0 37, 8.6 35 tests run) in ~2 s each; localhost only (socket-14.13 with 255.255.255.255 is Windows-only).
+</li>
+<li><span class="k">Cause</span> n/a — the tests have since been reworked (tcltests::localIPv4Address/localDualStackAddress helpers, constraints localhost_v4/v6, generated socket-15.1.N matrix).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> socket-14.* and socket-15.* now pass on Linux in about 2 seconds on 8.6, 9.0 and main after the test rework. Proposing to close; please reopen with the failing environment if they still misbehave somewhere.
+</li></ul></div></details><details class="t" id="40f315bc23" data-s="40f315bc23 [format %g] does not portably produce a tcl number 48. number handling not-reproduced for the original report (main, 9.0, 8.6 with msvc 2022 ucrt: %g/%e/%f/%g/%e/%a and padded/signed forms of ±inf are all valid tcl numbers). the side bug reproduced on windows as on linux (main, 9.0): `format %a inf` → `ixf`, `%a -inf` → `-xnf`" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>40f315bc23</span><span class="yr">2014</span><span class="ti">[format %g] does not portably produce a Tcl number</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/40f315bc23-A.patch">patch A</a><span class="vd">NOT-REPRODUCED for the original report (main, 9.0, 8.6 with MSVC 2022 UCRT: %g/%e/%f/%G/%E/%a and padded/signed forms of ±Inf are all valid Tcl num…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/40f315bc23">Open ticket 40f315bc23</a> · 48. Number Handling · filed 2014-10-22</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED for the original report (main, 9.0, 8.6 with MSVC 2022 UCRT: %g/%e/%f/%G/%E/%a and padded/signed forms of ±Inf are all valid Tcl numbers). The side bug REPRODUCED on Windows as on Linux (main, 9.0): <code>format %A Inf</code> → <code>IxF</code>, <code>%A -Inf</code> → <code>-xNF</code></p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> Linux main build, 9.0.5, 8.7b1, 8.6.18 (8.6 has no %a). Windows repro: win/40f315bc23.tcl (checks every float conversion of ±Inf with <code>string is double</code>; prints VERDICT). It is likely fixed in VC2015+ UCRT builds ("inf"); old msvcrt.dll (MinGW without __USE_MINGW_ANSI_STDIO) printed "1.#INF".
+</li>
+<li><span class="k">Cause</span> Windows: the C runtime's printf (via TclFormatDouble → snprintf). %A: generic/tclStringObj.c:Tcl_AppendFormatToObj always overwrites byte 1 with 'x' (assumes the output starts with "0X"), from 5cfe15b5d6 (2018-02-14).
+</li>
+<li><span class="k">Prototype</span> prototypes/40f315bc23-A.patch (18 changed lines, test format-19.5): fixes only the %A garbling (finds "0X" with strstr; leaves INF alone); format.test passes. Windows Inf: none until the VM run shows whether current builds still print 1.#INF.
+</li>
+<li><span class="k">Suggested ticket comment</span> Needs re-checking on current Windows builds (UCRT prints "inf"). While testing I found that &amp;#91;format %A&amp;#93; garbles negative, signed, padded and infinite values (e.g. &lt;code&gt;-xX1.8p+0&lt;/code&gt;, &lt;code&gt;IxF&lt;/code&gt;); a proposed fix with test format-19.5 is available.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Platform</span> Windows (original); the %A part is generic
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED for the original report (main, 9.0, 8.6 with MSVC 2022 UCRT: %g/%e/%f/%G/%E/%a and padded/signed forms of ±Inf are all valid Tcl numbers). The side bug REPRODUCED on Windows as on Linux (main, 9.0): <code>format %A Inf</code> → <code>IxF</code>, <code>%A -Inf</code> → <code>-xNF</code>
+</li>
+<li><span class="k">Tested</span> VM tclsh 9.1b1, 9.0.5, 8.6.18 (8.6 without %a/%A, which it lacks)
+</li>
+<li><span class="k">Cause</span> original: old msvcrt printf ("1.#INF"), gone with UCRT. %A: generic/tclStringObj.c always overwrites byte 1 with 'x'.
+</li>
+<li><span class="k">Prototype</span> prototypes/40f315bc23-A.patch (%A fix unchanged; test format-19.5 rewritten to use explicit precisions, because MSVC prints all 13 hex digits for <code>%A 1.5</code> → <code>0x1.8000000000000p+0</code>, so the original test failed on Windows only). format.test passes on Windows (wt build) and Linux (wt-win1 build). 20 changed lines.
+</li>
+<li><span class="k">Suggested ticket comment</span> Current MSVC (UCRT) builds print "inf", so &amp;#91;format&amp;#93; of Inf gives valid Tcl numbers on 8.6, 9.0 and 9.1; the original report can be closed as out of date. Separately, &amp;#91;format %A&amp;#93; garbles signed, padded and infinite values on all platforms; proposed fix with test format-19.5.
+</li></ul></div></div></details><details class="t" id="f8e4918f79" data-s="f8e4918f79 self test registry-6.21 fails on win8 64bit 32. registry package not-reproduced (main, 9.0, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>f8e4918f79</span><span class="yr">2014</span><span class="ti">self test registry-6.21 fails on Win8 64bit</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/f8e4918f79">Open ticket f8e4918f79</a> · 32. registry Package · filed 2014-09-23</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> Windows only; not tested here. registry-6.21 has since been rewritten to use 16383-char names/values.
+</li>
+<li><span class="k">Cause</span> unknown (reported for 8.5.16, 32-bit VC12: a 199-char multi_sz value came back with garbage at the end)
+</li>
+<li><span class="k">Prototype</span> none. Windows repro: win/f8e4918f79.tcl (sz/multi_sz/expand_sz round trip for lengths 199..16383)
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on 8.6.5 (apnadkarni), and registry-6.21 now uses 16383-char names and values. If win/f8e4918f79-style round trips pass on 9.0/8.6, close as Works For Me.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 4</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 9.0, 8.6)
+</li>
+<li><span class="k">Tested</span> VM win/f8e4918f79.tcl (sz/multi_sz/expand_sz round trips for names and values of 199, 200, 255, 256, 1000, 16383 chars in an HKCU test key, deleted afterwards): no mismatch on 9.1b1 (registry 1.4, built into tclsh91), 9.0.5 (1.3.7), 8.6.18 (1.3.5). registry.test with the DLL loaded explicitly (work-win4/regt.tcl): 121 passed, 4 skipped, 0 failed with tcltest86 and tcltest90 (incl. registry-6.21). 32-bit builds not tried.
+</li>
+<li><span class="k">Cause</span> n/a (8.5.16-era report; apnadkarni could not reproduce it on 8.6.5 either)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> registry-6.21 and round trips of sz/multi_sz/expand_sz values from 199 to 16383 chars pass on Windows 11 with 8.6.18, 9.0.5 and 9.1. Closing as Works For Me.
+</li></ul></div></div></details><details class="t" id="714db57d20" data-s="714db57d20 [string match] performance regression 18. commands m-z not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>714db57d20</span><span class="yr">2014</span><span class="ti">[string match] performance regression</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/714db57d20">Open ticket 714db57d20</a> · 18. Commands M-Z · filed 2014-07-28</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> <code>string match *a*a*a*a*b [string repeat a 30]</code> and a long <code>*a*b*c*d</code> match, optimized builds 8.6.1, 8.6.2, 8.6.18, 9.0.5, 9.1b1, two to three runs each: 8.6.1 ~285 us, 8.6.2 ~305 us, 8.6.18 ~265 us, 9.0.5 ~230-250 us, 9.1b1 ~245 us. The long-pattern case is equal (~1.2 ms) everywhere.
+</li>
+<li><span class="k">Cause</span> the blamed check-in <a class="h" href="https://core.tcl-lang.org/tcl/info/7abbaed029">7abbaed029</a> only touches TclOO stub/build files and load.test, nothing on the string match path. dgp saw no loss with -O0 and blamed optimizer and code layout effects. Current versions are faster than 8.6.2.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> <a class="h" href="https://core.tcl-lang.org/tcl/info/7abbaed029">7abbaed029</a> does not touch the string match code, and current builds (8.6.18, 9.0, 9.1) are as fast as or faster than 8.6.1 on recursive <code>*a*a*...</code> patterns. This looks like an optimizer/code-layout artifact of that time; close.
+</li></ul></div></details><details class="t" id="6c49da8a19" data-s="6c49da8a19 edge case in [file normalize]? 36. pathname management not-reproduced (main, 9.0, 8.6, 8.6.0-8.6.4, 8.5.0-8.5.19 on linux); reproduced only with 8.4.20" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>6c49da8a19</span><span class="yr">2014</span><span class="ti">Edge case in [file normalize]?</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6, 8.6.0-8.6.4, 8.5.0-8.5.19 on Linux); reproduced only with 8.4.20</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/6c49da8a19">Open ticket 6c49da8a19</a> · 36. Pathname Management · filed 2014-01-31</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6, 8.6.0-8.6.4, 8.5.0-8.5.19 on Linux); reproduced only with 8.4.20</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> exact layout from the report (subdir/sidedir_link -&gt; absolute sidedir), relative and absolute arguments, cwd reached through a symlinked parent (as /tmp on macOS); all 8.5+ give .../fileA.txt like realpath; 8.4.20 gives .../subdir/fileA.txt. The 8.6.1 claim could not be reproduced (8.6.1 build gives the right answer).
+</li>
+<li><span class="k">Cause</span> 8.4's normalization collapsed ".." lexically; 8.5 TclFSNormalizeAbsolutePath reads the link before backing up over it (trunk check-ins "fix to file normalization with relative links/with links" <a class="h" href="https://core.tcl-lang.org/tcl/info/b69743eda9">b69743eda9</a> 2003-12-17, <a class="h" href="https://core.tcl-lang.org/tcl/info/ea7a46acae">ea7a46acae</a> 2004-01-29). The remaining link + ".." bugs (link targets containing "..") are 3577801 below.
+</li>
+<li><span class="k">Prototype</span> none (not reproduced; the related fix is prototypes/3577801fff.patch)
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce with 8.5.0 or later on Linux (8.4.20 shows it): [file normalize sidedir_link/../fileA.txt] gives the same result as realpath. The remaining link/".." cases are tracked in 3577801 (proposed fix there). Can be closed unless someone still sees it.
+</li></ul></div></details><details class="t" id="3613497fff" data-s="3613497fff tclthreadalloc crashes under heavy load 41. memory allocation not-reproduced (main, 8.6.18); no reproducer in the ticket" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3613497fff</span><span class="yr">2013</span><span class="ti">tclThreadAlloc crashes under heavy load</span><span class="vd">NOT-REPRODUCED (main, 8.6.18); no reproducer in the ticket</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3613497fff">Open ticket 3613497fff</a> · 41. Memory Allocation · filed 2013-05-17</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 8.6.18); no reproducer in the ticket</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> stress script (work-a6/t9.tcl): 24 threads for 0.4 s each doing dict/list churn, plus nested short-lived threads so caches keep moving to the shared pool. 40/40 clean runs on main -O2 + Thread 3.0.7 and 40/40 on 8.6.18 + Thread 2.8.13. No 8.5.12 baseline: none of the Thread builds here loads into 8.5.
+</li>
+<li><span class="k">Cause</span> unknown. Since 8.5.12, tclThreadAlloc.c got the zippy FIFO rework (b285882061, 2015-04), the fix for duplicate TclpFreeAllocCache calls at thread exit (<a class="h" href="https://core.tcl-lang.org/tcl/info/3cc1d91345">3cc1d91345</a>, 7a3c8a4b0d, 2016-10-11) and an allocator init fix that came up with NaviServer (7837a4a2ff, 2017-01-16). Any of these may have been the crash. The crashing frame is in NaviServer code (Ns_SetFindCmp), so heap corruption by the application is also possible.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Several crash fixes went into tclThreadAlloc.c after 8.5.12 (&amp;#91;7a3c8a4b0d&amp;#93; duplicate TclpFreeAllocCache at thread exit, &amp;#91;7837a4a2ff&amp;#93; allocator init). A 24-thread stress test runs clean 40/40 on 8.6.18 and 9.1. Without a reproducer for a current version, we propose to close this.
+</li></ul></div></details><details class="t" id="3584573fff" data-s="3584573fff cannot set thread stack size on linux 49. threading not-reproduced (main, 9.0, 8.6): have_pthread_attr_setstacksize=1 is defined on linux in all current builds (unix/tcl.m4 has run ac_check_funcs(pthread_attr_setstacksize) since 2000), so tclpthreadcreate does honour a non-default stacksize." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3584573fff</span><span class="yr">2012</span><span class="ti">cannot set thread stack size on linux</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6): HAVE_PTHREAD_ATTR_SETSTACKSIZE=1 is defined on Linux in all current builds (unix/tcl.m4 has run AC_CHECK_FUNCS(pth…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3584573fff">Open ticket 3584573fff</a> · 49. Threading · filed 2012-11-06</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6): HAVE_PTHREAD_ATTR_SETSTACKSIZE=1 is defined on Linux in all current builds (unix/tcl.m4 has run AC_CHECK_FUNCS(pthread_attr_setstacksize) since 2000), so TclpThreadCreate does honour a non-default stackSize.</p><ul>
+<li><span class="k">Platform</span> unix
+</li>
+<li><span class="k">Tested</span> configure output of the wt-a6 main, tcl9.0 and tcl8.6 trees; thread count of an idle tclsh (1 on main, 9.0.5 and 8.6.18)
+</li>
+<li><span class="k">Cause</span> n/a. On the second point, main and 9.0 use the epoll notifier on Linux, which has no notifier thread. 8.6's select notifier starts its thread lazily with TCL_THREAD_STACK_DEFAULT, which costs address space only, not RSS (as ferrieux noted).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Current builds on Linux define HAVE_PTHREAD_ATTR_SETSTACKSIZE, so the stackSize given to Tcl_CreateThread is applied. Tcl 9 uses the epoll notifier on Linux and starts no notifier thread at all. Proposed to close.
+</li></ul></div></details><details class="t" id="3561500fff" data-s="3561500fff [format] &quot;-0.000&quot; renders differently 32 vs 64 bit hardware 48. number handling not-reproduced (main, 9.0, 8.6 on windows 11, msvc 2022)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3561500fff</span><span class="yr">2012</span><span class="ti">[format] "-0.000" renders differently 32 vs 64 bit hardware</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6 on Windows 11, MSVC 2022)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3561500fff">Open ticket 3561500fff</a> · 48. Number Handling · filed 2012-08-25</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6 on Windows 11, MSVC 2022)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> Linux main build, 9.0.5, 8.6.18, 8.5.19; attachments read (all 3 present)
+</li>
+<li><span class="k">Cause</span> the CRT's printf drops the sign of -0.0 on XP msvcrt. Current builds use VC2015+ UCRT, which keeps it.
+</li>
+<li><span class="k">Prototype</span> none (CRT behaviour on an unsupported OS); Windows repro win/3561500fff.tcl
+</li>
+<li><span class="k">Suggested ticket comment</span> Both reports came from the same 32-bit tclkit, on XP vs Windows 7, so it was the XP C runtime. If current Windows builds print -0.000 (win/3561500fff.tcl), close as out of date.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 9.0, 8.6 on Windows 11, MSVC 2022)
+</li>
+<li><span class="k">Tested</span> VM 9.1b1, 9.0.5, 8.6.18: <code>%9.3f -0.000</code>, <code>%.3f -0.0</code>, <code>%g -0.0</code>, <code>%e -0.0</code>, <code>%.3f -0.0001</code> all keep the minus sign
+</li>
+<li><span class="k">Cause</span> XP msvcrt.dll printf (as the Linux analysis found); UCRT is correct
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Current Windows builds (UCRT) print -0.000 the same as Linux; the difference was the XP C runtime. Closing as out of date.
+</li></ul></div></div></details><details class="t" id="3544685fff" data-s="3544685fff threaded build failures on openbsd-current 49. threading not-reproduced (main, 8.6 on openbsd 7.9, 10 runs each). side finding: on 8.7/9.x async-4.3 is skipped on every non-msvc build because its constraint was inverted in [9ddb36e0bd] (tip #599, 2021-11-26)." data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>3544685fff</span><span class="yr">2012</span><span class="ti">Threaded build failures on OpenBSD-current</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/3544685fff.patch">patch</a><span class="vd">NOT-REPRODUCED (main, 8.6 on OpenBSD 7.9, 10 runs each). Side finding: on 8.7/9.x async-4.3 is skipped on every non-MSVC build because its constrai…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3544685fff">Open ticket 3544685fff</a> · 49. Threading · filed 2012-07-16</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Fixed)</strong></p><ul><li>🔧 2026-10-17 check-in <a class="h" href="https://core.tcl-lang.org/tcl/info/fdf3d4acf3">fdf3d4acf3</a> on <code>async-test-msvc-constraint</code>, in main: Fix the knownMsvcBug constraint in async.test, inverted since <a class="h" href="https://core.tcl-lang.org/tcl/info/c0c61fa7cf">c0c61fa7cf</a>: async-4.3 ran only on MSVC builds, where it is known to fail, and was skipped everyw</li><li>💬 2026-10-17 <strong>serhiy.storchaka</strong>: async-4.3 has not been run outside MSVC builds since <a class="h" href="https://core.tcl-lang.org/tcl/info/c0c61fa7cf">c0c61fa7cf</a> (2021): the knownMsvcBug constraint became true on MSVC instead of false. It passes on OpenBSD 7.9 (main, 10 of 10 runs) and on Linux (20 of 20 runs) with the constraint fixed in branch async-test-msvc-constraint.</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 8.6 on OpenBSD 7.9, 10 runs each). Side finding: on 8.7/9.x async-4.3 is skipped on every non-MSVC build because its constraint was inverted in <a class="h" href="https://core.tcl-lang.org/tcl/info/9ddb36e0bd">9ddb36e0bd</a> (TIP #599, 2021-11-26).</p><ul>
+<li><span class="k">Platform</span> unix (OpenBSD)
+</li>
+<li><span class="k">Tested</span> none here (no OpenBSD); ticket history only
+</li>
+<li><span class="k">Cause</span> OS timer behaviour (pthread_cond_timedwait waking up ~400 ms late), per ferrieux's ktrace analysis
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">To run on the OpenBSD VM</span> main and 8.6 builds, <code>make test TESTFLAGS="-file {event.test interp.test async.test}"</code> repeated about 10 times. If clean, close.
+</li>
+<li><span class="k">Suggested ticket comment</span> The Tcl-side bug (async-4.3) was fixed in 2012. The other failures came from late pthread_cond_timedwait wakeups on OpenBSD of that time. If event/interp/async tests pass repeatedly on a current OpenBSD, this can be closed.
+</li></ul><div class="winrun"><div class="lab">Unix VMs, run 1</div><ul>
+<li><span class="k">Platform</span> unix (OpenBSD)
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 8.6 on OpenBSD 7.9, 10 runs each). Side finding: on 8.7/9.x async-4.3 is skipped on every non-MSVC build because its constraint was inverted in <a class="h" href="https://core.tcl-lang.org/tcl/info/9ddb36e0bd">9ddb36e0bd</a> (TIP #599, 2021-11-26).
+</li>
+<li><span class="k">Tested</span> OpenBSD 7.9 amd64 (8 CPUs), cc (clang), threaded --enable-symbols builds of main (+ Thread 3.0.7) and core-8-6-branch. event.test, interp.test and async.test, 10 runs each on both branches (main and 8.6 loops ran at the same time): 0 failures. interp-36.7, event-11.4 and event-12.4 ran and passed. On 8.6 async-4.3 ran and passed every time. On main async-4.3 was SKIPPED (knownMsvcBug). With the constraint fixed it ran and passed 10/10 on main.
+</li>
+<li><span class="k">Cause</span> the original failures were OpenBSD 5.x pthread_cond_timedwait oversleeping (async-4.3 itself was fixed in 2012). Separate test bug: tests/async.test sets <code>testConstraint knownMsvcBug [expr {[tcl::build-info msvc]&gt;0}]</code>. Before <a class="h" href="https://core.tcl-lang.org/tcl/info/9ddb36e0bd">9ddb36e0bd</a> it was <code>![info exists ::env(CI_BUILD_WITH_MSVC)]</code>, i.e. true everywhere *except* MSVC. Now async-4.3 runs only on MSVC, the one place where it is known to fail.
+</li>
+<li><span class="k">Prototype</span> prototypes/3544685fff.patch (2 changed lines: <code>testConstraint knownMsvcBug [expr {![tcl::build-info msvc]}]</code>; verified on OpenBSD main: async-4.3 runs and passes 10/10). It applies to core-9-0-branch as well (same line).
+</li>
+<li><span class="k">Suggested ticket comment</span> On OpenBSD 7.9, event.test, interp.test and async.test pass 10 out of 10 runs on main and 8.6, so this can be closed. Unrelated finding: since <a class="h" href="https://core.tcl-lang.org/tcl/info/9ddb36e0bd">9ddb36e0bd</a> the knownMsvcBug constraint in async.test is inverted, so async-4.3 runs only on MSVC. Proposed one-line fix (test passes on OpenBSD with it).
+</li></ul></div></div></details><details class="t" id="3400826fff" data-s="3400826fff test iocmd.tf-24.16 fails on netbsd 25. channel system not-reproduced (main + thread 3.0.7 on netbsd 10.1)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3400826fff</span><span class="yr">2011</span><span class="ti">Test iocmd.tf-24.16 fails on netbsd</span><span class="vd">NOT-REPRODUCED (main + Thread 3.0.7 on NetBSD 10.1)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3400826fff">Open ticket 3400826fff</a> · 25. Channel System · filed 2011-08-30</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main + Thread 3.0.7 on NetBSD 10.1)</p><ul>
+<li><span class="k">Platform</span> unix (NetBSD)
+</li>
+<li><span class="k">Tested</span> test has the <code>thread</code> constraint, so it is skipped in our tclsh builds (no Thread package). Code reading only.
+</li>
+<li><span class="k">Cause</span> The reported failure had an extra <code>BG {finalize rc0}</code> because the test drained the event queue with <code>update</code>, which let a second background flush run. Before 8.6.0 the test was rewritten to stop at the first BG write (<code>vwait endbody-24.16</code>, <a class="h" href="https://core.tcl-lang.org/tcl/info/cc4f894e4a">cc4f894e4a</a> 2011-09-19, plus an <code>after 1000</code> safety timeout in <a class="h" href="https://core.tcl-lang.org/tcl/info/29535daab1">29535daab1</a> 2012-04-30), so this result is likely gone.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> The test was changed after this report (<a class="h" href="https://core.tcl-lang.org/tcl/info/cc4f894e4a">cc4f894e4a</a>, <a class="h" href="https://core.tcl-lang.org/tcl/info/29535daab1">29535daab1</a>) to wait for the first background write instead of running <code>update</code>. Can someone with NetBSD confirm that it now passes (it needs the Thread package)?
+</li>
+<li><span class="k">To run on the NetBSD VM</span> build main + Thread, then <code>./tcltest ../tests/ioCmd.test -match 'iocmd.tf-24.*'</code> (repeat ~20 times).
+</li></ul><div class="winrun"><div class="lab">Unix VMs, run 1</div><ul>
+<li><span class="k">Platform</span> unix (NetBSD)
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main + Thread 3.0.7 on NetBSD 10.1)
+</li>
+<li><span class="k">Tested</span> NetBSD 10.1 amd64 (8 CPUs), gcc, main built with --enable-symbols plus Thread trunk 3.0.7. Full ioCmd.test with TCLLIBPATH set to Thread: 377 total, 0 failed (the thread tests run). <code>-match 'iocmd.tf-24.*'</code> repeated 20 times: 0 failing runs; iocmd.tf-24.16 PASSED (checked with -verbose). 8.6 not run with Thread (it needs Thread 2.8); the 8.6 test is the same rewritten one.
+</li>
+<li><span class="k">Cause</span> the test drained the queue with <code>update</code>; it was rewritten before 8.6.0 (<a class="h" href="https://core.tcl-lang.org/tcl/info/cc4f894e4a">cc4f894e4a</a>, <a class="h" href="https://core.tcl-lang.org/tcl/info/29535daab1">29535daab1</a>).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> On NetBSD 10.1 with Thread 3.0.7, iocmd.tf-24.16 and the rest of ioCmd.test pass on main (20 out of 20 runs of iocmd.tf-24.*). The test was rewritten after this report (<a class="h" href="https://core.tcl-lang.org/tcl/info/cc4f894e4a">cc4f894e4a</a>, <a class="h" href="https://core.tcl-lang.org/tcl/info/29535daab1">29535daab1</a>); suggest closing.
+</li></ul></div></div></details><details class="t" id="3104471fff" data-s="3104471fff &quot;command returned bad code: 2&quot; in bgerror 01. notifier not-reproduced (main, 9.0.5, 8.6.18, 8.6.0)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3104471fff</span><span class="yr">2010</span><span class="ti">"command returned bad code: 2" in bgerror</span><span class="vd">NOT-REPRODUCED (main, 9.0.5, 8.6.18, 8.6.0)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3104471fff">Open ticket 3104471fff</a> · 01. Notifier · filed 2010-11-07</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0.5, 8.6.18, 8.6.0)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> coroutine used directly as a <code>chan event</code> handler, where a helper does <code>return -level [info level]</code> inside try/finally on EOF (the Wibble pattern), with and without the <code>apply {{} {tailcall co}}</code> wrapper: finally runs, no bgerror on any version.
+</li>
+<li><span class="k">Cause</span> In 2010 trunk [info level] inside a coroutine apparently counted the frames outside the coroutine, so <code>return -level [info level]</code> escaped the coroutine and reached the event loop as TCL_RETURN. In 8.6.0+ [info level] is relative to the coroutine. A real <code>return -level 2</code> out of a coroutine still gives "command returned bad code: 2", which is correct. Side note: for non-error codes TclDefaultBgErrorHandlerObjCmd (generic/tclEvent.c) prints "command returned bad code: 2x" (the -errorinfo, which starts with the result "x", is appended without a newline); the stale errorInfo from the report is gone.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible in 8.6.0 and later: <code>return -level [info level]</code> inside a coroutine called from [chan event] now stays inside the coroutine. Proposing to close.
+</li></ul></div></details><details class="t" id="3103740fff" data-s="3103740fff socket_inet6-12.2 inconsistent failures 27. channel types not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3103740fff</span><span class="yr">2010</span><span class="ti">socket_inet6-12.2 inconsistent failures</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3103740fff">Open ticket 3103740fff</a> · 27. Channel Types · filed 2010-11-05</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> unix
+</li>
+<li><span class="k">Tested</span> <code>socket.test -match 'socket_*-12.*'</code> 40 runs on main (own build) and 40 on the 8.6 tip tcltest: 0 failures (inet, inet6 and any variants).
+</li>
+<li><span class="k">Cause</span> unknown (2010 timing problem, probably the timeout tightening dgp suspected); the test has not failed here.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> socket_*-12.2 passed 40 of 40 runs on 9.1 and 8.6 (Linux). Proposing to close unless someone still sees it.
+</li></ul></div></details><details class="t" id="3103656fff" data-s="3103656fff case insensitive test result for test winfcmd-19.7 37. file system not-reproduced (main, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3103656fff</span><span class="yr">2010</span><span class="ti">Case insensitive test result for test winFCmd-19.7</span><span class="vd">NOT-REPRODUCED (main, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3103656fff">Open ticket 3103656fff</a> · 37. File System · filed 2010-11-05</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 8.6)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> Linux only (n/a). winFCmd-19.7 is unchanged on main (constraint now <code>win</code>), still expects the lower-case <code>tcl[pid].tmp</code> from glob. Original failure was intermittent (Jan saw it once in 144443 runs; Jos often, with TEMP as a short 8.3 name).
+</li>
+<li><span class="k">Cause</span> unknown; suspected win/tclWinFile.c:TclpObjNormalizePath returning a differently cased leaf for a nonexistent file (when TEMP has short names, or a scanner holds the file).
+</li>
+<li><span class="k">Prototype</span> none (Windows only; a robust test would compare with <code>string equal -nocase</code>)
+</li>
+<li><span class="k">Suggested ticket comment</span> The case change was rare even in 2010 (once in 144443 runs for Jan) and has not been reported since. Does winFCmd-19.7 still fail for anyone on 8.6.18 or 9.0? If not, close as works-for-me.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 5</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 8.6)
+</li>
+<li><span class="k">Tested</span> VM win/3103656fff.tcl (20000 in-process + 100 subprocess normalizations) on 9.1b1 and 8.6.18, with the default TEMP and with TEMP/TMP set to an 8.3 short name (<code>...\TEMPOR~1</code>, 8dot3 enabled on C:); plus winFCmd-19.7 itself 20 times per version under the short-name TEMP: 0 mismatches, 0 failures (Defender real-time protection on).
+</li>
+<li><span class="k">Cause</span> unknown (see result-44.md)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Windows 11 with 8.6.18 and 9.1 (40000 normalizations and 40 runs of winFCmd-19.7, also with TEMP as an 8.3 short name). Closing as works-for-me; please reopen if it fails again.
+</li></ul></div></div></details><details class="t" id="3006571fff" data-s="3006571fff error deleting: file already exists on vista 37. file system not-reproduced (main, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3006571fff</span><span class="yr">2010</span><span class="ti">error deleting: file already exists on Vista</span><span class="vd">NOT-REPRODUCED (main, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3006571fff">Open ticket 3006571fff</a> · 37. File System · filed 2010-05-24</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 8.6)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> Linux main (n/a, no failures). Code unchanged on main/9.0/8.6. Windows repro: win/3006571fff.tcl (300 create/delete cycles, prints how many deletes failed).
+</li>
+<li><span class="k">Cause</span> win/tclWinFCmd.c:TraverseWinTree/DoRemoveJustDirectory. DeleteFileW/RemoveDirectoryW only mark an entry for deletion while another process (indexer, antivirus, CIFS client) holds a handle, so removing the parent fails with ERROR_DIR_NOT_EMPTY (mapped to EEXIST, "file already exists") or ERROR_ACCESS_DENIED. There is no retry. Windows 10 1903+ with NTFS uses POSIX delete semantics by default, so it may not reproduce on Windows 11 local disks.
+</li>
+<li><span class="k">Prototype</span> none (a fix means a retry loop or FILE_DISPOSITION_POSIX_SEMANTICS deletion, a behaviour design choice; needs Windows)
+</li>
+<li><span class="k">Suggested ticket comment</span> Caused by Windows' delayed deletion when another process holds a handle; <code>file delete -force</code> has no retry. Does this still happen on Windows 10/11 (POSIX delete semantics on NTFS)? If it only affects network shares, a short retry in TraverseWinTree is one option.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 5</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 8.6)
+</li>
+<li><span class="k">Tested</span> VM win/3006571fff.tcl: 1000 create/delete cycles each on 9.1b1 and 8.6.18 on local NTFS, and 500 each with the cwd on the SMB loopback share <code>//localhost/C$/...</code>: 0 failures (Defender real-time protection on).
+</li>
+<li><span class="k">Cause</span> (see result-44.md) delayed deletion while another process holds a handle; Windows 10 1903+ uses POSIX delete semantics on NTFS
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Windows 11 with 8.6.18 and 9.1 (1000 iterations on NTFS, 500 over SMB): newer Windows deletes with POSIX semantics, so a file held open by a scanner no longer blocks removing its directory. Closing as works-for-me.
+</li></ul></div></div></details><details class="t" id="3002022fff" data-s="3002022fff clock microseconds broken on windows 06. time measurement not-reproduced (main 32- and 64-bit, 9.0 and 8.6 64-bit) on windows 11; the heuristic is still in the code but cannot trigger on current windows" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3002022fff</span><span class="yr">2010</span><span class="ti">clock microseconds broken on Windows</span><span class="vd">NOT-REPRODUCED (main 32- and 64-bit, 9.0 and 8.6 64-bit) on Windows 11; the heuristic is still in the code but cannot trigger on current Windows</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3002022fff">Open ticket 3002022fff</a> · 06. Time Measurement · filed 2010-05-15</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main 32- and 64-bit, 9.0 and 8.6 64-bit) on Windows 11; the heuristic is still in the code but cannot trigger on current Windows</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> read win/tclWinTime.c on main, 9.0, 8.6 tips; Linux 9.0.5 has microsecond resolution (control run of the script)
+</li>
+<li><span class="k">Cause</span> win/tclWinTime.c IsPerfCounterAvailable (8.6: inline in NativeGetTime): when the QPC frequency is above 15 MHz, the performance counter is disabled unless CPUID says GenuineIntel P4/HT with all CPUs on one package. Then NativeGetMicroseconds falls back to the millisecond system time. The whole block is <code>#if !defined(_WIN64)</code>, so 64-bit builds always use QPC, and only 32-bit builds on AMD or newer Intel CPUs get the millisecond resolution. TclpGetWideClicks uses QPC directly in all builds.
+</li>
+<li><span class="k">Prototype</span> none (whether to drop the CPUID heuristic on Win32 is a policy decision; modern Windows guarantees an invariant QPC)
+</li>
+<li><span class="k">Repro</span> win/3002022fff.tcl (run with a 32-bit and a 64-bit tclsh)
+</li>
+<li><span class="k">Suggested ticket comment</span> 64-bit builds skip the CPUID check and have microsecond resolution. 32-bit builds still disable QPC on non-Intel or post-P4 CPUs. Since Vista/Win7, QPC is reliable across cores, so the Win32 heuristic could be removed.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 3</div><ul>
+<li><span class="k">Platform</span> Windows (32-bit builds only)
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main 32- and 64-bit, 9.0 and 8.6 64-bit) on Windows 11; the heuristic is still in the code but cannot trigger on current Windows
+</li>
+<li><span class="k">Tested</span> VM (Intel i9-14900HX) win/3002022fff.tcl: 9.1b1, 9.0.5, 8.6.18 x64 and a 32-bit 9.1b1 tclsh built from tcl-wt91 (MACHINE=IX86, removed afterwards): 1998–1999 of 2000 samples have sub-ms digits, 2000 distinct values. QueryPerformanceFrequency is 10 MHz.
+</li>
+<li><span class="k">Cause</span> win/tclWinTime.c IsPerfCounterAvailable only distrusts QPC (Win32 builds) when its frequency is above 15 MHz; Windows 10 and later report a fixed 10 MHz QPC (and Vista/7 used HPET/PM timer or TSC/1024 rates), so the CPUID check is dead code on supported systems
+</li>
+<li><span class="k">Prototype</span> none (optional cleanup: drop the <code>#if !defined(_WIN64)</code> CPUID block)
+</li>
+<li><span class="k">Suggested ticket comment</span> On Windows 11 the 32-bit and 64-bit builds of 9.1 (and 64-bit 8.6.18/9.0.5) have microsecond resolution: QPC now runs at a fixed 10 MHz, below the 15 MHz threshold of the Win32 heuristic in IsPerfCounterAvailable, so the heuristic no longer fires. Closing as out of date; the CPUID block could be removed as a cleanup.
+</li></ul></div></div></details><details class="t" id="2966493fff" data-s="2966493fff chan-io-53.9 test is timing sensitive 25. channel system not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2966493fff</span><span class="yr">2010</span><span class="ti">chan-io-53.9 test is timing sensitive</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2966493fff">Open ticket 2966493fff</a> · 25. Channel System · filed 2010-03-09</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> chan-io-53.9 and io-53.9, 40 runs each on main (own build), 8 at a time in parallel to load the machine; chan-io-53.9 40 runs on the 8.6 tip tcltest: 0 failures.
+</li>
+<li><span class="k">Cause</span> unknown; dgp could not repeat it himself in 2010 (single failure on a busy machine).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> chan-io-53.9/io-53.9 passed 40 of 40 runs under parallel load on 9.1 and 8.6. The reporter never saw it again either; proposing to close.
+</li></ul></div></details><details class="t" id="2912794fff" data-s="2912794fff tcl install after compile win7 vs2008 none not-reproduced (main; 8.6 and 9.0 have the same buildall.vc.bat sequence, not run)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2912794fff</span><span class="yr">2009</span><span class="ti">TCL install after compile win7 vs2008</span><span class="vd">NOT-REPRODUCED (main; 8.6 and 9.0 have the same buildall.vc.bat sequence, not run)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2912794fff">Open ticket 2912794fff</a> · None · filed 2009-12-11</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main; 8.6 and 9.0 have the same buildall.vc.bat sequence, not run)</p><ul>
+<li><span class="k">Platform</span> build (Windows)
+</li>
+<li><span class="k">Tested</span> read win/buildall.vc.bat on main: it now runs <code>nmake ... release htmlhelp OPTS=none %1</code> and then <code>nmake ... shell OPTS=static %1</code>, so with <code>install</code> the static shell is built before installing in the same nmake call; probably fixed, not run. Repro: win/2912794fff.cmd (clean tree, VS prompt).
+</li>
+<li><span class="k">Cause</span> in 2009 the install step needed tclsh86sx.exe, which only <code>buildall.vc.bat all</code> built.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> buildall.vc.bat now builds the static shell before installing in the same nmake call (<code>shell install</code>); if the Windows check passes, close as out of date. A related remaining issue (static dde lib in install) is <a class="h" href="https://core.tcl-lang.org/tcl/info/2b874804b5">2b874804b5</a>.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 5</div><ul>
+<li><span class="k">Platform</span> build (Windows)
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main; 8.6 and 9.0 have the same buildall.vc.bat sequence, not run)
+</li>
+<li><span class="k">Tested</span> VM, fresh <code>fossil open</code> of main in a new dir, MSVC 2022 x64: win/2912794fff.cmd (<code>buildall.vc.bat install</code>) built release and failed only in <code>htmlhelp</code> (tcltk-man2html.tcl picked an unrelated <code>../../../tcl*</code> dir as source tree in my scratch layout; not related to the ticket) and then stopped at a <code>pause</code>. Re-run of buildall's two nmake steps without htmlhelp on a clean tree: <code>nmake release OPTS=none install</code> and <code>nmake shell OPTS=static install</code> both succeed; INSTALLDIR/bin gets tcl91.dll, tclsh91.exe and tclsh91s.exe.
+</li>
+<li><span class="k">Cause</span> (2009) install needed the static shell before it was built; buildall.vc.bat now builds <code>shell</code> in the same nmake call as <code>install</code>.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> On Windows 11 with VS 2022, buildall.vc.bat's steps (<code>release ... install</code>, then <code>shell OPTS=static install</code>) succeed on a clean main checkout and install both shells. Closing as out of date.
+</li></ul></div></div></details><details class="t" id="2896758fff" data-s="2896758fff fcopy swamp (bytes vs chars), and http package 24. channel commands not-reproduced (main, 9.0; the three-way rule is gone) — 8.6 keeps the old rule, which is what its fcopy.n documents; small docs nit on main/9.0" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2896758fff</span><span class="yr">2009</span><span class="ti">fcopy swamp (bytes vs chars), and http package</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/2896758fff.patch">patch</a><span class="vd">NOT-REPRODUCED (main, 9.0; the three-way rule is gone) — 8.6 keeps the old rule, which is what its fcopy.n documents; small DOCS nit on main/9.0</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2896758fff">Open ticket 2896758fff</a> · 24. Channel Commands · filed 2009-11-12</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0; the three-way rule is gone) — 8.6 keeps the old rule, which is what its fcopy.n documents; small DOCS nit on main/9.0</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main (own build), 9.0.5, 8.6.18: utf-8-&gt;utf-8, utf-8-&gt;unicode, binary-&gt;utf-8, iso8859-5-&gt;iso8859-5, -profile tcl8 same encoding, all with -size 4
+</li>
+<li><span class="k">Cause</span> In 9.x generic/tclIO.c:Lossless() moves raw bytes only for binary-&gt;binary, or for same encoding + tcl8 profile *without* -size (toRead == -1). So -size is in bytes iff the input is binary, otherwise characters, as fcopy.n says. 8.6: same encoding -&gt; bytes (documented there). fcopy.n on main/9.0 still says "An eventually given size is in bytes in this case" for the tcl8 deprecated mode, which is wrong since that mode is never used with -size. (Side note: Lossless() checks <code>outStatePtr-&gt;inputEncodingFlags</code> where outputEncodingFlags looks intended.) http.tcl copies from a binary socket, so -blocksize is bytes: no issue there.
+</li>
+<li><span class="k">Prototype</span> prototypes/2896758fff.patch (6 changed lines, doc only: fcopy.n deprecated-mode paragraph)
+</li>
+<li><span class="k">Suggested ticket comment</span> Since 9.0 the rule is simple: fcopy -size is in bytes when the input channel is binary, and in characters otherwise (the same-encoding byte mode is only used without -size). 8.6 behaves as its documentation says. Proposed to close after a small fcopy.n fix.
+</li></ul></div></details><details class="t" id="2815500fff" data-s="2815500fff enabling dtrace breaks error handling 55. other tools not-reproduced (main, 8.6 with --enable-dtrace on openindiana x86-64, gcc 14.3, illumos dtrace); sparc cannot-test (no sparc vm)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2815500fff</span><span class="yr">2009</span><span class="ti">enabling dtrace breaks error handling</span><span class="vd">NOT-REPRODUCED (main, 8.6 with --enable-dtrace on OpenIndiana x86-64, gcc 14.3, illumos dtrace); SPARC CANNOT-TEST (no SPARC VM)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2815500fff">Open ticket 2815500fff</a> · 55. Other Tools · filed 2009-07-01</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 8.6 with --enable-dtrace on OpenIndiana x86-64, gcc 14.3, illumos dtrace); SPARC CANNOT-TEST (no SPARC VM)</p><ul>
+<li><span class="k">Platform</span> unix (Solaris 10 SPARC, gcc 3.4.6, Sun D 1.3)
+</li>
+<li><span class="k">Tested</span> nothing could be run. das could not reproduce with Mac OS X DTrace in 2009. The DTrace probe code has been reworked a lot since then (Dispatch() single probe point cf9917a942 2013, 9.0 Tcl_Size work 2023–24).
+</li>
+<li><span class="k">Cause</span> unknown. Most likely an old gcc / Sun D 1.3 interaction with the USDT probe macros around command return codes, so not Tcl logic.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce without a Solaris DTrace setup. The probe code changed substantially since 8.5.7. If still relevant, please retest with 8.6.18/9.0 (<code>./configure --enable-dtrace &amp;&amp; make</code>, then <code>proc bad {} {error bad}; catch bad</code> must return 1); otherwise we will close this as out of date.
+</li></ul>
+<p>(For the main session: try on the OpenIndiana VM with <code>--enable-dtrace</code> and run <code>make test</code>.)</p><div class="winrun"><div class="lab">Unix VMs, run 1</div><ul>
+<li><span class="k">Platform</span> unix (Solaris 10 SPARC, gcc 3.4.6, Sun D 1.3)
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 8.6 with --enable-dtrace on OpenIndiana x86-64, gcc 14.3, illumos dtrace); SPARC CANNOT-TEST (no SPARC VM)
+</li>
+<li><span class="k">Tested</span> OpenIndiana (illumos-4648b9b8c3) i86pc. Out-of-tree <code>--enable-symbols --enable-dtrace</code> builds of main and core-8-6-branch (configure finds /usr/sbin/dtrace; tclDTrace.o linked). <code>proc bad {} {error bad}; catch bad</code> returns 1 on both, with and without probes enabled. Full suite (-notfile http*.test) with DTrace: main 522078 tests, 37 failed; 8.6 45088 tests, 10 failed. The failures are the same without DTrace (scan-15.1, socket-14.x async connect; zipfs only with TCL_LIBRARY set, <code>gmake test -file zipfs.test</code> passes). With probes enabled (<code>pfexec dtrace -Z</code> on proc-return/cmd-return/inst-done, 1.3 M inst-done firings), error/proc/basic/append/compile.test pass on both.
+</li>
+<li><span class="k">Cause</span> unknown; most likely gcc 3.4.6 / Sun D 1.3 on SPARC around the USDT probe code of 2009. The probe code has been reworked since.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce on OpenIndiana (x86-64, gcc 14, illumos dtrace): with --enable-dtrace, main and 8.6 return 1 from <code>catch bad</code> and pass the test suite the same as without DTrace, also with probes enabled. SPARC was not available. Suggest closing as out of date.
+</li></ul></div></div></details><details class="t" id="2750491fff" data-s="2750491fff tcl exit can misbehave on windows 52. portability support not-reproduced (main, 9.0, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2750491fff</span><span class="yr">2009</span><span class="ti">Tcl exit can misbehave on Windows</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2750491fff">Open ticket 2750491fff</a> · 52. Portability Support · filed 2009-04-10</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> wrote win/2750491fff.tcl: 2×N child tclsh runs (with and without TCL_FINALIZE_ON_EXIT=1) that open a localhost socket, use the event loop and <code>exit 7</code>. It checks every exit code and detects hangs with a 20 s timeout. On Linux 9.0.5, 40/40 runs returned 7.
+</li>
+<li><span class="k">Cause</span> unknown and not reproducible on demand (the reporter saw a low-frequency wrong exit code or hang, and exit code 0 in a TCL_MEM_DEBUG shared build). The exit sequence was reworked after this report (bug 2001201): since 8.6, Tcl_Exit by default does not run full Tcl_Finalize unless TCL_FINALIZE_ON_EXIT is set. The proposed TerminateProcess() patch was not applied, and main still ends with plain <code>exit(status)</code> in generic/tclEvent.c.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> The exit sequence was reworked in 8.6 (finalization on exit is now opt-in), and nobody has reproduced this since 2010. Unless the repro script shows wrong exit codes on current Windows builds, close as out of date.
+</li></ul>
+<p>(For the main session: run <code>tclsh90 win\<a class="h" href="#2750491fff">2750491fff</a>.tcl 500</code> on the VM, also with a TCL_MEM_DEBUG / --enable-symbols=mem shared build if one is available.)</p><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 9.0, 8.6)
+</li>
+<li><span class="k">Tested</span> win/2750491fff.tcl with 500 child runs each (250 with and 250 without TCL_FINALIZE_ON_EXIT) on 9.1b1, 9.0.5, 8.6.18, plus 200 runs with a shared TCL_MEM_DEBUG build of main (OPTS=symbols STATS=memdbg): every exit code was 7, no hangs
+</li>
+<li><span class="k">Cause</span> unknown; the exit sequence was reworked in 8.6 (bug 2001201)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> 2200 test runs on current 8.6, 9.0 and 9.1 Windows builds, including a shared TCL_MEM_DEBUG build, gave the right exit code every time and never hung. Closing as out of date, as suggested in 2010.
+</li></ul></div></div></details><details class="t" id="2666369fff" data-s="2666369fff inconsistent [format %e] output 10. objects not-reproduced (main, 9.0, 8.6 with msvc 2022 / ucrt)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2666369fff</span><span class="yr">2009</span><span class="ti">inconsistent [format %e] output</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6 with MSVC 2022 / UCRT)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2666369fff">Open ticket 2666369fff</a> · 10. Objects · filed 2009-03-05</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6 with MSVC 2022 / UCRT)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> Linux main, 9.0.5, 8.6.18: <code>3.113412e+00</code> (correct). Repro script win/2666369fff.tcl (prints VERDICT).
+</li>
+<li><span class="k">Cause</span> [format] in generic/tclStringObj.c passes %e/%g to the C runtime's snprintf. The old MSVCRT printed 3-digit exponents; the UCRT (VS2015+) prints 2 by default. Builds that use msvcrt.dll (older MinGW without UCRT) may still show it.
+</li>
+<li><span class="k">Prototype</span> none (needs a Windows check first; a fix would be <code>_set_output_format(_TWO_DIGIT_EXPONENT)</code> for msvcrt-based builds, or Tcl's own exponent formatting)
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot be reproduced on Unix. Run win/2666369fff.tcl on MSVC (UCRT) and MinGW builds. With the UCRT the exponent should have 2 digits, as on Unix.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 2</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 9.0, 8.6 with MSVC 2022 / UCRT)
+</li>
+<li><span class="k">Tested</span> VM 9.1b1, 9.0.5, 8.6.18 with win/2666369fff.tcl: <code>%e 3.11341234</code> → <code>3.113412e+00</code>, <code>%E</code> → <code>E+00</code>, <code>%.3e 12345.0</code> → <code>1.234e+04</code>, <code>%e 1e100</code> → <code>1.000000e+100</code>, same as Unix
+</li>
+<li><span class="k">Cause</span> the old msvcrt.dll printf printed 3-digit exponents; the UCRT (VS2015+, also MSYS2 UCRT64) prints 2
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> With current Windows builds (MSVC 2022 / UCRT) &amp;#91;format %e&amp;#93; gives 2-digit exponents (3.113412e+00) on 8.6, 9.0 and 9.1, as on Unix; the 3-digit form came from the old msvcrt.dll C runtime. Closing as out of date.
+</li></ul></div></div></details><details class="t" id="2035893fff" data-s="2035893fff can nre break limits and script cancellation? 45. parsing and eval not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2035893fff</span><span class="yr">2008</span><span class="ti">can NRE break limits and script cancellation?</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2035893fff">Open ticket 2035893fff</a> · 45. Parsing and Eval · filed 2008-08-02</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main (own build), 8.6.18: command and time limits stop infinite loops built from tailcall, coroutine resume/yield, yield+tailcall, deep uplevel recursion, apply+tailcall and a self-recursive ensemble (the last two hit the nesting limit first). Cancellation keeps working afterwards (see <a class="h" href="fixed.html#2114165fff">2114165fff</a>).
+</li>
+<li><span class="k">Cause</span> msofer's remaining point (2009) stands by design: an NRE callback that runs long C code postpones cancellation until it returns, like any C code. That is not a hole in the limit/cancel checks.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Command and time limits still work with tailcall, coroutines, uplevel and apply loops in 8.6 and 9.1. The only remaining case, a C callback that runs for a long time, is the same as any long-running C command. Suggest closing.
+</li></ul></div></details><details class="t" id="1963074fff" data-s="1963074fff fcmd.test 27.5 and 27.6 failure on sparc solaris 37. file system fcmd-27.5/27.6 not-reproduced (main, 8.6 on openindiana, also in a setgid directory of a group the user is not in). the underlying chown() of an unchanged owner is reproduced (main, 8.6)." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1963074fff</span><span class="yr">2008</span><span class="ti">fCmd.test 27.5 and 27.6 failure on SPARC Solaris</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/1963074fff.patch">patch</a><span class="vd">fCmd-27.5/27.6 NOT-REPRODUCED (main, 8.6 on OpenIndiana, also in a setgid directory of a group the user is not in). The underlying chown() of an un…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1963074fff">Open ticket 1963074fff</a> · 37. File System · filed 2008-05-13</p><div class="lab">Full verdict</div><p>fCmd-27.5/27.6 NOT-REPRODUCED (main, 8.6 on OpenIndiana, also in a setgid directory of a group the user is not in). The underlying chown() of an unchanged owner is REPRODUCED (main, 8.6).</p><ul>
+<li><span class="k">Platform</span> unix
+</li>
+<li><span class="k">Tested</span> main (shim work-a5/shim/eperm.so), 9.0 tip (new test fails), code reading
+</li>
+<li><span class="k">Cause</span> unix/tclUnixFCmd.c:SetGroupAttribute/SetOwnerAttribute always call chown(), even when setting the file's current group/owner. With _POSIX_CHOWN_RESTRICTED a non-member/non-root gets EPERM. That happens when the file inherits a group the user isn't in (setgid dir, NFS).
+</li>
+<li><span class="k">Prototype</span> prototypes/1963074fff.patch (19 changed lines, test fCmd-27.7: unchanged owner+group on <code>/</code> as non-root. It fails on 9.0 tip with "operation not permitted" and passes with the patch. fCmd.test also passes with the eperm shim.)
+</li>
+<li><span class="k">Suggested ticket comment</span> The tests set the file's current group, but chown() is still called and fails under restricted chown when the group isn't one of the user's. Proposed fix: skip chown() when the owner/group is unchanged (new test fCmd-27.7). Also covers duplicate 1840211.
+</li></ul><div class="winrun"><div class="lab">Unix VMs, run 1</div><ul>
+<li><span class="k">Platform</span> unix (Solaris/illumos)
+</li>
+<li><span class="k">Verdict</span> fCmd-27.5/27.6 NOT-REPRODUCED (main, 8.6 on OpenIndiana, also in a setgid directory of a group the user is not in). The underlying chown() of an unchanged owner is REPRODUCED (main, 8.6).
+</li>
+<li><span class="k">Tested</span> OpenIndiana as a normal user (uid serhiy, gid staff). fCmd.test passes on main (306/0 failed), 8.6 (256/0) and with the prototype (307/0). As root I made a setgid directory with group <code>other</code> (removed afterwards); files created there get group <code>other</code>. fCmd-27.* run there still passes, and <code>chgrp other f</code> works too: illumos lets the owner set the file's current group under rstchown, even as a non-member, so this case is no longer hit. Setting the unchanged owner of a file one does not own still fails: <code>file attributes / -owner root -group root</code> → main "could not set owner for file "/": operation not permitted", 8.6 "not owner". With the prototype it returns "" (new fCmd-27.7 passes).
+</li>
+<li><span class="k">Cause</span> unix/tclUnixFCmd.c:SetGroupAttribute/SetOwnerAttribute always call chown(); old Solaris (and NFS, per the ticket) refuse even a no-op change.
+</li>
+<li><span class="k">Prototype</span> prototypes/1963074fff.patch (19 changed lines, test fCmd-27.7). Verified on OpenIndiana: fCmd.test passes with it, fCmd-27.7 fails without it. Behaviour change to note in review: setting the current owner/group of someone else's file now succeeds instead of EPERM.
+</li>
+<li><span class="k">Suggested ticket comment</span> On current illumos fCmd-27.5/27.6 pass, also for files in a foreign-group setgid directory, because chown() to the current group is allowed there. A no-op owner change on a file the user doesn't own still fails (EPERM). Proposed fix (skip chown() when nothing changes, test fCmd-27.7) is verified on OpenIndiana.
+</li></ul></div></div></details><details class="t" id="1958930fff" data-s="1958930fff exec with pipes and fileevents leaks ~2mb everytime 24. channel commands not-reproduced (main, 9.0, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1958930fff</span><span class="yr">2008</span><span class="ti">exec with pipes and fileevents leaks ~2Mb everytime</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1958930fff">Open ticket 1958930fff</a> · 24. Channel Commands · filed 2008-05-06</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> code reading main/9.0/8.6; repro script win/1958930fff.tcl (core-only variant from ferrieux's 2008-05-08 analysis: close a non-blocking <code>open |tclsh block.tcl</code> while the child is still running, 15 times; reports VM growth per close and slow closes)
+</li>
+<li><span class="k">Cause</span> win/tclWinPipe.c:TclPipeThreadStop terminates the reader thread blocked in ReadFile with TerminateThread, whose stack is never freed. On main/9.0 it first calls CancelSynchronousIo(hThread) (arrived on main via <a class="h" href="https://core.tcl-lang.org/tcl/info/5295f674c1">5295f674c1</a>, 2021-01-08 merge from 8.7), so ReadFile should return and the thread exit cleanly; core-8-6-branch has no CancelSynchronousIo and still waits 20 ms + 5 s and then calls TerminateThread. The reporter's own case (TclX pipes) was a script problem (unused pipe ends left open), as he confirmed.
+</li>
+<li><span class="k">Prototype</span> none (if 8.6 reproduces, backporting the CancelSynchronousIo call is the fix; needs Windows to verify)
+</li>
+<li><span class="k">Suggested ticket comment</span> Since 8.7/9.0 TclPipeThreadStop cancels the blocked ReadFile with CancelSynchronousIo before falling back to TerminateThread, which should remove the leak; 8.6 still terminates the thread. To be verified on Windows with win/1958930fff.tcl.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 2</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 9.0, 8.6)
+</li>
+<li><span class="k">Tested</span> VM win/1958930fff.tcl (15 non-blocking closes of <code>open |tclsh block.tcl</code> while the child runs) and a variant with 40 closes that also counts threads and private bytes 9 s later (work-win2/1958b.tcl), 3 runs: 9.1b1 and 9.0.5 grow by 0 bytes / 0 threads; 8.6.18 grows by one thread (+2.3 MB virtual) per run, the same for 15 and 40 closes, so it is a one-time helper thread, not a per-close leak. Rarely a close takes &gt; 1 s (the 5 s wait before the TerminateThread fallback): 1 of 120 on 8.6, 1 of 80 on 9.1, 0 of 55 on 9.0 — without memory growth. (The second 9.0.5 run hung in <code>after</code> for good; that is the separate Tcl_Sleep bug at the end of this file.)
+</li>
+<li><span class="k">Cause</span> the Linux analysis was wrong about 8.6: core-8-6-branch TclPipeThreadStop also calls CancelSynchronousIo (through tclWinProcs.cancelSynchronousIo), so the blocked ReadFile is cancelled and the reader thread exits cleanly; TerminateThread remains only as a rare fallback
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> No leak on Windows 11 with 8.6.18, 9.0.5 or 9.1: closing pipes to running children 40 times does not grow memory or the thread count, because the blocked reader thread is now cancelled with CancelSynchronousIo instead of being terminated. The reporter's own case was a script issue. Closing as fixed.
+</li></ul></div></div></details><details class="t" id="1906935fff" data-s="1906935fff output file size is incorrect 37. file system not-reproduced (main, 8.6, 8.5)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1906935fff</span><span class="yr">2008</span><span class="ti">Output File Size is incorrect</span><span class="vd">NOT-REPRODUCED (main, 8.6, 8.5)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1906935fff">Open ticket 1906935fff</a> · 37. File System · filed 2008-03-04</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 8.6, 8.5)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> win/1906935fff.tcl on Linux: sparse 4 GB + 3 MB file, the reporter's <code>seek 16 current</code>/read/tell loop across the 4 GB boundary, output size checked. OK on all versions.
+</li>
+<li><span class="k">Cause</span> unknown (reported for 8.5.1 on 32-bit Windows XP. Possibly a wide-offset bug in the Windows channel driver that has long been fixed. Reporter never answered the 8.5.2 rc question.)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Doesn't reproduce on Linux with a 4 GB+ file (8.5.1 to 9.1). Windows repro script attached: win/1906935fff.tcl (writes ~4 GB to %TEMP%). If it passes on Windows too, close as Out of Date.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 5</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 8.6, 8.5)
+</li>
+<li><span class="k">Tested</span> VM work-win5/lf.tcl (win/1906935fff.tcl with a pre-created sparse 4 GB + 3 MB source, <code>fsutil sparse setflag</code> + <code>seteof</code>, because the VM disk has &lt; 3 GB free): the reporter's seek 16 current/read/tell loop across the 4 GB boundary, output size checked. OK on 64-bit 9.1b1, 8.6.18, 8.6.0, 8.5.19 and on 32-bit (MACHINE=IX86) builds of main and core-8-6-branch.
+</li>
+<li><span class="k">Cause</span> unknown (8.5.1 on 32-bit XP; long gone)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Windows 11 with 32- and 64-bit builds of 8.6.18 and 9.1 (and 8.5.19): seek/read/tell across 4 GB and the output size are correct. Closing as out of date.
+</li></ul></div></div></details><details class="t" id="1904907fff" data-s="1904907fff fix [chan create]/return dict key finalization order issues 24. channel commands not-reproduced (main, 9.0, 8.6, 8.5) — the crash was worked around in 2008 (dgp&#x27;s `keys[i] = null` in releasekeys, committed by andreas_kupries 2008-03-08); ticket was kept open for a &quot;proper&quot; finalization-order fix" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1904907fff</span><span class="yr">2008</span><span class="ti">Fix [chan create]/return dict key finalization order issues</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6, 8.5) — the crash was worked around in 2008 (dgp's <code>keys[i] = NULL</code> in ReleaseKeys, committed by andreas_kupries 200…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1904907fff">Open ticket 1904907fff</a> · 24. Channel Commands · filed 2008-02-29</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6, 8.5) — the crash was worked around in 2008 (dgp's <code>keys[i] = NULL</code> in ReleaseKeys, committed by andreas_kupries 2008-03-08); ticket was kept open for a "proper" finalization-order fix</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> attached tst_chan.tcl and variants (read caught; no read so the data is left for exit-time flush) on main (own build), 9.0.5, 8.6.18, 8.5.19, and valgrind on a -DPURIFY main build: no crash, no valgrind errors. The refchan <code>write</code> method is not called at exit at all now (the buffered "HELLO THERE" is silently dropped), so the late Tcl_GetReturnOptions path is not even reached with this script.
+</li>
+<li><span class="k">Cause</span> generic/tclResult.c:GetKeys/ReleaseKeys keep per-thread return-option key objects released by a thread exit handler; ReleaseKeys NULLs them, so a later GetKeys re-creates them (the "leak" is that the second set may never be freed).
+</li>
+<li><span class="k">Prototype</span> none (no reproducer left; the remaining work is a cleanup, not a bug fix)
+</li>
+<li><span class="k">Suggested ticket comment</span> No crash with the attached script on 9.1, 9.0 or 8.6 (also clean under valgrind); the 2008 workaround in ReleaseKeys is still in place. The remaining concern is a possible small leak at finalization. Suggest closing unless someone wants to pursue moving the key cleanup to interp deletion.
+</li></ul></div></details><details class="t" id="1840211fff" data-s="1840211fff tcl 8.5.0 rc0 compile and test error report 37. file system duplicate of 1963074fff for the fcmd-27.5/27.6 part (not-reproduced on openindiana, see there); the tclenv.c part was fixed in 2007" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1840211fff</span><span class="yr">2007</span><span class="ti">tcl 8.5.0 rc0 compile and test error report</span><span class="vd">duplicate of <a class="h" href="#1963074fff">1963074fff</a> for the fCmd-27.5/27.6 part (NOT-REPRODUCED on OpenIndiana, see there); the tclEnv.c part was fixed in 2007</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1840211fff">Open ticket 1840211fff</a> · 37. File System · filed 2007-11-28</p><div class="lab">Full verdict</div><p>duplicate of <a class="h" href="#1963074fff">1963074fff</a> for the fCmd-27.5/27.6 part (NOT-REPRODUCED on OpenIndiana, see there); the tclEnv.c part was fixed in 2007</p><ul>
+<li><span class="k">Platform</span> unix
+</li>
+<li><span class="k">Tested</span> see <a class="h" href="#1963074fff">1963074fff</a>
+</li>
+<li><span class="k">Cause</span> see <a class="h" href="#1963074fff">1963074fff</a>
+</li>
+<li><span class="k">Prototype</span> prototypes/1963074fff.patch (shared)
+</li>
+<li><span class="k">Suggested ticket comment</span> The tclEnv.c warning was fixed in 2007. The fCmd-27.5/27.6 failures are the same as <a class="h" href="https://core.tcl-lang.org/tcl/info/1963074fff">1963074fff</a>; proposed fix there. Closing as Duplicate.
+</li></ul><div class="winrun"><div class="lab">Unix VMs, run 1</div><ul>
+<li><span class="k">Platform</span> unix
+</li>
+<li><span class="k">Verdict</span> duplicate of <a class="h" href="#1963074fff">1963074fff</a> for the fCmd-27.5/27.6 part (NOT-REPRODUCED on OpenIndiana, see there); the tclEnv.c part was fixed in 2007
+</li>
+<li><span class="k">Tested</span> see <a class="h" href="#1963074fff">1963074fff</a>
+</li>
+<li><span class="k">Cause</span> see <a class="h" href="#1963074fff">1963074fff</a>
+</li>
+<li><span class="k">Prototype</span> prototypes/1963074fff.patch (shared)
+</li>
+<li><span class="k">Suggested ticket comment</span> The tclEnv.c warning was fixed in 2007. fCmd-27.5/27.6 pass on current OpenIndiana; the remaining no-op chown() issue is tracked in <a class="h" href="https://core.tcl-lang.org/tcl/info/1963074fff">1963074fff</a> (proposed fix there). Closing as Duplicate.
+</li></ul></div></div></details><details class="t" id="1829708fff" data-s="1829708fff http.test triggers segfault (sometimes) 49. threading not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1829708fff</span><span class="yr">2007</span><span class="ti">http.test triggers segfault (sometimes)</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1829708fff">Open ticket 1829708fff</a> · 49. Threading · filed 2007-11-10</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> unix
+</li>
+<li><span class="k">Tested</span> http.test 40x each on main (own build + Thread 3.0.7), 9.0 tip tcltest + Thread 3.0.7, 8.6 tip tcltest + Thread 2.8.13 (http.test now runs its server via thread::create, testthread is gone): 40/40 pass, no crash on all three. George's variant (thread with a server socket in thread::wait, main exits immediately, with/without async thread::exit; work-a6/ht1.tcl, ht2.tcl) 40x each on main, 9.0.5, 8.6.18: all exit 0.
+</li>
+<li><span class="k">Cause</span> teardown race when the main thread exits while other threads still run (2007 notifier); the unix notifier/finalization has been reworked since (epoll notifier, TclFinalizeNotifier, [Bug 1618235] fix).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible any more: http.test (now using the Thread package) and the exit-with-running-thread variant pass 40/40 on 9.1, 9.0 and 8.6. Closing; please reopen with a current reproducer.
+</li></ul></div></details><details class="t" id="1811495fff" data-s="1811495fff clock scan (possible?) discrepancy 06. time measurement not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1811495fff</span><span class="yr">2007</span><span class="ti">clock scan (possible?) discrepancy</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1811495fff">Open ticket 1811495fff</a> · 06. Time Measurement · filed 2007-10-11</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> unix
+</li>
+<li><span class="k">Tested</span> main build, 9.0.5, 8.6.18, 8.5.19 with TZ=Europe/Vienna: <code>clock scan 01/01/1902</code> = -2145920400 (+0100), the same as <code>-timezone :Europe/Vienna</code>, and the 1916 transition is correct. TZ=CET gives +0000 in 1902, which is correct: current tzdata links CET to Europe/Brussels, and glibc agrees.
+</li>
+<li><span class="k">Cause</span> the reporter's own data pointed at old 8.5b1 builds (8.5.2 was right)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible with 8.5.19, 8.6.18 or 9.0.5: TZ=Europe/Vienna gives -2145920400 for 01/01/1902, matching :Europe/Vienna. Suggest closing.
+</li></ul></div></details><details class="t" id="1802202fff" data-s="1802202fff enabling dtrace support on solaris 10 causes tkbiff failure  55. other tools not-reproduced (main, 8.6 with --enable-dtrace on openindiana x86-64); sparc and 8.4 cannot-test" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1802202fff</span><span class="yr">2007</span><span class="ti">Enabling DTrace support on Solaris 10 causes tkbiff failure</span><span class="vd">NOT-REPRODUCED (main, 8.6 with --enable-dtrace on OpenIndiana x86-64); SPARC and 8.4 CANNOT-TEST</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1802202fff">Open ticket 1802202fff</a> · 55. Other Tools · filed 2007-09-25</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 8.6 with --enable-dtrace on OpenIndiana x86-64); SPARC and 8.4 CANNOT-TEST</p><ul>
+<li><span class="k">Platform</span> unix (Solaris 10 SPARC, --enable-dtrace)
+</li>
+<li><span class="k">Tested</span> none; read the ticket. The reporter's later test-suite run with --enable-dtrace on 8.4.16 showed <code>catch</code> returning 0 for errors (append-4.9 etc.), i.e. a mis-built/miscompiled 8.4.16 dtrace build on SPARC, not a tkbiff/regexp issue.
+</li>
+<li><span class="k">Cause</span> unknown; most likely the 8.4-era DTrace probe build (tclDTrace.o link step) on SPARC. The DTrace code has been reworked many times since 8.4.16 (EOL).
+</li>
+<li><span class="k">Prototype</span> none (cannot build with DTrace here)
+</li>
+<li><span class="k">Suggested ticket comment</span> 8.4 is no longer maintained. If anyone still builds with --enable-dtrace on Solaris/illumos, please run <code>make test</code> on 8.6.18 or 9.0.4 with and without --enable-dtrace and report the difference; otherwise this can be closed as out of date. (Main session: could try on the OpenIndiana VM — x86 only — with <code>./configure --enable-dtrace &amp;&amp; make test</code>.)
+</li></ul><div class="winrun"><div class="lab">Unix VMs, run 1</div><ul>
+<li><span class="k">Platform</span> unix (Solaris 10 SPARC, --enable-dtrace)
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 8.6 with --enable-dtrace on OpenIndiana x86-64); SPARC and 8.4 CANNOT-TEST
+</li>
+<li><span class="k">Tested</span> same DTrace builds and runs as <a class="h" href="#2815500fff">2815500fff</a>. The reporter's later finding (catch returning 0 for errors in an 8.4.16 dtrace build, append-4.9 etc.) does not occur: the full suite including append.test, regexp.test and error.test gives the same results as without DTrace, also with probes enabled for error/proc/basic/append/compile.test. tkbiff itself (IMAP to an outside server) not tried.
+</li>
+<li><span class="k">Cause</span> unknown; 8.4-era DTrace build on SPARC (same symptom as <a class="h" href="#2815500fff">2815500fff</a>).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible with current sources: on OpenIndiana x86-64, main and 8.6 built with --enable-dtrace pass the test suite the same as without it, also with probes enabled. 8.4 is no longer maintained and SPARC was not available. Suggest closing as out of date.
+</li></ul></div></div></details><details class="t" id="1771754fff" data-s="1771754fff fcmd-6.26 success 36. pathname management not-reproduced (all tested). the reporter had an automounter/ldap home where $home differs from the canonical path; can&#x27;t recreate it here." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1771754fff</span><span class="yr">2007</span><span class="ti">fCmd-6.26 success</span><span class="vd">NOT-REPRODUCED (all tested). The reporter had an automounter/LDAP home where $HOME differs from the canonical path; can't recreate it here.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1771754fff">Open ticket 1771754fff</a> · 36. Pathname Management · filed 2007-08-10</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested). The reporter had an automounter/LDAP home where $HOME differs from the canonical path; can't recreate it here.</p><ul>
+<li><span class="k">Platform</span> unix
+</li>
+<li><span class="k">Tested</span> fCmd-6.26 on main and 8.6 tip with HOME set to a symlink to the real dir (passes); old test body on 8.4.15, 8.5.0, 8.6.18 (error message uses the $HOME spelling)
+</li>
+<li><span class="k">Cause</span> unknown, probably Tcl 8.4's [file dirname ~]/[file tail ~] vs $HOME mismatch on automounted homes. The test was rewritten for 9.0 (uses [file home] and $env(HOME)).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Can't reproduce with a symlinked $HOME on 8.4.15 to 9.1, and the test has been rewritten since (no tilde in 9.0). Closing as Out of Date; reopen if it still fails with a current release.
+</li></ul></div></details><details class="t" id="1752124fff" data-s="1752124fff tcl_fsgetnormalizedpath is hairier monster 37. file system not-reproduced (main, valgrind with a -dpurify build)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1752124fff</span><span class="yr">2007</span><span class="ti">Tcl_FSGetNormalizedPath is hairier monster</span><span class="vd">NOT-REPRODUCED (main, valgrind with a -DPURIFY build)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1752124fff">Open ticket 1752124fff</a> · 37. File System · filed 2007-07-11</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, valgrind with a -DPURIFY build)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> C program calling Tcl_FSGetNormalizedPath(NULL, Tcl_FSJoinToPath(parent, 1, &amp;elem)) on a zero-refcount result, for absolute, ".." and relative parents. Valgrind is clean on main (work-a5/fsgnp.c, purify/ build).
+</li>
+<li><span class="k">Cause</span> the 2007 refcount issue in tclPathObj.c no longer shows up. doc/FileSystem.3 now says Tcl_FSJoinToPath returns a zero-reference object. It doesn't explicitly warn about passing that to Tcl_FSGetNormalizedPath.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Doesn't reproduce on 9.1 (valgrind with -DPURIFY, zero-refcount Tcl_FSJoinToPath result passed to Tcl_FSGetNormalizedPath). trofs was worked around in 2007. Closing as Out of Date.
+</li></ul></div></details><details class="t" id="1745928fff" data-s="1745928fff thread&#x27;s memory isn&#x27;t being released 80. thread package not-reproduced (main, 8.6) as a tcl/thread leak; a small working-set creep outside tcl&#x27;s allocator remains (see tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1745928fff</span><span class="yr">2007</span><span class="ti">thread's memory isn't being released</span><span class="vd">NOT-REPRODUCED (main, 8.6) as a Tcl/Thread leak; a small working-set creep outside Tcl's allocator remains (see Tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1745928fff">Open ticket 1745928fff</a> · 80. Thread Package · filed 2007-07-01</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 8.6) as a Tcl/Thread leak; a small working-set creep outside Tcl's allocator remains (see Tested)</p><ul>
+<li><span class="k">Platform</span> Windows (original report); generic check on Linux
+</li>
+<li><span class="k">Tested</span> Linux main PURIFY build + Thread 3.0.7: 5x200 create/join threads, VmRSS 8364 -&gt; 8464 K and then flat; 8.6.18 + Thread 2.8.13: 6964 -&gt; 7040 K then flat; valgrind --leak-check=full on PURIFY main, 20 and 100 threads: 0 bytes definitely/indirectly/possibly lost. Windows script: win/1745928fff.tcl (working set via tasklist, needs Thread).
+</li>
+<li><span class="k">Cause</span> unknown; the original numbers (Task Manager working set, dropping to 84K later) look like normal working set behaviour; vasiljevic's 2010 "huge leak in HEAD" was never pinned down.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> No leak on Linux with Tcl 9.1/Thread 3.0.7 or 8.6.18/Thread 2.8.13 (RSS flat over 1000 threads, valgrind clean). To be rechecked on Windows; otherwise close as out of date.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 5</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 8.6) as a Tcl/Thread leak; a small working-set creep outside Tcl's allocator remains (see Tested)
+</li>
+<li><span class="k">Tested</span> VM win/1745928fff.tcl (5 x 200 create/join): 9.1b1 + Thread 3.0.7 +136 K, 8.6.18 + Thread 2.8.13 +556 K after warm-up. Longer run (work-win5/tm.tcl, 25 x 200): 9.1 +524 K, 8.6 +4.2 MB (~0.9 KB/thread, linear); with core <code>testthread</code> instead of Thread (tm2.tcl, tcltest): 9.1 +2.2 MB, 8.6 +4.9 MB over 4800 threads. Memory-debug (TCL_MEM_DEBUG) main build + Thread 3.0.7 (tm3.tcl): <code>memory info</code> current bytes allocated stays flat (967549) from round 1 to 4, so the creep is not in ckalloc'ed memory (OS/CRT heap or per-thread system resources; not pinned down). The ticket's numbers (one thread, ~800 K working set, dropping later) are normal working-set behaviour.
+</li>
+<li><span class="k">Cause</span> none in Tcl found
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> The reported numbers are normal Windows working-set behaviour. On Windows 11 a memory-debug build of 9.1 with Thread 3.0.7 shows no growth of Tcl allocations over 1000 threads; the working set creeps by well under 1 KB per thread outside Tcl's allocator. Closing as out of date.
+</li></ul></div></div></details><details class="t" id="1706593fff" data-s="1706593fff autoloading causes (itcl) &#x27;class already exists&#x27; error 38. init - library - autoload not-reproduced (main with itcl 4.3.8 trunk)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1706593fff</span><span class="yr">2007</span><span class="ti">autoloading causes (itcl) 'class already exists' error</span><span class="vd">NOT-REPRODUCED (main with Itcl 4.3.8 trunk)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1706593fff">Open ticket 1706593fff</a> · 38. Init - Library - Autoload · filed 2007-04-24</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main with Itcl 4.3.8 trunk)</p><ul>
+<li><span class="k">Platform</span> generic (Itcl + auto_mkindex)
+</li>
+<li><span class="k">Tested</span> Itcl trunk built against main; class A with a declared but unimplemented method foo, auto_mkindex, then <code>A a; a foo</code>: tclIndex contains only auto_index(A) (Itcl 4's auto_mkindex parser no longer indexes declared-only members) and the call fails cleanly with 'member function "::A::foo" is not defined and cannot be autoloaded', with no re-source and no "class already exists". Attachment tclbug.zip is truncated in the repository (1218 bytes, "missing 44265497 bytes"), so the exact original script was not run. Itcl 3.3 not tested.
+</li>
+<li><span class="k">Cause</span> Itcl 3 auto_mkindex parser indexed declared-only members; Itcl's member autoload (itclMethod.c calls ::auto_load) then re-sourced the class file.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible with Itcl 4 on 9.1: declared-only methods are no longer put in tclIndex, and calling one gives a clear "not defined and cannot be autoloaded" error. The attachment is truncated. Suggest closing (it was an Itcl 3 issue anyway).
+</li></ul></div></details><details class="t" id="1675258fff" data-s="1675258fff mem alloc performance on linux 41. memory allocation not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1675258fff</span><span class="yr">2007</span><span class="ti">mem alloc performance on Linux</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1675258fff">Open ticket 1675258fff</a> · 41. Memory Allocation · filed 2007-03-06</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> unix (Linux)
+</li>
+<li><span class="k">Tested</span> FOREACH/LAPPEND and EVAL/LAPPEND micro-benchmark (work-a6/lap2.tcl, source list built outside the timing) on Linux x86_64 with release builds 8.4.20, 8.5.19, 8.6.18, 9.0.5, 9.1b1: e.g. FOREACH 10000: 189 / 241 / 110 / 174 / 164 us; EVAL 10000: 39 / 14 / 14 / 29 / 31 us. No 2-3x loss vs 8.4 any more; 8.6 is fastest, 9.x somewhat slower than 8.6 (64-bit Tcl_Size lists) but not slower than 8.4.
+</li>
+<li><span class="k">Cause</span> 2007 observation (first allocation-heavy benchmark run slow on Linux 2.6 i686, likely malloc/page-fault warm-up); not attributable to current code.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> On current Linux the 2007 slowdown does not show: lappend loops in 8.6/9.0/9.1 are as fast as or faster than 8.4.20. Closing as out of date.
+</li></ul></div></details><details class="t" id="1593707fff" data-s="1593707fff win32 error during simultaneous file open for read 49. threading not-reproduced (main, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1593707fff</span><span class="yr">2006</span><span class="ti">win32 error during simultaneous file open for read</span><span class="vd">NOT-REPRODUCED (main, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1593707fff">Open ticket 1593707fff</a> · 49. Threading · filed 2006-11-09</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 8.6)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> Linux main + Thread 3.0.7: win/1593707fff.tcl (8 threads x 500 open/read/close + file stat/readable on one file) -&gt; no errors (as expected on POSIX). Windows script: win/1593707fff.tcl (needs Thread; prints VERDICT).
+</li>
+<li><span class="k">Cause</span> by reading win/tclWinChan.c TclpOpenFileChannel (main) opens with FILE_SHARE_READ|FILE_SHARE_WRITE and NativeStat (tclWinFile.c) with READ|WRITE|DELETE, so concurrent read-only opens should not conflict; transient ERROR_SHARING_VIOLATION would then come from third parties (antivirus/indexer). Delete-while-open fails by design (no FILE_SHARE_DELETE); the script reports it only for information.
+</li>
+<li><span class="k">Prototype</span> none (reporter's retry loop is a workaround, not a fix)
+</li>
+<li><span class="k">Suggested ticket comment</span> Concurrent read-only opens use FILE_SHARE_READ|FILE_SHARE_WRITE, and stat uses all share flags, so Tcl itself should not cause sharing violations here. To be rechecked on Windows 11 with a self-contained script; if it does not reproduce, close.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 5</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 8.6)
+</li>
+<li><span class="k">Tested</span> VM win/1593707fff.tcl (8 threads x 500 open/read/close + file stat + file readable on one file, plus 200 delete-while-reading races) 41 times each on 9.1b1 + Thread 3.0.7 and 8.6.18 + Thread 2.8.13 (Defender on): 0 open/stat errors, 0 delete failures in all 82 runs.
+</li>
+<li><span class="k">Cause</span> none (open uses FILE_SHARE_READ|FILE_SHARE_WRITE; see result-51.md)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Windows 11 with 8.6.18 and 9.1 (41 runs each of 8 threads opening, reading and stat-ing the same file 500 times): no sharing violations. Closing as works-for-me.
+</li></ul></div></div></details><details class="t" id="1567838fff" data-s="1567838fff clock creep using [after] on windows 03. timer events not-reproduced (main, 9.0, 8.6; no cumulative creep over 600 s on the vm)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>1567838fff</span><span class="yr">2006</span><span class="ti">Clock Creep using [after] on Windows</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6; no cumulative creep over 600 s on the VM)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1567838fff">Open ticket 1567838fff</a> · 03. Timer Events · filed 2006-09-29</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Fixed)</strong></p><ul><li>💬 2026-10-21 <strong>serhiy.storchaka</strong>: This was a calibration problem of the Windows high-resolution clock. It has been reworked since: <a class="h" href="https://core.tcl-lang.org/tcl/info/b6fc234ef3">b6fc234ef3</a> (ticket <a class="h" href="https://core.tcl-lang.org/tcl/info/b87ad7e914">b87ad7e914</a>, in 8.6.7) fixed time drifts and jumps caused by Tcl_GetTime() calls disturbing the calibration data, and <a class="h" href="https://core.tcl-lang.org/tcl/info/f6637d3dd8">f6637d3dd8</a> (in 8.6.10) reworked the calibration cycle for smoother drifting toward the system time. Both are in all maintained versions. Not reproduced by me; please reopen if it…</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6; no cumulative creep over 600 s on the VM)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> Linux: not applicable (unix/tclUnixTime.c reads clock_gettime/gettimeofday directly, no calibration). Code reading: win/tclWinTime.c on main, 9.0 and 8.6 still derives Tcl_GetTime from QueryPerformanceCounter calibrated against the system clock by CalibrationThread, which is where a creep would come from.
+</li>
+<li><span class="k">Cause</span> unknown; suspected drift of the calibrated performance-counter clock in win/tclWinTime.c (NativeGetTime/UpdateTimeEachSecond) relative to the system clock.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Repro</span> win/1567838fff.tcl (runs the reporter's [after 500] loop and compares [clock milliseconds] with PowerShell's UtcNow every 30 s for 600 s by default; prints a VERDICT line with the drift in ms/day). Run with 9.0.5, 8.6.18 and main; a longer run (e.g. <code>tclsh <a class="h" href="#1567838fff">1567838fff</a>.tcl 3600</code>) gives a clearer number.
+</li>
+<li><span class="k">Suggested ticket comment</span> (after the Windows run) Tcl's clock on Windows is still the calibrated performance counter of win/tclWinTime.c; measured drift vs. the system clock over N s on Windows 11 with 9.0/8.6/main: ...
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 2</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 9.0, 8.6; no cumulative creep over 600 s on the VM)
+</li>
+<li><span class="k">Tested</span> VM win/1567838fff.tcl, 600 s, 9.1b1, 9.0.5 and 8.6.18 run concurrently: Tcl's clock minus the system clock (read through PowerShell every 30 s) wanders between −80 and +162 ms with no trend (final values +30, −43, −8 ms); the three versions move together, so the scatter is the VM clock / PowerShell latency, not Tcl. The script's "BUG REPRODUCED" line for 9.0/8.6 is its noise limit being exceeded once (162 vs 153 ms), not a creep. Caveat: in this VM QPC and the system clock drift apart by up to 2 s per minute (see <a class="h" href="reproduced.html#b7b707a310">b7b707a310</a>), so a creep of a few ms/day on real hardware cannot be measured here.
+</li>
+<li><span class="k">Cause</span> none found; the calibration in win/tclWinTime.c keeps Tcl's clock locked to the system clock over minutes
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> On Windows 11 (VM) with 8.6.18, 9.0.5 and 9.1 an &amp;#91;after 500&amp;#93; loop does not make &amp;#91;clock&amp;#93; creep: over 10 minutes the offset to the system clock stays within ±0.16 s without a trend. The calibration code has been rewritten since 8.4; closing as out of date unless someone still sees it on real hardware.
+</li></ul></div></div></details><details class="t" id="1502071fff" data-s="1502071fff tcl_getmaster can access freed interp (interp-16.1) 20. [interp] not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1502071fff</span><span class="yr">2006</span><span class="ti">Tcl_GetMaster can access freed interp (interp-16.1)</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1502071fff">Open ticket 1502071fff</a> · 20. [interp] · filed 2006-06-07</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> ASan + -DPURIFY build of main: interp.test (391 tests) and the interp-16.1/16.2 deletion-order cases repeated with more work in the child after the parent is gone: no ASan reports. In 9.x the only core caller of Tcl_GetParent (tclCompile.c) only compares it with NULL. Not checked separately on 9.0/8.6 (same code).
+</li>
+<li><span class="k">Cause</span> by code reading, child.parentInterp is never reset when the parent is freed, so a C extension that keeps a deleted child alive with Tcl_Preserve and calls Tcl_GetParent on it can get a dangling pointer. No script-level path dereferences it: a deleted child refuses evaluation ("attempt to call eval in deleted interpreter").
+</li>
+<li><span class="k">Prototype</span> none (no reproducer; as msofer wrote, a C API caveat rather than a script-visible bug)
+</li>
+<li><span class="k">Suggested ticket comment</span> No use-after-free with an ASan build in 9.1 (interp.test and variants of interp-16.x). The core only compares Tcl_GetParent() with NULL. Suggest closing unless someone has a C-level reproducer.
+</li></ul></div></details><details class="t" id="1080650fff" data-s="1080650fff file normalize + env(home)=c: 08. environment variables not-reproduced (main, 9.0, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1080650fff</span><span class="yr">2004</span><span class="ti">file normalize + env(HOME)=C:</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1080650fff">Open ticket 1080650fff</a> · 08. Environment Variables · filed 2004-12-07</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> Linux only (not applicable: no drive-relative paths). vincentdarley reported it fixed in 8.5a2. In 9.x <code>~</code> is no longer expanded by file normalize (TIP 602); the repro tries <code>file join $env(HOME) tclshrc.tcl</code>, <code>c:tclshrc.tcl</code>, and <code>~/tclshrc.tcl</code> (8.x) / <code>file tildeexpand</code> (9.x), and checks that normalize is idempotent and absolute. Repro: win/1080650fff.tcl.
+</li>
+<li><span class="k">Cause</span> unknown (8.4 tilde substitution produced a drive-relative path that normalize did not resolve)
+</li>
+<li><span class="k">Prototype</span> none (needs Windows)
+</li>
+<li><span class="k">Suggested ticket comment</span> Needs a test on Windows with 9.0/8.6; reported fixed in 8.5 already, and in 9.x &amp;#91;file normalize&amp;#93; no longer expands ~.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 2</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 9.0, 8.6)
+</li>
+<li><span class="k">Tested</span> VM win/1080650fff.tcl with env(HOME)=c:, cwd %USERPROFILE%\tmp\tri2: <code>file join $env(HOME) tclshrc.tcl</code>, <code>c:tclshrc.tcl</code>, and <code>~/tclshrc.tcl</code> (8.6) / <code>file tildeexpand ~</code> (9.x) all normalize to the absolute <code>%USERPROFILE%/tmp/tri2/tclshrc.tcl</code>, and normalizing again gives the same path, on 9.1b1, 9.0.5 and 8.6.18
+</li>
+<li><span class="k">Cause</span> fixed long ago (reported fixed in 8.5a2)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Works on 8.6.18, 9.0.5 and 9.1 on Windows 11: with env(HOME)=c: the drive-relative path normalizes to an absolute path under the current directory of C:, and normalize is idempotent. Closing as fixed.
+</li></ul></div></div></details><details class="t" id="821499ffff" data-s="821499ffff tcl_appendtoobj disobeys length  10. objects not-reproduced (all tested) — tcl_appendtoobj(obj, &quot;\302\242&quot;, 1) appends exactly one byte, both to a pure-unicode object (reporter&#x27;s case) and to a plain string object" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>821499ffff</span><span class="yr">2003</span><span class="ti">Tcl_AppendToObj disobeys length</span><span class="vd">NOT-REPRODUCED (all tested) — Tcl_AppendToObj(obj, "\302\242", 1) appends exactly one byte, both to a pure-Unicode object (reporter's case) and to …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/821499ffff">Open ticket 821499ffff</a> · 10. Objects · filed 2003-10-10</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested) — Tcl_AppendToObj(obj, "\302\242", 1) appends exactly one byte, both to a pure-Unicode object (reporter's case) and to a plain string object</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> C program (work-a3/821499.c) against main build, 9.0.5, 8.6.18, and old 8.4.2/8.4.11/8.4.15/8.4.20, 8.5.0/8.5.5/8.5.10/8.5.19, 8.6.0–8.6.14. Up to 8.6.12 the lone byte decodes as 0xFFC2 (sign-extended), from 8.6.13 on as 0xC2; never as 0xA2, so the scan never runs past the given length
+</li>
+<li><span class="k">Cause</span> the 2003 over-scan in the Unicode-rep append path is gone (it did not show even in 8.4.2)
+</li>
+<li><span class="k">Prototype</span> none (not reproducible)
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce with 8.4.2 through 9.1: the length is honoured and the lone lead byte becomes U+00C2 (U+FFC2 before 8.6.13). Proposing to close as out of date.
+</li></ul></div></details><details class="t" id="803370ffff" data-s="803370ffff marked async handler not getting invoked 01. notifier not-reproduced (linux: 8.6 unthreaded, 8.6 threaded, main); hp-ux cannot-test" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>803370ffff</span><span class="yr">2003</span><span class="ti">marked async handler not getting invoked</span><span class="vd">NOT-REPRODUCED (Linux: 8.6 unthreaded, 8.6 threaded, main); HP-UX CANNOT-TEST</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/803370ffff">Open ticket 803370ffff</a> · 01. Notifier · filed 2003-09-09</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (Linux: 8.6 unthreaded, 8.6 threaded, main); HP-UX CANNOT-TEST</p><ul>
+<li><span class="k">Platform</span> unix (HP-UX 10.20 report)
+</li>
+<li><span class="k">Tested</span> small extension (work-a4/sigext/sigasync.c) whose SIGALRM handler calls Tcl_AsyncMark(), with the interp idle in <code>vwait</code>: the handler runs after 100 ms (the alarm time) on an unthreaded 8.6 tip build (--disable-threads, select() returns EINTR), threaded 8.6.18 and main. Also <code>testasync marklater</code> from another thread wakes an idle vwait in 0.1 s on main/9.0/8.6. Tcl 9 has no unthreaded build any more.
+</li>
+<li><span class="k">Cause</span> on the reporter's system the signal apparently didn't interrupt select() (another thread got it, or the select restarts). Unthreaded Tcl_AlertNotifier still does nothing, but on Linux EINTR covers that.
+</li>
+<li><span class="k">Prototype</span> none. Side finding: tclTest.c AsyncHandlerProc calls Tcl_GetStringResult(interp) before its <code>interp != NULL</code> check, so a <code>testasync</code> handler that fires while idle in vwait (Tcl_ServiceEvent -&gt; Tcl_AsyncInvoke(NULL, 0)) segfaults the tcltest binary (main, 9.0, 8.6). Test-only, a one-line fix.
+</li>
+<li><span class="k">Suggested ticket comment</span> Can't reproduce on Linux: a signal handler calling Tcl_AsyncMark wakes an idle event loop in 8.6 (threaded and unthreaded) and 9.x (always threaded), because select() returns EINTR. HP-UX 10.20 is long gone; closing as out of date.
+</li></ul></div></details><details class="t" id="717848ffff" data-s="717848ffff notifier lock in sub-process on windows 01. notifier not-reproduced (main, 9.0, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>717848ffff</span><span class="yr">2003</span><span class="ti">Notifier lock in sub-process on windows</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/717848ffff">Open ticket 717848ffff</a> · 01. Notifier · filed 2003-04-08</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> the attached main.tcl/sub.tcl (original sub.tcl, artifact d6fb4fa87a, with <code>fileevent stdin readable</code> on the never-written pipe) plus a retrying client: the subprocess accepts, prints its args and [info hostname] on main, 9.0, 8.6 (Linux). Self-contained repro win/717848ffff.tcl (the child also checks that a later <code>after</code> fires) gives VERDICT: OK on all three on Linux.
+</li>
+<li><span class="k">Cause</span> unknown. On Windows the stdin pipe reader thread of the child plus the [info hostname] winsock init in the accept callback hung the notifier in 8.4.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Unix. Please run win/717848ffff.tcl-style repro (child with <code>fileevent stdin readable</code>, [info hostname] and <code>after</code> in the accept callback) with 8.6.18/9.0 on Windows; close if it passes.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 3</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 9.0, 8.6)
+</li>
+<li><span class="k">Tested</span> VM win/717848ffff.tcl (child tclsh with stdin as a never-written pipe and <code>fileevent stdin readable</code>; accept callback runs [info hostname] and an <code>after</code>): 5 of 5 runs OK on each of 9.1b1, 9.0.5, 8.6.18
+</li>
+<li><span class="k">Cause</span> the 8.4-era hang between the stdin pipe reader thread and winsock init no longer happens
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Windows 11 with 8.6.18, 9.0.5 and 9.1: a child with &amp;#91;fileevent stdin readable&amp;#93; on a pipe accepts a connection, runs &amp;#91;info hostname&amp;#93; and later timers fine. Closing as out of date.
+</li></ul></div></div></details><details class="t" id="708166ffff" data-s="708166ffff dde servers can hang on exit 28. dde package not-reproduced (main, 9.0, 8.6) for the hang on exit; registering a server name while another dde server is blocked takes about 2 s" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>708166ffff</span><span class="yr">2003</span><span class="ti">dde servers can hang on exit</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6) for the hang on exit; registering a server name while another DDE server is blocked takes about 2 s</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/708166ffff">Open ticket 708166ffff</a> · 28. dde Package · filed 2003-03-22</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6) for the hang on exit; registering a server name while another DDE server is blocked takes about 2 s</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> code reading only (main win/tclWinDde.c): DdeExitProc still calls <code>DdeNameService(ddeInstance, NULL, 0, DNS_UNREGISTER)</code>, which DDEML implements by sending (not posting) messages to every DDE window, so it blocks on a server that does not pump messages. The dde package does not exist on Unix.
+</li>
+<li><span class="k">Cause</span> win/tclWinDde.c DdeExitProc -&gt; DdeNameService(DNS_UNREGISTER) (and probably the DNS_REGISTER in DdeSetServerName) synchronously broadcasting to a non-responsive DDE server.
+</li>
+<li><span class="k">Prototype</span> none (needs Windows to confirm; possible approach: skip the global unregister in the exit handler, or do it on a helper thread with a timeout)
+</li>
+<li><span class="k">Repro</span> win/708166ffff.tcl (starts server A that blocks 20 s without pumping messages, then times a second server B registering and exiting; VERDICT line, &gt;5 s = reproduced; it reports the registration time separately).
+</li>
+<li><span class="k">Suggested ticket comment</span> DdeExitProc still calls DdeNameService(DNS_UNREGISTER) unconditionally; needs a recheck on current Windows with the attached-style repro (blocking server A, server B exits).
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 4</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 9.0, 8.6) for the hang on exit; registering a server name while another DDE server is blocked takes about 2 s
+</li>
+<li><span class="k">Tested</span> VM win/708166ffff.tcl over ssh (server A sets a servername and blocks 20 s without pumping messages; server B registers and exits): B's <code>dde servername</code> takes 2028–2032 ms, B's exit 13–16 ms, on 9.1b1, 9.0.5, 8.6.18. Without a blocked server, <code>dde servername</code> takes 0 ms (work-win4/ddeb.tcl).
+</li>
+<li><span class="k">Cause</span> exit: DdeNameService(DNS_UNREGISTER) no longer blocks on a non-responsive DDE window on Windows 11. Registration: DdeSetServerName -&gt; DdeGetServicesList broadcasts WM_DDE_INITIATE with SendMessageTimeoutW(SMTO_ABORTIFHUNG, 1000 ms), so a blocked server delays it by the timeout but cannot hang it.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Windows 11 with 8.6.18, 9.0.5 and 9.1: with a DDE server that does not pump messages, a second server exits at once; only &amp;#91;dde servername&amp;#93; is delayed by about 2 s (the SendMessageTimeout in the service enumeration). Closing as out of date.
+</li></ul></div></div></details><details class="t" id="636161ffff" data-s="636161ffff tcl_fs* problems on windows&amp;threads 25. channel system not-reproduced (main, 9.0, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>636161ffff</span><span class="yr">2002</span><span class="ti">Tcl_FS* problems on windows&amp;threads</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/636161ffff">Open ticket 636161ffff</a> · 25. Channel System · filed 2002-11-10</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> Windows (tclkit + tclvfs + Thread, 8.4.1)
+</li>
+<li><span class="k">Tested</span> main + Thread 3.0.7 on Linux: 40 threads each <code>source</code> a file (40/40), and the same from a zipfs mount, which is Tcl 9's built-in counterpart of a tclkit VFS (40/40). Repro win/636161ffff.tcl does the same, prints VERDICT and exits; a crash shows up as no verdict line.
+</li>
+<li><span class="k">Cause</span> unknown. The comments point to tclvfs/tclkit (plain shells were fine, according to hobbs).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> <code>source</code> in many threads works on 9.x, also from a zipfs mount. The report is about 8.4 tclkit+tclvfs; unless it still fails with a current Windows build (win/636161ffff.tcl-style test), close as out of date.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 3</div><ul>
+<li><span class="k">Platform</span> Windows (originally tclkit + tclvfs, 8.4.1)
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 9.0, 8.6)
+</li>
+<li><span class="k">Tested</span> VM win/636161ffff.tcl, 40 thread::create threads each <code>source</code> a file: 40/40 on 9.1b1, 9.0.5, 8.6.18 (3 runs each) and the 9.1 memdebug Debug build; also from a zipfs mount (Tcl 9's built-in VFS) 40/40 on 9.1b1 and 9.0.5
+</li>
+<li><span class="k">Cause</span> n/a (the report involved tclkit/tclvfs; plain shells were already fine in 2002)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> &amp;#91;source&amp;#93; in many threads works on Windows 11 with 8.6.18, 9.0.5 and 9.1, also from a zipfs mount (memdebug build clean). The report is about 8.4 tclkit + tclvfs; closing as out of date.
+</li></ul></div></div></details><details class="t" id="576158ffff" data-s="576158ffff unkown floating-pointer errno=4 07. variables not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>576158ffff</span><span class="yr">2002</span><span class="ti">Unkown floating-pointer errno=4</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/576158ffff">Open ticket 576158ffff</a> · 07. Variables · filed 2002-07-01</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> unix
+</li>
+<li><span class="k">Tested</span> the attachment (bug_test.tgz, stored double-UTF-8-encoded in the repo; recoverable by decoding to Latin-1) needs wish + a SWIG module with a SIGALRM thread. Equivalent tclsh test (work-a3/576158/run.tcl + alarm.c: 1 kHz SIGALRM without SA_RESTART, 200000 iterations of the reporter's unbraced [expr $count * 2.5] plus sin() from event callbacks): 0 errors on main, 9.0, 8.6, 8.4.20, 8.4.2. 8.3.3 not available
+</li>
+<li><span class="k">Cause</span> in 8.3, expr parsed numbers with strtod() and checked a stale errno (EINTR from an interrupted syscall). Since 8.5 numbers are parsed by Tcl's own TclParseNumber; errno is only checked after libm calls, and generic/tclBasic.c clears it (errno = 0) right before each call
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce on 8.4–9.1 with a SIGALRM stress test equivalent to the attachment. Since 8.5 expr no longer uses strtod/errno to parse numbers, and math functions clear errno before each call. Proposing to close as out of date.
+</li></ul></div></details><details class="t" id="502022ffff" data-s="502022ffff tcl_asyncmark doesn&#x27;t awaken the notifie 01. notifier not-reproduced (main, 9.0, 8.6 threaded builds); the non-threaded case is gone in 9.x" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>502022ffff</span><span class="yr">2002</span><span class="ti">Tcl_AsyncMark doesn't awaken the Notifie</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6 threaded builds); the non-threaded case is gone in 9.x</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/502022ffff">Open ticket 502022ffff</a> · 01. Notifier · filed 2002-01-10</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6 threaded builds); the non-threaded case is gone in 9.x</p><ul>
+<li><span class="k">Platform</span> unix
+</li>
+<li><span class="k">Tested</span> <code>testasync marklater</code> (marks from another thread after 1 s) during <code>vwait</code> with a 3 s timeout, using the tcltest of main, 9.0 tip and 8.6 tip: the handler runs after about 1 s inside vwait (Tcl_DoOneEvent -&gt; Tcl_ServiceEvent -&gt; Tcl_AsyncInvoke). Non-threaded 8.6 judged by reading the code only.
+</li>
+<li><span class="k">Cause</span> Tcl_AsyncMark calls Tcl_ThreadAlert -&gt; Tcl_AlertNotifier, which wakes the threaded notifier. Tcl 9 has no non-threaded build any more. In an 8.6 <code>--disable-threads</code> build Tcl_AlertNotifier is still a no-op, but a mark made from a signal handler interrupts select() (EINTR) and Tcl_ServiceEvent then runs the async handlers. Only a mark from a foreign OS thread in a non-threaded build stays unnoticed, and that case is outside the non-threaded model anyway.
+</li>
+<li><span class="k">Side finding</span> the test run crashes in generic/tclTest.c:AsyncHandlerProc, which calls <code>Tcl_GetStringResult(interp)</code> before its <code>interp != NULL</code> check. When the event loop invokes async handlers, interp is NULL (segfault in Tcl_GetObjResult, all of main/9.0/8.6). This is test code only, but async handlers invoked from the event loop are never tested.
+</li>
+<li><span class="k">Prototype</span> none (no core bug; the tclTest.c NULL-interp crash could be a separate 2-line fix)
+</li>
+<li><span class="k">Suggested ticket comment</span> Tcl 9 is always threaded, so Tcl_AsyncMark always wakes the notifier through Tcl_ThreadAlert. In threaded 8.6/9.0/9.1 an async mark from another thread is handled inside &amp;#91;vwait&amp;#93; right away. Can be closed.
+</li></ul></div></details><details class="t" id="219307ffff" data-s="219307ffff tcl&#x27;s fileevent callback on a socket does not work the same  27. channel types not-reproduced (main, 9.0, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>219307ffff</span><span class="yr">2000</span><span class="ti">Tcl's fileevent callback on a socket does not work the same</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/219307ffff">Open ticket 219307ffff</a> · 27. Channel Types · filed 2000-10-26</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> main, 9.0.5, 8.6.18 on Linux with win/219307ffff.tcl (localhost, ephemeral port). The server closes at once; the client's writable callback fires, the first write succeeds, the second fails with <code>broken pipe</code>.
+</li>
+<li><span class="k">Cause</span> on Unix the writable event fires for a socket in an error/closed state, as documented (fileevent: "error conditions" make the channel readable/writable). The ticket says Windows didn't fire at all after the peer closed; win/tclWinSock.c would have to be checked for FD_CLOSE turning into a writable event.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Repro</span> win/219307ffff.tcl (prints a VERDICT line, exits within 3 s)
+</li>
+<li><span class="k">Suggested ticket comment</span> On Unix the behaviour is as documented: writable fires and the write reports "broken pipe" (main, 9.0, 8.6). Checking whether Windows still fails to fire the writable callback after the peer closes.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 3</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (main, 9.0, 8.6)
+</li>
+<li><span class="k">Tested</span> VM win/219307ffff.tcl (server closes the accepted socket at once; client has a nonblocking writable handler): on 9.1b1, 9.0.5 and 8.6.18 the writable callback fires, the first write succeeds, the second fails with <code>software caused connection abort</code> — the same sequence as on Linux (there <code>broken pipe</code>)
+</li>
+<li><span class="k">Cause</span> n/a (the 1999 report; only the OS error text differs)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Windows 11 now behaves like Unix (8.6.18, 9.0.5, 9.1): the writable handler fires on a socket whose peer closed it and the write reports the error ("software caused connection abort" vs. "broken pipe"). Closing as out of date.
+</li></ul></div></div></details></section>
+<footer>Generated from the triage notes of each batch and of the Unix and Windows VM runs.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

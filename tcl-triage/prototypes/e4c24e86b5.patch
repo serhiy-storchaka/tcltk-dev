@@ -1,0 +1,32 @@
+Index: doc/timer.n
+==================================================================
+--- doc/timer.n
++++ doc/timer.n
+@@ -118,21 +118,23 @@
+ In this case the command returns a list with two to three elements.
+ The first element of the list is the script associated
+ with \fIid\fR, and the second element is either
+ \fBidle\fR, \fBmonotonic\fR or \fBwallclock\fR to indicate what kind of event
+ handler it is.
+-A third list element is present for the kinds \fB monotonic\fR or \fBwallclock\fR.
++A third list element is present for the kinds \fBmonotonic\fR or \fBwallclock\fR.
+ This element is the scheduled execution time point in microseconds of the given clock type.
++.RS
++.PP
++Note that the output differs from \fBafter info\fR.
++.RE
+ .LP
+ The \fBtimer in\fR, \fBtimer at\fR and \fBtimer idle\fR forms of the command
+ assume that the application is event driven:  the delayed commands
+ will not be executed unless the application enters the event loop.
+ In applications that are not normally event-driven, such as
+ \fBtclsh\fR, the event loop can be entered with the \fBvwait\fR
+ and \fBupdate\fR commands.
+-.LP
+-Note that the output differs from \fBafter info\fR.
+ .SH "TIME UNITS"
+ Some forms of the command take a time unit.
+ Available units are: \fBus\fR (for microseconds), \fBmicroseconds\fR,
+ \fBms\fR (for milliseconds), \fBmilliseconds\fR,
+ \fBs\fR (for seconds), \fBseconds\fR or any unique abbreviation.
+

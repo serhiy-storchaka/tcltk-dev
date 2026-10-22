@@ -1,0 +1,44 @@
+Index: generic/tclZipfs.c
+==================================================================
+--- generic/tclZipfs.c
++++ generic/tclZipfs.c
+@@ -2272,11 +2272,17 @@
+     Tcl_MutexLock(&ZipFSMutex);
+     Tcl_ConditionWait2(&ZipFSCond, &ZipFSMutex, 0);
+     Tcl_MutexUnlock(&ZipFSMutex);
+ #endif /* TCL_THREADS */
+ 
+-    crc32tab = get_crc_table();
++    /*
++     * Use the standard CRC-32 table from the bundled crc32.h rather than
++     * get_crc_table(): the zlib actually linked (e.g. the system one on
++     * macOS) need not return a table in that format. [bbe7c6ff9e]
++     */
++
++    crc32tab = crc_table;
+     Tcl_FSRegister(NULL, &zipfsFilesystem);
+     Tcl_InitHashTable(&ZipFS.fileHash, TCL_STRING_KEYS);
+     Tcl_InitHashTable(&ZipFS.zipHash, TCL_STRING_KEYS);
+     ZipFS.idCount = 1;
+     ZipFS.wrmax = DEFAULT_WRITE_MAX_SIZE;
+
+Index: tests/zipfs.test
+==================================================================
+--- tests/zipfs.test
++++ tests/zipfs.test
+@@ -1278,12 +1278,12 @@
+ 	} -body {
+ 	    set fd [open [file join $defMountPt $filename]]
+ 	    gets $fd
+ 	} -result $result {*}$args -constraints bbe7c6ff9e
+     }
+-    # The bug bbe7c6ff9e only manifests on macos
+-    testConstraint bbe7c6ff9e [expr {$::tcl_platform(os) ne "Darwin"}]
++    # The bug bbe7c6ff9e only manifested on macos
++    testConstraint bbe7c6ff9e 1
+ 
+     # NOTE: test-password.zip is the DOS time based encryption header validity check (infozip style)
+     #       test-password2.zip is the CRC based encryption header validity check (pkware style)
+     testpasswordr plain                  test-password.zip plain.txt password plaintext
+     testpasswordr plain-nopass           test-password.zip plain.txt "" plaintext
+

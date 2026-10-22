@@ -1,0 +1,77 @@
+Index: generic/tclIO.c
+==================================================================
+--- generic/tclIO.c
++++ generic/tclIO.c
+@@ -80,11 +80,11 @@
+ 				 * appended to objPtr during the last call to
+ 				 * FilterInputBytes(). */
+     int charsWrote;		/* The corresponding number of UTF-8
+ 				 * characters appended to objPtr during the
+ 				 * last call to FilterInputBytes(). */
+-    int totalChars;		/* The total number of UTF-8 characters
++    Tcl_Size totalChars;	/* The total number of UTF-8 characters
+ 				 * appended to objPtr so far, just before the
+ 				 * last call to FilterInputBytes(). */
+ } GetsState;
+ 
+ /*
+@@ -4626,12 +4626,12 @@
+     GetsState gs;
+     Channel *chanPtr = (Channel *) chan;
+     ChannelState *statePtr = chanPtr->state;
+ 				/* State info for channel */
+     ChannelBuffer *bufPtr;
+-    int inEofChar, skip, copiedTotal, oldFlags, oldRemoved;
+-    Tcl_Size oldLength;
++    int inEofChar, skip, oldFlags, oldRemoved;
++    Tcl_Size copiedTotal, oldLength;
+     Tcl_Encoding encoding;
+     char *dst, *dstEnd, *eol, *eof;
+     Tcl_EncodingState oldState;
+ 
+     if (GotFlag(statePtr, CHANNEL_ENCODING_ERROR)) {
+@@ -5076,12 +5076,12 @@
+ {
+     Channel *chanPtr = (Channel *) chan;
+     ChannelState *statePtr = chanPtr->state;
+ 				/* State info for channel */
+     ChannelBuffer *bufPtr;
+-    int inEofChar, skip, copiedTotal, oldFlags, oldRemoved;
+-    Tcl_Size rawLen, byteLen = 0, oldLength;
++    int inEofChar, skip, oldFlags, oldRemoved;
++    Tcl_Size copiedTotal, rawLen, byteLen = 0, oldLength;
+     int eolChar;
+     unsigned char *dst, *dstEnd, *eol, *eof, *byteArray;
+ 
+     /*
+      * This operation should occur at the top of a channel stack.
+@@ -5390,11 +5390,12 @@
+ {
+     ChannelState *statePtr = chanPtr->state;
+ 				/* State info for channel */
+     ChannelBuffer *bufPtr;
+     char *raw, *dst;
+-    int offset, toRead, dstNeeded, spaceLeft, result, rawLen;
++    int toRead, dstNeeded, result, rawLen;
++    Tcl_Size offset, spaceLeft;
+     Tcl_Obj *objPtr;
+ #define ENCODING_LINESIZE 20	/* Lower bound on how many bytes to convert at
+ 				 * a time. Since we don't know a priori how
+ 				 * many bytes of storage this many source
+ 				 * bytes will use, we actually need at least
+@@ -5472,11 +5473,13 @@
+ 	toRead = rawLen;
+     }
+     dstNeeded = toRead * TCL_UTF_MAX;
+     spaceLeft = objPtr->length - offset;
+     if (dstNeeded > spaceLeft) {
+-	int length = offset + ((offset < dstNeeded) ? dstNeeded : offset);
++	Tcl_Size length = offset + ((offset < dstNeeded) ? dstNeeded
++		: (offset > TCL_SIZE_MAX - offset) ? TCL_SIZE_MAX - offset
++		: offset);
+ 
+ 	if (Tcl_AttemptSetObjLength(objPtr, length) == 0) {
+ 	    length = offset + dstNeeded;
+ 	    if (Tcl_AttemptSetObjLength(objPtr, length) == 0) {
+ 		dstNeeded = TCL_UTF_MAX - 1 + toRead;
+

@@ -1,0 +1,26 @@
+Index: generic/tcl.h
+==================================================================
+--- generic/tcl.h
++++ generic/tcl.h
+@@ -2363,19 +2363,13 @@
+ 
+ #include "tclDecls.h"  /* IWYU pragma: export */
+ 
+ /*
+  * Include platform specific public function declarations that are accessible
+- * via the stubs table. Make all TclOO symbols MODULE_SCOPE (which only
+- * has effect on building it as a shared library). See ticket [3010352].
++ * via the stubs table.
+  */
+ 
+-#if defined(BUILD_tcl)
+-#   undef TCLAPI
+-#   define TCLAPI MODULE_SCOPE
+-#endif
+-
+ #include "tclPlatDecls.h"  /* IWYU pragma: export */
+ 
+ /*
+  *----------------------------------------------------------------------------
+  * The following declarations map ckalloc and ckfree to Tcl_Alloc and
+

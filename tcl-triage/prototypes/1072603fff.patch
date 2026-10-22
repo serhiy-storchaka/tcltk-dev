@@ -1,0 +1,52 @@
+Index: doc/msgcat.n
+==================================================================
+--- doc/msgcat.n
++++ doc/msgcat.n
+@@ -487,12 +487,12 @@
+     \fB::msgcat::mcflset\fR "Free Beer" "Cerveza Gratis"
+ }
+ .CE
+ .SH "RECOMMENDED MESSAGE SETUP FOR PACKAGES"
+ .PP
+-If a package is installed into a subdirectory of the
+-\fBtcl_pkgPath\fR and loaded via \fBpackage require\fR, the
++If a package is installed into a subdirectory of a directory in
++\fBauto_path\fR (such as one of \fBtcl_pkgPath\fR on Unix) and loaded via \fBpackage require\fR, the
+ following procedure is recommended.
+ .IP [1]
+ During package installation, create a subdirectory
+ \fBmsgs\fR under your package directory.
+ .IP [2]
+
+Index: doc/pkgMkIndex.n
+==================================================================
+--- doc/pkgMkIndex.n
++++ doc/pkgMkIndex.n
+@@ -53,11 +53,12 @@
+ or adjust the order in which \fBpkg_mkIndex\fR processes
+ the files.  See \fBCOMPLEX CASES\fR below.
+ .RE
+ .IP [3]
+ Install the package as a subdirectory of one of the directories given by
+-the \fBtcl_pkgPath\fR variable.  If \fB$tcl_pkgPath\fR contains more
++the \fBtcl_pkgPath\fR variable (on Windows, where \fBtcl_pkgPath\fR
++is not defined, of one of the directories in \fBauto_path\fR).  If \fB$tcl_pkgPath\fR contains more
+ than one directory, machine-dependent packages (e.g., those that
+ contain binary shared libraries) should normally be installed
+ under the first directory and machine-independent packages (e.g.,
+ those that contain only Tcl scripts) should be installed under the
+ second directory.
+@@ -71,11 +72,11 @@
+ If you install the package anywhere else, then you must ensure that
+ the directory containing the package is in the \fBauto_path\fR global variable
+ or an immediate subdirectory of one of the directories in \fBauto_path\fR.
+ \fBAuto_path\fR contains a list of directories that are searched
+ by both the auto-loader and the package loader; by default it
+-includes \fB$tcl_pkgPath\fR.
++includes \fB$tcl_pkgPath\fR (except on Windows).
+ The package loader also checks all of the subdirectories of the
+ directories in \fBauto_path\fR.
+ You can add a directory to \fBauto_path\fR explicitly in your
+ application, or you can add the directory to your \fBTCLLIBPATH\fR
+ environment variable:  if this environment variable is present,
+

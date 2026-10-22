@@ -1,0 +1,136 @@
+Index: generic/tclTrace.c
+==================================================================
+--- generic/tclTrace.c
++++ generic/tclTrace.c
+@@ -2514,10 +2514,11 @@
+     int disposeFlags = 0;
+     Tcl_InterpState state = NULL;
+     Tcl_HashEntry *hPtr;
+     int traceflags = flags & VAR_ALL_TRACES;
+     const char *element;
++    bool arrayActive = false;	/* Whether we marked arrayPtr as active. */
+ 
+     /*
+      * If there are already similar trace functions active for the variable,
+      * don't call them again.
+      */
+@@ -2530,10 +2531,23 @@
+ 	VarHashRefCount(varPtr)++;
+     }
+     if (arrayPtr && TclIsVarInHash(arrayPtr)) {
+ 	VarHashRefCount(arrayPtr)++;
+     }
++
++    /*
++     * Traces on the whole array are disabled too while they (or the traces
++     * on the element) run, so that accessing the array or other elements
++     * from a trace does not call them recursively. Unset traces are never
++     * disabled. [Bug 0c7ddf8536]
++     */
++
++    if (arrayPtr && !(flags & TCL_TRACE_UNSETS)
++	    && !TclIsVarTraceActive(arrayPtr)) {
++	TclSetVarTraceActive(arrayPtr);
++	arrayActive = true;
++    }
+ 
+     /*
+      * If the variable name hasn't been parsed into array name and element, do
+      * it here. If there really is an array element, make a copy of the
+      * original name so that NULLs can be inserted into it to separate the
+@@ -2587,11 +2601,11 @@
+ 
+     result = NULL;
+     active.nextPtr = iPtr->activeVarTracePtr;
+     iPtr->activeVarTracePtr = &active;
+     Tcl_Preserve(iPtr);
+-    if (arrayPtr && !TclIsVarTraceActive(arrayPtr)
++    if (arrayPtr && (arrayActive || (flags & TCL_TRACE_UNSETS))
+ 	    && (arrayPtr->flags & traceflags)) {
+ 	hPtr = Tcl_FindHashEntry(&iPtr->varTraces, arrayPtr);
+ 	active.varPtr = arrayPtr;
+ 	for (tracePtr = (VarTrace *)Tcl_GetHashValue(hPtr);
+ 		tracePtr != NULL; tracePtr = active.nextTracePtr) {
+@@ -2728,10 +2742,13 @@
+     }
+     if (copiedName) {
+ 	Tcl_DStringFree(&nameCopy);
+     }
+     TclClearVarTraceActive(varPtr);
++    if (arrayActive) {
++	TclClearVarTraceActive(arrayPtr);
++    }
+     if (TclIsVarInHash(varPtr)) {
+ 	VarHashRefCount(varPtr)--;
+     }
+     iPtr->activeVarTracePtr = active.nextPtr;
+     Tcl_Release(iPtr);
+
+Index: tests/trace.test
+==================================================================
+--- tests/trace.test
++++ tests/trace.test
+@@ -2651,10 +2651,62 @@
+     proc foo args {}
+     trace add execution foo enter {rename foo {}; error bar;#}
+     catch foo m
+     return -level 0 $m[unset m]
+ } bar
++
++test trace-bug-0c7ddf8536-1 {array traces are disabled during element trace} -setup {
++    unset -nocomplain ::foo
++    set ::foo(bar) one
++    set ::foo(baz) two
++    set ::r {}
++    proc tracer {args} {
++	lappend ::r $args [info exists ::foo] [set ::foo(baz)]
++    }
++} -body {
++    trace add variable ::foo {read write unset} tracer
++    set ::foo(bar)
++    set ::r
++} -cleanup {
++    unset -nocomplain ::foo ::r
++    rename tracer {}
++} -result {{::foo bar read} 1 two}
++test trace-bug-0c7ddf8536-2 {element traces still fire in array traces} -setup {
++    unset -nocomplain ::foo
++    set ::foo(bar) one
++    set ::foo(baz) two
++    set ::r {}
++    proc tracer {args} {
++	lappend ::r $args
++	if {[lindex $args 1] eq "bar"} {set ::foo(baz)}
++    }
++} -body {
++    trace add variable ::foo read tracer
++    trace add variable ::foo(baz) read tracer
++    set ::foo(bar)
++    set ::r
++} -cleanup {
++    unset -nocomplain ::foo ::r
++    rename tracer {}
++} -result {{::foo bar read} {::foo baz read}}
++test trace-bug-0c7ddf8536-3 {unset traces are not disabled} -setup {
++    unset -nocomplain ::foo
++    set ::foo(bar) one
++    set ::foo(baz) two
++    set ::r {}
++    proc tracer {args} {
++	lappend ::r $args
++	if {[lindex $args 2] eq "read"} {unset ::foo(baz)}
++    }
++} -body {
++    trace add variable ::foo {read unset} tracer
++    set ::foo(bar)
++    set ::r
++} -cleanup {
++    unset -nocomplain ::foo ::r
++    rename tracer {}
++} -result {{::foo bar read} {::foo baz unset}}
+ 
+ # Delete procedures when done, so we don't clash with other tests
+ # (e.g. foobar will clash with 'unknown' tests).
+ catch {rename foobar {}}
+ catch {rename foo {}}
+

@@ -1,0 +1,127 @@
+Index: generic/tclCompile.c
+==================================================================
+--- generic/tclCompile.c
++++ generic/tclCompile.c
+@@ -2262,26 +2262,28 @@
+      * envPtr->atCmdStart:
+      *
+      * atCmdStart == 2	: Don't use the INST_START_CMD instruction.
+      * atCmdStart == 1	: INST_START_CMD was the last instruction emitted,
+      *			: so no need to emit another.  Instead
+-     *			: increment the number of cmds started at it, except
+-     *			: for the special case at the start of a script.
++     *			: increment the number of cmds started at it.  At
++     *			: the start of a script nothing has been emitted yet,
++     *			: so emit one to count the command [Bug 931e4956b9].
+      * atCmdStart == 0	: The last instruction was something else.
+      *			: Emit INST_START_CMD here.
+      */
+ 
+     switch (envPtr->atCmdStart) {
++    case 1:
++	if (envPtr->codeNext > envPtr->codeStart) {
++	    incrOffset = CurrentOffset(envPtr) - 4;
++	    break;
++	}
++	/* FALLTHRU */
+     case 0:
+ 	unwind = tclInstructionTable[INST_START_CMD].numBytes;
+ 	incrOffset = CurrentOffset(envPtr) + 5;
+ 	OP44(			START_CMD, 0, 0);
+-	break;
+-    case 1:
+-	if (envPtr->codeNext > envPtr->codeStart) {
+-	    incrOffset = CurrentOffset(envPtr) - 4;
+-	}
+ 	break;
+     case 2:
+ 	/* Nothing to do */
+ 	;
+     }
+
+Index: tests/info.test
+==================================================================
+--- tests/info.test
++++ tests/info.test
+@@ -2639,10 +2639,23 @@
+ } -cleanup {
+     interp delete child
+ } -body {
+     child invokehidden info frame
+ } -result 1
++
++test info-bug-931e4956b9 {info cmdcount counts first compiled command [Bug 931e4956b9]} -setup {
++    interp create child
++} -body {
++    set x [child eval {info cmdcount}]
++    child eval {incr i}
++    child eval {incr i}
++    child eval {set j 1}
++    expr {[child eval {info cmdcount}] - $x}
++} -cleanup {
++    interp delete child
++    unset -nocomplain x
++} -result 5
+ 
+ # cleanup
+ catch {namespace delete test_ns_info1 test_ns_info2}
+ ::tcltest::cleanupTests
+ return
+
+Index: tests/interp.test
+==================================================================
+--- tests/interp.test
++++ tests/interp.test
+@@ -3276,11 +3276,11 @@
+     set curlim [$i eval info cmdcount]
+     $i limit command -command "cb2 [expr {$curlim + 100}]" \
+ 	    -value [expr {$curlim + 10}]
+     $i eval {for {set i 0} {$i<10} {incr i} {foo}}
+     list $a $b $c
+-} -result {6 4 b} -cleanup {
++} -result {5 5 b} -cleanup {
+     interp delete $i
+     rename cb1 {}
+     rename cb2 {}
+ }
+ # The next three tests exercise all the three ways that limit handlers
+@@ -3304,11 +3304,11 @@
+     interp alias $i foo {} cb1
+     set curlim [$i eval info cmdcount]
+     $i limit command -command "cb2 {}" -value [expr {$curlim + 10}]
+     $i eval {for {set i 0} {$i<10} {incr i} {foo}}
+     list $a $b $c
+-} -result {6 4 b} -cleanup {
++} -result {5 5 b} -cleanup {
+     interp delete $i
+     rename cb1 {}
+     rename cb2 {}
+ }
+ test interp-34.6 {limits with callbacks: removing limits and handlers} -setup {
+@@ -3329,11 +3329,11 @@
+     interp alias $i foo {} cb1
+     set curlim [$i eval info cmdcount]
+     $i limit command -command cb2 -value [expr {$curlim + 10}]
+     $i eval {for {set i 0} {$i<10} {incr i} {foo}}
+     list $a $b $c
+-} -result {6 4 b} -cleanup {
++} -result {5 5 b} -cleanup {
+     interp delete $i
+     rename cb1 {}
+     rename cb2 {}
+ }
+ test interp-34.7 {limits with callbacks: deleting the handler interp} -setup {
+@@ -3376,11 +3376,11 @@
+ 	$i eval {
+ 	    for {set i 0} {$i<10} {incr i} {foo}
+ 	}
+     }
+     list $n [interp exists $i]
+-} -result {4 0} -cleanup {
++} -result {5 0} -cleanup {
+     rename cb3 {}
+     rename cb4 {}
+ }
+ # Bug 1085023
+ test interp-34.8 {time limits trigger in vwaits} -body {
+

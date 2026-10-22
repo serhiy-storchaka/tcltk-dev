@@ -1,0 +1,61 @@
+Index: generic/tclEnv.c
+==================================================================
+--- generic/tclEnv.c
++++ generic/tclEnv.c
+@@ -705,10 +705,25 @@
+     if (flags & TCL_TRACE_READS) {
+ 	Tcl_DString valueString;
+ 	const char *value = TclGetEnv(name2, &valueString);
+ 
+ 	if (value == NULL) {
++	    /*
++	     * The variable was removed from the environment behind our back
++	     * (e.g. by another interpreter): drop the stale value of the
++	     * array element, keeping its traces, so that [info exists]
++	     * agrees. [Bug 845241]
++	     */
++
++	    Var *arrayPtr, *varPtr = TclLookupVar(interp, name1, name2, 0,
++		    NULL, 0, 0, &arrayPtr);
++
++	    if (varPtr && TclIsVarScalar(varPtr)
++		    && !TclIsVarUndefined(varPtr)) {
++		TclDecrRefCount(varPtr->value.objPtr);
++		TclSetVarUndefined(varPtr);
++	    }
+ 	    return (char *) "no such variable";
+ 	}
+ 	Tcl_SetVar2(interp, name1, name2, value, 0);
+ 	Tcl_DStringFree(&valueString);
+     }
+
+Index: tests/env.test
+==================================================================
+--- tests/env.test
++++ tests/env.test
+@@ -545,10 +545,24 @@
+ 	[info exists ::env(ENV110)] \
+ 	[catch {set ::env(ENV110)} error] \
+ 	$error
+ } -result {1 foo {} 0 1 {can't read "::env(ENV110)": no such variable}}
+ 
++test env-11.1 {
++    Bug [845241] - env var unset in a child interp still exists in the parent
++} -setup {
++    set ::env(ENV111) foo
++    interp create interp1
++} -cleanup {
++    interp delete interp1
++    unset -nocomplain ::env(ENV111)
++} -body {
++    interp1 eval {unset ::env(ENV111)}
++    list [catch {set ::env(ENV111)} msg] $msg [info exists ::env(ENV111)] \
++	[lsearch -exact [array names ::env] ENV111]
++} -result {1 {can't read "::env(ENV111)": no such variable} 0 -1}
++
+ 
+ 
+ # cleanup
+ rename getenv {}
+ rename envrestore {}
+

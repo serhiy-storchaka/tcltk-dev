@@ -1,0 +1,23 @@
+Index: unix/tclUnixFCmd.c
+==================================================================
+--- unix/tclUnixFCmd.c
++++ unix/tclUnixFCmd.c
+@@ -540,12 +540,16 @@
+     srcFd = TclOSopen(src, O_RDONLY BINMODE, 0);	/* INTL: Native */
+     if (srcFd < 0) {
+ 	return TCL_ERROR;
+     }
+ 
++    /*
++     * Pass only the permission bits, not the file type bits. [Bug cdd157d484]
++     */
++
+     dstFd = TclOSopen(dst, O_CREAT|O_TRUNC|O_WRONLY BINMODE, /* INTL: Native */
+-	    statBufPtr->st_mode);
++	    (mode_t) (statBufPtr->st_mode & 07777));
+     if (dstFd < 0) {
+ 	close(srcFd);
+ 	return TCL_ERROR;
+     }
+ 
+

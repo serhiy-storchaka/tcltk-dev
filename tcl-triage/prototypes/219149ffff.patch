@@ -1,0 +1,23 @@
+Index: doc/exec.n
+==================================================================
+--- doc/exec.n
++++ doc/exec.n
+@@ -204,10 +204,17 @@
+ The standard output from the last command in the pipeline will
+ go to the application's standard output if it has not been
+ redirected, and error output from all of
+ the commands in the pipeline will go to the application's
+ standard error file unless redirected.
++Files named in redirections are opened by \fBexec\fR itself before it
++returns, so that errors in them can be reported. If such an open blocks,
++for example on a named pipe (FIFO) that nobody has opened for the other
++direction yet, \fBexec\fR blocks too, even with
++.QW & .
++Let a shell open the file in that case, as in
++\fBexec sh -c {cat <fifo} &\fR.
+ .PP
+ The first word in each command is taken as the command name;
+ if the result contains
+ no slashes then the directories
+ in the PATH environment variable are searched for
+

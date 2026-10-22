@@ -1,0 +1,26 @@
+Index: doc/package.n
+==================================================================
+--- doc/package.n
++++ doc/package.n
+@@ -176,11 +176,19 @@
+ of a command;  when the command is invoked during a \fBpackage require\fR
+ command, Tcl appends one or more additional arguments giving the desired
+ package name and requirements.
+ For example, if \fIcommand\fR is \fBfoo bar\fR and later the command
+ \fBpackage require test 2.4\fR is invoked, then Tcl will execute
+-the command \fBfoo bar test 2.4\fR to load the package.
++the command \fBfoo bar test 2.4\fR to find the package.
++The command should make the package available by registering
++\fBpackage ifneeded\fR scripts for it (at least one of them for a version
++satisfying the requirements); it should not load the package itself.
++Note that the command is only invoked when no known version satisfies the
++requirements, so if, for instance, \fBauto_path\fR is extended after a
++search has already registered a version of the package, a newer version in
++the added directory is not seen unless \fBpackage forget\fR is used first or
++the requirements exclude the known versions.
+ If no requirements are supplied to the \fBpackage require\fR command,
+ then only the name will be added to invoked command.
+ If the \fBpackage unknown\fR command is invoked without a \fIcommand\fR
+ argument, then the current \fBpackage unknown\fR script is returned,
+ or an empty string if there is none.
+

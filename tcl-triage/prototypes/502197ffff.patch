@@ -1,0 +1,48 @@
+Index: generic/tclEnv.c
+==================================================================
+--- generic/tclEnv.c	
++++ generic/tclEnv.c	
+@@ -584,10 +584,42 @@
+ 				 * value of the environment variable is
+ 				 * stored. */
+ {
+     Tcl_Size length, index;
+     const char *result;
++
++#if defined(_WIN32)
++    /*
++     * Read the process environment block, not the C runtime's copy
++     * (_wenviron), so that changes made with SetEnvironmentVariable() by an
++     * embedder or extension are seen too. [Bug 502197]
++     */
++
++    {
++	Tcl_DString nameDs;
++	const WCHAR *wname = utf2tenvirondstr(name, &nameDs);
++	DWORD size = GetEnvironmentVariableW(wname, NULL, 0);
++	int found = (size > 0 || GetLastError() != ERROR_ENVVAR_NOT_FOUND);
++
++	result = NULL;
++	if (size > 0) {
++	    WCHAR *buf = (WCHAR *)Tcl_Alloc(size * sizeof(WCHAR));
++	    DWORD n = GetEnvironmentVariableW(wname, buf, size);
++
++	    if (n < size) {
++		Tcl_DStringInit(valuePtr);
++		result = Tcl_Char16ToUtfDString((const unsigned short *)buf,
++			n, valuePtr);
++	    }
++	    Tcl_Free(buf);
++	}
++	Tcl_DStringFree(&nameDs);
++	if (result != NULL || !found) {
++	    return result;
++	}
++    }
++#endif
+ 
+     Tcl_MutexLock(&envMutex);
+     index = TclpFindVariable(name, &length);
+     result = NULL;
+     if (index != -1) {
+

@@ -1,0 +1,93 @@
+Index: generic/tclFileName.c
+==================================================================
+--- generic/tclFileName.c
++++ generic/tclFileName.c
+@@ -121,25 +121,29 @@
+ 	    extended = 2;
+ 	    path = path + 4;
+ 	}
+     }
+ 
+-    if (path[0] == '/' || path[0] == '\\') {
++    if (path[0] == '/' || path[0] == '\\' || extended == 2) {
+ 	/*
+-	 * Might be a UNC or Vol-Relative path.
++	 * Might be a UNC or Vol-Relative path. In "//?/UNC/host/share" the
++	 * host follows the prefix directly.
+ 	 */
+ 
+ 	const char *host, *share, *tail;
+ 	int hlen, slen;
+ 
+-	if (path[1] != '/' && path[1] != '\\') {
++	if (extended == 2) {
++	    host = path;
++	} else if (path[1] != '/' && path[1] != '\\') {
+ 	    SetResultLength(resultPtr, extended);
+ 	    *typePtr = TCL_PATH_VOLUME_RELATIVE;
+ 	    TclDStringAppendLiteral(resultPtr, "/");
+ 	    return &path[1];
++	} else {
++	    host = &path[2];
+ 	}
+-	host = &path[2];
+ 
+ 	/*
+ 	 * Skip separators.
+ 	 */
+ 
+@@ -150,11 +154,11 @@
+ 	for (hlen = 0; host[hlen];hlen++) {
+ 	    if (host[hlen] == '/' || host[hlen] == '\\') {
+ 		break;
+ 	    }
+ 	}
+-	if (host[hlen] == 0 || host[hlen+1] == 0) {
++	if (extended != 2 && (host[hlen] == 0 || host[hlen+1] == 0)) {
+ 	    /*
+ 	     * The path given is simply of the form '/foo', '//foo',
+ 	     * '/////foo' or the same with backslashes. If there is exactly
+ 	     * one leading '/' the path is volume relative (see filename man
+ 	     * page). If there are more than one, we are simply assuming they
+@@ -181,11 +185,13 @@
+ 	for (slen=0; share[slen]; slen++) {
+ 	    if (share[slen] == '/' || share[slen] == '\\') {
+ 		break;
+ 	    }
+ 	}
+-	TclDStringAppendLiteral(resultPtr, "//");
++	if (extended != 2) {
++	    TclDStringAppendLiteral(resultPtr, "//");
++	}
+ 	Tcl_DStringAppend(resultPtr, host, hlen);
+ 	TclDStringAppendLiteral(resultPtr, "/");
+ 	Tcl_DStringAppend(resultPtr, share, slen);
+ 
+ 	tail = &share[slen];
+
+Index: tests/fileName.test
+==================================================================
+--- tests/fileName.test
++++ tests/fileName.test
+@@ -382,10 +382,20 @@
+ } {foo bar~ baz}
+ test filename-6.30 {Tcl_SplitPath: win} {testsetplatform} {
+     testsetplatform win
+     file split c:~foo
+ } {c: ~foo}
++test filename-6.31 {Tcl_SplitPath: win extended UNC path, bug d8f1217156} {testsetplatform} {
++    testsetplatform win
++    list [file split //?/UNC/host/share/a/b] [file split {\\?\UNC\host\share\a}] \
++	[file pathtype //?/UNC/host/share/a]
++} {{//?/UNC/host/share a b} {//?/UNC/host/share a} absolute}
++test filename-6.32 {Tcl_SplitPath: win extended UNC path, bug d8f1217156} {testsetplatform} {
++    testsetplatform win
++    list [file join //?/UNC/host/share a] [file dirname //?/UNC/host/share/a] \
++	[file tail //?/UNC/host/share/a]
++} {//?/UNC/host/share/a //?/UNC/host/share a}
+ 
+ test filename-7.1 {Tcl_JoinPath: unix} {testsetplatform} {
+     testsetplatform unix
+     file join / a
+ } {/a}
+

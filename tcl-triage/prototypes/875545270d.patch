@@ -1,0 +1,66 @@
+Index: library/init.tcl
+==================================================================
+--- library/init.tcl
++++ library/init.tcl
+@@ -564,18 +564,15 @@
+ 		      \"$dest\": file exists"
+ 		}
+ 	    }
+ 	}
+     } else {
+-	if {[string first $nsrc $ndest] >= 0} {
+-	    set srclen [expr {[llength [file split $nsrc]] - 1}]
+-	    set ndest [lindex [file split $ndest] $srclen]
+-	    if {$ndest eq [file tail $nsrc]} {
+-		return -code error "error $action \"$src\" to\
+-		  \"$dest\": trying to rename a volume or move a directory\
+-		  into itself"
+-	    }
++	set srcparts [file split $nsrc]
++	if {[lrange [file split $ndest] 0 [llength $srcparts]-1] eq $srcparts} {
++	    return -code error "error $action \"$src\" to\
++	      \"$dest\": trying to rename a volume or move a directory\
++	      into itself"
+ 	}
+ 	file mkdir $dest
+     }
+     # Have to be careful to capture both visible and hidden files.
+     # We will also be more generous to the file system and not
+
+Index: tests/init.test
+==================================================================
+--- tests/init.test
++++ tests/init.test
+@@ -250,10 +250,31 @@
+     $ip eval {tcl::InitAutoPath}
+ } -cleanup {
+     interp delete $ip
+ } -result [list {*}$::auto_path /some/directory /some]
+ 
++test init-6.0 {tcl::CopyDirectory: dest contains src path but is not inside it [Bug 875545270d]} -setup {
++    set src [file join [temporaryDirectory] init6src a]
++    set dst [file join [temporaryDirectory] init6dst a]
++    set dst [file join $dst {*}[lrange [file split $src] 1 end]]
++    file mkdir $src [file dirname $dst]
++    close [open [file join $src f] w]
++} -body {
++    tcl::CopyDirectory copying $src $dst
++    file exists [file join $dst f]
++} -cleanup {
++    file delete -force [file join [temporaryDirectory] init6src] \
++	[file join [temporaryDirectory] init6dst]
++} -result 1
++test init-6.1 {tcl::CopyDirectory: copy into itself} -setup {
++    set src [file join [temporaryDirectory] init6src a]
++    file mkdir $src
++} -body {
++    tcl::CopyDirectory copying $src [file join $src sub]
++} -cleanup {
++    file delete -force [file join [temporaryDirectory] init6src]
++} -returnCodes error -match glob -result {*into itself}
+ 
+ # cleanup
+ interp delete $testInterp
+ ::tcltest::cleanupTests
+ return
+

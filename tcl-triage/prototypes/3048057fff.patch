@@ -1,0 +1,178 @@
+Index: unix/tclUnixThrd.c
+==================================================================
+--- unix/tclUnixThrd.c
++++ unix/tclUnixThrd.c
+@@ -67,10 +67,32 @@
+ 
+ #ifndef PTHREAD_NULL
+ #   define PTHREAD_NULL (pthread_t)0
+ #endif
+ 
++/*
++ * Lazily created mutexes and condition variables are published with a
++ * double-checked locking scheme, and the owner of a reentrant mutex is read
++ * without holding the lock. Use atomic accesses for these, so that the
++ * pointer is never seen before the object it points to is initialized and
++ * thread checkers (e.g. ThreadSanitizer) see no data race. [Bug 3048057]
++ */
++
++#if defined(__GNUC__)
++#   define LoadAcquire(ptr)	__atomic_load_n((ptr), __ATOMIC_ACQUIRE)
++#   define StoreRelease(ptr, val) __atomic_store_n((ptr), (val), __ATOMIC_RELEASE)
++#   define LoadOwner(ptr, val)	__atomic_load((ptr), &(val), __ATOMIC_RELAXED)
++#   define StoreOwner(ptr, val)	do { \
++	pthread_t tmp_ = (val); __atomic_store((ptr), &tmp_, __ATOMIC_RELAXED); \
++    } while (0)
++#else
++#   define LoadAcquire(ptr)	(*(ptr))
++#   define StoreRelease(ptr, val) (*(ptr) = (val))
++#   define LoadOwner(ptr, val)	((val) = *(ptr))
++#   define StoreOwner(ptr, val)	(*(ptr) = (val))
++#endif
++
+ typedef struct PMutex {
+     pthread_mutex_t mutex;
+     volatile pthread_t thread;
+     int counter; // Number of additional locks in the same thread.
+ } PMutex;
+@@ -95,18 +117,20 @@
+ static void
+ PMutexLock(
+     PMutex *pmutexPtr)
+ {
+     pthread_t mythread = pthread_self();
++    pthread_t owner;
+ 
+-    if (PTHREAD_NULL != pmutexPtr->thread && pthread_equal(pmutexPtr->thread, mythread)) {
++    LoadOwner(&pmutexPtr->thread, owner);
++    if (PTHREAD_NULL != owner && pthread_equal(owner, mythread)) {
+ 	// We own the lock already, so it's recursive.
+ 	pmutexPtr->counter++;
+     } else {
+ 	// We don't owns the lock, so we have to lock it. Then we own it.
+ 	pthread_mutex_lock(&pmutexPtr->mutex);
+-	pmutexPtr->thread = mythread;
++	StoreOwner(&pmutexPtr->thread, mythread);
+     }
+ }
+ 
+ static void
+ PMutexUnlock(
+@@ -115,11 +139,11 @@
+     assert(PTHREAD_NULL != pmutexPtr->thread && pthread_equal(pmutexPtr->thread, pthread_self()));
+     if (pmutexPtr->counter) {
+ 	// It's recursive
+ 	pmutexPtr->counter--;
+     } else {
+-	pmutexPtr->thread = PTHREAD_NULL;
++	StoreOwner(&pmutexPtr->thread, PTHREAD_NULL);
+ 	pthread_mutex_unlock(&pmutexPtr->mutex);
+     }
+ }
+ 
+ static void
+@@ -130,13 +154,13 @@
+     pthread_t mythread = pthread_self();
+ 
+     assert(PTHREAD_NULL != pmutexPtr->thread && pthread_equal(pmutexPtr->thread, mythread));
+     int counter = pmutexPtr->counter;
+     pmutexPtr->counter = 0;
+-    pmutexPtr->thread = PTHREAD_NULL;
++    StoreOwner(&pmutexPtr->thread, PTHREAD_NULL);
+     pthread_cond_wait(pcondPtr, &pmutexPtr->mutex);
+-    pmutexPtr->thread = mythread;
++    StoreOwner(&pmutexPtr->thread, mythread);
+     pmutexPtr->counter = counter;
+ }
+ 
+ static void
+ PCondTimedWait(
+@@ -147,13 +171,13 @@
+     pthread_t mythread = pthread_self();
+ 
+     assert(PTHREAD_NULL != pmutexPtr->thread && pthread_equal(pmutexPtr->thread, mythread));
+     int counter = pmutexPtr->counter;
+     pmutexPtr->counter = 0;
+-    pmutexPtr->thread = PTHREAD_NULL;
++    StoreOwner(&pmutexPtr->thread, PTHREAD_NULL);
+     pthread_cond_timedwait(pcondPtr, &pmutexPtr->mutex, ptime);
+-    pmutexPtr->thread = mythread;
++    StoreOwner(&pmutexPtr->thread, mythread);
+     pmutexPtr->counter = counter;
+ }
+ 
+ /*
+  * globalLock is used to serialize creation of mutexes, condition variables,
+@@ -632,27 +656,27 @@
+ 
+ void
+ Tcl_MutexLock(
+     Tcl_Mutex *mutexPtr)	/* Really (PMutex **) */
+ {
+-    PMutex *pmutexPtr;
++    PMutex *pmutexPtr = (PMutex *) LoadAcquire(mutexPtr);
+ 
+-    if (*mutexPtr == NULL) {
++    if (pmutexPtr == NULL) {
+ 	pthread_mutex_lock(&globalLock);
+-	if (*mutexPtr == NULL) {
++	pmutexPtr = (PMutex *) *mutexPtr;
++	if (pmutexPtr == NULL) {
+ 	    /*
+ 	     * Double inside global lock check to avoid a race condition.
+ 	     */
+ 
+ 	    pmutexPtr = (PMutex *)Tcl_Alloc(sizeof(PMutex));
+ 	    PMutexInit(pmutexPtr);
+-	    *mutexPtr = (Tcl_Mutex) pmutexPtr;
++	    StoreRelease(mutexPtr, (Tcl_Mutex) pmutexPtr);
+ 	    TclRememberMutex(mutexPtr);
+ 	}
+ 	pthread_mutex_unlock(&globalLock);
+     }
+-    pmutexPtr = *((PMutex **) mutexPtr);
+     PMutexLock(pmutexPtr);
+ }
+ 
+ /*
+  *----------------------------------------------------------------------
+@@ -742,11 +766,11 @@
+ {
+     pthread_cond_t *pcondPtr;
+     PMutex *pmutexPtr;
+     struct timespec ptime;
+ 
+-    if (*condPtr == NULL) {
++    if (LoadAcquire(condPtr) == NULL) {
+ 	pthread_mutex_lock(&globalLock);
+ 
+ 	/*
+ 	 * Double check inside mutex to avoid race, then initialize condition
+ 	 * variable if necessary.
+@@ -753,11 +777,11 @@
+ 	 */
+ 
+ 	if (*condPtr == NULL) {
+ 	    pcondPtr = (pthread_cond_t *)Tcl_Alloc(sizeof(pthread_cond_t));
+ 	    pthread_cond_init(pcondPtr, NULL);
+-	    *condPtr = (Tcl_Condition) pcondPtr;
++	    StoreRelease(condPtr, (Tcl_Condition) pcondPtr);
+ 	    TclRememberCondition(condPtr);
+ 	}
+ 	pthread_mutex_unlock(&globalLock);
+     }
+     pmutexPtr = *((PMutex **)mutexPtr);
+@@ -800,11 +824,11 @@
+ 
+ void
+ Tcl_ConditionNotify(
+     Tcl_Condition *condPtr)
+ {
+-    pthread_cond_t *pcondPtr = *((pthread_cond_t **)condPtr);
++    pthread_cond_t *pcondPtr = (pthread_cond_t *) LoadAcquire(condPtr);
+ 
+     if (pcondPtr != NULL) {
+ 	pthread_cond_broadcast(pcondPtr);
+     } else {
+ 	/*
+

@@ -1,0 +1,45 @@
+Index: library/clock.tcl
+==================================================================
+--- library/clock.tcl
++++ library/clock.tcl
+@@ -1213,11 +1213,11 @@
+ 
+ proc ::tcl::clock::LoadTimeZoneFile { fileName } {
+     variable DataDir
+     variable TZData
+ 
+-    if { [info exists TZData($fileName)] } {
++    if { [info exists TZData(:$fileName)] } {
+ 	return
+     }
+ 
+     # Since an unsafe interp uses the [clock] command in the parent, this code
+     # is security sensitive.  Make sure that the path name cannot escape the
+
+Index: tests/clock.test
+==================================================================
+--- tests/clock.test
++++ tests/clock.test
+@@ -38886,10 +38886,21 @@
+ 	[clock format 1993186799 -timezone {EST5EDT,J59,J300} \
+ 	     -format {%Y-%m-%d %H:%M:%S %z %Z}] \
+ 	[clock format 1993186800 -timezone {EST5EDT,J59,J300} \
+ 	     -format {%Y-%m-%d %H:%M:%S %z %Z}]
+ } {{2032-02-28 01:59:59 -0500 EST} {2032-02-28 03:00:00 -0400 EDT} {2033-02-28 01:59:59 -0500 EST} {2033-02-28 03:00:00 -0400 EDT}}
++
++test clock-71.1 {tzdata file with the name of an already used POSIX zone [Bug 3387109]} -setup {
++    interp create child
++} -body {
++    child eval {
++	list [clock format 0 -timezone GMT0 -format %Z] \
++	    [clock format 0 -timezone :GMT0 -format %Z]
++    }
++} -cleanup {
++    interp delete child
++} -result {GMT GMT}
+ 
+ # cleanup
+ 
+ rename test {}
+ namespace import -force ::tcltest::*
+

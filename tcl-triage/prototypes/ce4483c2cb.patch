@@ -1,0 +1,119 @@
+Index: generic/tclBinary.c
+==================================================================
+--- generic/tclBinary.c
++++ generic/tclBinary.c
+@@ -868,17 +868,19 @@
+ 		}
+ 	    } else if (count == BINARY_NOCOUNT) {
+ 		count = 1;
+ 	    }
+ 	    arg++;
+-	    if (cmd == 'a' || cmd == 'A') {
+-		offset += count;
+-	    } else if (cmd == 'b' || cmd == 'B') {
+-		offset += (count + 7) / 8;
+-	    } else {
+-		offset += (count + 1) / 2;
++	    if (cmd == 'b' || cmd == 'B') {
++		count = count / 8 + (count % 8 != 0);
++	    } else if (cmd == 'h' || cmd == 'H') {
++		count = count / 2 + (count % 2);
+ 	    }
++	    if (count > BYTEARRAY_MAX_LEN - offset) {
++		goto tooLarge;
++	    }
++	    offset += count;
+ 	    break;
+ 	case 'c':
+ 	    size = 1;
+ 	    goto doNumbers;
+ 	case 't':
+@@ -944,10 +946,13 @@
+ 		if (TclListObjGetElements(interp, objv[arg], &listc,
+ 			&listv) != TCL_OK) {
+ 		    return TCL_ERROR;
+ 		}
+ 		arg++;
++	    }
++	    if (count > (BYTEARRAY_MAX_LEN - offset) / size) {
++		goto tooLarge;
+ 	    }
+ 	    offset += count*size;
+ 	    break;
+ 
+ 	case 'x':
+@@ -955,10 +960,13 @@
+ 		Tcl_SetObjResult(interp, Tcl_NewStringObj(
+ 			"cannot use \"*\" in format string with \"x\"", -1));
+ 		return TCL_ERROR;
+ 	    } else if (count == BINARY_NOCOUNT) {
+ 		count = 1;
++	    }
++	    if (count > BYTEARRAY_MAX_LEN - offset) {
++		goto tooLarge;
+ 	    }
+ 	    offset += count;
+ 	    break;
+ 	case 'X':
+ 	    if (count == BINARY_NOCOUNT) {
+@@ -978,10 +986,12 @@
+ 	    }
+ 	    if (count == BINARY_ALL) {
+ 		offset = length;
+ 	    } else if (count == BINARY_NOCOUNT) {
+ 		goto badCount;
++	    } else if (count > BYTEARRAY_MAX_LEN) {
++		goto tooLarge;
+ 	    } else {
+ 		offset = count;
+ 	    }
+ 	    break;
+ 	default:
+@@ -1274,10 +1284,17 @@
+ 
+   badCount:
+     errorString = "missing count for \"@\" field specifier";
+     goto error;
+ 
++  tooLarge:
++    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
++	    "max size for a Tcl value (%" TCL_SIZE_MODIFIER "d bytes) exceeded",
++	    BYTEARRAY_MAX_LEN));
++    Tcl_SetErrorCode(interp, "TCL", "MEMORY", (char *)NULL);
++    return TCL_ERROR;
++
+   badIndex:
+     errorString = "not enough arguments for all format specifiers";
+     goto error;
+ 
+   badField:
+
+Index: tests/binary.test
+==================================================================
+--- tests/binary.test
++++ tests/binary.test
+@@ -3082,10 +3082,23 @@
+     # test:
+     testbytestring $ret
+ } -cleanup {
+     unset -nocomplain opt ret dssz
+ } -returnCodes 1 -result "byte sequence length exceeds INT_MAX"
++
++test binary-81.1 {binary format: size overflow, bug ce4483c2cb} -constraints pointerIs64bit -body {
++    binary format x4611686018427387904x4611686018427387904
++} -returnCodes error -match glob -result {max size for a Tcl value (*) exceeded}
++test binary-81.2 {binary format: size overflow, bug ce4483c2cb} -constraints pointerIs64bit -body {
++    binary format a4611686018427387904a4611686018427387904 x y
++} -returnCodes error -match glob -result {max size for a Tcl value (*) exceeded}
++test binary-81.3 {binary format: size overflow, bug ce4483c2cb} -body {
++    binary format x99999999999999999999
++} -returnCodes error -match glob -result {max size for a Tcl value (*) exceeded}
++test binary-81.4 {binary format: size overflow, bug ce4483c2cb} -body {
++    binary format @99999999999999999999
++} -returnCodes error -match glob -result {max size for a Tcl value (*) exceeded}
+ 
+ # ----------------------------------------------------------------------
+ # cleanup
+ 
+ ::tcltest::cleanupTests
+

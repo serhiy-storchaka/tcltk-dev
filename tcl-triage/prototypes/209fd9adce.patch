@@ -1,0 +1,107 @@
+Index: generic/tclPkg.c
+==================================================================
+--- generic/tclPkg.c
++++ generic/tclPkg.c
+@@ -493,10 +493,11 @@
+     Tcl_Interp *interp,
+     TCL_UNUSED(int))
+ {
+     Tcl_DString command;
+     char *script;
++    PkgFiles *pkgFiles;
+     Require *reqPtr = (Require *)data[0];
+     int reqc = (int)PTR2INT(data[1]);
+     Tcl_Obj **const reqv = (Tcl_Obj **)data[2];
+     const char *name = reqPtr->name /* Name of desired package. */;
+ 
+@@ -534,12 +535,20 @@
+     Tcl_DStringInit(&command);
+     Tcl_DStringAppend(&command, script, -1);
+     Tcl_DStringAppendElement(&command, name);
+     AddRequirementsToDString(&command, reqc, reqv);
+ 
++    /*
++     * Files sourced by the "package unknown" script (e.g. pkgIndex.tcl files
++     * sourced from other pkgIndex.tcl files) don't belong to the package
++     * being initialized, if any. Hide its name until the script returns.
++     */
++
++    pkgFiles = (PkgFiles *)TclInitPkgFiles(interp);
+     TclNRAddCallback(interp, PkgRequireCoreStep2,
+-	    reqPtr, INT2PTR(reqc), reqv, NULL);
++	    reqPtr, INT2PTR(reqc), reqv, pkgFiles->names);
++    pkgFiles->names = NULL;
+     Tcl_NREvalObj(interp, Tcl_DStringToObj(&command), TCL_EVAL_GLOBAL);
+     return TCL_OK;
+ }
+ 
+ static int
+@@ -550,10 +559,19 @@
+ {
+     Require *reqPtr = (Require *)data[0];
+     int reqc = (int)PTR2INT(data[1]);
+     Tcl_Obj **const reqv = (Tcl_Obj **)data[2];
+     const char *name = reqPtr->name; /* Name of desired package. */
++    PkgFiles *pkgFiles = (PkgFiles *)Tcl_GetAssocData(interp, ASSOC_KEY, NULL);
++
++    /*
++     * Restore the names of the packages being initialized.
++     */
++
++    if (pkgFiles) {
++	pkgFiles->names = (PkgName *)data[3];
++    }
+ 
+     if ((result != TCL_OK) && (result != TCL_ERROR)) {
+ 	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 		"bad return code: %d", result));
+ 	Tcl_SetErrorCode(interp, "TCL", "PACKAGE", "BADRESULT", (char *)NULL);
+
+Index: tests/package.test
+==================================================================
+--- tests/package.test
++++ tests/package.test
+@@ -1393,10 +1393,42 @@
+ 	unset -nocomplain ip
+ } -body {
+ 	$ip eval {package require dde}
+ } -result {\d+.\d+.\d+} -match regexp
+ 
++test package-bug-209fd9adce {
++	Bug 209fd9adce - package files lists pkgIndex.tcl sourced by package unknown
++} -setup {
++	set dir [makeDirectory pkg209fd9adce]
++	foreach sub {a b} {
++	    file mkdir [file join $dir $sub]
++	}
++	makeFile {
++	    foreach sub {a b} {
++		set dir [file join [file dirname [info script]] $sub]
++		source [file join $dir pkgIndex.tcl]
++	    }
++	} pkgIndex.tcl $dir
++	makeFile {package ifneeded aa 1.0 [list source [file join $dir aa.tcl]]} \
++		pkgIndex.tcl [file join $dir a]
++	makeFile {catch {package require nonexistent209fd9adce}; package provide aa 1.0} \
++		aa.tcl [file join $dir a]
++	makeFile {package ifneeded bb 1.0 {package provide bb 1.0}} \
++		pkgIndex.tcl [file join $dir b]
++	set ip [interp create]
++	$ip eval [list lappend auto_path $dir]
++} -cleanup {
++	interp delete $ip
++	removeDirectory pkg209fd9adce
++	unset -nocomplain ip dir sub
++} -body {
++	$ip eval {package require aa}
++	lmap f [$ip eval {package files aa}] {
++	    file join [file tail [file dirname $f]] [file tail $f]
++	}
++} -result {a/pkgIndex.tcl a/aa.tcl}
++
+ rename prefer {}
+ 
+ set auto_path $oldPath
+ package unknown $oldPkgUnknown
+ 
+

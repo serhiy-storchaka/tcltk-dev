@@ -1,0 +1,157 @@
+Index: generic/tclConfig.c
+==================================================================
+--- generic/tclConfig.c
++++ generic/tclConfig.c
+@@ -130,13 +130,16 @@
+ 	TclDictPut(interp, pkgDict, cfg->key,
+ 		Tcl_NewByteArrayObj((unsigned char *)cfg->value, strlen(cfg->value)));
+     }
+ 
+     /*
+-     * Write the changes back into the overall database.
++     * Write the changes back into the overall database. Keep a reference:
++     * replacing an existing query command below removes the package entry
++     * from the database (see QueryConfigDelete), so it is put back after.
+      */
+ 
++    Tcl_IncrRefCount(pkgDict);
+     Tcl_DictObjPut(interp, pDB, cdPtr->pkg, pkgDict);
+ 
+     /*
+      * Now create the interface command for retrieval of the package
+      * information.
+@@ -166,10 +169,12 @@
+     if (Tcl_CreateObjCommand2(interp, Tcl_DStringValue(&cmdName),
+ 	    QueryConfigObjCmd, cdPtr, QueryConfigDelete) == NULL) {
+ 	Tcl_Panic("%s: %s", "Tcl_RegisterConfig",
+ 		"Unable to create query command for package configuration");
+     }
++    Tcl_DictObjPut(interp, pDB, cdPtr->pkg, pkgDict);
++    Tcl_DecrRefCount(pkgDict);
+ 
+     Tcl_DStringFree(&cmdName);
+ }
+ 
+ /*
+
+Index: generic/tclTest.c
+==================================================================
+--- generic/tclTest.c
++++ generic/tclTest.c
+@@ -268,10 +268,11 @@
+ static Tcl_ObjCmdProc2	TestparsevarnameCmd;
+ static Tcl_ObjCmdProc2	TestpostinitCmd;
+ static Tcl_ObjCmdProc2	TestpreferstableCmd;
+ static Tcl_ObjCmdProc2	TestprintCmd;
+ static Tcl_ObjCmdProc2	TestregexpCmd;
++static Tcl_ObjCmdProc2	TestregisterconfigCmd;
+ static Tcl_ObjCmdProc2	TestreturnCmd;
+ static void		TestregexpXflags(const char *string,
+ 			    size_t length, int *cflagsPtr, int *eflagsPtr);
+ static Tcl_ObjCmdProc2	TestsetassocdataCmd;
+ static Tcl_ObjCmdProc2	TestsetCmd;
+@@ -674,10 +675,12 @@
+     Tcl_CreateObjCommand2(interp, "testpreferstable", TestpreferstableCmd,
+ 	    NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testprint", TestprintCmd,
+ 	    NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testregexp", TestregexpCmd,
++	    NULL, NULL);
++    Tcl_CreateObjCommand2(interp, "testregisterconfig", TestregisterconfigCmd,
+ 	    NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testreturn", TestreturnCmd,
+ 	    NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testservicemode", TestServiceModeCmd,
+ 	    NULL, NULL);
+@@ -6177,10 +6180,48 @@
+     }
+     Tcl_SetObjResult(interp, objPtr);
+     return TCL_OK;
+ }
+ 
++/*
++ *----------------------------------------------------------------------
++ *
++ * TestregisterconfigCmd --
++ *
++ *	Implements "testregisterconfig pkgName key value", which calls
++ *	Tcl_RegisterConfig with a single key/value pair.
++ *
++ * Results:
++ *	Returns the TCL_OK result code.
++ *
++ * Side effects:
++ *	Creates or replaces the command ::pkgName::pkgconfig.
++ *
++ *----------------------------------------------------------------------
++ */
++
++static int
++TestregisterconfigCmd(
++    TCL_UNUSED(void *),
++    Tcl_Interp *interp,		/* Current interpreter. */
++    Tcl_Size objc,		/* Number of arguments. */
++    Tcl_Obj *const *objv)	/* The argument objects. */
++{
++    Tcl_Config cfg[2];
++
++    if (objc != 4) {
++	Tcl_WrongNumArgs(interp, 1, objv, "pkgName key value");
++	return TCL_ERROR;
++    }
++    cfg[0].key = Tcl_GetString(objv[2]);
++    cfg[0].value = Tcl_GetString(objv[3]);
++    cfg[1].key = NULL;
++    cfg[1].value = NULL;
++    Tcl_RegisterConfig(interp, Tcl_GetString(objv[1]), cfg, "utf-8");
++    return TCL_OK;
++}
++
+ /*
+  *----------------------------------------------------------------------
+  *
+  * TestsetbytearraylengthCmd --
+  *
+
+Index: tests/config.test
+==================================================================
+--- tests/config.test
++++ tests/config.test
+@@ -15,10 +15,15 @@
+ if {"::tcltest" ni [namespace children]} {
+     package require tcltest 2.5
+     namespace import -force ::tcltest::*
+ }
+ 
++::tcltest::loadTestedCommands
++catch [list package require -exact tcl::test [info patchlevel]]
++
++testConstraint testregisterconfig [llength [info commands testregisterconfig]]
++
+ test pkgconfig-1.1 {query keys} -body {
+     lsort [::tcl::pkgconfig list]
+ } -match glob -result {*bindir,install bindir,runtime*docdir,install docdir,runtime includedir,install includedir,runtime libdir,install libdir,runtime*scriptdir,install scriptdir,runtime*}
+ test pkgconfig-1.2 {query keys multiple times} {
+     string compare [::tcl::pkgconfig list] [::tcl::pkgconfig list]
+@@ -52,9 +57,20 @@
+ } {key not known}
+ test pkgconfig-2.5 {error: query with to many arguments} {
+     catch {::tcl::pkgconfig get foo bar} msg
+     set msg
+ } {wrong # args: should be "::tcl::pkgconfig subcommand ?arg?"}
++
++test pkgconfig-3.1 {Tcl_RegisterConfig twice merges, bug 67769bcad3} -constraints {
++    testregisterconfig
++} -body {
++    testregisterconfig pkgconfigtest a 1
++    testregisterconfig pkgconfigtest b 2
++    list [lsort [pkgconfigtest::pkgconfig list]] \
++	    [pkgconfigtest::pkgconfig get a] [pkgconfigtest::pkgconfig get b]
++} -cleanup {
++    namespace delete pkgconfigtest
++} -result {{a b} 1 2}
+ 
+ # cleanup
+ ::tcltest::cleanupTests
+ return
+

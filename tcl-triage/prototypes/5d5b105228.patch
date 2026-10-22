@@ -1,0 +1,81 @@
+Index: generic/tclCmdMZ.c
+==================================================================
+--- generic/tclCmdMZ.c
++++ generic/tclCmdMZ.c
+@@ -3948,10 +3948,20 @@
+ 	    ctxPtr->line = (int *)Tcl_Alloc(objc * sizeof(int));
+ 	    ctxPtr->nline = objc;
+ 	    for (k=0; k < objc; k++) {
+ 		ctxPtr->line[k] = -1;
+ 	    }
++
++	    /*
++	     * The word indices now refer to the split list. Do not let the
++	     * bytecode compiler fetch the line information of the switch
++	     * command itself again from a BC frame. [Bug 5d5b105228]
++	     */
++
++	    if (ctxPtr->type == TCL_LOCATION_BC) {
++		ctxPtr->type = TCL_LOCATION_EVAL;
++	    }
+ 	}
+     }
+ 
+     for (j = i + 1; ; j += 2) {
+ 	if (j >= objc) {
+
+Index: tests/switch.test
+==================================================================
+--- tests/switch.test
++++ tests/switch.test
+@@ -864,10 +864,49 @@
+ } -result {expected integer but got "gorp"}
+ test switch-19.7 {switch -integer: compiled, splitlist} -returnCodes error -body {
+     switch -integer -- gorp {0 {error body}}
+ } -result {expected integer but got "gorp"}
+ 
++test switch-20.1 {TIP 280: line numbers in nested non-compiled switch, bug 5d5b105228} -setup {
++    # Body not a literal: line numbers are relative to each script.
++    proc foo {sw s} [string trim {
++	$sw [string index $s 0] {
++	    a {
++		$sw -exact -nocase -- [string index $s 1] {
++		    a {
++			dict get [info frame 0] line
++		    }
++		    b {
++			dict get [info frame 0] line
++		    }
++		    c {
++			dict get [info frame 0] line
++		    }
++		}
++	    }
++	}
++    }]
++} -body {
++    set res [lmap s {aa ab ac} {foo switch $s}]
++    # Literal body: absolute line numbers in this file.
++    proc foo {sw s} {
++	$sw $s {
++	    a {
++		dict get [info frame 0] line
++	    }
++	    b {
++		dict get [info frame 0] line
++	    }
++	}
++    }
++    set l [dict get [info frame 0] line]
++    lappend res {*}[lmap s {a b} {expr {[foo switch $s] - $l}}]
++} -cleanup {
++    rename foo {}
++    unset -nocomplain res l
++} -result {2 2 2 -7 -4}
++
+ # cleanup
+ catch {rename foo {}}
+ ::tcltest::cleanupTests
+ return
+ 
+

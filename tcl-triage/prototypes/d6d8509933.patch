@@ -1,0 +1,36 @@
+Index: generic/tclStrToD.c
+==================================================================
+--- generic/tclStrToD.c
++++ generic/tclStrToD.c
+@@ -4820,20 +4820,29 @@
+     int expt;
+     mp_err err;
+     mp_int *b = (mp_int *)big;
+ 
+     /*
+-     * Infinite values can't convert to bignum.
++     * Infinite and NaN values can't convert to bignum.
+      */
+ 
+     if (isinf(d)) {
+ 	if (interp != NULL) {
+ 	    const char *s = "integer value too large to represent";
+ 
+ 	    Tcl_SetObjResult(interp, Tcl_NewStringObj(s, -1));
+ 	    Tcl_SetErrorCode(interp, "ARITH", "IOVERFLOW", s, (char *)NULL);
+ 	}
++	return TCL_ERROR;
++    }
++    if (isnan(d)) {
++	if (interp != NULL) {
++	    Tcl_SetObjResult(interp, Tcl_NewStringObj(
++		    "floating point value is Not a Number", -1));
++	    Tcl_SetErrorCode(interp, "TCL", "VALUE", "DOUBLE", "NAN",
++		    (char *)NULL);
++	}
+ 	return TCL_ERROR;
+     }
+ 
+     fract = frexp(d, &expt);
+     if (expt <= 0) {
+

@@ -1,0 +1,31 @@
+Index: tests/trace.test
+==================================================================
+--- tests/trace.test
++++ tests/trace.test
+@@ -2651,10 +2651,25 @@
+     proc foo args {}
+     trace add execution foo enter {rename foo {}; error bar;#}
+     catch foo m
+     return -level 0 $m[unset m]
+ } bar
++
++test trace-41.1 {Bug 582506: imported commands fire exec traces of the origin} -setup {
++    namespace eval ::export { namespace export foo; proc foo {} {} }
++    namespace eval ::import { namespace import ::export::foo }
++    set ::traceLog {}
++} -body {
++    trace add execution ::export::foo enter {lappend ::traceLog enter ;#}
++    trace add execution ::export::foo leave {lappend ::traceLog leave ;#}
++    ::import::foo
++    ::export::foo
++    set ::traceLog
++} -cleanup {
++    namespace delete ::export ::import
++    unset ::traceLog
++} -result {enter leave enter leave}
+ 
+ # Delete procedures when done, so we don't clash with other tests
+ # (e.g. foobar will clash with 'unknown' tests).
+ catch {rename foobar {}}
+ catch {rename foo {}}
+

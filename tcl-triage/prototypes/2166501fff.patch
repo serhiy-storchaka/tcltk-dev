@@ -1,0 +1,36 @@
+Index: tests/fCmd.test
+==================================================================
+--- tests/fCmd.test
++++ tests/fCmd.test
+@@ -753,11 +753,11 @@
+     cleanup
+ } -constraints {unix notRoot} -body {
+     file mkdir [file home]/td1/td2
+     set td1name [file join [file dirname [file home]] [file tail [file home]] td1]
+     file attributes $td1name -permissions 0
+-    file copy [file home]/td1 td1
++    file copy [file home]/td1 td1copy
+ } -returnCodes error -cleanup {
+     file attributes $td1name -permissions 0o755
+     file delete -force [file home]/td1
+ } -result "error copying \"[file home]/td1\": permission denied"
+ test fCmd-6.25 {CopyRenameOneFile: error uses original name} -setup {
+@@ -776,15 +776,15 @@
+     cleanup
+ } -constraints {unix notRoot} -body {
+     file mkdir [file home]/td1/td2
+     set td2name [file join [file dirname [file home]] [file tail [file home]] td1 td2]
+     file attributes $td2name -permissions 0
+-    file copy [file home]/td1 td1
++    file copy [file home]/td1 td1copy
+ } -returnCodes error -cleanup {
+     file attributes $td2name -permissions 0o755
+     file delete -force [file home]/td1
+-} -result "error copying \"[file home]/td1\" to \"td1\": \"[file join $::env(HOME) td1 td2]\": permission denied"
++} -result "error copying \"[file home]/td1\" to \"td1copy\": \"[file join $::env(HOME) td1 td2]\": permission denied"
+ test fCmd-6.27 {CopyRenameOneFile: TclpCopyDirectory failed} -setup {
+     cleanup $tmpspace
+ } -constraints {notRoot xdev} -returnCodes error -body {
+     file mkdir td1/td2/td3
+     file mkdir [file join $tmpspace td1]
+

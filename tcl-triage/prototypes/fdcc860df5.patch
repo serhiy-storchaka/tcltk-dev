@@ -1,0 +1,19 @@
+Index: tests/cmdMZ.test
+==================================================================
+--- tests/cmdMZ.test
++++ tests/cmdMZ.test
+@@ -212,10 +212,13 @@
+ } {0 {-foo 1 -bar 2 -code 0 -level 0}}
+ 
+ # Check that the result of a [return -options $opts $result] is
+ # indistinguishable from that of the originally caught script, no matter what
+ # the script is/does. (TIP 90)
++# Make sure ::errorCode and ::errorInfo exist when these tests run alone.
++set ::errorCode NONE
++set ::errorInfo {}
+ foreach {testid script} {
+     cmdMZ-return-3.0 {}
+     cmdMZ-return-3.1 {format x}
+     cmdMZ-return-3.2 {set}
+     cmdMZ-return-3.3 {set a 1}
+

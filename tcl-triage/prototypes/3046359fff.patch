@@ -1,0 +1,26 @@
+Index: generic/tclPathObj.c
+==================================================================
+--- generic/tclPathObj.c
++++ generic/tclPathObj.c
+@@ -1564,10 +1564,20 @@
+ 	pathPtr = (*fromFilesystem->internalToNormalizedProc)(clientData);
+     }
+     if (pathPtr == NULL) {
+ 	return NULL;
+     }
++
++    /*
++     * If the filesystem has already made a path object with its own internal
++     * representation, trust it. Throwing it away would also free clientData
++     * if the filesystem stored it there. [Bug 3046359]
++     */
++
++    if (TclHasInternalRep(pathPtr, &fsPathType)) {
++	return pathPtr;
++    }
+ 
+     /*
+      * Free old representation; shouldn't normally be any, but best to be
+      * safe.
+      */
+

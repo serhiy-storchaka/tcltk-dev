@@ -1,0 +1,55 @@
+Index: generic/tclStringObj.c
+==================================================================
+--- generic/tclStringObj.c
++++ generic/tclStringObj.c
+@@ -2556,15 +2556,23 @@
+ 		msg = overflow;
+ 		errCode = "OVERFLOW";
+ 		goto errorMsg;
+ 	    }
+ 	    if (ch == 'A') {
+-		char *q = TclGetString(segment) + 1;
+-		*q = 'x';
+-		q = strchr(q, 'P');
++		/*
++		 * Lowercase the "0X" prefix and the "P" exponent marker. The
++		 * prefix may follow padding or a sign, and is absent for Inf.
++		 */
++
++		char *q = strstr(TclGetString(segment), "0X");
++
+ 		if (q) {
+-		    *q = 'p';
++		    q[1] = 'x';
++		    q = strchr(q, 'P');
++		    if (q) {
++			*q = 'p';
++		    }
+ 		}
+ 	    }
+ 	    break;
+ 	}
+ 	default:
+
+Index: tests/format.test
+==================================================================
+--- tests/format.test
++++ tests/format.test
+@@ -597,10 +597,16 @@
+     # and it don't throw an error in case the bug is not fixed (and probably no segfault).
+     format %[expr {0xffffffffffffffff - 1}]g 0
+ } -returnCodes error -result "max size for a Tcl value exceeded"
+ 
+ # Note that this test may fail in future versions
++test format-19.5 {%A with sign, padding and Inf} {
++    # explicit precision: without it MSVC prints all 13 hex digits
++    list [format %.1A 1.5] [format %.1A -1.5] [format %+.0A 1.0] \
++	    [format "% .0A" 1.0] [format %10.1A 1.5] [format %-10.0A| -2.0] \
++	    [format %A Inf] [format %A -Inf]
++} {0x1.8p+0 -0x1.8p+0 +0x1p+0 { 0x1p+0} {  0x1.8p+0} {-0x1p+1   |} INF -INF}
+ test format-20.1 {Bug 2932421: plain %s caused internalrep change of args} -body {
+     set x [dict create a b c d]
+     format %s $x
+     # After this, obj in $x should be a dict
+     # We are testing to make sure it has not been shimmered to a
+

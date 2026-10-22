@@ -1,0 +1,30 @@
+Index: tests/fCmd.test
+==================================================================
+--- tests/fCmd.test
++++ tests/fCmd.test
+@@ -2387,20 +2387,22 @@
+ } -match glob -result *
+ test fCmd-27.5 {TclFileAttrsCmd - setting one option} -setup {
+     catch {file delete -force -- foo.tmp}
+ } -constraints {foundGroup} -body {
+     createfile foo.tmp
+-    set attrs [file attributes foo.tmp]
++    # Skip -group: it may not be settable even to its current value [17a26ddf66]
++    set attrs [dict remove [file attributes foo.tmp] -group]
+     file attributes foo.tmp {*}[lrange $attrs 0 1]
+ } -cleanup {
+     file delete -force -- foo.tmp
+ } -result {}
+ test fCmd-27.6 {TclFileAttrsCmd - setting more than one option} -setup {
+     catch {file delete -force -- foo.tmp}
+ } -constraints {foundGroup} -body {
+     createfile foo.tmp
+-    set attrs [file attributes foo.tmp]
++    # Skip -group: it may not be settable even to its current value [17a26ddf66]
++    set attrs [dict remove [file attributes foo.tmp] -group]
+     file attributes foo.tmp {*}[lrange $attrs 0 3]
+ } -cleanup {
+     file delete -force -- foo.tmp
+ } -result {}
+ 
+

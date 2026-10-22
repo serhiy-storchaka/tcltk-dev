@@ -1,0 +1,18 @@
+Index: win/makefile.vc
+==================================================================
+--- win/makefile.vc
++++ win/makefile.vc
+@@ -1058,11 +1058,11 @@
+ 	@$(ECHO) Installing $(TCLSHNAME)
+ 	@$(CPY) "$(TCLSH)" "$(BIN_INSTALL_DIR)\"
+ 	@$(ECHO) Installing $(TCLSTUBLIBNAME)
+ 	@$(CPY) "$(TCLSTUBLIB)" "$(LIB_INSTALL_DIR)\"
+ 
+-install-libraries: tclConfig tcl-nmake install-msgs install-tzdata
++install-libraries: libtclzip tclConfig tcl-nmake install-msgs install-tzdata
+ 	@if not exist "$(LIB_INSTALL_DIR)\nmake" \
+ 		$(MKDIR) "$(LIB_INSTALL_DIR)\nmake"
+ 	@$(ECHO) Installing header files
+ 	@$(CPY) "$(GENERICDIR)\tcl.h"             "$(INCLUDE_INSTALL_DIR)\"
+ 	@$(CPY) "$(GENERICDIR)\tclDecls.h"        "$(INCLUDE_INSTALL_DIR)\"
+

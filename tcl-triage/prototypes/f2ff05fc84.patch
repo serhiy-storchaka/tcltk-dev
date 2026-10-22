@@ -1,0 +1,204 @@
+Index: generic/tclEncoding.c
+==================================================================
+--- generic/tclEncoding.c
++++ generic/tclEncoding.c
+@@ -747,11 +747,11 @@
+     Tcl_MutexLock(&encodingMutex);
+     if (name == NULL) {
+ 	encodingPtr = (Encoding *) systemEncoding;
+ 	encodingPtr->refCount++;
+ 	Tcl_MutexUnlock(&encodingMutex);
+-	return systemEncoding;
++	return (Tcl_Encoding) encodingPtr;
+     }
+ 
+     hPtr = Tcl_FindHashEntry(&encodingTable, name);
+     if (hPtr != NULL) {
+ 	encodingPtr = (Encoding *)Tcl_GetHashValue(hPtr);
+@@ -1192,20 +1192,26 @@
+     Tcl_EncodingState state;
+     const Encoding *encodingPtr;
+     int result;
+     Tcl_Size dstLen, soFar;
+     const char *srcStart = src;
++
++    if (encoding == NULL) {
++	/* Hold a reference, another thread may change the system encoding. */
++	encoding = Tcl_GetEncoding(NULL, NULL);
++	result = Tcl_ExternalToUtfDStringEx(interp, encoding, src, srcLen,
++		flags, dstPtr, errorLocPtr);
++	Tcl_FreeEncoding(encoding);
++	return result;
++    }
+ 
+     /* DO FIRST - Must always be initialized before returning */
+     Tcl_DStringInit(dstPtr);
+ 
+     dst = Tcl_DStringValue(dstPtr);
+     dstLen = dstPtr->spaceAvl - 1;
+ 
+-    if (encoding == NULL) {
+-	encoding = systemEncoding;
+-    }
+     encodingPtr = (Encoding *)encoding;
+ 
+     if (src == NULL) {
+ 	srcLen = 0;
+ 	src = "";	/* Avoid ABSAN warnings about ops on NULL pointers */
+@@ -1340,10 +1346,19 @@
+ 				 * correspond to the bytes stored in the
+ 				 * output buffer. */
+ {
+     int result;
+     Tcl_Size srcRead, dstWrote, dstChars;
++
++    if (encoding == NULL) {
++	/* Hold a reference, another thread may change the system encoding. */
++	encoding = Tcl_GetEncoding(NULL, NULL);
++	result = Tcl_ExternalToUtf(interp, encoding, src, srcLen, flags,
++		statePtr, dst, dstLen, srcReadPtr, dstWrotePtr, dstCharsPtr);
++	Tcl_FreeEncoding(encoding);
++	return result;
++    }
+ 
+     if (src == NULL) {
+ 	srcLen = 0;
+ 	src = "";	/* Avoid ABSAN warnings about ops on NULL pointers */
+     } else if (srcLen < 0) {
+@@ -1355,11 +1370,11 @@
+     }
+ 
+     if (dstCharsPtr && (flags & TCL_ENCODING_CHAR_LIMIT)) {
+ 	dstChars = *dstCharsPtr;
+     }
+-    result = Tcl_ExternalToUtfEx(interp, encoding, src, srcLen, flags,
++    result = Tcl_ExternalToUtfEx(NULL, encoding, src, srcLen, flags,
+ 	    statePtr, dst, dstLen,
+ 	    srcReadPtr ? &srcRead : NULL,
+ 	    dstWrotePtr ? &dstWrote : NULL,
+ 	    dstCharsPtr ? &dstChars : NULL);
+ 
+@@ -1457,12 +1472,18 @@
+     Tcl_Size srcBytesRead = 0;
+     Tcl_Size dstBytesWritten = 0;
+     Tcl_Size dstCharsWritten = 0;
+ 
+     if (encoding == NULL) {
+-	encoding = systemEncoding;
++	/* Hold a reference, another thread may change the system encoding. */
++	encoding = Tcl_GetEncoding(NULL, NULL);
++	result = Tcl_ExternalToUtfEx(NULL, encoding, src, srcLen, flags,
++		statePtr, dst, dstLen, srcReadPtr, dstWrotePtr, dstCharsPtr);
++	Tcl_FreeEncoding(encoding);
++	return result;
+     }
++
+     encodingPtr = (Encoding *) encoding;
+ 
+     if (src == NULL) {
+ 	srcLen = 0;
+ 	src = "";	/* Avoid ABSAN warnings about ops on NULL pointers */
+@@ -1760,20 +1781,26 @@
+     Tcl_EncodingState state;
+     const Encoding *encodingPtr;
+     int result;
+     const char *srcStart = src;
+     Tcl_Size dstLen, soFar;
++
++    if (encoding == NULL) {
++	/* Hold a reference, another thread may change the system encoding. */
++	encoding = Tcl_GetEncoding(NULL, NULL);
++	result = Tcl_UtfToExternalDStringEx(interp, encoding, src, srcLen,
++		flags, dstPtr, errorLocPtr);
++	Tcl_FreeEncoding(encoding);
++	return result;
++    }
+ 
+     /* DO FIRST - must always be initialized on return */
+     Tcl_DStringInit(dstPtr);
+ 
+     dst = Tcl_DStringValue(dstPtr);
+     dstLen = dstPtr->spaceAvl - 1;
+ 
+-    if (encoding == NULL) {
+-	encoding = systemEncoding;
+-    }
+     encodingPtr = (Encoding *) encoding;
+ 
+     if (src == NULL) {
+ 	srcLen = 0;
+ 	src = "";	/* Avoid ABSAN warnings about ops on NULL pointers */
+@@ -1923,11 +1950,11 @@
+     /* Low level encoders do not support CHAR_LIMIT. Future-proofing */
+     if (dstCharsPtr && (flags & TCL_ENCODING_CHAR_LIMIT)) {
+ 	dstChars = *dstCharsPtr;
+     }
+ 
+-    result = Tcl_UtfToExternalEx(interp, encoding, src, srcLen, flags,
++    result = Tcl_UtfToExternalEx(NULL, encoding, src, srcLen, flags,
+ 	    statePtr, dst, dstLen,
+ 	    srcReadPtr ? &srcRead : NULL,
+ 	    dstWrotePtr ? &dstWrote : NULL,
+ 	    dstCharsPtr ? &dstChars : NULL);
+ 
+@@ -2028,12 +2055,18 @@
+     Tcl_Size srcBytesRead = 0;
+     Tcl_Size dstBytesWritten = 0;
+     Tcl_Size dstCharsWritten = 0;
+ 
+     if (encoding == NULL) {
+-	encoding = systemEncoding;
++	/* Hold a reference, another thread may change the system encoding. */
++	encoding = Tcl_GetEncoding(NULL, NULL);
++	result = Tcl_UtfToExternalEx(NULL, encoding, src, srcLen, flags,
++		statePtr, dst, dstLen, srcReadPtr, dstWrotePtr, dstCharsPtr);
++	Tcl_FreeEncoding(encoding);
++	return result;
+     }
++
+     encodingPtr = (Encoding *) encoding;
+     terminatorLength =
+ 	(flags & TCL_ENCODING_NO_TERMINATE) ? 0 : encodingPtr->nullSize;
+ 
+     if (src == NULL) {
+
+Index: tests/thread.test
+==================================================================
+--- tests/thread.test
++++ tests/thread.test
+@@ -1460,9 +1460,34 @@
+ 	thread::join $::thread
+     }
+ } -cleanup {
+     unset -nocomplain ::threadCount ::execCount ::threads ::thread
+ } -result {}
++
++test thread-9.1 {system encoding changed while used in another thread, bug f2ff05fc84} -constraints {thread} -setup {
++    set origEnc [encoding system]
++    catch {tsv::unset bugf2ff}
++} -body {
++    set t [thread::create -joinable {
++	set long [string repeat a/ 100000]
++	set n 0
++	while {![tsv::exists bugf2ff stop]} {
++	    file exists [string cat $long [incr n]]
++	}
++    }]
++    set t0 [clock milliseconds]
++    set k 0
++    set encs {koi8-r koi8-u cp1251 cp1252}
++    while {[clock milliseconds] - $t0 < 1000} {
++	encoding system [lindex $encs [expr {[incr k] % 4}]]
++    }
++    tsv::set bugf2ff stop 1
++    thread::join $t
++} -cleanup {
++    encoding system $origEnc
++    catch {tsv::unset bugf2ff}
++    unset -nocomplain origEnc t t0 k encs
++} -result 0
+ 
+ # cleanup
+ ::tcltest::cleanupTests
+ return
+

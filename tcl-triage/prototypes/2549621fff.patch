@@ -1,0 +1,64 @@
+Index: generic/tclInterp.c
+==================================================================
+--- generic/tclInterp.c
++++ generic/tclInterp.c
+@@ -2782,13 +2782,26 @@
+     Tcl_Obj **objv;
+ 
+     if (TclListObjGetElements(interp, pathPtr, &objc, &objv) != TCL_OK) {
+ 	return NULL;
+     }
+-    if (objc < 2) {
++    if (objc == 0) {
++	/*
++	 * The empty path names the current interpreter. [Bug 2549598]
++	 */
++
++	Tcl_SetObjResult(interp, Tcl_NewStringObj(
++		"interpreter named \"\" already exists, cannot create", -1));
++	return NULL;
++    }
++    if (objc == 1) {
++	/*
++	 * The path is a list; use its element, not its string. [Bug 2549621]
++	 */
++
+ 	parentInterp = interp;
+-	path = TclGetString(pathPtr);
++	path = TclGetString(objv[0]);
+     } else {
+ 	Tcl_Obj *objPtr;
+ 
+ 	objPtr = Tcl_NewListObj(objc - 1, objv);
+ 	parentInterp = GetInterp(interp, objPtr);
+
+Index: tests/interp.test
+==================================================================
+--- tests/interp.test
++++ tests/interp.test
+@@ -165,10 +165,24 @@
+ } -match regexp -result {interp[0-9]+}
+ 
+ foreach i [interp children] {
+     interp delete $i
+ }
++
++test interp-2.14 {Bug 2549621: interp create treats path as a list} -setup {
++    interp create a
++} -body {
++    list [catch {interp create { a }} msg] $msg [interp children] \
++	[interp create {{x y}}] [interp exists {{x y}}] \
++	[lsort [interp children]]
++} -cleanup {
++    interp delete a
++    interp delete {{x y}}
++} -result {1 {interpreter named "a" already exists, cannot create} a {{x y}} 1 {a {x y}}}
++test interp-2.15 {Bug 2549598: interp create rejects empty path} -body {
++    list [catch {interp create {}} msg] $msg [interp children]
++} -result {1 {interpreter named "" already exists, cannot create} {}}
+ 
+ # Part 2: Testing "interp children" and "interp exists"
+ test interp-3.1 {testing interp exists and interp children} {
+     interp children
+ } ""
+

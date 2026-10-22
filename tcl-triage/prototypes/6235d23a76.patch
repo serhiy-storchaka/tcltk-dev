@@ -1,0 +1,76 @@
+Index: tests/env.test
+==================================================================
+--- tests/env.test
++++ tests/env.test
+@@ -544,10 +544,23 @@
+ 	[set ::env(ENV110) ""] \
+ 	[info exists ::env(ENV110)] \
+ 	[catch {set ::env(ENV110)} error] \
+ 	$error
+ } -result {1 foo {} 0 1 {can't read "::env(ENV110)": no such variable}}
++
++test env-12.0 {
++    Bug [6235d23a76] - interp create does not restore an unset env(HOME)
++} -setup {
++    set home [array get ::env HOME]
++    unset -nocomplain ::env(HOME)
++} -cleanup {
++    interp delete child
++    array set ::env $home
++} -body {
++    interp create child
++    list [info exists ::env(HOME)] [child eval {info exists ::env(HOME)}]
++} -result {0 0}
+ 
+ 
+ 
+ # cleanup
+ rename getenv {}
+
+Index: win/tclWinInit.c
+==================================================================
+--- win/tclWinInit.c
++++ win/tclWinInit.c
+@@ -599,10 +599,17 @@
+ 	Tcl_WCharToUtfDString(szUserName, cchUserNameLen, bufferPtr);
+     }
+     return Tcl_DStringValue(bufferPtr);
+ }
+ 
++/*
++ * Whether TclpSetVariables has already initialized env(HOME).
++ */
++
++static int homeInitialized = 0;
++TCL_DECLARE_MUTEX(homeMutex)
++
+ /*
+  *---------------------------------------------------------------------------
+  *
+  * TclpSetVariables --
+  *
+@@ -654,15 +661,21 @@
+ 		TCL_GLOBAL_ONLY);
+     }
+ 
+     /*
+      * Set up the HOME environment variable from the HOMEDRIVE & HOMEPATH
+-     * environment variables, if necessary.
++     * environment variables, if necessary. The environment is shared by the
++     * whole process, so do it only once: creating another interpreter must
++     * not recreate a HOME the application has unset. [Bug 6235d23a76]
+      */
+ 
+     Tcl_DStringInit(&ds);
+-    ptr = Tcl_GetVar2(interp, "env", "HOME", TCL_GLOBAL_ONLY);
++    Tcl_MutexLock(&homeMutex);
++    ptr = homeInitialized ? "" : Tcl_GetVar2(interp, "env", "HOME",
++	    TCL_GLOBAL_ONLY);
++    homeInitialized = 1;
++    Tcl_MutexUnlock(&homeMutex);
+     if (ptr == NULL) {
+ 	ptr = Tcl_GetVar2(interp, "env", "HOMEDRIVE", TCL_GLOBAL_ONLY);
+ 	if (ptr != NULL) {
+ 	    Tcl_DStringAppend(&ds, ptr, TCL_INDEX_NONE);
+ 	}
+

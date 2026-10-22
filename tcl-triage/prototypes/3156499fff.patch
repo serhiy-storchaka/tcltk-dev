@@ -1,0 +1,85 @@
+Index: generic/tclBasic.c
+==================================================================
+--- generic/tclBasic.c
++++ generic/tclBasic.c
+@@ -5383,11 +5383,11 @@
+ 	     * command. We use a separate pointer into the table of
+ 	     * continuation line locations to not lose our position for the
+ 	     * per-command parsing.
+ 	     */
+ 
+-	    int wordLine = line;
++	    int wordLine = line, cmdLine = line;
+ 	    const char *wordStart = parsePtr->commandStart;
+ 	    Tcl_Size *wordCLNext = clNext;
+ 	    Tcl_Size objectsNeeded = 0;
+ 	    Tcl_Size numWords = parsePtr->numWords;
+ 
+@@ -5423,10 +5423,13 @@
+ 			tokenPtr->start - outerScript);
+ 		wordStart = tokenPtr->start;
+ 
+ 		lines[objectsUsed] = TclWordKnownAtCompileTime(tokenPtr, NULL)
+ 			? wordLine : -1;
++		if (objectsUsed == 0) {
++		    cmdLine = wordLine;
++		}
+ 
+ 		if (eeFramePtr->type == TCL_LOCATION_SOURCE) {
+ 		    iPtr->evalFlags |= TCL_EVAL_FILE;
+ 		}
+ 
+@@ -5536,10 +5539,20 @@
+ 	    if (parsePtr->term ==
+ 		    parsePtr->commandStart + parsePtr->commandSize - 1) {
+ 		eeFramePtr->len--;
+ 	    }
+ 
++	    /*
++	     * The command is on the line of its first word, even if that word
++	     * is dynamic ($cmd, [...], {*}). TclArgumentEnter() never records
++	     * word 0, so this does not leak location info to its value.
++	     * [3156499]
++	     */
++
++	    if (objectsUsed > 0) {
++		lines[0] = cmdLine;
++	    }
+ 	    eeFramePtr->nline = objectsUsed;
+ 	    eeFramePtr->line = lines;
+ 
+ 	    TclArgumentEnter(interp, objv, objectsUsed, eeFramePtr);
+ 	    code = Tcl_EvalObjv(interp, objectsUsed, objv,
+
+Index: tests/info.test
+==================================================================
+--- tests/info.test
++++ tests/info.test
+@@ -2639,10 +2639,26 @@
+ } -cleanup {
+     interp delete child
+ } -body {
+     child invokehidden info frame
+ } -result 1
++
++testConstraint testevalex [llength [info commands testevalex]]
++test info-42.1 {Bug 3156499: line of a command with a dynamic command word} -setup {
++    proc ::info42 {} {lappend ::info42res [dict get [info frame -1] line]}
++    set ::info42res {}
++} -constraints testevalex -body {
++    testevalex {set cmd42 info42
++$cmd42
++[string cat info42]
++{*}[list info42]
++info42}
++    set ::info42res
++} -cleanup {
++    rename ::info42 {}
++    unset -nocomplain ::info42res ::cmd42
++} -result {2 3 4 5}
+ 
+ # cleanup
+ catch {namespace delete test_ns_info1 test_ns_info2}
+ ::tcltest::cleanupTests
+ return
+

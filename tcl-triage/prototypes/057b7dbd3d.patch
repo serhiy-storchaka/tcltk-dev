@@ -1,0 +1,71 @@
+Index: generic/tclCompExpr.c
+==================================================================
+--- generic/tclCompExpr.c
++++ generic/tclCompExpr.c
+@@ -2263,10 +2263,14 @@
+ {
+     CompileEnv *envPtr;
+     ByteCode *byteCodePtr;
+     int code;
+     NRE_callback *rootPtr = TOP_CB(interp);
++    Interp *iPtr = (Interp *) interp;
++    Tcl_Obj *const *sourceObjs = iPtr->ensembleRewrite.sourceObjs;
++    Tcl_Size numRemovedObjs = iPtr->ensembleRewrite.numRemovedObjs;
++    Tcl_Size numInsertedObjs = iPtr->ensembleRewrite.numInsertedObjs;
+ 
+     /*
+      * Note we are compiling an expression with literal arguments. This means
+      * there can be no [info frame] calls when we execute the resulting
+      * bytecode, so there's no need to tend to TIP 280 issues.
+@@ -2278,12 +2282,22 @@
+ 	    false /* optimize */);
+     OP(				DONE);
+     byteCodePtr = TclInitByteCode(envPtr);
+     TclFreeCompileEnv(envPtr);
+     TclStackFree(interp, envPtr);
++
++    /*
++     * Executing the constant subexpression must not disturb the ensemble
++     * rewrite state of the command whose body is being compiled.
++     * [Bug 057b7dbd3d]
++     */
++
+     TclNRExecuteByteCode(interp, byteCodePtr);
+     code = TclNRRunCallbacks(interp, TCL_OK, rootPtr);
++    iPtr->ensembleRewrite.sourceObjs = sourceObjs;
++    iPtr->ensembleRewrite.numRemovedObjs = numRemovedObjs;
++    iPtr->ensembleRewrite.numInsertedObjs = numInsertedObjs;
+     TclReleaseByteCode(byteCodePtr);
+     return code;
+ }
+ 
+ /*
+
+Index: tests/compExpr.test
+==================================================================
+--- tests/compExpr.test
++++ tests/compExpr.test
+@@ -404,10 +404,22 @@
+ 	# + $def\\
+ 	+ $ghi
+     }}]
+ } -result {loadStk loadStk add}
+ 
++test compExpr-9.1 {constant folding keeps ensemble rewrite, Bug 057b7dbd3d} -setup {
++    namespace eval ::compExprEns {
++	proc p {x} {expr {$x <= -1}}
++	namespace export p
++	namespace ensemble create
++    }
++} -body {
++    compExprEns p
++} -cleanup {
++    namespace delete ::compExprEns
++} -returnCodes error -result {wrong # args: should be "compExprEns p x"}
++
+ # cleanup
+ catch {unset a}
+ catch {unset b}
+ catch {rename extract ""}
+ ::tcltest::cleanupTests
+

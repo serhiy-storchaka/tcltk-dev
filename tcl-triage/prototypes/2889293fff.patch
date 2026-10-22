@@ -1,0 +1,116 @@
+Index: generic/tclExecute.c
+==================================================================
+--- generic/tclExecute.c
++++ generic/tclExecute.c
+@@ -4042,11 +4042,16 @@
+ 	part1Ptr = OBJ_AT_TOS;		/* variable name */
+ 	TRACE("\"%.30s\" => ", O2S(part1Ptr));
+ 
+     doExistStk:
+ 	varPtr = TclObjLookupVarEx(interp, part1Ptr, part2Ptr, 0, "access",
+-		/*createPart1*/0, /*createPart2*/1, &arrayPtr);
++		/*createPart1*/0, /*createPart2*/0, &arrayPtr);
++	if (!varPtr && arrayPtr && ReadTraced(arrayPtr)) {
++	    /* Only a read trace can define a missing element [2889293]. */
++	    varPtr = TclObjLookupVarEx(interp, part1Ptr, part2Ptr, 0,
++		    "access", /*createPart1*/0, /*createPart2*/1, &arrayPtr);
++	}
+ 	if (varPtr) {
+ 	    if (ReadTraced(varPtr) || (arrayPtr && ReadTraced(arrayPtr))) {
+ 		DECACHE_STACK_INFO();
+ 		TclObjCallVarTraces(iPtr, arrayPtr, varPtr, part1Ptr, part2Ptr,
+ 			TCL_TRACE_READS, 0, -1);
+
+Index: generic/tclTrace.c
+==================================================================
+--- generic/tclTrace.c
++++ generic/tclTrace.c
+@@ -2360,14 +2360,21 @@
+      * semantics of GetVar. Things are still not perfect, however, because if
+      * you do "info exists x" you get a varPtr and therefore trigger traces.
+      * However, if you do "info exists x(i)", then you only get a varPtr if x
+      * is already known to be an array. Otherwise you get NULL, and no trace
+      * is triggered. This matches Tcl 7.6 semantics.
++     *
++     * A missing element is only created when an array read trace could
++     * define it, since creating it kills any active array search [2889293].
+      */
+ 
+     varPtr = TclLookupVar(interp, varName, NULL, 0, "access",
+-	    /*createPart1*/ 0, /*createPart2*/ 1, &arrayPtr);
++	    /*createPart1*/ 0, /*createPart2*/ 0, &arrayPtr);
++    if (varPtr == NULL && arrayPtr && (arrayPtr->flags & VAR_TRACED_READ)) {
++	varPtr = TclLookupVar(interp, varName, NULL, 0, "access",
++		/*createPart1*/ 0, /*createPart2*/ 1, &arrayPtr);
++    }
+ 
+     if (varPtr == NULL) {
+ 	return NULL;
+     }
+ 
+
+Index: tests/info.test
+==================================================================
+--- tests/info.test
++++ tests/info.test
+@@ -2639,10 +2639,59 @@
+ } -cleanup {
+     interp delete child
+ } -body {
+     child invokehidden info frame
+ } -result 1
++
++test info-42.1 {Bugs 2889293, 994454: info exists keeps array searches (direct)} -setup {
++    array set ::info42 {a 1 b 2}
++} -body {
++    set s [array startsearch ::info42]
++    set r [info exists ::info42(none)]
++    lappend r [array anymore ::info42 $s] [array size ::info42]
++    array donesearch ::info42 $s
++    set r
++} -cleanup {
++    unset -nocomplain ::info42 s r
++} -result {0 1 2}
++test info-42.2 {Bugs 2889293, 994454: info exists keeps array searches (stack)} -setup {
++    array set ::info42 {a 1 b 2}
++} -body {
++    apply {{} {
++	set n ::info42
++	set s [array startsearch $n]
++	set r [info exists ${n}(none)]
++	lappend r [array anymore $n $s] [info exists ::info42(none)]
++	lappend r [array anymore $n $s]
++	array donesearch $n $s
++	set r
++    }}
++} -cleanup {
++    unset -nocomplain ::info42
++} -result {0 1 0 1}
++test info-42.3 {Bug 2889293: array read trace may still create element} -setup {
++    array set ::info42 {a 1}
++    trace add variable ::info42 read {apply {{n e op} {
++	upvar 1 $n v
++	if {$e eq "new"} {set v($e) created}
++    }}}
++} -body {
++    list [info exists ::info42(new)] [info exists ::info42(none)] \
++	[apply {{} {set n ::info42; info exists ${n}(new)}}] \
++	[lsort [array names ::info42]]
++} -cleanup {
++    unset -nocomplain ::info42
++} -result {1 0 1 {a new}}
++test info-42.4 {Bug 994454: info exists keeps searches of an empty array} -setup {
++    array set ::info42 {}
++} -body {
++    set s [array startsearch ::info42]
++    list [array anymore ::info42 $s] [info exists ::info42(dummy)] \
++	[array anymore ::info42 $s] [array donesearch ::info42 $s]
++} -cleanup {
++    unset -nocomplain ::info42 s
++} -result {0 0 0 {}}
+ 
+ # cleanup
+ catch {namespace delete test_ns_info1 test_ns_info2}
+ ::tcltest::cleanupTests
+ return
+

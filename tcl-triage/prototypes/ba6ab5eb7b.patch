@@ -1,0 +1,88 @@
+Index: generic/tclBasic.c
+==================================================================
+--- generic/tclBasic.c
++++ generic/tclBasic.c
+@@ -4796,13 +4796,15 @@
+ 	 */
+ 
+ 	TclNRAddCallback(interp, TEOV_Error, INT2PTR(objc), objv, NULL, NULL);
+     }
+ 
+-    if (iPtr->numLevels == 1) {
++    if (iPtr->numLevels == 1 && iPtr->execEnvPtr->corPtr == NULL) {
+ 	/*
+-	 * No CONTINUE or BREAK at level 0, manage RETURN
++	 * No CONTINUE or BREAK at level 0, manage RETURN. The body of a
++	 * coroutine created at level 0 is not at level 0: its exceptions go
++	 * to whoever resumes it. [Bug ba6ab5eb7b]
+ 	 */
+ 
+ 	TclNRAddCallback(interp, TEOV_Exception, INT2PTR(iPtr->evalFlags),
+ 		NULL, NULL, NULL);
+     }
+
+Index: tests/coroutine.test
+==================================================================
+--- tests/coroutine.test
++++ tests/coroutine.test
+@@ -17,10 +17,11 @@
+ ::tcltest::loadTestedCommands
+ catch [list package require -exact tcl::test [info patchlevel]]
+ 
+ testConstraint testnrelevels [llength [info commands testnrelevels]]
+ testConstraint memory [llength [info commands memory]]
++testConstraint exec [llength [info commands exec]]
+ 
+ set lambda [list {{start 0} {stop 10}} {
+     # init
+     set i    $start
+     set imax $stop
+@@ -867,10 +868,47 @@
+ 	yieldto {*}$target
+ 	return done
+     }} {}
+     list [c] [c]
+ } -returnCodes error -result {wrong # args: should be "yieldto command ?arg ...?"}
++test coroutine-7.20 {break from coroutine created at level 0, bug ba6ab5eb7b} -setup {
++    set fName [makeFile {
++	proc gen {} {yield; return -code break}
++	coroutine t gen
++	set i 0
++	while 1 {incr i; t}
++	puts $i
++    } coro720]
++} -constraints exec -body {
++    exec [interpreter] $fName
++} -cleanup {
++    removeFile coro720
++} -result 1
++test coroutine-7.21 {continue from coroutine created at level 0, bug ba6ab5eb7b} -setup {
++    set fName [makeFile {
++	proc gen {} {yield; return -code continue}
++	coroutine t gen
++	set r {}
++	foreach x {a b} {lappend r $x; if {$x eq "a"} t; lappend r $x}
++	puts $r
++    } coro721]
++} -constraints exec -body {
++    exec [interpreter] $fName
++} -cleanup {
++    removeFile coro721
++} -result {a b b}
++test coroutine-7.22 {break from coroutine resumed at level 0, bug ba6ab5eb7b} -setup {
++    set fName [makeFile {
++	proc gen {} {yield; return -code break}
++	coroutine t gen
++	t
++    } coro722]
++} -constraints exec -body {
++    exec [interpreter] $fName
++} -cleanup {
++    removeFile coro722
++} -returnCodes error -match glob -result {invoked "break" outside of a loop*}
+ 
+ test coroutine-8.1.1 {coro inject, ticket 42202ba1e5ff566e} -body {
+     interp create child
+     child eval {
+ 	coroutine demo apply {{} { while {1} yield }}
+

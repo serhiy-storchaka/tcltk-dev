@@ -1,0 +1,62 @@
+Index: win/configure
+==================================================================
+--- win/configure
++++ win/configure
+@@ -4823,19 +4823,18 @@
+ 
+ 
+ 
+ 
+ 
+-# Cross-compiling
+-case ${host_alias} in
+-*mingw32*)
++# When cross-compiling, the tclsh being built cannot be run on the build
++# host, so a tclsh installed there is used. Native builds (including MSYS2
++# and Cygwin, where host is also *mingw32*) use the freshly built one.
++if test "$cross_compiling" = yes; then
+     TCL_EXE="tclsh"
+-    ;;
+-*)
++else
+     TCL_EXE="TCL_LIBRARY=\"\${LIBRARY_DIR}\"; export TCL_LIBRARY; ./\${TCLSH}"
+-    ;;
+-esac
++fi
+ 
+ #------------------------------------------------------------------------
+ #	Add stuff for zlib/libtommath; note that this is mostly done in the
+ #	makefile now as we just assume that the platform hasn't got usable
+ #   z.lib/tommath.lib
+
+Index: win/configure.ac
+==================================================================
+--- win/configure.ac
++++ win/configure.ac
+@@ -95,19 +95,18 @@
+ # after SC_ENABLE_SHARED checks the configure switches.
+ #--------------------------------------------------------------------
+ 
+ SC_CONFIG_CFLAGS
+ 
+-# Cross-compiling
+-case ${host_alias} in
+-*mingw32*)
++# When cross-compiling, the tclsh being built cannot be run on the build
++# host, so a tclsh installed there is used. Native builds (including MSYS2
++# and Cygwin, where host is also *mingw32*) use the freshly built one.
++if test "$cross_compiling" = yes; then
+     TCL_EXE="tclsh"
+-    ;;
+-*)
++else
+     TCL_EXE="TCL_LIBRARY=\"\${LIBRARY_DIR}\"; export TCL_LIBRARY; ./\${TCLSH}"
+-    ;;
+-esac
++fi
+ 
+ #------------------------------------------------------------------------
+ #	Add stuff for zlib/libtommath; note that this is mostly done in the
+ #	makefile now as we just assume that the platform hasn't got usable
+ #   z.lib/tommath.lib
+

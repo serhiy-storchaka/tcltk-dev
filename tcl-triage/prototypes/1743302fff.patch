@@ -1,0 +1,95 @@
+Index: generic/tclExecute.c
+==================================================================
+--- generic/tclExecute.c
++++ generic/tclExecute.c
+@@ -50,18 +50,10 @@
+ 
+ #ifndef ASYNC_CHECK_COUNT
+ #   define ASYNC_CHECK_COUNT	64
+ #endif /* !ASYNC_CHECK_COUNT */
+ 
+-/*
+- * Boolean flag indicating whether the Tcl bytecode interpreter has been
+- * initialized.
+- */
+-
+-static int execInitialized = 0;
+-TCL_DECLARE_MUTEX(execMutex)
+-
+ static int cachedInExit = 0;
+ 
+ #ifdef TCL_COMPILE_DEBUG
+ /*
+  * Variable that controls whether execution tracing is enabled and, if so,
+@@ -877,16 +869,17 @@
+     esPtr->nextPtr = NULL;
+     esPtr->markerPtr = NULL;
+     esPtr->endPtr = &esPtr->stackWords[size - 1];
+     esPtr->tosPtr = STACK_BASE(esPtr);
+ 
+-    Tcl_MutexLock(&execMutex);
+-    if (!execInitialized) {
++    if (((Interp *) interp)->execEnvPtr == NULL) {
++	/*
++	 * First execution environment of this interpreter (not a coroutine).
++	 */
++
+ 	InitByteCodeExecution(interp);
+-	execInitialized = 1;
+     }
+-    Tcl_MutexUnlock(&execMutex);
+ 
+     return eePtr;
+ }
+ 
+ /*
+@@ -965,22 +958,18 @@
+  *
+  * Results:
+  *	None.
+  *
+  * Side effects:
+- *	After this call, the next time TclCreateExecEnv will be called it will
+- *	call InitByteCodeExecution.
++ *	None. InitByteCodeExecution is called for every new interpreter.
+  *
+  *----------------------------------------------------------------------
+  */
+ 
+ void
+ TclFinalizeExecution(void)
+ {
+-    Tcl_MutexLock(&execMutex);
+-    execInitialized = 0;
+-    Tcl_MutexUnlock(&execMutex);
+ }
+ 
+ /*
+  * Auxiliary code to insure that GrowEvaluationStack always returns correctly
+  * aligned memory.
+
+Index: generic/tclInterp.c
+==================================================================
+--- generic/tclInterp.c
++++ generic/tclInterp.c
+@@ -3737,10 +3737,19 @@
+      */
+ 
+     Tcl_UnsetVar2(interp, "tclDefaultLibrary", NULL, TCL_GLOBAL_ONLY);
+     Tcl_UnsetVar2(interp, "tcl_library", NULL, TCL_GLOBAL_ONLY);
+     Tcl_UnsetVar2(interp, "tcl_pkgPath", NULL, TCL_GLOBAL_ONLY);
++
++#ifdef TCL_COMPILE_DEBUG
++    /*
++     * Debug-build variable controlling process-wide execution tracing.
++     */
++
++    Tcl_UnlinkVar(interp, "tcl_traceExec");
++    Tcl_UnsetVar2(interp, "tcl_traceExec", NULL, TCL_GLOBAL_ONLY);
++#endif
+ 
+     /*
+      * Remove the standard channels from the interpreter; safe interpreters do
+      * not ordinarily have access to stdin, stdout and stderr.
+      *
+

@@ -1,0 +1,61 @@
+Index: generic/tclExecute.c
+==================================================================
+--- generic/tclExecute.c
++++ generic/tclExecute.c
+@@ -6688,10 +6688,26 @@
+ 	 */
+ 
+ 	if (valuePtr->bytes == NULL) {
+ 	    TRACE_APPEND("numeric, same Tcl_Obj\n");
+ 	    NEXT_INST_F0(1, 0);
++	}
++	if (type1 == TCL_NUMBER_INT) {
++	    /*
++	     * If the string rep already is the canonical one (e.g. a shared
++	     * literal "1"), keep the value, so that it stays shared.
++	     * [Bug 3408408]
++	     */
++
++	    char buf[TCL_INTEGER_SPACE];
++	    Tcl_Size len = TclFormatInt(buf, *((const Tcl_WideInt *) ptr1));
++
++	    if (len == valuePtr->length
++		    && memcmp(buf, valuePtr->bytes, len) == 0) {
++		TRACE_APPEND("numeric, canonical, same Tcl_Obj\n");
++		NEXT_INST_F0(1, 0);
++	    }
+ 	}
+ 	if (Tcl_IsShared(valuePtr)) {
+ 	    /*
+ 	     * Here we do some surgery within the Tcl_Obj internals. We want
+ 	     * to copy the internalrep, but not the string, so we temporarily hide
+
+Index: tests/expr.test
+==================================================================
+--- tests/expr.test
++++ tests/expr.test
+@@ -7461,10 +7461,23 @@
+ } 668336881543038127783364011867
+ 
+ test expr-bug-8dd2807066-1 {Bug 8dd2807066, more elaborate} {
+     expr {max(abs(-668336881543038127783364011867),0)}
+ } 668336881543038127783364011867
++
++test expr-bug-3408408 {Bug 3408408: canonical integer literal result stays shared} -setup {
++    proc p b {expr {$b ? 1 : 0}}
++} -body {
++    list [p 1] [p 0] [string match {*string representation "1"*} \
++	    [tcl::unsupported::representation [p 1]]]
++} -cleanup {
++    rename p {}
++} -result {1 0 1}
++test expr-bug-3408408-1 {Bug 3408408: non-canonical literals still normalized} {
++    list [expr {1 ? 007 : 0}] [expr {1 ? "+1" : 0}] [expr {0 ? 1 : 0x10}] \
++	[expr {1 ? " 2 " : 0}]
++} {7 1 16 2}
+ 
+ # Bug e3dcab1d14 TODO: Need to work out a test case that fails
+ # without tcl_precision, which has been eliminated in 9.0
+ 
+ # proc do-one-test-expr-63 {e p float athreshold} {
+

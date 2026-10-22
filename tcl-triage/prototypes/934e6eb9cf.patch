@@ -1,0 +1,48 @@
+Index: generic/tclEnsemble.c
+==================================================================
+--- generic/tclEnsemble.c
++++ generic/tclEnsemble.c
+@@ -2374,11 +2374,10 @@
+      * recursion through unknown handlers is perverse. It is always an error
+      * for an unknown handler to delete its ensemble. Don't do that.
+      */
+ 
+     Tcl_Preserve(ensemblePtr);
+-    TclSkipTailcall(interp);
+     result = Tcl_EvalObjv(interp, paramc, paramv, 0);
+     if ((result == TCL_OK) && (ensemblePtr->flags & ENSEMBLE_DEAD)) {
+ 	if (!Tcl_InterpDeleted(interp)) {
+ 	    Tcl_SetObjResult(interp, Tcl_NewStringObj(
+ 		    "unknown subcommand handler deleted its ensemble",
+
+Index: tests/namespace.test
+==================================================================
+--- tests/namespace.test
++++ tests/namespace.test
+@@ -3343,10 +3343,25 @@
+     list [catch {ns x 1 z2} msg] $msg
+ } -cleanup {
+     namespace delete ns
+     unset -nocomplain msg
+ } -result {1 {wrong # args: should be "ns x 1 z2 a2"}}
++
++test namespace-53.12 {ensemble: unknown handler using tailcall, bug 934e6eb9cf} -setup {
++    namespace eval ns {
++	proc dispatch {routine args} {
++	    return list
++	}
++	namespace ensemble create -unknown [list ::apply [list {ensemble routine args} {
++	    tailcall dispatch $routine {*}$args
++	} [namespace current]]]
++    }
++} -body {
++    ns x one two three
++} -cleanup {
++    namespace delete ns
++} -result {one two three}
+ 
+ test namespace-54.1 {leak on namespace deletion} -constraints {memory} \
+ -setup {
+     proc getbytes {} {
+ 	set lines [split [memory info] "\n"]
+

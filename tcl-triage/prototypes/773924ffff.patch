@@ -1,0 +1,64 @@
+Index: library/tcltest/tcltest.tcl
+==================================================================
+--- library/tcltest/tcltest.tcl
++++ library/tcltest/tcltest.tcl
+@@ -2396,22 +2396,24 @@
+     variable testConstraints
+ 
+     if {$testLevel == 1} {
+ 	incr numTests(Total)
+     }
+-    # skip the test if it's name matches an element of skip
+-    foreach pattern [skip] {
++    # skip the test if it's name matches an element of skip.
++    # -skip and -match select top-level tests only; tests nested in
++    # the body of a selected test always run (bug 773924).
++    foreach pattern [expr {$testLevel == 1 ? [skip] : {}}] {
+ 	if {[string match $pattern $name]} {
+ 	    if {$testLevel == 1} {
+ 		incr numTests(Skipped)
+ 		DebugDo 1 {AddToSkippedBecause userSpecifiedSkip}
+ 	    }
+ 	    return 1
+ 	}
+     }
+     # skip the test if it's name doesn't match any element of match
+-    set ok 0
++    set ok [expr {$testLevel > 1}]
+     foreach pattern [match] {
+ 	if {[string match $pattern $name]} {
+ 	    set ok 1
+ 	    break
+ 	}
+
+Index: tests/tcltest.test
+==================================================================
+--- tests/tcltest.test
++++ tests/tcltest.test
+@@ -1881,10 +1881,25 @@
+     unset -nocomplain script msg
+ } -body {
+     child msg $script
+     regexp "Total.+8.+Passed.+2.+Skipped.+2.+Failed.+4" $msg \
+ } -result 1
++
++test tcltest-28.1 {-match and -skip do not apply to nested tests, bug 773924} -setup {
++    set oldMatch [match]
++    set oldSkip [skip]
++    set ran {}
++} -body {
++    match nomatch
++    skip tcltest-28.1.*
++    test tcltest-28.1.0 {nested} -body {lappend ran 0; list}
++    set ran
++} -cleanup {
++    match $oldMatch
++    skip $oldSkip
++    unset -nocomplain oldMatch oldSkip ran
++} -result 0
+ 
+ 
+ cleanupTests
+ }
+ 
+

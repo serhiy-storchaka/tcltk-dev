@@ -1,0 +1,22 @@
+Index: doc/ExprLong.3
+==================================================================
+--- doc/ExprLong.3
++++ doc/ExprLong.3
+@@ -97,10 +97,16 @@
+ .QW no ,
+ or else an error occurs.
+ .PP
+ \fBTcl_ExprString\fR returns the value of the expression as a
+ string stored in the interpreter's result.
++.PP
++For compatibility with old versions of Tcl, an empty \fIexpr\fR string
++is not an error for these procedures (unlike the \fBexpr\fR command and
++\fBTcl_ExprObj\fR): they return \fBTCL_OK\fR and store 0 at
++\fI*longPtr\fR, \fI*doublePtr\fR or \fI*booleanPtr\fR, or set the
++interpreter's result to 0 for \fBTcl_ExprString\fR.
+ 
+ .SH "SEE ALSO"
+ Tcl_ExprLongObj, Tcl_ExprDoubleObj, Tcl_ExprBooleanObj, Tcl_ExprObj
+ 
+ .SH KEYWORDS
+

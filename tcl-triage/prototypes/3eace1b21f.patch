@@ -1,0 +1,84 @@
+Index: tests/winFCmd.test
+==================================================================
+--- tests/winFCmd.test	
++++ tests/winFCmd.test	
+@@ -1567,10 +1567,28 @@
+ } -constraints haveTwoDrives -body {
+     glob -directory $pathInOther $pathInOther
+ } -result {}
+ 
+ 
++test winFCmd-20.3 {
++    Bug 3eace1b21f - glob -directory in a path longer than MAX_PATH
++} -constraints win -setup {
++    set root [file join [temporaryDirectory] longglob]
++    # Keep the intermediate directory below the CreateDirectory limit (248)
++    set dir $root/[string repeat x [expr {max(1, 230 - [string length $root])}]]
++    append dir /[string repeat y 200]
++    file mkdir $dir
++    close [open $dir/f1 w]
++    close [open $dir/f2 w]
++} -body {
++    list [lsort [glob -directory $dir -tails *]] [llength [glob $dir/*]] \
++	[llength [glob -directory $dir -types f f*]]
++} -cleanup {
++    # Not [file delete -force $root]: TraverseWinTree has the same problem
++    file delete $dir/f1 $dir/f2 $dir [file dirname $dir] $root
++} -result {{f1 f2} 2 2}
++
+ unset -nocomplain drive otherDrive pathInOther
+ 
+ ################################################################
+ # Tests for long path support. On systems that support long paths, verify
+ # various commands work. On systems that don't, verify commands return
+
+Index: win/tclWinFile.c
+==================================================================
+--- win/tclWinFile.c	
++++ win/tclWinFile.c	
+@@ -1073,10 +1073,44 @@
+ 	    dirName = TclDStringAppendLiteral(&dsOrig, "*.*");
+ 	}
+ 
+ 	Tcl_DStringInit(&ds);
+ 	native = Tcl_UtfToWCharDString(dirName, TCL_INDEX_NONE, &ds);
++	if (Tcl_DStringLength(&ds) >= (Tcl_Size)(MAX_PATH * sizeof(WCHAR))
++		&& (native[1] == ':' || ((native[0] == '\\' || native[0] == '/')
++		&& (native[1] == '\\' || native[1] == '/')
++		&& native[2] != '?'))) {
++	    /*
++	     * Like TclNativeCreateNativeRep(), add the extended path prefix
++	     * that FindFirstFileExW() needs for a long search path [Bug
++	     * 3eace1b21f]. That prefix requires backslashes.
++	     */
++
++	    Tcl_DString dsLong;
++	    WCHAR *wp;
++
++	    Tcl_DStringInit(&dsLong);
++	    if (native[1] == ':') {
++		Tcl_DStringAppend(&dsLong, (const char *)L"\\\\?\\",
++			4 * sizeof(WCHAR));
++	    } else {
++		Tcl_DStringAppend(&dsLong, (const char *)L"\\\\?\\UNC",
++			7 * sizeof(WCHAR));
++		native++;
++	    }
++	    Tcl_DStringAppend(&dsLong, (const char *)native,
++		    (wcslen(native) + 1) * sizeof(WCHAR));
++	    for (wp = (WCHAR *)Tcl_DStringValue(&dsLong); *wp; wp++) {
++		if (*wp == '/') {
++		    *wp = '\\';
++		}
++	    }
++	    Tcl_DStringSetLength(&ds, 0);
++	    native = (const WCHAR *)Tcl_DStringAppend(&ds,
++		    Tcl_DStringValue(&dsLong), Tcl_DStringLength(&dsLong));
++	    Tcl_DStringFree(&dsLong);
++	}
+ 	handle = FindFirstFileExW(native, FindExInfoBasic, &data,
+ 		(types == NULL || types->type != TCL_GLOB_TYPE_DIR
+ 		    ? FindExSearchNameMatch : FindExSearchLimitToDirectories),
+ 		NULL, FIND_FIRST_EX_LARGE_FETCH);
+ 
+

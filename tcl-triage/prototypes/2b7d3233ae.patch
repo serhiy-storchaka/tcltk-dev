@@ -1,0 +1,29 @@
+Index: doc/define.n
+==================================================================
+--- doc/define.n
++++ doc/define.n
+@@ -769,19 +769,19 @@
+ oo::class create Groups {
+     \fBsuperclass\fR DBTable
+ }
+ 
+ set u1 [Users insert "username=abc"]
+-        \fI\(-> DB: create row from ::Users matching username=abc\fR
++        \fI\(-> DB: create row in ::Users matching username=abc\fR
+ set u2 [Users insert "username=def"]
+-        \fI\(-> DB: create row from ::Users matching username=def\fR
++        \fI\(-> DB: create row in ::Users matching username=def\fR
+ $u2 update "group=NULL"
+         \fI\(-> DB: update row ::oo::Obj124 with group=NULL\fR
+ $u1 delete
+         \fI\(-> DB: delete row ::oo::Obj123\fR
+-set g [Group find "groupname=webadmins"]
+-        \fI\(-> DB: locate row ::Group with groupname=webadmins\fR
++set g [Groups find "groupname=webadmins"]
++        \fI\(-> DB: locate row from ::Groups matching groupname=webadmins\fR
+ $g update "emailaddress=admins"
+         \fI\(-> DB: update row ::oo::Obj125 with emailaddress=admins\fR
+ .CE
+ .VE TIP478
+ .PP
+

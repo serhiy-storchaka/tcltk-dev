@@ -1,0 +1,63 @@
+Index: generic/tclPathObj.c
+==================================================================
+--- generic/tclPathObj.c
++++ generic/tclPathObj.c
+@@ -397,24 +397,26 @@
+ 	}
+     }
+ 
+     /*
+      * Ensure a windows drive like C:/ has a trailing separator.
+-     * Likewise for zipfs volumes.
++     * Likewise for zipfs volumes and volumes of other filesystems
++     * like "vfs:/". [Bug da7c079978]
+      */
+-    if (zipVolumeLen || (tclPlatform == TCL_PLATFORM_WINDOWS)) {
++    {
+ 	bool needTrailingSlash = false;
+ 	Tcl_Size len;
+ 	const char *path = TclGetStringFromObj(retVal, &len);
+ 	if (zipVolumeLen) {
+ 	    if (len == (zipVolumeLen - 1)) {
+ 		needTrailingSlash = true;
+ 	    }
+-	} else {
+-	    if (len == 2 && path[0] != 0 && path[1] == ':') {
+-		needTrailingSlash = true;
+-	    }
++	} else if (len > 1 && path[len-1] == ':'
++		&& memchr(path, '/', len) == NULL
++		&& (tclPlatform != TCL_PLATFORM_WINDOWS
++		    || memchr(path, '\\', len) == NULL)) {
++	    needTrailingSlash = true;
+ 	}
+ 	if (needTrailingSlash) {
+ 	    if (Tcl_IsShared(retVal)) {
+ 		TclDecrRefCount(retVal);
+ 		retVal = Tcl_DuplicateObj(retVal);
+
+Index: tests/fileSystem.test
+==================================================================
+--- tests/fileSystem.test
++++ tests/fileSystem.test
+@@ -862,10 +862,19 @@
+     cd [tcltest::temporaryDirectory]
+     testsimplefilesystem 0
+     file delete -force simpledir
+     cd $dir
+ } -result {simplefs:/simpledir}
++test filesystem-7.9 {vfs volume keeps its separator: Bug da7c079978} -setup {
++    testsimplefilesystem 1
++} -constraints testsimplefilesystem -body {
++    lmap p {simplefs:/simpledir/.. simplefs:/a/b/../.. simplefs:/. simplefs:/a/../b} {
++	file normalize $p
++    }
++} -cleanup {
++    testsimplefilesystem 0
++} -result {simplefs:/ simplefs:/ simplefs:/ simplefs:/b}
+ 
+ test filesystem-8.1 {relative path objects and caching of pwd} -setup {
+     set dir [pwd]
+     cd [tcltest::temporaryDirectory]
+ } -body {
+

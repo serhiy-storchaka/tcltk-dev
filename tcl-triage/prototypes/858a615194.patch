@@ -1,0 +1,35 @@
+Index: doc/define.n
+==================================================================
+--- doc/define.n
++++ doc/define.n
+@@ -707,11 +707,14 @@
+ inst m2              \fI\(-> prints "blue brick"\fR
+ .CE
+ .PP
+ .VS TIP478
+ This example shows how to create and use class variables. It is a class that
+-counts how many instances of itself have been made.
++counts how many instances of itself have been made. The class variable is
++initialised in the class's namespace with \fBinitialise\fR, and the methods
++access it with the \fBclassvariable\fR command (see \fBclassvariable\fR(n)),
++which is used inside method bodies and is not a definition command.
+ .PP
+ .CS
+ oo::class create Counted
+ \fBoo::define\fR Counted {
+     \fBinitialise\fR {
+@@ -837,12 +840,12 @@
+         \fI\(-> quad(3) = 18.00\fR
+         \fI\(-> quad(4) = 27.00\fR
+ .CE
+ .VE TIP524
+ .SH "SEE ALSO"
+-next(n), oo::class(n), oo::object(n)
++classvariable(n), next(n), oo::class(n), oo::object(n)
+ .SH KEYWORDS
+ class, definition, method, object, slot
+ .\" Local variables:
+ .\" mode: nroff
+ .\" fill-column: 78
+ .\" End:
+

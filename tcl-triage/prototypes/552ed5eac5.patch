@@ -1,0 +1,19 @@
+Index: doc/info.n
+==================================================================
+--- doc/info.n
++++ doc/info.n
+@@ -39,10 +39,13 @@
+ .\" METHOD: cmdcount
+ .TP
+ \fBinfo cmdcount\fR
+ .
+ Returns the total number of commands evaluated in this interpreter.
++The count is approximate: when bytecode is compiled for an interpreter
++without command or time limits, commands that are compiled inline (such as
++\fBset\fR or \fBincr\fR) may not be counted.
+ .\" METHOD: cmdtype
+ .TP
+ \fBinfo cmdtype \fIcommandName\fR
+ .VS TIP426
+ Returns a the type of the command named \fIcommandName\fR.
+

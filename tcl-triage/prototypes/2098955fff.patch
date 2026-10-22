@@ -1,0 +1,33 @@
+Index: generic/tclInt.h
+==================================================================
+--- generic/tclInt.h
++++ generic/tclInt.h
+@@ -4276,14 +4276,25 @@
+ #define	TCL_DTRACE_OBJ_CREATE(objPtr)	{}
+ #define	TCL_DTRACE_OBJ_FREE(objPtr)	{}
+ #endif /* USE_DTRACE */
+ 
+ #ifdef TCL_COMPILE_STATS
+-#  define TclIncrObjsAllocated() \
++/*
++ * Objects are allocated and freed in all threads: count them atomically
++ * where the compiler supports it. [Bug 2098955]
++ */
++#  if TCL_THREADS && defined(__GNUC__)
++#    define TclIncrObjsAllocated() \
++    ((void) __atomic_fetch_add(&tclObjsAlloced, 1, __ATOMIC_RELAXED))
++#    define TclIncrObjsFreed() \
++    ((void) __atomic_fetch_add(&tclObjsFreed, 1, __ATOMIC_RELAXED))
++#  else
++#    define TclIncrObjsAllocated() \
+     tclObjsAlloced++
+-#  define TclIncrObjsFreed() \
++#    define TclIncrObjsFreed() \
+     tclObjsFreed++
++#  endif
+ #else
+ #  define TclIncrObjsAllocated()
+ #  define TclIncrObjsFreed()
+ #endif /* TCL_COMPILE_STATS */
+ 
+

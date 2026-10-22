@@ -1,0 +1,140 @@
+Index: generic/tclFCmd.c
+==================================================================
+--- generic/tclFCmd.c
++++ generic/tclFCmd.c
+@@ -23,10 +23,11 @@
+ static Tcl_Obj *	FileBasename(Tcl_Interp *interp, Tcl_Obj *pathPtr);
+ static int		FileCopyRename(Tcl_Interp *interp,
+ 			    Tcl_Size objc, Tcl_Obj *const *objv, int copyFlag);
+ static size_t		FileForceOption(Tcl_Interp *interp,
+ 			    Tcl_Size objc, Tcl_Obj *const *objv, int *forcePtr);
++static int		IsSubdirectory(Tcl_Obj *dirPtr, Tcl_Obj *pathPtr);
+ 
+ /*
+  *---------------------------------------------------------------------------
+  *
+  * CheckFilenameEncodable
+@@ -487,10 +488,65 @@
+ }
+ 
+ /*
+  *---------------------------------------------------------------------------
+  *
++ * IsSubdirectory
++ *
++ *	Checks whether pathPtr is the directory dirPtr or lies inside it,
++ *	comparing normalized paths, and its parent directory exists.
++ *
++ * Results:
++ *	1 if it does, 0 otherwise.
++ *
++ *---------------------------------------------------------------------------
++ */
++
++static int
++IsSubdirectory(
++    Tcl_Obj *dirPtr,
++    Tcl_Obj *pathPtr)
++{
++    Tcl_Obj *normDir = Tcl_FSGetNormalizedPath(NULL, dirPtr);
++    Tcl_Obj *normPath = Tcl_FSGetNormalizedPath(NULL, pathPtr);
++    const char *dir, *path;
++    Tcl_Size dirLen, pathLen;
++
++    if (normDir == NULL || normPath == NULL) {
++	return 0;
++    }
++    dir = TclGetStringFromObj(normDir, &dirLen);
++    path = TclGetStringFromObj(normPath, &pathLen);
++    if (dirLen == 0 || pathLen < dirLen || memcmp(dir, path, dirLen) != 0) {
++	return 0;
++    }
++    if (pathLen != dirLen && path[dirLen] != '/' && dir[dirLen-1] != '/') {
++	return 0;
++    }
++
++    /*
++     * Only report it if the parent of pathPtr exists, otherwise the copy
++     * would fail anyway with a more relevant error.
++     */
++
++    {
++	Tcl_Obj *parentPtr = TclPathPart(NULL, normPath, TCL_PATH_DIRNAME);
++	int result;
++
++	if (parentPtr == NULL) {
++	    return 0;
++	}
++	Tcl_IncrRefCount(parentPtr);
++	result = (Tcl_FSAccess(parentPtr, F_OK) == 0);
++	Tcl_DecrRefCount(parentPtr);
++	return result;
++    }
++}
++
++/*
++ *---------------------------------------------------------------------------
++ *
+  * CopyRenameOneFile
+  *
+  *	Copies or renames specified source file or directory hierarchy to the
+  *	specified target.
+  *
+@@ -729,10 +785,23 @@
+     }
+ #endif /* S_ISLNK */
+ #endif
+ 
+     if (S_ISDIR(sourceStatBuf.st_mode)) {
++	if (copyFlag && IsSubdirectory(source, target)) {
++	    /*
++	     * Copying a directory into itself would recurse until the path
++	     * becomes too long. [Bug 82049f96f8]
++	     */
++
++	    errno = EINVAL;
++	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
++		    "error copying \"%s\" to \"%s\": trying to copy a"
++		    " directory into itself",
++		    TclGetString(source), TclGetString(target)));
++	    goto done;
++	}
+ 	result = Tcl_FSCopyDirectory(actualSource, target, &errorBuffer);
+ 	if (result != TCL_OK) {
+ 	    if (errno == EXDEV) {
+ 		/*
+ 		 * The copy failed because we're trying to do a
+
+Index: tests/fCmd.test
+==================================================================
+--- tests/fCmd.test
++++ tests/fCmd.test
+@@ -2196,10 +2196,27 @@
+     list [catch {file copy -force tfa tfad}] [file isdir tfa] \
+ 	[file isdir [file join tfad tfa file]]
+ } -cleanup {
+     file delete -force tfa tfad
+ } -result {1 1 1}
++test fCmd-21.13 {TclFileCopyCmd: copy dir into itself: Bug 82049f96f8} -setup {
++    catch {file delete -force -- tfa}
++} -constraints {notRoot} -body {
++    file mkdir [file join tfa tfb]
++    list [catch {file copy tfa [file join tfa tfb]} msg] $msg \
++	[file exists [file join tfa tfb tfa]] [glob -tails -dir tfa *]
++} -cleanup {
++    file delete -force tfa
++} -result {1 {error copying "tfa" to "tfa/tfb/tfa": trying to copy a directory into itself} 0 tfb}
++test fCmd-21.14 {TclFileCopyCmd: copy dir onto itself with -force: Bug 82049f96f8} -setup {
++    catch {file delete -force -- tfa}
++} -constraints {notRoot} -body {
++    file mkdir tfa
++    list [catch {file copy -force tfa tfa} msg] $msg [glob -nocomplain -dir tfa *]
++} -cleanup {
++    file delete -force tfa
++} -result {1 {error copying "tfa" to "tfa/tfa": trying to copy a directory into itself} {}}
+ 
+ #
+ # Coverage testing for TclpRenameFile
+ #
+ test fCmd-22.1 {TclpRenameFile: rename and overwrite in a single dir} -setup {
+

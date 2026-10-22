@@ -1,0 +1,18 @@
+Index: tests/interp.test
+==================================================================
+--- tests/interp.test
++++ tests/interp.test
+@@ -3691,11 +3691,11 @@
+     }
+ } -body {
+     child eval {
+ 	variable done {}
+ 	after 0 error foo
+-	after 10 [list ::set [namespace which -variable done] {}]
++	after 10 [list after idle [list ::set [namespace which -variable done] {}]]
+ 	vwait [namespace which -variable done]
+     }
+     set result
+ } -cleanup {
+     variable result {}
+

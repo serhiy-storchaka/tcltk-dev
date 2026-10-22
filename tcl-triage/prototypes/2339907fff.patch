@@ -1,0 +1,41 @@
+Index: generic/tclPipe.c
+==================================================================
+--- generic/tclPipe.c
++++ generic/tclPipe.c
+@@ -621,10 +621,15 @@
+ 	    }
+ 	    break;
+ 
+ 	case '2':
+ 	    if (*p != '>') {
++		/*
++		 * Got a command word starting with "2", e.g. "2DSlider".
++		 */
++
++		needCmd = 0;
+ 		break;
+ 	    }
+ 	    p++;
+ 	    atOK = 1;
+ 	    flags = O_WRONLY | O_CREAT | O_TRUNC;
+
+Index: tests/exec.test
+==================================================================
+--- tests/exec.test
++++ tests/exec.test
+@@ -797,10 +797,14 @@
+ } -result \u4e4e\u68d9
+ test exec-22.1 {exec -encoding invalid encoding} -body {
+     exec -encoding nosuchencoding -- [interpreter] $path(echobin) abc
+ } -result {unknown encoding "nosuchencoding"} -returnCodes error
+ 
++test exec-23.1 {command word starting with 2 [Bug 2339907]} -constraints {exec} -body {
++    exec [interpreter] $path(echo) a | 2nosuchcommand
++} -returnCodes error -result {couldn't execute "2nosuchcommand": no such file or directory}
++
+ # ----------------------------------------------------------------------
+ # Tests specific to Windows which has more varied application types and
+ # search mechanism.
+ 
+ namespace eval tcl::test::exec {
+

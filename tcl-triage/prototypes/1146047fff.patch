@@ -1,0 +1,60 @@
+Index: generic/tclFileName.c
+==================================================================
+--- generic/tclFileName.c
++++ generic/tclFileName.c
+@@ -2195,12 +2195,24 @@
+ 	    result = TclListObjGetElements(interp, subdirsPtr,
+ 		    &subdirc, &subdirv);
+ 	    for (i=0; result==TCL_OK && i<subdirc; i++) {
+ 		Tcl_Obj *copy = NULL;
+ 
++		Tcl_SetErrno(0);
+ 		result = DoGlob(interp, matchesObj, separators, subdirv[i],
+ 			1, p+1, types);
++		if (result != TCL_OK && Tcl_GetErrno() == EACCES) {
++		    /*
++		     * Skip unreadable directories matched by a wildcard, as
++		     * sh/csh do. [Bug 1146047]
++		     */
++
++		    if (interp != NULL) {
++			Tcl_ResetResult(interp);
++		    }
++		    result = TCL_OK;
++		}
+ 		if (copy) {
+ 		    Tcl_Size end;
+ 
+ 		    Tcl_DecrRefCount(subdirv[i]);
+ 		    subdirv[i] = copy;
+
+Index: tests/fileName.test
+==================================================================
+--- tests/fileName.test
++++ tests/fileName.test
+@@ -1706,10 +1706,24 @@
+ } -constraints {unix knownBug} -body {
+     set result [file exists [lindex [glob *] 0]]
+     encoding system utf-8
+     lappend result [file exists [lindex [glob *] 0]]
+ } -result {1 1}
++test fileName-20.12 {glob skips unreadable dirs matched by a wildcard, bug 1146047} -setup {
++    set d [makeDirectory fileName-20.12]
++    file mkdir $d/boot $d/root
++    close [open $d/boot/a w]
++    close [open $d/root/x w]
++    file attributes $d/root -permissions 0
++} -constraints {unix notRoot} -body {
++    list [glob -directory $d -tails {[rb]oot/*}] \
++	    [glob -directory $d -tails {[r]oot/*}] \
++	    [catch {glob -directory $d -tails root/*}]
++} -cleanup {
++    file attributes $d/root -permissions 0o755
++    file delete -force $d
++} -result {boot/a {} 1}
+ 
+ apply [list {} {
+     test fileName-6d4e9d1af5bf5b7d {
+ 	memory leak in SetFsPathFromAny
+ 
+

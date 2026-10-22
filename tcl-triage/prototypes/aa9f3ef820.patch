@@ -1,0 +1,147 @@
+Index: tests/winFile.test
+==================================================================
+--- tests/winFile.test	
++++ tests/winFile.test	
+@@ -213,9 +213,27 @@
+ } -result {}
+ 
+ if {[testConstraint win]} {
+     file delete $fname
+ }
++
++test winFile-5.1 {file exists/readable of a device path [Bug aa9f3ef820]} -constraints {
++    win
++} -body {
++    list [file exists {\\.\nul}] [file readable {\\.\nul}] \
++	[file writable //./nul] [file executable //./nul]
++} -result {1 1 1 0}
++test winFile-5.2 {file exists of reserved names agrees with file type [Bug aa9f3ef820]} -constraints {
++    win
++} -body {
++    set res {}
++    foreach name {com1 com9 lpt1 lpt9 nul} {
++	if {[file exists $name] == [catch {file type $name}]} {
++	    lappend res $name
++	}
++    }
++    set res
++} -result {}
+ 
+ # cleanup
+ cleanupTests
+ return
+
+Index: win/tclWinFile.c
+==================================================================
+--- win/tclWinFile.c	
++++ win/tclWinFile.c	
+@@ -148,10 +148,11 @@
+ /*
+  * Declarations for local functions defined in this file:
+  */
+ 
+ static int		NativeAccess(const WCHAR *path, int mode);
++static int		NativeIsDevice(const WCHAR *path);
+ static int		NativeDev(const WCHAR *path);
+ static int		NativeStat(const WCHAR *path, Tcl_StatBuf *statPtr,
+ 			    int checkLinks);
+ static unsigned short	NativeStatMode(DWORD attr, int checkLinks,
+ 			    int isExec);
+@@ -1647,10 +1648,47 @@
+ NativeAccess(
+     const WCHAR *nativePath,	/* Path of file to access, native encoding. */
+     int mode)			/* Permission setting. */
+ {
+     DWORD attr;
++
++    if (NativeIsDevice(nativePath)) {
++	/*
++	 * GetFileAttributesW() is meaningless for devices: it reports every
++	 * reserved name (com1, lpt1, ...) as an existing file and fails for
++	 * \\.\ device paths. Open the device instead, as NativeStat() does
++	 * [Bug aa9f3ef820].
++	 */
++
++	DWORD mask = 0;
++	HANDLE hFile;
++
++	if (mode & X_OK) {
++	    Tcl_SetErrno(EACCES);
++	    return -1;
++	}
++	if (mode & W_OK) {
++	    mask |= GENERIC_WRITE;
++	}
++	if ((mode & R_OK) || mask == 0) {
++	    mask |= GENERIC_READ;		/* F_OK: same check as NativeStat */
++	}
++	hFile = CreateFileW(nativePath, mask,
++		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
++		OPEN_EXISTING, 0, NULL);
++	if (hFile != INVALID_HANDLE_VALUE) {
++	    CloseHandle(hFile);
++	    return 0;
++	}
++	attr = GetLastError();
++	if (mode == F_OK && (attr == ERROR_ACCESS_DENIED
++		|| attr == ERROR_SHARING_VIOLATION)) {
++	    return 0;		/* Exists, but is in use. */
++	}
++	Tcl_WinConvertError(attr);
++	return -1;
++    }
+ 
+     attr = GetFileAttributesW(nativePath);
+ 
+     if (attr == INVALID_FILE_ATTRIBUTES) {
+ 	/*
+@@ -1912,10 +1950,48 @@
+ 	}
+     }
+     return 0;
+ }
+ 
++/*
++ *----------------------------------------------------------------------
++ *
++ * NativeIsDevice --
++ *
++ *	Is the native path a device: a \\.\ device namespace path or a
++ *	reserved name like com1 (see WinIsReserved)?
++ *
++ *----------------------------------------------------------------------
++ */
++
++static int
++NativeIsDevice(
++    const WCHAR *path)
++{
++    char buf[6];
++    int i;
++
++    if ((path[0] == '\\' || path[0] == '/')
++	    && (path[1] == '\\' || path[1] == '/') && path[2] == '.'
++	    && (path[3] == '\\' || path[3] == '/')) {
++	/*
++	 * Opening a named pipe would connect to its server.
++	 */
++
++	return _wcsnicmp(path + 4, L"pipe", 4) != 0
++		|| (path[8] != '\\' && path[8] != '/');
++    }
++    for (i = 0; path[i] != 0; i++) {
++	if (i >= 5 || path[i] > 0x7F) {
++	    return 0;
++	}
++	buf[i] = (char) path[i];
++    }
++    buf[i] = '\0';
++    return WinIsReserved(buf) != 0;
++}
++
+ /*
+  *----------------------------------------------------------------------
+  *
+  * NativeIsExec --
+  *
+

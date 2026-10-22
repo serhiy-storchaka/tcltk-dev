@@ -1,0 +1,21 @@
+Index: doc/lsort.n
+==================================================================
+--- doc/lsort.n
++++ doc/lsort.n
+@@ -177,15 +177,10 @@
+ \fB\-index 0\fR is used, \fB{1 a}\fR and \fB{1 b}\fR would be
+ considered duplicates and only the second element, \fB{1 b}\fR, would
+ be retained.
+ .SH "NOTES"
+ .PP
+-The options to \fBlsort\fR only control what sort of comparison is
+-used, and do not necessarily constrain what the values themselves
+-actually are.  This distinction is only noticeable when the list to be
+-sorted has fewer than two elements.
+-.PP
+ The \fBlsort\fR command is reentrant, meaning it is safe to use as
+ part of the implementation of a command used in the \fB\-command\fR
+ option.
+ .SH "EXAMPLES"
+ .PP
+

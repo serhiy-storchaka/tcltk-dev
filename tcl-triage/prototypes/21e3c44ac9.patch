@@ -1,0 +1,22 @@
+Index: doc/Encoding.3
+==================================================================
+--- doc/Encoding.3
++++ doc/Encoding.3
+@@ -599,10 +599,16 @@
+ Following the first page will be all the other pages, each in the same
+ format as the first: one number identifying the page followed by 256
+ double-byte Unicode characters.  If a character in the encoding maps to the
+ Unicode character 0000, it means that the character does not actually exist.
+ If all characters on a page would map to 0000, that page can be omitted.
++.PP
++Since both sides of the table are 16-bit values, a table-based encoding can
++only describe characters of at most two bytes in the encoding, mapped to
++Unicode characters in the range U+0000 to U+FFFF (the Basic Multilingual
++Plane).  Encodings that need characters outside these limits must be
++implemented in C and registered with \fBTcl_CreateEncoding\fR.
+ .PP
+ Case [4] is the escape-sequence encoding file.  The lines in an this type of
+ file are in the same format as this example taken from the \fBiso2022-jp\fR
+ encoding:
+ .PP
+

@@ -1,0 +1,32 @@
+Index: doc/ListObj.3
+==================================================================
+--- doc/ListObj.3
++++ doc/ListObj.3
+@@ -244,10 +244,26 @@
+ .PP
+ .CS
+ result = \fBTcl_ListObjReplace\fR(interp, listPtr, first, count,
+         0, NULL);
+ .CE
++.SH "REFERENCE COUNT MANAGEMENT"
++.PP
++\fBTcl_NewListObj\fR always returns a zero-reference object, much like
++\fBTcl_NewObj\fR. If a non-NULL \fIobjv\fR argument is given, the reference
++counts of the first \fIobjc\fR values in that array are incremented.
++.PP
++\fBTcl_SetListObj\fR does not modify the reference count of its \fIobjPtr\fR
++argument, but does require that the object be unshared. The reference counts
++of the first \fIobjc\fR values in the \fIobjv\fR array are incremented.
++.PP
++\fBTcl_ListObjAppendList\fR, \fBTcl_ListObjAppendElement\fR, and
++\fBTcl_ListObjReplace\fR require an unshared \fIlistPtr\fR argument.
++\fBTcl_ListObjAppendList\fR only reads its \fIelemListPtr\fR argument.
++\fBTcl_ListObjAppendElement\fR increments the reference count of its
++\fIobjPtr\fR on success. \fBTcl_ListObjReplace\fR increments the reference
++count of the first \fIobjc\fR values in the \fIobjv\fR array on success.
+ .SH "SEE ALSO"
+ Tcl_NewObj(3), Tcl_DecrRefCount(3), Tcl_IncrRefCount(3), Tcl_GetObjResult(3)
+ .SH KEYWORDS
+ append, index, insert, internal representation, length, list, list value,
+ list type, value, value type, replace, string representation
+

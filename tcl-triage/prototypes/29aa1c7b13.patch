@@ -1,0 +1,72 @@
+Index: generic/tclOOCall.c
+==================================================================
+--- generic/tclOOCall.c
++++ generic/tclOOCall.c
+@@ -920,24 +920,28 @@
+ 		    flags |= DEFINITE_PROTECTED;
+ 		}
+ 	    }
+ 	}
+     }
+-    if (!(flags & SPECIAL)) {
++    if (!(flags & SPECIAL) || (flags & DESTRUCTOR)) {
+ 	Class *mixinPtr;
+ 
++	/*
++	 * Object mixins take part in destructor chains too. [Bug 29aa1c7b13]
++	 */
++
+ 	FOREACH(mixinPtr, oPtr->mixins) {
+-	    if (contextCls) {
++	    if (contextCls && !(flags & SPECIAL)) {
+ 		foundPrivate |= AddPrivatesFromClassChainToCallContext(
+ 			mixinPtr, contextCls, methodNameObj, cbPtr,
+ 			doneFilters, flags|TRAVERSED_MIXIN, filterDecl);
+ 	    }
+ 	    foundPrivate |= AddSimpleClassChainToCallContext(mixinPtr,
+ 		    methodNameObj, cbPtr, doneFilters,
+ 		    flags | TRAVERSED_MIXIN, filterDecl);
+ 	}
+-	if (oPtr->methodsPtr && !blockedUnexported) {
++	if (!(flags & SPECIAL) && oPtr->methodsPtr && !blockedUnexported) {
+ 	    hPtr = Tcl_FindHashEntry(oPtr->methodsPtr, methodNameObj);
+ 	    if (hPtr != NULL) {
+ 		mPtr = (Method *) Tcl_GetHashValue(hPtr);
+ 		if (!IS_PRIVATE(mPtr)) {
+ 		    AddMethodToCallChain(mPtr, cbPtr, doneFilters, filterDecl,
+
+Index: tests/oo.test
+==================================================================
+--- tests/oo.test
++++ tests/oo.test
+@@ -897,10 +897,29 @@
+     oo::objdefine $o mixin Cls
+     $o mthd
+ } -cleanup {
+     Super destroy
+ } -result ok
++test oo-3.13 {Bug 29aa1c7b13: destructors of object mixins} -setup {
++    oo::class create Mix {
++	destructor {lappend ::result mix; next}
++    }
++    oo::class create Cls {
++	destructor {lappend ::result cls}
++    }
++    set result {}
++} -body {
++    Cls create obj
++    oo::objdefine obj mixin Mix
++    obj destroy
++    Cls create obj
++    obj destroy
++    return $result
++} -cleanup {
++    Mix destroy
++    Cls destroy
++} -result {mix cls cls}
+ 
+ test oo-4.1 {basic test of OO functionality: export} {
+     set o [oo::object new]
+     set result {}
+     oo::objdefine $o method Foo {} {lappend ::result Foo; return}
+

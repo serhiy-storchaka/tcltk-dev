@@ -1,0 +1,74 @@
+Index: generic/tclZlib.c
+==================================================================
+--- generic/tclZlib.c
++++ generic/tclZlib.c
+@@ -3343,10 +3343,19 @@
+ 		*errorCodePtr = EAGAIN;
+ 		return -1;
+ 	    }
+ 	    break;
+ 	}
++
++	/*
++	 * All input read so far has been consumed: deliver what we've got
++	 * rather than block reading more from the parent. [Bug ca6a9e5659]
++	 */
++
++	if (chanDataPtr->inStream.avail_in == 0) {
++	    break;
++	}
+ 
+ 	/*
+ 	 * Loop until the request is satisfied (or no data available from
+ 	 * above, possibly EOF).
+ 	 */
+
+Index: tests/zlib.test
+==================================================================
+--- tests/zlib.test
++++ tests/zlib.test
+@@ -1175,10 +1175,43 @@
+     close $f
+     list [file size $file] $len
+ } -cleanup {
+     removeFile $file
+ } -result {16291 16777216}
++
++test zlib-17.1 {Bug ca6a9e5659: blocking read of a sync-flushed line} -constraints {
++    zlib exec
++} -setup {
++    set srv [socket -myaddr localhost -server {apply {{c a p} {
++	set ::conn $c
++	fconfigure $c -translation binary -buffering none
++	zlib push deflate $c
++	puts $c qwertyuiop
++	chan configure $c -flush sync
++    }}} 0]
++    lassign [fconfigure $srv -sockname] addr name port
++    set script [makeFile {
++	lassign $argv addr port
++	set sock [socket $addr $port]
++	zlib push inflate $sock
++	puts [gets $sock]
++    } zlib-17.1.tcl]
++    set result timeout
++} -body {
++    set pipe [open |[list [interpreter] $script $addr $port]]
++    fileevent $pipe readable {set result [gets $pipe]}
++    set id [after 5000 {set result timeout}]
++    vwait result
++    set result
++} -cleanup {
++    after cancel $id
++    catch {close $conn}
++    catch {close $pipe}
++    close $srv
++    removeFile zlib-17.1.tcl
++    unset -nocomplain srv addr name port script pipe id conn result
++} -result qwertyuiop
+ 
+ 
+ ::tcltest::cleanupTests
+ return
+ 
+

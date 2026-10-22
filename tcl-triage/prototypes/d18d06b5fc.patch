@@ -1,0 +1,17 @@
+Index: library/msgs/uk.msg
+==================================================================
+--- library/msgs/uk.msg
++++ library/msgs/uk.msg
+@@ -44,9 +44,9 @@
+         "листопада"\
+         "грудня"\
+         ""]
+     ::msgcat::mcset uk BCE "до н.е."
+     ::msgcat::mcset uk CE "після н.е."
+-    ::msgcat::mcset uk DATE_FORMAT "%e/%m/%Y"
++    ::msgcat::mcset uk DATE_FORMAT "%d.%m.%Y"
+     ::msgcat::mcset uk TIME_FORMAT "%k:%M:%S"
+-    ::msgcat::mcset uk DATE_TIME_FORMAT "%e/%m/%Y %k:%M:%S %z"
++    ::msgcat::mcset uk DATE_TIME_FORMAT "%d.%m.%Y %k:%M:%S %z"
+ }
+

@@ -1,0 +1,26 @@
+Index: doc/tclvars.n
+==================================================================
+--- doc/tclvars.n
++++ doc/tclvars.n
+@@ -35,10 +35,20 @@
+ Initialization of auto_path from the TCLLIBPATH environment
+ variable undergoes tilde substitution (see \fBfilename\fR) on each
+ path. Any tilde substitution that fails because the user is unknown
+ will be omitted from auto_path.
+ .RS
++.PP
++For example, to add the \fIlib\fR directory next to the running
++script, you would do:
++.PP
++.CS
++lappend \fBauto_path\fR [file dirname [info script]]/lib
++.CE
++.PP
++Note that if the script uses \fBcd\fR, it is advisable to ensure that
++entries on the \fBauto_path\fR are \fBfile normalize\fRd.
+ .PP
+ Additional variables relating to package management exist. More
+ details are listed in the \fBVARIABLES\fR section of the \fBlibrary\fR
+ manual page.
+ .RE
+

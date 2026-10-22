@@ -1,0 +1,92 @@
+Index: generic/tclExecute.c
+==================================================================
+--- generic/tclExecute.c
++++ generic/tclExecute.c
+@@ -7965,10 +7965,37 @@
+ 	    bytes = GetSrcInfoForPc(pc, codePtr, &xxx1length, &pcBeg, NULL);
+ 	    DECACHE_STACK_INFO();
+ 	    TclLogCommandInfo(interp, codePtr->source, bytes,
+ 		    bytes ? xxx1length : 0, pcBeg, tosPtr);
+ 	    CACHE_STACK_INFO();
++	    if (bytes) {
++		/*
++		 * Counting newlines in the source misses the continuation
++		 * lines (backslash-newline) that were already substituted
++		 * there. Use the TIP #280 line information if we have it.
++		 * [Bug 7cc2239087]
++		 */
++
++		Tcl_HashEntry *hePtr =
++			Tcl_FindHashEntry(iPtr->lineBCPtr, codePtr);
++
++		if (hePtr) {
++		    ExtCmdLoc *eclPtr = (ExtCmdLoc *)Tcl_GetHashValue(hePtr);
++		    Tcl_Size i, srcOffset = bytes - codePtr->source;
++
++		    for (i = 0; i < eclPtr->nuloc; i++) {
++			if (eclPtr->loc[i].srcOffset == srcOffset) {
++			    if (eclPtr->start > 0
++				    && eclPtr->loc[i].line[0] >= eclPtr->start) {
++				iPtr->errorLine = (int) (eclPtr->loc[i].line[0]
++					- eclPtr->start + 1);
++			    }
++			    break;
++			}
++		    }
++		}
++	    }
+ 	}
+ 	iPtr->flags &= ~ERR_ALREADY_LOGGED;
+ 
+ 	/*
+ 	 * Clear all expansions that may have started after the last
+
+Index: tests/error.test
+==================================================================
+--- tests/error.test
++++ tests/error.test
+@@ -1266,10 +1266,43 @@
+ test error-22.8 {try trapless + finally + empty} -body {
+     apply {{} {
+ 	try {error gorp} on error x {} finally {incr x}
+     }}
+ } -returnCodes error -result {expected integer but got "gorp"}
++
++test error-23.1 {errorinfo line with continuation lines, bug 7cc2239087} -setup {
++    proc p231 {} {
++	set bar [string repeat \
++	    "blah" \
++	    50]
++	expr {1/0}
++    }
++} -body {
++    catch p231 msg opts
++    lindex [split [dict get $opts -errorinfo] \n] 3
++} -cleanup {
++    rename p231 {}
++} -result {    (procedure "p231" line 5)}
++test error-23.2 {errorinfo line with continuation lines, bug 7cc2239087} -setup {
++    proc p232 {} {
++	set x [list a \
++	    [expr {1/0}]]
++    }
++} -body {
++    catch p232 msg opts
++    lindex [split [dict get $opts -errorinfo] \n] 3
++} -cleanup {
++    rename p232 {}
++} -result {    (procedure "p232" line 3)}
++test error-23.3 {errorinfo line with continuation lines, dynamic body} -setup {
++    proc p233 {} "set x \[list a \\\n\[expr {1/0}\]\]"
++} -body {
++    catch p233 msg opts
++    lindex [split [dict get $opts -errorinfo] \n] 3
++} -cleanup {
++    rename p233 {}
++} -result {    (procedure "p233" line 2)}
+ 
+ # negative case try tests - bad "trap" handler
+ # what is the effect if we attempt to trap an errorcode that is not a list?
+ # nested try
+ # catch inside try
+

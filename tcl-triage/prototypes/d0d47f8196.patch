@@ -1,0 +1,123 @@
+Index: tests/httpProxy.test
+==================================================================
+--- tests/httpProxy.test
++++ tests/httpProxy.test
+@@ -21,10 +21,13 @@
+ 
+ package require http 2.10
+ 
+ # To write a separate summary for each value of ThreadLevel, set constraint ThreadLevelSummary.
+ #testConstraint ThreadLevelSummary 0
++# Tests that access www.google.com directly (without a proxy) need
++# constraint needsInternet.
++#testConstraint needsInternet      0
+ #testConstraint needsSquidNoAuth   0
+ #testConstraint needsSquidAuth     0
+ #testConstraint needsTclTls        0
+ #testConstraint needsTwapi         0
+ #testConstraint needsTwapiFull     0
+@@ -245,11 +248,11 @@
+ } -result {complete ok 400 -- none} -cleanup {
+     catch {http::cleanup $token}
+     unset -nocomplain token ri res
+ }
+ 
+-test httpProxy-2.1.$ThreadLevel {http no-proxy no-auth} -constraints {} -setup {
++test httpProxy-2.1.$ThreadLevel {http no-proxy no-auth} -constraints {needsInternet} -setup {
+     http::config -proxyhost {} -proxyport {} -proxynot {} -proxyauth {}
+ } -body {
+     after $fetchPause
+ 
+     set token [http::geturl http://www.google.com/]
+@@ -260,11 +263,11 @@
+ } -result {complete ok 200 -- none -- -1} -cleanup {
+     catch {http::cleanup $token}
+     unset -nocomplain token ri res
+ }
+ 
+-test httpProxy-2.2.$ThreadLevel {https no-proxy no-auth} -constraints {needsTls knownTwapiFullBugThreadUsed} -setup {
++test httpProxy-2.2.$ThreadLevel {https no-proxy no-auth} -constraints {needsInternet needsTls knownTwapiFullBugThreadUsed} -setup {
+     http::config -proxyhost {} -proxyport {} -proxynot {} -proxyauth {}
+ } -body {
+     after $fetchPause
+ 
+     set token [http::geturl https://www.google.com/]
+@@ -339,11 +342,11 @@
+     catch {http::cleanup $token}
+     unset -nocomplain token ri res
+     http::config -proxyhost {} -proxyport {} -proxynot {}
+ }
+ 
+-test httpProxy-3.1.$ThreadLevel {http no-proxy with-auth valid-creds-provided} -constraints {} -setup {
++test httpProxy-3.1.$ThreadLevel {http no-proxy with-auth valid-creds-provided} -constraints {needsInternet} -setup {
+    http::config -proxyhost {} -proxyport $a4port -proxynot [list $n4host locahost] -proxyauth $aliceCreds
+ } -body {
+     after $fetchPause
+ 
+     set token [http::geturl http://www.google.com/]
+@@ -357,11 +360,11 @@
+     catch {http::cleanup $token}
+     unset -nocomplain token ri res pos1 pos2
+     http::config -proxyhost {} -proxyport {} -proxynot {} -proxyauth {}
+ }
+ 
+-test httpProxy-3.2.$ThreadLevel {https no-proxy with-auth valid-creds-provided} -constraints {needsTls knownTwapiFullBugThreadUsed} -setup {
++test httpProxy-3.2.$ThreadLevel {https no-proxy with-auth valid-creds-provided} -constraints {needsInternet needsTls knownTwapiFullBugThreadUsed} -setup {
+    http::config -proxyhost {} -proxyport $a4port -proxynot [list $n4host localhost] -proxyauth $aliceCreds
+ } -body {
+     after $fetchPause
+ 
+     set token [http::geturl https://www.google.com/]
+@@ -768,11 +771,11 @@
+     unset -nocomplain token0 token ri res pos1 pos2 can same
+     array unset ::http::socketMapping
+     http::config -proxyhost {} -proxyport {} -proxynot {} -proxyauth {}
+ }
+ 
+-test httpProxy-4.1.$ThreadLevel {http no-proxy with-auth no-creds-provided} -constraints {} -setup {
++test httpProxy-4.1.$ThreadLevel {http no-proxy with-auth no-creds-provided} -constraints {needsInternet} -setup {
+    http::config -proxyhost {} -proxyport $a4port -proxynot [list $n4host localhost] -proxyauth {}
+ } -body {
+     after $fetchPause
+ 
+     set token [http::geturl http://www.google.com/]
+@@ -786,11 +789,11 @@
+     catch {http::cleanup $token}
+     unset -nocomplain token ri res pos1 pos2
+     http::config -proxyhost {} -proxyport {} -proxynot {} -proxyauth {}
+ }
+ 
+-test httpProxy-4.2.$ThreadLevel {https no-proxy with-auth no-creds-provided} -constraints {needsTls knownTwapiFullBugThreadUsed} -setup {
++test httpProxy-4.2.$ThreadLevel {https no-proxy with-auth no-creds-provided} -constraints {needsInternet needsTls knownTwapiFullBugThreadUsed} -setup {
+    http::config -proxyhost {} -proxyport $a4port -proxynot [list $n4host localhost] -proxyauth {}
+ } -body {
+     after $fetchPause
+ 
+     set token [http::geturl https://www.google.com/]
+@@ -1068,11 +1071,11 @@
+     unset -nocomplain token0 token ri res pos1 pos2 can0 can same
+     array unset ::http::socketMapping
+     http::config -proxyhost {} -proxyport {} -proxynot {} -proxyauth {}
+ }
+ 
+-test httpProxy-5.1.$ThreadLevel {http no-proxy with-auth bad-creds-provided} -constraints {} -setup {
++test httpProxy-5.1.$ThreadLevel {http no-proxy with-auth bad-creds-provided} -constraints {needsInternet} -setup {
+    http::config -proxyhost {} -proxyport $a4port -proxynot [list $n4host localhost] -proxyauth $badCreds
+ } -body {
+     after $fetchPause
+ 
+     set token [http::geturl http://www.google.com/]
+@@ -1086,11 +1089,11 @@
+     catch {http::cleanup $token}
+     unset -nocomplain token ri res pos1 pos2
+     http::config -proxyhost {} -proxyport {} -proxynot {} -proxyauth {}
+ }
+ 
+-test httpProxy-5.2.$ThreadLevel {https no-proxy with-auth bad-creds-provided} -constraints {needsTls knownTwapiFullBugThreadUsed} -setup {
++test httpProxy-5.2.$ThreadLevel {https no-proxy with-auth bad-creds-provided} -constraints {needsInternet needsTls knownTwapiFullBugThreadUsed} -setup {
+    http::config -proxyhost {} -proxyport $a4port -proxynot [list $n4host localhost] -proxyauth $badCreds
+ } -body {
+     after $fetchPause
+ 
+     set token [http::geturl https://www.google.com/]
+

@@ -1,0 +1,26 @@
+Index: doc/library.n
+==================================================================
+--- doc/library.n
++++ doc/library.n
+@@ -164,15 +164,15 @@
+ \fBauto_load \fIcmd\fR
+ .
+ This command attempts to load the definition for a Tcl command named
+ \fIcmd\fR.  To do this, it searches an \fIauto-load path\fR, which is
+ a list of one or more directories.  The auto-load path is given by the
+-global variable \fBauto_path\fR if it exists (see the tclvars manual page).
+-If there is no
+-\fBauto_path\fR variable, then the \fBTCLLIBPATH\fR environment variable is
+-used, if it exists.  Otherwise the auto-load path consists of just the
+-Tcl library directory.  Within each directory in the auto-load path
++global variable \fBauto_path\fR (see the tclvars manual page), which is
++initialized at startup from the \fBTCLLIBPATH\fR environment variable and
++the Tcl library directories.  If there is no \fBauto_path\fR variable,
++\fBauto_load\fR only consults the existing \fBauto_index\fR array
++entries.  Within each directory in the auto-load path
+ there must be a file \fBtclIndex\fR that describes one or more
+ commands defined in that directory and a script to evaluate to load
+ each of the commands.  The \fBtclIndex\fR file should be generated
+ with the \fBauto_mkindex\fR command.  If \fIcmd\fR is found in an
+ index file, then the appropriate script is evaluated to create the
+

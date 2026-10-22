@@ -1,0 +1,41 @@
+Index: generic/tclInt.h
+==================================================================
+--- generic/tclInt.h
++++ generic/tclInt.h
+@@ -4291,11 +4291,11 @@
+  * MODULE_SCOPE int	TclIsInfinite(double d);
+  * MODULE_SCOPE int	TclIsNaN(double d);
+  */
+ 
+ #ifdef _MSC_VER
+-#    define TclIsInfinite(d)	(!(_finite((d))))
++#    define TclIsInfinite(d)	(!(_finite((d))) && !(_isnan((d))))
+ #    define TclIsNaN(d)		(_isnan((d)))
+ #else
+ #    define TclIsInfinite(d)	((d) > DBL_MAX || (d) < -DBL_MAX)
+ #    ifdef NO_ISNAN
+ #	 define TclIsNaN(d)	((d) != (d))
+
+Index: tests/expr.test
+==================================================================
+--- tests/expr.test
++++ tests/expr.test
+@@ -7279,10 +7279,17 @@
+ } {0 0 1 1}
+ 
+ test expr-bug-8dd2807066 {Bug 8dd2807066} {
+     expr {max(abs(-668336881543038127783364011867))}
+ } 668336881543038127783364011867
++
++test expr-bug-8798610883 {NaN compared with bignum} {
++    binary scan [binary format q NaN] q nan
++    set big [expr {2**70}]
++    list [expr {$nan < $big}] [expr {$nan > $big}] \
++	    [expr {$big < $nan}] [expr {$big > $nan}]
++} {0 0 0 0}
+ 
+ # Bug e3dcab1d14
+ proc do-one-test-expr-63 {e p float athreshold} {
+     # e - power of 2 to test
+     # p - tcl_precision to test with
+

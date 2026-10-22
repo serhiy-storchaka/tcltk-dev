@@ -1,0 +1,18 @@
+Index: doc/interp.n
+==================================================================
+--- doc/interp.n
++++ doc/interp.n
+@@ -276,11 +276,11 @@
+ the child that find out information about the child's current state
+ and stack frame.
+ .RE
+ .\" METHOD: exists
+ .TP
+-\fBinterp exists \fIpath\fR
++\fBinterp exists \fR?\fIpath\fR?
+ .
+ Returns \fB1\fR if a child interpreter by the specified \fIpath\fR
+ exists in this parent, \fB0\fR otherwise. If \fIpath\fR is omitted, the
+ invoking interpreter is used.
+ .\" METHOD: expose
+

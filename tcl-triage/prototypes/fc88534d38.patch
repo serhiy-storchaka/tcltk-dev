@@ -1,0 +1,234 @@
+Index: generic/tclBasic.c
+==================================================================
+--- generic/tclBasic.c
++++ generic/tclBasic.c
+@@ -231,19 +231,22 @@
+ 			    Tcl_Obj *namePtr, Namespace *lookupNsPtr);
+ static int		TEOV_NotFound(Tcl_Interp *interp, Tcl_Size objc,
+ 			    Tcl_Obj *const *objv, Namespace *lookupNsPtr);
+ static int		TEOV_RunEnterTraces(Tcl_Interp *interp,
+ 			    Command **cmdPtrPtr, Tcl_Obj *commandPtr, Tcl_Size objc,
+-			    Tcl_Obj *const *objv);
++			    Tcl_Obj *const *objv, int flags);
+ static Tcl_NRPostProc	RewindCoroutineCallback;
+ static Tcl_NRPostProc	TEOEx_ByteCodeCallback;
+ static Tcl_NRPostProc	TEOEx_ListCallback;
+ static Tcl_NRPostProc	TEOV_Error;
+ static Tcl_NRPostProc	TEOV_Exception;
+ static Tcl_NRPostProc	TEOV_NotFoundCallback;
+ static Tcl_NRPostProc	TEOV_RestoreVarFrame;
+ static Tcl_NRPostProc	TEOV_RunLeaveTraces;
++static Tcl_NRPostProc	TEOV_RunLeaveCmdTraces;
++static int		RunLeaveTraces(void *data[], Tcl_Interp *interp,
++			    int result, int interpTraces);
+ static Tcl_NRPostProc	EvalObjvCore;
+ static Tcl_NRPostProc	Dispatch;
+ 
+ static Tcl_ObjCmdProc2 CoroTypeObjCmd;
+ static Tcl_ObjCmdProc2 TclNRCoroInjectObjCmd;
+@@ -4598,20 +4601,21 @@
+ 	if (!cmdPtr) {
+ 	    return TEOV_NotFound(interp, objc, objv, lookupNsPtr);
+ 	}
+     }
+ 
+-    if (enterTracesDone || iPtr->tracePtr
++    if (enterTracesDone
++	    || (iPtr->tracePtr && !(flags & TCL_EVAL_NO_INTERP_TRACES))
+ 	    || (cmdPtr->flags & CMD_HAS_EXEC_TRACES)) {
+ 	Tcl_Obj *commandPtr = TclGetSourceFromFrame(
+ 		flags & TCL_EVAL_SOURCE_IN_FRAME ? iPtr->cmdFramePtr : NULL,
+ 		objc, objv);
+ 
+ 	Tcl_IncrRefCount(commandPtr);
+ 	if (!enterTracesDone) {
+ 	    int code = TEOV_RunEnterTraces(interp, &cmdPtr, commandPtr,
+-		    objc, objv);
++		    objc, objv, flags);
+ 
+ 	    /*
+ 	     * Send any exception from enter traces back as an exception
+ 	     * raised by the traced command.
+ 	     * TODO: Is this a bug?  Letting an execution trace BREAK or
+@@ -4643,11 +4647,12 @@
+ 	 * so that when it passes to the leave traces we know it's still
+ 	 * valid.
+ 	 */
+ 
+ 	cmdPtr->refCount++;
+-	TclNRAddCallback(interp, TEOV_RunLeaveTraces, INT2PTR(objc),
++	TclNRAddCallback(interp, (flags & TCL_EVAL_NO_INTERP_TRACES)
++		? TEOV_RunLeaveCmdTraces : TEOV_RunLeaveTraces, INT2PTR(objc),
+ 		commandPtr, cmdPtr, objv);
+     }
+ 
+     TclNRAddCallback(interp, Dispatch,
+ 	    cmdPtr->nreProc2 ? cmdPtr->nreProc2 : cmdPtr->objProc2,
+@@ -5022,11 +5027,12 @@
+ TEOV_RunEnterTraces(
+     Tcl_Interp *interp,
+     Command **cmdPtrPtr,
+     Tcl_Obj *commandPtr,
+     Tcl_Size objc,
+-    Tcl_Obj *const *objv)
++    Tcl_Obj *const *objv,
++    int flags)
+ {
+     Interp *iPtr = (Interp *) interp;
+     Command *cmdPtr = *cmdPtrPtr;
+     Tcl_Size length, newEpoch, cmdEpoch = cmdPtr->cmdEpoch;
+     int traceCode = TCL_OK;
+@@ -5038,11 +5044,11 @@
+      * command's reference count for the duration of the calling of the
+      * traces so that the structure doesn't go away underneath our feet.
+      */
+ 
+     cmdPtr->refCount++;
+-    if (iPtr->tracePtr) {
++    if (iPtr->tracePtr && !(flags & TCL_EVAL_NO_INTERP_TRACES)) {
+ 	traceCode = TclCheckInterpTraces(interp, command, length,
+ 		cmdPtr, TCL_OK, TCL_TRACE_ENTER_EXEC, objc, objv);
+     }
+     if ((cmdPtr->flags & CMD_HAS_EXEC_TRACES) && (traceCode == TCL_OK)) {
+ 	traceCode = TclCheckExecutionTraces(interp, command, length,
+@@ -5073,10 +5079,29 @@
+ TEOV_RunLeaveTraces(
+     void *data[],
+     Tcl_Interp *interp,
+     int result)
+ {
++    return RunLeaveTraces(data, interp, result, 1);
++}
++
++static int
++TEOV_RunLeaveCmdTraces(
++    void *data[],
++    Tcl_Interp *interp,
++    int result)
++{
++    return RunLeaveTraces(data, interp, result, 0);
++}
++
++static int
++RunLeaveTraces(
++    void *data[],
++    Tcl_Interp *interp,
++    int result,
++    int interpTraces)		/* Also run interpreter-wide traces. */
++{
+     Interp *iPtr = (Interp *) interp;
+     int traceCode = TCL_OK;
+     Tcl_Size objc = PTR2INT(data[0]);
+     Tcl_Obj *commandPtr = (Tcl_Obj *)data[1];
+     Command *cmdPtr = (Command *)data[2];
+@@ -5087,11 +5112,11 @@
+     if (!(cmdPtr->flags & CMD_DYING)) {
+ 	if (cmdPtr->flags & CMD_HAS_EXEC_TRACES) {
+ 	    traceCode = TclCheckExecutionTraces(interp, command, length,
+ 		    cmdPtr, result, TCL_TRACE_LEAVE_EXEC, objc, objv);
+ 	}
+-	if (iPtr->tracePtr != NULL && traceCode == TCL_OK) {
++	if (interpTraces && iPtr->tracePtr != NULL && traceCode == TCL_OK) {
+ 	    traceCode = TclCheckInterpTraces(interp, command, length,
+ 		    cmdPtr, result, TCL_TRACE_LEAVE_EXEC, objc, objv);
+ 	}
+     }
+ 
+
+Index: generic/tclInt.h
+==================================================================
+--- generic/tclInt.h
++++ generic/tclInt.h
+@@ -2409,11 +2409,15 @@
+ 				 * unset, codes other than these should be
+ 				 * turned into errors. */
+     TCL_EVAL_FILE = 0x02,
+     TCL_EVAL_SOURCE_IN_FRAME = 0x10,
+     TCL_EVAL_NORESOLVE = 0x20,
+-    TCL_EVAL_DISCARD_RESULT = 0x40
++    TCL_EVAL_DISCARD_RESULT = 0x40,
++    TCL_EVAL_NO_INTERP_TRACES = 0x80
++				/* Don't run interpreter-wide (step) traces:
++				 * the command was already traced under its
++				 * imported name. */
+ };
+ 
+ /*
+  * Flag bits for Interp structures:
+  */
+
+Index: generic/tclNamesp.c
+==================================================================
+--- generic/tclNamesp.c
++++ generic/tclNamesp.c
+@@ -2114,11 +2114,12 @@
+ {
+     ImportedCmdData *dataPtr = (ImportedCmdData *) clientData;
+     Command *realCmdPtr = dataPtr->realCmdPtr;
+ 
+     TclSkipTailcall(interp);
+-    return TclNREvalObjv(interp, objc, objv, TCL_EVAL_NOERR, realCmdPtr);
++    return TclNREvalObjv(interp, objc, objv,
++	    TCL_EVAL_NOERR | TCL_EVAL_NO_INTERP_TRACES, realCmdPtr);
+ }
+ 
+ int
+ TclInvokeImportedCmd(
+     void *clientData,		/* Points to the imported command's
+
+Index: tests/trace.test
+==================================================================
+--- tests/trace.test
++++ tests/trace.test
+@@ -2651,10 +2651,50 @@
+     proc foo args {}
+     trace add execution foo enter {rename foo {}; error bar;#}
+     catch foo m
+     return -level 0 $m[unset m]
+ } bar
++
++test trace-41.1 {step traces see an imported command once, bug fc88534d38} -setup {
++    namespace eval ns41 {
++	namespace export cmd
++	proc cmd {} {return}
++    }
++    namespace eval ns41b {
++	namespace import ::ns41::cmd
++	proc main {} {cmd; ::ns41::cmd}
++    }
++    set ::r {}
++    proc tracer41 {args} {lappend ::r [lrange $args 0 end-1]}
++} -body {
++    trace add execution ns41b::main {enterstep leavestep} tracer41
++    ns41b::main
++    set ::r
++} -cleanup {
++    namespace delete ns41 ns41b
++    rename tracer41 {}
++    unset -nocomplain ::r
++} -result {cmd return {return 2 {}} {cmd 0 {}} ::ns41::cmd return {return 2 {}} {::ns41::cmd 0 {}}}
++test trace-41.2 {execution traces on the original command of an import} -setup {
++    namespace eval ns41 {
++	namespace export cmd
++	proc cmd {} {return}
++    }
++    namespace eval ns41b {
++	namespace import ::ns41::cmd
++    }
++    set ::r {}
++    proc tracer41 {args} {lappend ::r [lrange $args 0 end-1]}
++} -body {
++    trace add execution ::ns41::cmd {enter leave} tracer41
++    ns41b::cmd
++    set ::r
++} -cleanup {
++    namespace delete ns41 ns41b
++    rename tracer41 {}
++    unset -nocomplain ::r
++} -result {ns41b::cmd {ns41b::cmd 0 {}}}
+ 
+ # Delete procedures when done, so we don't clash with other tests
+ # (e.g. foobar will clash with 'unknown' tests).
+ catch {rename foobar {}}
+ catch {rename foo {}}
+

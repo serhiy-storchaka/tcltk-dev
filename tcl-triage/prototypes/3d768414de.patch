@@ -1,0 +1,97 @@
+Index: generic/threadCmd.c
+==================================================================
+--- generic/threadCmd.c
++++ generic/threadCmd.c
+@@ -3118,10 +3118,11 @@
+     Tcl_ThreadId           thrId = Tcl_GetCurrentThread();
+     ThreadEvent        *eventPtr = (ThreadEvent*)evPtr;
+     ThreadSendData      *sendPtr = eventPtr->sendData;
+     ThreadClbkData      *clbkPtr = eventPtr->clbkData;
+     ThreadEventResult* resultPtr = eventPtr->resultPtr;
++    Tcl_Interp       *clbkInterp = NULL;
+ 
+     int code = TCL_ERROR; /* Pessimistic assumption */
+ 
+     /*
+      * See whether user has any preferences about which interpreter
+@@ -3161,10 +3162,20 @@
+ 	    code = TCL_OK;
+ 	}
+     }
+ 
+     if (sendPtr) {
++	if (sendPtr->execProc == ThreadClbkSetVar
++		|| sendPtr->execProc == ThreadClbkCommand) {
++	    /*
++	     * This is a result routed back to the originator of an
++	     * asynchronous send. Release the reference to its interpreter
++	     * added by ThreadSend.
++	     */
++
++	    clbkInterp = sendPtr->interp;
++	}
+ 	ThreadFreeProc(sendPtr);
+ 	eventPtr->sendData = NULL;
+     }
+ 
+     if (resultPtr) {
+@@ -3231,10 +3242,13 @@
+ 	}
+     }
+ 
+     if (interp != NULL) {
+ 	Tcl_Release(interp);
++    }
++    if (clbkInterp != NULL) {
++	Tcl_Release(clbkInterp);
+     }
+ 
+     /*
+      * Mark unwind scenario for this thread if the script resulted
+      * in error condition and thread has been marked to unwind.
+
+Index: tests/thread.test
+==================================================================
+--- tests/thread.test
++++ tests/thread.test
+@@ -1266,8 +1266,39 @@
+ test thread-bug-f32864afe3 {Hang in thread::eval -lock} -body {
+     set mu [thread::mutex create]
+     thread::eval -lock $mu {}
+     thread::mutex destroy $mu ; # <- Bug f32864af hang
+ } -result {}
++
++test thread-bug-3d768414de {async send with result var keeps interp alive} -setup {
++    set path [makeFile {} thread-bug-3d768414de.txt]
++    set res {}
++} -body {
++    foreach mode {var cmd} {
++	set c [interp create]
++	$c eval [list set path $path]
++	$c eval {
++	    package require Thread
++	    # Buffered data reaches the file only when the interp is
++	    # deleted and its channels are closed.
++	    set f [open $path w]
++	    fconfigure $f -buffering full
++	    puts -nonewline $f x
++	    set t [thread::create]
++	}
++	if {$mode eq "var"} {
++	    $c eval {thread::send -async $t {set x 1} ::done}
++	} else {
++	    $c eval {thread::send -command $t {set x 1} {set ::done}}
++	}
++	$c eval {vwait ::done; thread::release $t}
++	interp delete $c
++	lappend res [file size $path]
++    }
++    set res
++} -cleanup {
++    ThreadReap
++    removeFile thread-bug-3d768414de.txt
++} -result {1 1}
+ 
+ removeFile dummyForTransfer
+ ::tcltest::cleanupTests
+

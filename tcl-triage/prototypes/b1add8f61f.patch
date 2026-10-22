@@ -1,0 +1,79 @@
+Index: library/http/http.tcl
+==================================================================
+--- library/http/http.tcl
++++ library/http/http.tcl
+@@ -4868,20 +4868,24 @@
+ 	while {$size && ![chan eof $chan]} {
+ 	    set part [chan read $chan $size]
+ 	    incr size -[string length $part]
+ 	    append chunk $part
+ 	}
++	# Disable the fileevent while the callback runs, in case it enters
++	# the event loop and would resume this coroutine recursively.
++	# Bug [b1add8f61f].
++	chan event $chan readable {}
+ 	if {[catch {
+ 	    uplevel #0 [linsert $command end $chunk]
+ 	}]} {
+ 	    http::Log "Error in callback: $::errorInfo"
+ 	}
+ 	if {[string length $chunk] == 0} {
+-	    # channel might have been closed in the callback
+-	    catch {chan event $chan readable {}}
+ 	    return
+ 	}
++	# Channel might have been closed in the callback.
++	catch {chan event $chan readable [info coroutine]}
+     }
+ }
+ 
+ # http::SplitCommaSeparatedFieldValue --
+ #	Return the individual values of a comma-separated field value.
+
+Index: tests/http11.test
+==================================================================
+--- tests/http11.test
++++ tests/http11.test
+@@ -355,10 +355,19 @@
+     set log [list $current $total]
+     after 100 set ::WaitHere 0
+     vwait ::WaitHere
+     return
+ }
++
++# As progressPause, but with a short pause, for many small chunks.
++proc progressPauseShort {var token total current} {
++    upvar #0 $var log
++    set log [list $current $total]
++    after 1 set ::WaitHere 0
++    vwait ::WaitHere
++    return
++}
+ 
+ test http11-2.0.$ThreadLevel "-channel" -setup {
+     variable httpd [create_httpd]
+     set chan [open [makeFile {} testfile.tmp] wb+]
+ } -body {
+@@ -524,19 +533,19 @@
+     removeFile testfile.tmp
+     halt_httpd
+     unset -nocomplain logdata data
+ } -result {ok {HTTP/1.1 200 OK} ok close {} chunked 0 0}
+ 
+-test http11-2.4.2.$ThreadLevel "-channel,encoding identity with -progress progressPause enters event loop" -constraints knownBug -setup {
++test http11-2.4.2.$ThreadLevel "-channel,encoding identity with -progress progressPause enters event loop" -setup {
+     variable httpd [create_httpd]
+     set chan [open [makeFile {} testfile.tmp] wb+]
+     set logdata ""
+ } -body {
+     set tok [http::geturl http://localhost:$httpd_port/testdoc.html \
+ 		 -timeout 5000 -channel $chan \
+ 		 -headers {accept-encoding identity} \
+-		 -progress [namespace code [list progressPause logdata]]]
++		 -progress [namespace code [list progressPauseShort logdata]]]
+ 
+     http::wait $tok
+     seek $chan 0
+     set data [read $chan]
+     list [http::status $tok] [http::code $tok] [check_crc $tok $data]\
+

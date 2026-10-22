@@ -1,0 +1,20 @@
+Index: tests/parseExpr.test
+==================================================================
+--- tests/parseExpr.test
++++ tests/parseExpr.test
+@@ -1081,8 +1081,14 @@
+ test parseExpr-23.2 {TIP 582: comments} -constraints testexprparser -body {
+     testexprparser "7 #\n* 8 " -1
+ } -result {- {} 0 subexpr {7 #
+ *} 5 operator # 0 subexpr 7 1 text 7 0 subexpr * 1 text * 0 {}}
+ 
++test parseExpr-24.1 {Bug 1201589: boolean literal prefixes as barewords} -body {
++    lmap e {y !y n !n t !t f !f tr !fa ye !no on !on of !of !off} {expr $e}
++} -result {y 0 n 1 t 0 f 1 tr 1 ye 1 on 0 of 1 1}
++test parseExpr-24.2 {Bug 1201589: ambiguous boolean prefix} -body {
++    expr {!o}
++} -returnCodes error -match glob -result {invalid bareword "o"*}
+ # cleanup
+ cleanupTests
+ return
+

@@ -1,0 +1,114 @@
+Index: generic/tclPathObj.c
+==================================================================
+--- generic/tclPathObj.c
++++ generic/tclPathObj.c
+@@ -238,10 +238,11 @@
+ 	    }
+ 	    if (dirSep[2] == '.' && IsSeparatorOrNull(dirSep[3])) {
+ 		Tcl_Obj *linkObj;
+ 		Tcl_Size curLen;
+ 		char *linkStr;
++		int linkDepth = 0;
+ 
+ 		/*
+ 		 * Have '..' so need to skip previous directory.
+ 		 */
+ 
+@@ -267,10 +268,11 @@
+ 			    retVal = Tcl_DuplicateObj(retVal);
+ 			    Tcl_IncrRefCount(retVal);
+ 			}
+ 		    }
+ 
++		gotLink:
+ 		    if (linkObj != NULL) {
+ 			/*
+ 			 * Got a link. Need to check if the link is relative
+ 			 * or absolute, for those platforms where relative
+ 			 * links exist.
+@@ -327,10 +329,34 @@
+ 					linkStr[i] = '/';
+ 				    }
+ 				}
+ 			    }
+ 			}
++
++			/*
++			 * The link target can contain "." or ".." components
++			 * or a trailing separator, or be a link itself, so
++			 * normalize it before removing its last element.
++			 * [Bug 3577801]
++			 */
++
++			TclFSNormalizeToUniquePath(interp, retVal, 0);
++			if (++linkDepth < 32) {
++			    linkObj = Tcl_FSLink(retVal, NULL, 0);
++			    if (Tcl_IsShared(retVal)) {
++				TclDecrRefCount(retVal);
++				retVal = Tcl_DuplicateObj(retVal);
++				Tcl_IncrRefCount(retVal);
++			    }
++			    if (linkObj != NULL) {
++				goto gotLink;
++			    }
++			}
++			linkStr = TclGetStringFromObj(retVal, &curLen);
++			while (curLen > 1 && linkStr[curLen - 1] == '/') {
++			    curLen--;
++			}
+ 		    } else {
+ 			linkStr = TclGetStringFromObj(retVal, &curLen);
+ 		    }
+ 
+ 		    /*
+
+Index: tests/fileSystem.test
+==================================================================
+--- tests/fileSystem.test
++++ tests/fileSystem.test
+@@ -466,10 +466,44 @@
+     cd $home
+     removeDirectory A $home
+     cd $save
+     removeDirectory ce3a211dcb
+ } -result 1
++
++test filesystem-1.55 {[Bug 3577801] - .. after link with .. in target} -setup {
++    set home [makeDirectory 3577801]
++    makeDirectory x $home
++    makeDirectory d $home
++} -constraints {unix hasLinks} -body {
++    exec ln -s ../x $home/d/l
++    exec ln -s ./../x/ $home/d/ls
++    exec ln -s l $home/d/ll
++    set home [file normalize $home]
++    set res {}
++    lappend res [expr {[file normalize $home/d/l/../..] eq [file dirname $home]}]
++    foreach p {l/.. l/../y ls/.. ls/../y ll/.. ll/../y} {
++	lappend res [string map [list $home H] [file normalize $home/d/$p]]
++    }
++    set res
++} -cleanup {
++    unset -nocomplain res
++    removeDirectory 3577801
++} -result {1 H H/y H H/y H H/y}
++test filesystem-1.56 {[Bug 3570244] - cd .. from link with .. in target} -setup {
++    set save [pwd]
++    set home [file normalize [makeDirectory 3570244]]
++    makeDirectory x $home
++    makeDirectory d $home
++} -constraints {unix hasLinks} -body {
++    exec ln -s ../x/ $home/d/l
++    cd $home/d/l
++    cd ..
++    string map [list $home H] [pwd]
++} -cleanup {
++    cd $save
++    removeDirectory 3570244
++} -result H
+ 
+ test filesystem-2.0 {new native path} {unix} {
+    foreach f [lsort [glob -nocomplain /usr/bin/c*]] {
+        catch {file readlink $f}
+    }
+

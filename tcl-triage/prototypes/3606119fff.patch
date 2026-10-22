@@ -1,0 +1,19 @@
+Index: tests/load.test
+==================================================================
+--- tests/load.test
++++ tests/load.test
+@@ -189,10 +189,13 @@
+ 	teststaticlibrary Another 0 1
+ 	teststaticlibrary More 0 1
+ 	teststaticlibrary Double 0 1
+ 	testConstraint teststaticlibrary_8.x 1
+     }
++    # For load-8.3b when run alone (normally done by load-2.2 and load-7.1)
++    catch {load {} Test child}
++    catch {load -lazy [file join $testDir tcl9pkgb$ext] Pkgb child}
+ }
+ 
+ test load-8.1 {TclGetLoadedLibraries procedure} [list teststaticlibrary_8.x $dll $loaded] {
+     lsort -index 1 [info loaded]
+ } [lsort -index 1 [list {{} Double} {{} More} {{} Another} {{} Test} {*}$currentRealLibraries {*}$alreadyTotalLoaded]]
+

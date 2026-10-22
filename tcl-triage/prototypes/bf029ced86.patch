@@ -1,0 +1,23 @@
+Index: tests/binary.test
+==================================================================
+--- tests/binary.test
++++ tests/binary.test
+@@ -1614,14 +1614,16 @@
+ test binary-39.10 {ScanNumber: no sign extension} {
+     unset -nocomplain arg1
+     list [binary scan \x01\x01\x01\x02\x81\x01\x01\x01\x01\x82\x01\x01\x01\x01\x82\x01\x01\x01\x01\x81 Iu5 arg1] $arg1
+ } {1 {16843010 2164326657 25297153 16876033 16843137}}
+ 
++# The sign of a NaN is not preserved by float to double conversion on some
++# hardware (e.g. RISC-V, some MIPS), see [bf029ced86]
+ test binary-40.3 {ScanNumber: NaN} -body {
+     unset -nocomplain arg1
+     list [binary scan \xFF\xFF\xFF\xFF f1 arg1] $arg1
+-} -match glob -result {1 -NaN*}
++} -match regexp -result {^1 -?NaN}
+ test binary-40.4 {ScanNumber: NaN} -body {
+     unset -nocomplain arg1
+     list [binary scan \xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF d arg1] $arg1
+ } -match glob -result {1 -NaN*}
+ 
+

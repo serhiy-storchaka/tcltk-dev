@@ -1,0 +1,71 @@
+Index: generic/tclResult.c
+==================================================================
+--- generic/tclResult.c
++++ generic/tclResult.c
+@@ -749,11 +749,17 @@
+ 
+ 	    if (TclListObjGetElements(interp, valuePtr, &valueObjc,
+ 		    &valueObjv) == TCL_ERROR) {
+ 		return TCL_ERROR;
+ 	    }
+-	    iPtr->resetErrorStack = 0;
++	    /*
++	     * An empty -errorstack (e.g. one transferred from an interp whose
++	     * stack was pending reset) leaves the reset pending, so the next
++	     * logged error records its INNER context.
++	     */
++
++	    iPtr->resetErrorStack = (valueObjc == 0);
+ 	    TclListObjLength(interp, iPtr->errorStack, &len);
+ 
+ 	    /*
+ 	     * Reset while keeping the list internalrep as much as possible.
+ 	     */
+@@ -1050,11 +1056,16 @@
+ 	     * in the backtrace.
+ 	     */
+ 	    iPtr->errorLine = 1;
+ 	}
+ 	Tcl_AddErrorInfo(interp, "");
+-	Tcl_DictObjPut(NULL, options, keys[KEY_ERRORSTACK], iPtr->errorStack);
++	/*
++	 * [Bug 77f0dbc0f8]: a pending reset means the stack holds stale data
++	 * from an earlier error.
++	 */
++	Tcl_DictObjPut(NULL, options, keys[KEY_ERRORSTACK],
++		iPtr->resetErrorStack ? Tcl_NewObj() : iPtr->errorStack);
+     }
+     if (iPtr->errorCode) {
+ 	Tcl_DictObjPut(NULL, options, keys[KEY_ERRORCODE], iPtr->errorCode);
+     }
+     if (iPtr->errorInfo) {
+
+Index: tests/interp.test
+==================================================================
+--- tests/interp.test
++++ tests/interp.test
+@@ -3162,10 +3162,23 @@
+     rename testMyNewSet {}
+     rename mySet {}
+     rename myNewSet {}
+     set result
+ } ok
++
++test interp-31.2 {alias to parent does not leak stale errorstack [Bug 77f0dbc0f8]} -setup {
++    interp create child
++    interp alias child foo {} interpBug77f0
++    proc interpBug77f0 {arg} {}
++} -body {
++    catch {error "caught error"}
++    catch {interp eval child foo} msg opts
++    dict get $opts -errorstack
++} -cleanup {
++    interp delete child
++    rename interpBug77f0 {}
++} -match glob -result {INNER {invokeStk foo}*}
+ 
+ test interp-32.1 {parent's working directory should be inherited by a child interp} -setup {
+     cd [temporaryDirectory]
+ } -body {
+     set parent [pwd]
+

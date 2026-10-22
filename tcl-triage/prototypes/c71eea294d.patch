@@ -1,0 +1,131 @@
+Index: generic/tclVar.c
+==================================================================
+--- generic/tclVar.c
++++ generic/tclVar.c
+@@ -5408,19 +5408,60 @@
+  *	Variables are deleted and trace functions are invoked, if any are
+  *	declared.
+  *
+  *----------------------------------------------------------------------
+  */
++
++static Var *
++NextVarToDelete(
++    TclVarHashTable *tablePtr,
++    Var ***varsPtr,		/* Snapshot of the variables in tablePtr. */
++    Tcl_Size *indexPtr,		/* Index of the next variable in snapshot. */
++    Tcl_Size *countPtr)		/* Number of variables in snapshot. */
++{
++    Tcl_HashSearch search;
++    Var *varPtr;
++    Tcl_Size i = 0;
++
++    if (*indexPtr < *countPtr) {
++	return (*varsPtr)[(*indexPtr)++];
++    }
++
++    /*
++     * Take a snapshot of all variables instead of restarting the search
++     * after every deletion, which is quadratic. [Bug c71eea294d] Raise the
++     * refCounts, so the entries stay in the table until we delete them.
++     */
++
++    if (*varsPtr != NULL) {
++	Tcl_Free(*varsPtr);
++	*varsPtr = NULL;
++    }
++    *indexPtr = *countPtr = 0;
++    if (tablePtr->table.numEntries == 0) {
++	return NULL;
++    }
++    *varsPtr = (Var **)Tcl_Alloc(sizeof(Var *) * tablePtr->table.numEntries);
++    for (varPtr = VarHashFirstVar(tablePtr, &search); varPtr != NULL;
++	    varPtr = VarHashNextVar(&search)) {
++	VarHashRefCount(varPtr)++;
++	(*varsPtr)[i++] = varPtr;
++    }
++    *countPtr = i;
++    *indexPtr = 1;
++    return (*varsPtr)[0];
++}
+ 
+ void
+ TclDeleteNamespaceVars(
+     Namespace *nsPtr)
+ {
+     TclVarHashTable *tablePtr = &nsPtr->varTable;
+     Tcl_Interp *interp = nsPtr->interp;
+     Interp *iPtr = (Interp *)interp;
+-    Tcl_HashSearch search;
++    Var **vars = NULL;
++    Tcl_Size index = 0, count = 0;
+     int flags = 0;
+     Var *varPtr;
+ 
+     /*
+      * Determine what flags to pass to the trace callback functions.
+@@ -5430,16 +5471,19 @@
+ 	flags = TCL_GLOBAL_ONLY;
+     } else if (nsPtr == (Namespace *) TclGetCurrentNamespace(interp)) {
+ 	flags = TCL_NAMESPACE_ONLY;
+     }
+ 
+-    for (varPtr = VarHashFirstVar(tablePtr, &search);  varPtr != NULL;
+-	    varPtr = VarHashFirstVar(tablePtr, &search)) {
++    /*
++     * NextVarToDelete raises the refCount, so we get to remove from hash.
++     */
++
++    for (varPtr = NextVarToDelete(tablePtr, &vars, &index, &count);
++	    varPtr != NULL;
++	    varPtr = NextVarToDelete(tablePtr, &vars, &index, &count)) {
+ 	Tcl_Obj *objPtr;
+ 	TclNewObj(objPtr);
+-	VarHashRefCount(varPtr)++;	/* Make sure we get to remove from
+-					 * hash. */
+ 	Tcl_GetVariableFullName(interp, (Tcl_Var) varPtr, objPtr);
+ 	UnsetVarStruct(varPtr, NULL, iPtr, /* part1 */ objPtr,
+ 		NULL, flags, -1);
+ 
+ 	/*
+
+Index: tests/trace.test
+==================================================================
+--- tests/trace.test
++++ tests/trace.test
+@@ -1246,10 +1246,34 @@
+     set info {}
+     namespace delete ::ref
+     rename doTrace {}
+     set info
+ } 1110
++test trace-18.5 {namespace delete with many variables, unset traces creating and unsetting variables, Bug c71eea294d} -setup {
++    set info {}
++    namespace eval ::ns {
++	for {set i 0} {$i < 1000} {incr i} {
++	    variable v$i $i
++	}
++    }
++    proc doTrace {name args} {
++	lappend ::info $name
++	if {$name eq "::ns::v1"} {
++	    unset -nocomplain ::ns::v2 ::ns::v999
++	    set ::ns::new 1
++	    trace add variable ::ns::new unset [list doTrace ::ns::new]
++	}
++    }
++    foreach v {v1 v2 v999} {
++	trace add variable ::ns::$v unset [list doTrace ::ns::$v]
++    }
++} -body {
++    namespace delete ::ns
++    list [namespace exists ::ns] [lsort $info]
++} -cleanup {
++    rename doTrace {}
++} -result {0 {::ns::new ::ns::v1 ::ns::v2 ::ns::v999}}
+ 
+ # Delete arrays when done, so they can be re-used as scalars
+ # elsewhere.
+ 
+ unset -nocomplain x y
+

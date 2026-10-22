@@ -1,0 +1,32 @@
+Index: unix/tclUnixFCmd.c
+==================================================================
+--- unix/tclUnixFCmd.c
++++ unix/tclUnixFCmd.c
+@@ -318,10 +318,26 @@
+ 	return TCL_OK;
+     }
+     if (errno == ENOTEMPTY) {
+ 	errno = EEXIST;
+     }
++
++    /*
++     * POSIX allows EISDIR only when the source is not a directory, but some
++     * NFS servers return it for a directory onto a non-empty directory.
++     * [Bug 2003130]
++     */
++
++    if (errno == EISDIR) {
++	Tcl_StatBuf srcStatBuf;
++
++	if (TclOSstat(src, &srcStatBuf) == 0 && S_ISDIR(srcStatBuf.st_mode)) {
++	    errno = EEXIST;
++	} else {
++	    errno = EISDIR;
++	}
++    }
+ 
+     /*
+      * IRIX returns EIO when you attempt to move a directory into itself. We
+      * just map EIO to EINVAL get the right message on SGI. Most platforms
+      * don't return EIO except in really strange cases.
+

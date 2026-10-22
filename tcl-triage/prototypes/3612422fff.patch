@@ -1,0 +1,36 @@
+Index: doc/filename.n
+==================================================================
+--- doc/filename.n
++++ doc/filename.n
+@@ -146,11 +146,11 @@
+ on file paths with the exception noted below. The commands \fBfile home\fR and
+ \fBfile tildeexpand\fR may be used to explicitly accomplish the same.
+ .PP
+ The exception to the above is initialization of the \fBauto_path\fR variable
+ and the Tcl module search paths as documented in the manpages for
+-\fBtclvars\fR and \fBtm\fR. When any path in an environment variable used to
++\fBauto_path\fR and \fBtm\fR. When any path in an environment variable used to
+ initialize these starts with a tilde, it will be interpreted as if the first
+ element is replaced with the location of the home directory for the given
+ user. If the tilde is followed immediately by a separator, the
+ \fB$HOME\fR environment variable is substituted. Otherwise the characters
+ between the tilde and the next separator are taken as a user name, which is
+
+Index: doc/library.n
+==================================================================
+--- doc/library.n
++++ doc/library.n
+@@ -164,11 +164,11 @@
+ \fBauto_load \fIcmd\fR
+ .
+ This command attempts to load the definition for a Tcl command named
+ \fIcmd\fR.  To do this, it searches an \fIauto-load path\fR, which is
+ a list of one or more directories.  The auto-load path is given by the
+-global variable \fBauto_path\fR if it exists (see the tclvars manual page).
++global variable \fBauto_path\fR if it exists (see the \fBauto_path\fR manual page).
+ If there is no
+ \fBauto_path\fR variable, then the \fBTCLLIBPATH\fR environment variable is
+ used, if it exists.  Otherwise the auto-load path consists of just the
+ Tcl library directory.  Within each directory in the auto-load path
+ there must be a file \fBtclIndex\fR that describes one or more
+

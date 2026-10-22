@@ -1,0 +1,72 @@
+Index: library/http/http.tcl
+==================================================================
+--- library/http/http.tcl
++++ library/http/http.tcl
+@@ -3357,10 +3357,19 @@
+ #	Unsets the state array.
+ 
+ proc http::cleanup {token} {
+     variable $token
+     upvar 0 $token state
++    if {    [info exists state(status)] && ($state(status) eq "")
++	 && [info exists state(sock)]
++    } {
++	# The transaction is still in progress.  Stop it, so that no event
++	# handler uses the token after it has been cleaned up, and the socket
++	# is closed or released.  Do not call the -command callback.
++	unset -nocomplain state(-command)
++	catch {reset $token}
++    }
+     if {[info commands ${token}--EventCoroutine] ne {}} {
+ 	rename ${token}--EventCoroutine {}
+     }
+     if {[info commands ${token}--SocketCoroutine] ne {}} {
+ 	rename ${token}--SocketCoroutine {}
+
+Index: tests/http.test
+==================================================================
+--- tests/http.test
++++ tests/http.test
+@@ -728,10 +728,41 @@
+     resetWhileOpening 1
+ } -result {- reset {} {}}
+ test http-4.18.$ThreadLevel {reset while the socket command runs the event loop} -body {
+     resetWhileOpening 0
+ } -result {reset reset {} {}}
++
++test http-4.20.$ThreadLevel {cleanup while connecting (bug [b5a02c5390])} -setup {
++    set srv [socket -server {apply {{ch args} {lappend ::peers $ch}}} \
++	    -myaddr 127.0.0.1 0]
++    set srvurl http://127.0.0.1:[lindex [fconfigure $srv -sockname] 2]/
++    set peers {}
++    set bgerrors {}
++    set callbacks {}
++    set oldbgerror [interp bgerror {}]
++    interp bgerror {} {apply {{msg opts} {lappend ::bgerrors $msg}}}
++    set before [chan names]
++} -body {
++    set token [http::geturl $srvurl -keepalive 0 \
++	    -command {apply {{token} {lappend ::callbacks $token}}}]
++    # Open the socket, but do not let it connect yet.
++    update idletasks
++    http::cleanup $token
++    after 300 {set done 1}
++    vwait done
++    list $bgerrors $callbacks [info exists $token] \
++	    [lmap ch [chan names] {
++		if {$ch in $before || $ch in $peers} continue
++		set ch
++	    }]
++} -cleanup {
++    interp bgerror {} $oldbgerror
++    foreach ch $peers {close $ch}
++    close $srv
++    unset -nocomplain srv srvurl peers bgerrors callbacks oldbgerror \
++	    before token done
++} -result {{} {} 0 {}}
+ 
+ test http-5.1.$ThreadLevel {http::formatQuery} {
+     http::formatQuery name1 value1 name2 "value two"
+ } {name1=value1&name2=value%20two}
+ # test http-5.2 obsoleted by 5.4 and 5.5 with http 2.5
+

@@ -1,0 +1,62 @@
+Index: generic/tclInterp.c
+==================================================================
+--- generic/tclInterp.c
++++ generic/tclInterp.c
+@@ -781,10 +781,30 @@
+ 	}
+     }
+ 
+     /* tcl_pkgPath. Errors ignored like original. Note no tildeexpand */
+     (void) AddPathsInVarToList(interp, "tcl_pkgPath", NULL, autoPathPtr, 0);
++
++    /* tcl_library/encoding to the encoding search path. [Bug 75ecc0e6cb] */
++    objPtr = Tcl_GetVar2Ex(interp, "tcl_library", NULL, TCL_GLOBAL_ONLY);
++    if (objPtr) {
++	Tcl_Obj *encObj = Tcl_NewStringObj("encoding", 8);
++	Tcl_Obj *searchPathObj = Tcl_DuplicateObj(Tcl_GetEncodingSearchPath());
++	Tcl_Size oldLen = 0, newLen = 0;
++
++	Tcl_IncrRefCount(encObj);
++	Tcl_IncrRefCount(searchPathObj);
++	TclListObjLength(NULL, searchPathObj, &oldLen);
++	(void) TclListObjInsertIfAbsent(NULL, searchPathObj,
++		Tcl_FSJoinToPath(objPtr, 1, &encObj), TCL_SIZE_MAX);
++	TclListObjLength(NULL, searchPathObj, &newLen);
++	if (newLen > oldLen) {
++	    Tcl_SetEncodingSearchPath(searchPathObj);
++	}
++	Tcl_DecrRefCount(searchPathObj);
++	Tcl_DecrRefCount(encObj);
++    }
+     autoPathPtr = Tcl_SetVar2Ex(interp, "auto_path", NULL, autoPathPtr,
+ 	    TCL_GLOBAL_ONLY);
+     if (autoPathPtr) {
+ 	Tcl_SetObjResult(interp, autoPathPtr);
+ 	return TCL_OK;
+
+Index: tests/encoding.test
+==================================================================
+--- tests/encoding.test
++++ tests/encoding.test
+@@ -1050,10 +1050,20 @@
+ } -body {
+     encoding dirs
+ } -cleanup {
+     encoding dirs $origPath
+ } -result slappy
++test encoding-26.1 {init adds tcl_library/encoding to search path} -setup {
++    set origPath [encoding dirs]
++    encoding dirs slappy
++} -body {
++    interp delete [interp create]
++    list [lindex [encoding dirs] 0] \
++	    [expr {[file join $::tcl_library encoding] in [encoding dirs]}]
++} -cleanup {
++    encoding dirs $origPath
++} -result {slappy 1}
+ 
+ file delete {*}[glob -directory [temporaryDirectory] *.chars *.tcltestout]
+ # ===> Cut here <===
+ 
+ # EscapeFreeProc, GetTableEncoding, unilen are fully tested by the rest of
+

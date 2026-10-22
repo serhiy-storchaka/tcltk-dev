@@ -1,0 +1,218 @@
+Index: generic/tclTimer.c
+==================================================================
+--- generic/tclTimer.c
++++ generic/tclTimer.c
+@@ -46,10 +46,12 @@
+     Tcl_TimerToken token;	/* Used to cancel the "after" command. NULL
+ 				 * means that the command is run as an idle
+ 				 * handler rather than as a timer handler. */
+     struct AfterInfo *nextPtr;	/* Next in list of all "after" commands for
+ 				 * this interpreter. */
++    struct AfterInfo *prevPtr;	/* Previous in list of all "after" commands
++				 * for this interpreter. */
+ } AfterInfo;
+ 
+ /*
+  * One of the following structures is associated with each interpreter for
+  * which an "after" command has ever been invoked. A pointer to this structure
+@@ -179,10 +181,13 @@
+ 
+ static void		AfterCleanupProc(void *clientData,
+ 			    Tcl_Interp *interp);
+ static void		AfterProc(void *clientData);
+ static void		FreeAfterPtr(AfterInfo *afterPtr);
++static void		LinkAfterPtr(AfterAssocData *assocPtr,
++			    AfterInfo *afterPtr);
++static void		UnlinkAfterPtr(AfterInfo *afterPtr);
+ static AfterInfo *	GetAfterEvent(AfterAssocData *assocPtr,
+ 			    Tcl_Obj *commandPtr);
+ static ThreadSpecificData *InitTimer(void);
+ static void		TimerExitProc(void *clientData);
+ static int		TimerHandlerEventProc(Tcl_Event *evPtr, int flags);
+@@ -1120,12 +1125,11 @@
+ 
+ 	afterPtr->id = tsdPtr->afterId;
+ 	tsdPtr->afterId += 1;
+ 	afterPtr->token = CreateTimerHandler(wakeupUS,
+ 		AfterProc, afterPtr, true);
+-	afterPtr->nextPtr = assocPtr->firstAfterPtr;
+-	assocPtr->firstAfterPtr = afterPtr;
++	LinkAfterPtr(assocPtr, afterPtr);
+ 	Tcl_SetObjResult(interp, Tcl_ObjPrintf("after#%d", afterPtr->id));
+ 	return TCL_OK;
+     }
+     case AFTER_CANCEL:
+ 	if (objc < 3) {
+@@ -1533,29 +1537,20 @@
+ AfterProc(
+     void *clientData)		/* Describes command to execute. */
+ {
+     AfterInfo *afterPtr = (AfterInfo *)clientData;
+     AfterAssocData *assocPtr = afterPtr->assocPtr;
+-    AfterInfo *prevPtr;
+     int result;
+     Tcl_Interp *interp;
+ 
+     /*
+      * First remove the callback from our list of callbacks; otherwise someone
+      * could delete the callback while it's being executed, which could cause
+      * a core dump.
+      */
+ 
+-    if (assocPtr->firstAfterPtr == afterPtr) {
+-	assocPtr->firstAfterPtr = afterPtr->nextPtr;
+-    } else {
+-	for (prevPtr = assocPtr->firstAfterPtr; prevPtr->nextPtr != afterPtr;
+-		prevPtr = prevPtr->nextPtr) {
+-	    /* Empty loop body. */
+-	}
+-	prevPtr->nextPtr = afterPtr->nextPtr;
+-    }
++    UnlinkAfterPtr(afterPtr);
+ 
+     /*
+      * Execute the callback.
+      */
+ 
+@@ -1596,25 +1591,53 @@
+ 
+ static void
+ FreeAfterPtr(
+     AfterInfo *afterPtr)	/* Command to be deleted. */
+ {
+-    AfterAssocData *assocPtr = afterPtr->assocPtr;
+-
+-    if (assocPtr->firstAfterPtr == afterPtr) {
+-	assocPtr->firstAfterPtr = afterPtr->nextPtr;
+-    } else {
+-	AfterInfo *prevPtr;
+-	for (prevPtr = assocPtr->firstAfterPtr; prevPtr->nextPtr != afterPtr;
+-		prevPtr = prevPtr->nextPtr) {
+-	    /* Empty loop body. */
+-	}
+-	prevPtr->nextPtr = afterPtr->nextPtr;
+-    }
++    UnlinkAfterPtr(afterPtr);
+     Tcl_DecrRefCount(afterPtr->commandPtr);
+     Tcl_Free(afterPtr);
+ }
++
++/*
++ *----------------------------------------------------------------------
++ *
++ * LinkAfterPtr, UnlinkAfterPtr --
++ *
++ *	Add an "after" command to the head of the doubly-linked list of those
++ *	pending for an interpreter, or remove it from that list in constant
++ *	time. [Bug 0520d17284]
++ *
++ *----------------------------------------------------------------------
++ */
++
++static void
++LinkAfterPtr(
++    AfterAssocData *assocPtr,
++    AfterInfo *afterPtr)
++{
++    afterPtr->prevPtr = NULL;
++    afterPtr->nextPtr = assocPtr->firstAfterPtr;
++    if (afterPtr->nextPtr != NULL) {
++	afterPtr->nextPtr->prevPtr = afterPtr;
++    }
++    assocPtr->firstAfterPtr = afterPtr;
++}
++
++static void
++UnlinkAfterPtr(
++    AfterInfo *afterPtr)
++{
++    if (afterPtr->prevPtr == NULL) {
++	afterPtr->assocPtr->firstAfterPtr = afterPtr->nextPtr;
++    } else {
++	afterPtr->prevPtr->nextPtr = afterPtr->nextPtr;
++    }
++    if (afterPtr->nextPtr != NULL) {
++	afterPtr->nextPtr->prevPtr = afterPtr->prevPtr;
++    }
++}
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
+  * AfterCleanupProc --
+@@ -1788,12 +1811,11 @@
+ 
+     afterPtr->id = tsdPtr->afterId;
+     tsdPtr->afterId += 1;
+     afterPtr->token = CreateTimerHandler(timeArgUS,
+ 	    AfterProc, afterPtr, false);
+-    afterPtr->nextPtr = assocPtr->firstAfterPtr;
+-    assocPtr->firstAfterPtr = afterPtr;
++    LinkAfterPtr(assocPtr, afterPtr);
+     Tcl_SetObjResult(interp, Tcl_ObjPrintf("after#%d", afterPtr->id));
+     return TCL_OK;
+ }
+ 
+ /*
+@@ -1898,12 +1920,11 @@
+ 
+     afterPtr->id = tsdPtr->afterId;
+     tsdPtr->afterId += 1;
+     afterPtr->token = CreateTimerHandler(wakeupUS,
+ 	    AfterProc, afterPtr, true);
+-    afterPtr->nextPtr = assocPtr->firstAfterPtr;
+-    assocPtr->firstAfterPtr = afterPtr;
++    LinkAfterPtr(assocPtr, afterPtr);
+     Tcl_SetObjResult(interp, Tcl_ObjPrintf("after#%d", afterPtr->id));
+     return TCL_OK;
+ }
+ 
+ /*
+@@ -2223,12 +2244,11 @@
+     afterPtr->commandPtr = objCmd;
+     Tcl_IncrRefCount(afterPtr->commandPtr);
+     afterPtr->id = tsdPtr->afterId;
+     tsdPtr->afterId += 1;
+     afterPtr->token = NULL;
+-    afterPtr->nextPtr = assocPtr->firstAfterPtr;
+-    assocPtr->firstAfterPtr = afterPtr;
++    LinkAfterPtr(assocPtr, afterPtr);
+     Tcl_DoWhenIdle(AfterProc, afterPtr);
+     Tcl_SetObjResult(interp, Tcl_ObjPrintf("after#%d", afterPtr->id));
+     return TCL_OK;
+ }
+ 
+
+Index: tests/timer.test
+==================================================================
+--- tests/timer.test
++++ tests/timer.test
+@@ -1516,10 +1516,27 @@
+ }  -returnCodes error -result {wrong # args: should be "timer idle script"}
+ 
+ test timer-17.2 {"timer idle" basic} -body {
+     timer idle event 1
+ }  -returnCodes error -result {wrong # args: should be "timer idle script"}
++
++test timer-bug-0520d17284 {after list: cancel and fire in any order} -setup {
++    foreach id [after info] {after cancel $id}
++} -body {
++    set l {}
++    set ids {}
++    foreach i {1 2 3 4 5 6} {
++	lappend ids [after idle [list lappend l $i]]
++    }
++    lappend ids [after 0 [list lappend l 7]]
++    after cancel [lindex $ids 2]
++    after cancel [lindex $ids 0]
++    after cancel [lindex $ids end]
++    set r [llength [after info]]
++    update
++    lappend r $l [after info]
++} -result {4 {2 4 5 6} {}}
+ 
+ # cleanup
+ ::tcltest::cleanupTests
+ return
+ 
+

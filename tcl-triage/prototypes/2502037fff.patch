@@ -1,0 +1,29 @@
+Index: tests/coroutine.test
+==================================================================
+--- tests/coroutine.test
++++ tests/coroutine.test
+@@ -867,10 +867,23 @@
+ 	yieldto {*}$target
+ 	return done
+     }} {}
+     list [c] [c]
+ } -returnCodes error -result {wrong # args: should be "yieldto command ?arg ...?"}
++test coroutine-7.20 {yield in namespace unknown handler, bug 2502037} -setup {
++    namespace eval ::coroTestNs {
++	namespace unknown [list apply {args {
++	    yield [list unknown {*}$args]
++	    return done
++	}}]
++    }
++} -body {
++    list [coroutine c namespace eval ::coroTestNs {noSuchCmd a b}] [c] \
++	[info commands c]
++} -cleanup {
++    namespace delete ::coroTestNs
++} -result {{unknown noSuchCmd a b} done {}}
+ 
+ test coroutine-8.1.1 {coro inject, ticket 42202ba1e5ff566e} -body {
+     interp create child
+     child eval {
+ 	coroutine demo apply {{} { while {1} yield }}
+

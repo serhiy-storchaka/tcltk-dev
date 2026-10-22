@@ -1,0 +1,60 @@
+Index: tests/io.test
+==================================================================
+--- tests/io.test
++++ tests/io.test
+@@ -10037,10 +10037,29 @@
+     fconfigure $f -encoding utf-8 -profile strict -blocking 0 -buffersize 10 -translation lf -eofchar {}
+     list [catch { read_blocked $f 12 } e d] $e [dict getd $d -code ""] [dict getd $d -errorcode ""]
+ } -cleanup {
+     if {$f ne ""} {close $f}
+ } -result "0 START-\u30B3-DONE 0 {}"
++
++test io-78.1 {writable event on pipe whose reader has exited} -setup {
++    set script [makeFile {exit} io78script]
++    set f [open "|[list [interpreter] $script]" w]
++    set w {}
++} -constraints {stdio fileevent} -body {
++    fconfigure $f -blocking 0 -buffering full
++    puts -nonewline $f [string repeat x 300000]
++    catch {flush $f}
++    after 100
++    chan event $f writable [list set [namespace which -variable w] writable]
++    set timer [after 5000 [list set [namespace which -variable w] timeout]]
++    vwait [namespace which -variable w]
++    after cancel $timer
++    list $w [catch {close $f} msg] $msg
++} -cleanup {
++    removeFile io78script
++    unset -nocomplain w f script timer msg
++} -result {writable 1 {broken pipe}}
+ 
+ rename read_blocked {}
+ 
+ # cleanup
+ foreach file [list fooBar longfile script2 output test1 pipe my_script \
+
+Index: unix/tclEpollNotfy.c
+==================================================================
+--- unix/tclEpollNotfy.c
++++ unix/tclEpollNotfy.c
+@@ -407,11 +407,18 @@
+     }
+     if (eventPtr->events & EPOLLOUT) {
+ 	mask |= TCL_WRITABLE;
+     }
+     if (eventPtr->events & EPOLLERR) {
+-	mask |= TCL_EXCEPTION;
++	/*
++	 * An error condition (e.g. the reading end of a pipe was closed)
++	 * makes reads and writes return immediately, as select() reports.
++	 * Otherwise a handler waiting for TCL_WRITABLE never fires and the
++	 * level-triggered EPOLLERR makes the notifier spin.
++	 */
++
++	mask |= TCL_READABLE | TCL_WRITABLE | TCL_EXCEPTION;
+     }
+     return mask;
+ }
+ 
+ /*
+

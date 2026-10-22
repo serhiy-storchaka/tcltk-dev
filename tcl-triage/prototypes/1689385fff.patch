@@ -1,0 +1,29 @@
+Index: doc/StringObj.3
+==================================================================
+--- doc/StringObj.3
++++ doc/StringObj.3
+@@ -382,12 +382,21 @@
+ If the \fInewLength\fR argument is less than the current length
+ of the value's string, with \fIobjPtr->length\fR is reduced without
+ reallocating the string space; the original allocated size for the
+ string is recorded in the value, so that the string length can be
+ enlarged in a subsequent call to \fBTcl_SetObjLength\fR without
+-reallocating storage.  In all cases \fBTcl_SetObjLength\fR leaves
+-a null character at \fIobjPtr->bytes[newLength]\fR.
++reallocating storage.  If the value has a string representation,
++\fBTcl_SetObjLength\fR leaves a null character at
++\fIobjPtr->bytes[newLength]\fR.
++.PP
++If the value has no string representation (\fIobjPtr->bytes\fR is NULL)
++but has an internal Unicode representation, for example a value created
++by \fBTcl_NewUnicodeObj\fR, then \fBTcl_SetObjLength\fR instead changes
++the length of the Unicode representation: \fInewLength\fR is taken as a
++number of characters, not bytes, and \fIobjPtr->bytes\fR stays NULL.
++Callers that need direct access to a byte buffer of \fInewLength\fR
++bytes should call \fBTcl_GetString\fR on the value first.
+ .PP
+ \fBTcl_AttemptSetObjLength\fR is identical in function to
+ \fBTcl_SetObjLength\fR except that if sufficient memory to satisfy the
+ request cannot be allocated, it does not cause the Tcl interpreter to
+ \fBpanic\fR.  Thus, if \fInewLength\fR is greater than the space
+

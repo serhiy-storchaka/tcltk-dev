@@ -1,0 +1,34 @@
+Index: tests/interp.test
+==================================================================
+--- tests/interp.test
++++ tests/interp.test
+@@ -3930,10 +3930,28 @@
+     interp eval $i readX
+ } -result {123 45} -cleanup {
+     interp delete $i
+ }
+ 
++test interp-41.1 {eval works after script cancellation, bug 2114165} -setup {
++    set i [interp create]
++} -body {
++    list [catch {interp eval $i {interp cancel; while 1 {}}} msg] $msg \
++	[interp eval $i {set x 1}]
++} -cleanup {
++    interp delete $i
++} -result {1 {eval canceled} 1}
++test interp-41.2 {eval works after script cancellation -unwind, bug 2114165} -setup {
++    set i [interp create]
++} -body {
++    list [catch {interp eval $i {
++	interp cancel -unwind; catch {while 1 {}}
++    }} msg] $msg [interp eval $i {set x 2}]
++} -cleanup {
++    interp delete $i
++} -result {1 {eval unwound} 2}
++
+ #####################################################################
+ # Tests related to post-init callbacks using Tcl_RegisterPostInitProc
+ 
+ testConstraint testpostinit [llength [info commands testpostinit]]
+ 
+

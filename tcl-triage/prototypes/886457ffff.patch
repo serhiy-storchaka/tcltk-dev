@@ -1,0 +1,111 @@
+Index: generic/tclIO.c
+==================================================================
+--- generic/tclIO.c
++++ generic/tclIO.c
+@@ -1655,10 +1655,11 @@
+     statePtr = (ChannelState *)Tcl_Alloc(sizeof(ChannelState));
+     chanPtr->state = statePtr;
+ 
+     chanPtr->instanceData = instanceData;
+     chanPtr->typePtr = typePtr;
++    chanPtr->permMask = mask & (TCL_READABLE|TCL_WRITABLE);
+ 
+     /*
+      * Set all the bits that are part of the stack-independent state
+      * information for the channel.
+      */
+@@ -1954,10 +1955,19 @@
+     chanPtr->downChanPtr	= prevChanPtr;
+     chanPtr->upChanPtr		= NULL;
+     chanPtr->inQueueHead	= NULL;
+     chanPtr->inQueueTail	= NULL;
+     chanPtr->refCount		= 0;
++    chanPtr->permMask		= mask & prevChanPtr->permMask
++	    & (TCL_READABLE|TCL_WRITABLE);
++
++    /*
++     * The transformation may restrict the operations allowed on the channel,
++     * e.g. a read-only transformation on top of a read-write channel.
++     */
++
++    ResetFlag(statePtr, (TCL_READABLE|TCL_WRITABLE) & ~chanPtr->permMask);
+ 
+     /*
+      * Place new block at the head of a possibly existing list of previously
+      * stacked channels.
+      */
+@@ -2162,10 +2172,17 @@
+ 	ResetFlag(statePtr, TCL_READABLE|TCL_WRITABLE);
+ 	SetFlag(statePtr, statePtr->maxPerms);
+ 	result = ChanClose(chanPtr, interp);
+ 	ChannelFree(chanPtr);
+ 
++	/*
++	 * Restore the operations allowed by the remaining stack.
++	 */
++
++	ResetFlag(statePtr, (TCL_READABLE|TCL_WRITABLE)
++		& ~downChanPtr->permMask);
++
+ 	UpdateInterest(statePtr->topChanPtr);
+ 
+ 	if (result != 0) {
+ 	    Tcl_SetErrno(result);
+ 
+
+Index: generic/tclIO.h
+==================================================================
+--- generic/tclIO.h
++++ generic/tclIO.h
+@@ -112,10 +112,14 @@
+ 
+     ChannelBuffer *inQueueHead;	/* Points at first buffer in input queue. */
+     ChannelBuffer *inQueueTail;	/* Points at last buffer in input queue. */
+ 
+     Tcl_Size refCount;
++    int permMask;		/* TCL_READABLE|TCL_WRITABLE bits this layer
++				 * allows; a stacked transformation can
++				 * restrict the channel. See
++				 * 'Tcl_StackChannel'. */
+ } Channel;
+ 
+ /*
+  * struct ChannelState:
+  *
+
+Index: tests/ioTrans.test
+==================================================================
+--- tests/ioTrans.test
++++ tests/ioTrans.test
+@@ -2173,8 +2173,30 @@
+     return $res
+ } -cleanup {
+     catch {unset read}
+     close $chan
+ } -result {line one}
++
++test iortrans-bug-886457 {mode of a transformation restricts the channel} -setup {
++    set file [makeFile {abc} iortrans-886457]
++    proc rdonly {cmd ch args} {
++	switch -- $cmd {
++	    initialize {return {initialize finalize read}}
++	    read {return [lindex $args 0]}
++	}
++    }
++    set f [open $file r+]
++    set result {}
++} -body {
++    chan push $f [namespace which rdonly]
++    lappend result [catch {puts $f xyz} msg] $msg
++    chan pop $f
++    lappend result [catch {puts -nonewline $f xyz} msg] $msg
++} -cleanup {
++    close $f
++    removeFile iortrans-886457
++    rename rdonly {}
++    unset -nocomplain result msg file f
++} -match glob -result {1 {channel "file*" wasn't opened for writing} 0 {}}
+ 
+ cleanupTests
+ return
+

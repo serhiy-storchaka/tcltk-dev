@@ -1,0 +1,137 @@
+Index: generic/tclIO.c
+==================================================================
+--- generic/tclIO.c
++++ generic/tclIO.c
+@@ -4307,12 +4307,19 @@
+ 
+     if ((Tcl_ChannelWideSeekProc(chanPtr->typePtr) != NULL)
+ 	    && ((inputBuffered = Tcl_InputBuffered((Tcl_Channel) chanPtr)) > 0)){
+ 	int ignore;
+ 
+-	DiscardInputQueued(chanPtr->state, 0);
+-	ChanSeek(chanPtr, -inputBuffered, SEEK_CUR, &ignore);
++	/*
++	 * Only discard the buffered input if the seek back succeeded: a
++	 * transform has a seek proc even when the channel below it cannot
++	 * seek (e.g. a socket). [Bug 6141c15186]
++	 */
++
++	if (ChanSeek(chanPtr, -inputBuffered, SEEK_CUR, &ignore) != -1) {
++	    DiscardInputQueued(chanPtr->state, 0);
++	}
+     }
+ }
+ 
+ static int
+ WillRead(
+
+Index: generic/tclIORTrans.c
+==================================================================
+--- generic/tclIORTrans.c
++++ generic/tclIORTrans.c
+@@ -1328,10 +1328,21 @@
+      * Check if we can leave out involving the Tcl level, i.e. transformation
+      * handler. This is true for tell requests, and transformations which
+      * support neither flush, nor drain. For these cases we can pass the
+      * request down and the result back up unchanged.
+      */
++
++    if (Tcl_ChannelWideSeekProc(parent->typePtr) == NULL) {
++	/*
++	 * The channel below cannot seek; fail before clearing or flushing
++	 * the transformation. [Bug 6141c15186]
++	 */
++
++	Tcl_SetErrno(EINVAL);
++	*errorCodePtr = EOK;
++	return -1;
++    }
+ 
+     Tcl_Preserve(rtPtr);
+ 
+     if (((seekMode != SEEK_CUR) || (offset != 0))
+ 	    && (HAS(rtPtr->methods, METH_CLEAR)
+@@ -1365,17 +1376,12 @@
+      * Now seek to the new position in the channel as requested by the
+      * caller. Note that we prefer the wideSeekProc if that is available and
+      * non-NULL...
+      */
+ 
+-    if (Tcl_ChannelWideSeekProc(parent->typePtr) == NULL) {
+-	*errorCodePtr = EINVAL;
+-	curPos = -1;
+-    } else {
+-	curPos = Tcl_ChannelWideSeekProc(parent->typePtr)(parent->instanceData, offset,
+-		seekMode, errorCodePtr);
+-    }
++    curPos = Tcl_ChannelWideSeekProc(parent->typePtr)(parent->instanceData,
++	    offset, seekMode, errorCodePtr);
+     if (curPos == -1) {
+ 	Tcl_SetErrno(*errorCodePtr);
+     }
+ 
+     *errorCodePtr = EOK;
+
+Index: tests/ioTrans.test
+==================================================================
+--- tests/ioTrans.test
++++ tests/ioTrans.test
+@@ -19,10 +19,11 @@
+ ::tcltest::loadTestedCommands
+ catch [list package require -exact tcl::test [info patchlevel]]
+ 
+ # Custom constraints used in this file
+ testConstraint testchannel [llength [info commands testchannel]]
++testConstraint exec [llength [info commands exec]]
+ testConstraint thread [expr {0 == [catch {package require Thread 2.7-}]}]
+ 
+ # testchannel cut|splice  Both needed to test the reflection in threads.
+ # thread::send
+ 
+@@ -2173,8 +2174,45 @@
+     return $res
+ } -cleanup {
+     catch {unset read}
+     close $chan
+ } -result {line one}
++
++test iortrans-bug-6141c15186 {writing must not discard input on a non-seekable channel} -constraints {
++    exec
++} -setup {
++    set path [makeFile {
++	fconfigure stdout -buffering line
++	puts a; puts b; puts c; gets stdin; puts d
++    } iortrans-6141c15186]
++    set f [open |[list [interpreter] $path] r+]
++    proc trans {cmd ch args} {
++	switch -- $cmd {
++	    initialize {return {initialize finalize read write}}
++	    read - write {return [lindex $args 0]}
++	}
++    }
++} -body {
++    chan push $f trans
++    fconfigure $f -buffering line -blocking 0
++    set r {}
++    proc readit {f} {
++	while {[gets $f line] >= 0} {
++	    lappend ::r $line
++	    if {$line eq "a"} {puts $f go}
++	}
++	if {[eof $f]} {set ::done 1}
++    }
++    fileevent $f readable [list readit $f]
++    set t [after 5000 {set ::done timeout}]
++    vwait ::done
++    after cancel $t
++    set r
++} -cleanup {
++    rename readit {}
++    catch {close $f}
++    rename trans {}
++    removeFile iortrans-6141c15186
++} -result {a b c d}
+ 
+ cleanupTests
+ return
+

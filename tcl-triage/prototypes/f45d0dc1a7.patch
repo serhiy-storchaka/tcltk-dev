@@ -1,0 +1,116 @@
+Index: generic/tclTest.c
+==================================================================
+--- generic/tclTest.c
++++ generic/tclTest.c
+@@ -332,10 +332,11 @@
+ static Tcl_ObjCmdProc2	TestUtfPrevCmd;
+ static Tcl_ObjCmdProc2	TestUtfToNormalizedDStringCmd;
+ static Tcl_ObjCmdProc2	TestUtfToNormalizedCmd;
+ static Tcl_ObjCmdProc2	TestNumUtfCharsCmd;
+ static Tcl_ObjCmdProc2	TestGetUniCharCmd;
++static Tcl_ObjCmdProc2	TestUniCharAtIndexCmd;
+ static Tcl_ObjCmdProc2	TestFindFirstCmd;
+ static Tcl_ObjCmdProc2	TestFindLastCmd;
+ static Tcl_ObjCmdProc2	TestHashSystemHashCmd;
+ static Tcl_ObjCmdProc2	TestGetIntForIndexCmd;
+ static Tcl_ObjCmdProc2	TestLutilCmd;
+@@ -699,10 +700,12 @@
+ 	    TestUtfPrevCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testnumutfchars",
+ 	    TestNumUtfCharsCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testgetunichar",
+ 	    TestGetUniCharCmd, NULL, NULL);
++    Tcl_CreateObjCommand2(interp, "testunicharatindex",
++	    TestUniCharAtIndexCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testfindfirst",
+ 	    TestFindFirstCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testfindlast",
+ 	    TestFindLastCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testgetintforindex",
+@@ -8150,10 +8153,41 @@
+     Tcl_SetObjResult(interp, Tcl_NewIntObj(c));
+ 
+     return TCL_OK;
+ }
+ 
++/*
++ *----------------------------------------------------------------------
++ *
++ * TestUniCharAtIndexCmd --
++ *
++ *	Used to check correct operation of Tcl_UniCharAtIndex
++ *	    testunicharatindex STRING INDEX
++ *
++ *----------------------------------------------------------------------
++ */
++static int
++TestUniCharAtIndexCmd(
++    TCL_UNUSED(void *),
++    Tcl_Interp *interp,		/* Current interpreter */
++    Tcl_Size objc,
++    Tcl_Obj *const *objv)	/* Argument strings */
++{
++    Tcl_WideInt index;
++
++    if (objc != 3) {
++	Tcl_WrongNumArgs(interp, 1, objv, "STRING INDEX");
++	return TCL_ERROR;
++    }
++    if (Tcl_GetWideIntFromObj(interp, objv[2], &index) != TCL_OK) {
++	return TCL_ERROR;
++    }
++    Tcl_SetObjResult(interp, Tcl_NewIntObj(
++	    Tcl_UniCharAtIndex(Tcl_GetString(objv[1]), (Tcl_Size)index)));
++    return TCL_OK;
++}
++
+ /*
+  *----------------------------------------------------------------------
+  *
+  * TestFindFirstCmd --
+  *
+
+Index: tests/utf.test
+==================================================================
+--- tests/utf.test
++++ tests/utf.test
+@@ -22,10 +22,11 @@
+ testConstraint testnumutfchars [llength [info commands testnumutfchars]]
+ testConstraint teststringobj [llength [info commands teststringobj]]
+ testConstraint testutfnext [llength [info commands testutfnext]]
+ testConstraint testutfprev [llength [info commands testutfprev]]
+ testConstraint testgetunichar [llength [info commands testgetunichar]]
++testConstraint testunicharatindex [llength [info commands testunicharatindex]]
+ testConstraint testuniclass [llength [info commands testuniclass]]
+ 
+ testConstraint tip413 [expr {[string trim \x00] eq {}}]
+ 
+ catch {unset x}
+@@ -774,10 +775,26 @@
+     string index 😀G 1
+ } G
+ test utf-8.12 {Tcl_UniCharAtIndex: Emoji} {
+     string index 😀G 2
+ } {}
++
++test utf-8.13 {Tcl_UniCharAtIndex: index = 0} testunicharatindex {
++    testunicharatindex abcd 0
++} 97
++test utf-8.14 {Tcl_UniCharAtIndex: index > 0} testunicharatindex {
++    testunicharatindex \u4E4E\u025A\xFF\u0543 2
++} 255
++test utf-8.15 {Tcl_UniCharAtIndex: index < 0} testunicharatindex {
++    testunicharatindex abcd -1
++} -1
++test utf-8.16 {Tcl_UniCharAtIndex: Emoji} testunicharatindex {
++    list [testunicharatindex \U1F600G 0] [testunicharatindex \U1F600G 1]
++} {128512 71}
++test utf-8.17 {Tcl_UniCharAtIndex: end of string} testunicharatindex {
++    testunicharatindex \U1F600G 2
++} 0
+ 
+ test utf-9.1 {Tcl_UtfAtIndex: index = 0} {
+     string range abcd 0 2
+ } abc
+ test utf-9.2 {Tcl_UtfAtIndex: index > 0} {
+

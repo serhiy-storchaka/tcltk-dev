@@ -1,0 +1,63 @@
+Index: tests/unixFCmd.test
+==================================================================
+--- tests/unixFCmd.test
++++ tests/unixFCmd.test
+@@ -437,10 +437,26 @@
+ test unixFCmd-20.2 {SetReadOnlyAttribute} -setup {
+     catch {file delete -force -- foo.test}
+ } -constraints {unix notRoot readonlyAttr} -returnCodes error -body {
+     file attributes foo.test -readonly 1
+ } -result {could not read "foo.test": no such file or directory}
++
++testConstraint defaultAcl [expr {[testConstraint unix] && ![catch {
++    file mkdir aclTest.dir
++    exec setfacl -d -m u::rwx,g::rwx,o::rwx aclTest.dir
++}]}]
++file delete -force aclTest.dir
++test unixFCmd-21.1 {file mkdir honours default ACL (Bug 623585)} -setup {
++    file delete -force aclTest.dir
++    file mkdir aclTest.dir
++    exec setfacl -d -m u::rwx,g::rwx,o::rwx aclTest.dir
++} -constraints {unix defaultAcl} -body {
++    file mkdir aclTest.dir/sub
++    file attributes aclTest.dir/sub -permissions
++} -cleanup {
++    file delete -force aclTest.dir
++} -result 0o40777
+ 
+ # cleanup
+ cleanup
+ cd $oldcwd
+ ::tcltest::cleanupTests
+
+Index: unix/tclUnixFCmd.c
+==================================================================
+--- unix/tclUnixFCmd.c
++++ unix/tclUnixFCmd.c
+@@ -686,22 +686,16 @@
+ 
+ static int
+ DoCreateDirectory(
+     const char *path)		/* Pathname of directory to create (native). */
+ {
+-    mode_t mode;
+-
+-    mode = umask(0);
+-    umask(mode);
+-
+     /*
+-     * umask return value is actually the inverse of the permissions.
++     * Leave applying the umask to mkdir(). Masking the mode here as well
++     * made it override a default ACL of the parent directory. [Bug 623585]
+      */
+ 
+-    mode = (0777 & ~mode) | S_IRUSR | S_IWUSR | S_IXUSR;
+-
+-    if (mkdir(path, mode) != 0) {			/* INTL: Native. */
++    if (mkdir(path, 0777) != 0) {			/* INTL: Native. */
+ 	return TCL_ERROR;
+     }
+     return TCL_OK;
+ }
+ 
+

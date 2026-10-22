@@ -1,0 +1,34 @@
+Index: doc/return.n
+==================================================================
+--- doc/return.n
++++ doc/return.n
+@@ -118,20 +118,26 @@
+ presented as a Tcl list for further processing by programs.
+ If no \fB\-errorcode\fR option is provided to \fBreturn\fR when
+ the \fB\-code error\fR option is provided, Tcl will set the value
+ of the \fB\-errorcode\fR entry in the return options dictionary
+ to the default value of \fBNONE\fR.  The \fB\-errorcode\fR return
+-option will also be stored in the global variable \fBerrorCode\fR.
++option will also be stored in the global variable \fBerrorCode\fR, but
++only when the error is actually raised, that is, when the \fB\-level\fR
++count reaches 0 (by default, when the procedure that called \fBreturn\fR
++returns).  If \fBreturn\fR is evaluated directly inside \fBcatch\fR or
++\fBtry\fR, they see the code \fBTCL_RETURN\fR and the global variable is
++not set.
+ .\" OPTION: -errorinfo
+ .TP
+ \fB\-errorinfo \fIinfo\fR
+ .
+ The \fB\-errorinfo\fR option receives special treatment only when the value
+ of the \fB\-code\fR option is \fBTCL_ERROR\fR.  Then \fIinfo\fR is the initial
+ stack trace, meant to provide to a human reader additional information
+ about the context in which the error occurred.  The stack trace will
+-also be stored in the global variable \fBerrorInfo\fR.
++also be stored in the global variable \fBerrorInfo\fR, under the same
++conditions as for \fB\-errorcode\fR above.
+ If no \fB\-errorinfo\fR option is provided to \fBreturn\fR when
+ the \fB\-code error\fR option is provided, Tcl will provide its own
+ initial stack trace value in the entry for \fB\-errorinfo\fR.  Tcl's
+ initial stack trace will include only the call to the procedure, and
+ stack unwinding will append information about higher stack levels, but
+

@@ -1,0 +1,214 @@
+Index: generic/threadPoolCmd.c
+==================================================================
+--- generic/threadPoolCmd.c
++++ generic/threadPoolCmd.c
+@@ -172,10 +172,13 @@
+ TpoolResume(ThreadPool *tpoolPtr);
+ 
+ static void
+ InitWaiter(void);
+ 
++static int
++WaitForSignal(Tcl_Interp *interp, ThreadPool *tpoolPtr);
++
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
+  * TpoolCreateObjCmd --
+@@ -342,11 +345,10 @@
+     Tcl_Size ii, len;
+     const char *tpoolName, *script;
+     TpoolResult *rPtr;
+     ThreadPool *tpoolPtr;
+ 
+-    ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
+ 
+     /*
+      * Syntax: tpool::post ?-detached? ?-nowait? tpoolId script
+      */
+ 
+@@ -410,13 +412,12 @@
+ 	    /*
+ 	     * Wait for worker to start while servicing the event loop
+ 	     */
+ 
+ 	    Tcl_MutexUnlock(&tpoolPtr->mutex);
+-	    tsdPtr->stop = -1;
+-	    while(tsdPtr->stop == -1) {
+-		Tcl_DoOneEvent(TCL_ALL_EVENTS);
++	    if (WaitForSignal(interp, tpoolPtr) != TCL_OK) {
++		return TCL_ERROR;
+ 	    }
+ 	    Tcl_MutexLock(&tpoolPtr->mutex);
+ 	}
+     } else {
+ 
+@@ -443,13 +444,12 @@
+ 	    /*
+ 	     * Wait for worker to start while servicing the event loop
+ 	     */
+ 
+ 	    Tcl_MutexUnlock(&tpoolPtr->mutex);
+-	    tsdPtr->stop = -1;
+-	    while(tsdPtr->stop == -1) {
+-		Tcl_DoOneEvent(TCL_ALL_EVENTS);
++	    if (WaitForSignal(interp, tpoolPtr) != TCL_OK) {
++		return TCL_ERROR;
+ 	    }
+ 	    Tcl_MutexLock(&tpoolPtr->mutex);
+ 	}
+     }
+ 
+@@ -516,11 +516,10 @@
+     Tcl_Obj *waitList, *doneList, **wObjv;
+     ThreadPool *tpoolPtr;
+     TpoolResult *rPtr;
+     Tcl_HashEntry *hPtr;
+ 
+-    ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
+ 
+     /*
+      * Syntax: tpool::wait tpoolId jobIdList ?listVar?
+      */
+ 
+@@ -582,13 +581,14 @@
+ 
+ 	Tcl_DecrRefCount(waitList);
+ 	PushWaiter(tpoolPtr);
+ 
+ 	Tcl_MutexUnlock(&tpoolPtr->mutex);
+-	tsdPtr->stop = -1;
+-	while (tsdPtr->stop == -1) {
+-	    Tcl_DoOneEvent(TCL_ALL_EVENTS);
++	if (WaitForSignal(interp, tpoolPtr) != TCL_OK) {
++	    Tcl_IncrRefCount(doneList);
++	    Tcl_DecrRefCount(doneList);
++	    return TCL_ERROR;
+ 	}
+ 	Tcl_MutexLock(&tpoolPtr->mutex);
+     }
+     Tcl_MutexUnlock(&tpoolPtr->mutex);
+ 
+@@ -1844,10 +1844,65 @@
+ 	tsdPtr->waitPtr->nextPtr  = NULL;
+ 	tsdPtr->waitPtr->threadId = Tcl_GetCurrentThread();
+ 	Tcl_CreateThreadExitHandler(ThrExitHandler, tsdPtr);
+     }
+ }
++
++/*
++ *----------------------------------------------------------------------
++ *
++ * WaitForSignal --
++ *
++ *  Services the event loop until a worker signals this (poster) thread,
++ *  which must have been pushed on the waiter list. Bails out if the
++ *  script in the interpreter has been canceled or has exceeded its
++ *  limits; the waiter is then taken off the waiter list. Must be called
++ *  with the pool mutex unlocked.
++ *
++ * Results:
++ *  TCL_OK when signaled, TCL_ERROR if canceled or out of limits.
++ *
++ * Side effects:
++ *  Runs event handlers.
++ *
++ *----------------------------------------------------------------------
++ */
++static int
++WaitForSignal(
++    Tcl_Interp *interp,
++    ThreadPool *tpoolPtr
++) {
++    ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
++    TpoolWaiter *waitPtr = tsdPtr->waitPtr;
++
++    tsdPtr->stop = -1;
++    while (tsdPtr->stop == -1) {
++	Tcl_DoOneEvent(TCL_ALL_EVENTS);
++	if (Tcl_Canceled(interp, TCL_LEAVE_ERR_MSG) == TCL_ERROR) {
++	    goto bailout;
++	}
++	if (Tcl_LimitExceeded(interp)) {
++	    Tcl_ResetResult(interp);
++	    Tcl_SetObjResult(interp, Tcl_NewStringObj("limit exceeded", TCL_INDEX_NONE));
++	    Tcl_SetErrorCode(interp, "TCL", "EVENT", "LIMIT", (char *)NULL);
++	    goto bailout;
++	}
++    }
++    return TCL_OK;
++
++  bailout:
++    Tcl_MutexLock(&tpoolPtr->mutex);
++    if (waitPtr->prevPtr || waitPtr->nextPtr || tpoolPtr->waitHead == waitPtr) {
++	if (tpoolPtr->waitTail == waitPtr) {
++	    tpoolPtr->waitTail = waitPtr->prevPtr;
++	}
++	SpliceOut(waitPtr, tpoolPtr->waitHead);
++	waitPtr->prevPtr = waitPtr->nextPtr = NULL;
++    }
++    Tcl_MutexUnlock(&tpoolPtr->mutex);
++    return TCL_ERROR;
++}
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
+  * ThrExitHandler --
+
+ADDED    tests/tkt-3447273fff.test
+Index: tests/tkt-3447273fff.test
+==================================================================
+--- /dev/null
++++ tests/tkt-3447273fff.test
+@@ -0,0 +1,48 @@
++package require tcltest
++namespace import ::tcltest::*
++tcltest::loadTestedCommands
++package require thread
++
++# tpool::wait and tpool::post serviced the event loop without checking
++# for [interp cancel] and [interp limit]; the wait only ended when the
++# job was done.
++test tkt-3447273fff-1 {tpool::wait respects interp cancel} -setup {
++    set c [interp create]
++    $c eval {
++	package require thread
++	set p [tpool::create]
++	set j [tpool::post $p {after 2000}]
++    }
++} -body {
++    after 200 [list interp cancel -unwind $c]
++    set t0 [clock milliseconds]
++    set rc [catch {$c eval {tpool::wait $p $j}} msg]
++    set fast [expr {[clock milliseconds] - $t0 < 1000}]
++    # A later wait in the same thread must still work.
++    list $rc $msg $fast [$c eval {expr {[tpool::wait $p $j] eq $j}}]
++} -cleanup {
++    $c eval {tpool::release $p}
++    interp delete $c
++} -result {1 {eval unwound} 1 1}
++
++test tkt-3447273fff-2 {tpool::wait respects interp time limit} -setup {
++    set c [interp create]
++    $c eval {
++	package require thread
++	set p [tpool::create]
++	set j [tpool::post $p {after 2000}]
++    }
++} -body {
++    interp limit $c time -milliseconds [expr {[clock milliseconds] + 200}]
++    set t0 [clock milliseconds]
++    set rc [catch {$c eval {tpool::wait $p $j}} msg]
++    set fast [expr {[clock milliseconds] - $t0 < 1000}]
++    interp limit $c time -seconds {} -milliseconds {}
++    list $rc $msg $fast
++} -cleanup {
++    interp bgerror $c {apply {args {}}}
++    $c eval {tpool::wait $p $j; tpool::release $p}
++    interp delete $c
++} -result {1 {limit exceeded} 1}
++
++::tcltest::cleanupTests
+

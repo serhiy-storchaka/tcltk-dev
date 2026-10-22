@@ -1,0 +1,769 @@
+<title>Tcl Bug Triage: Docs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Untouched open Tcl bug tickets: Docs</h1>
+  <p class="sub">Triage of 773 open and Pending Bug tickets of Tcl with no comment or check-in from me on 2026-10-16 (in Tcl's workflow Pending means "resolved, waiting for confirmation"). Reproduced on Linux (main 9.1 tip, 9.0 tip, 8.7b1, 8.6 tip, 8.5, 8.4 and old releases), on FreeBSD, NetBSD, OpenBSD and OpenIndiana VMs for platform tickets, and on a Windows 11 VM. Rows marked <span class="patch">patch</span> link to a prototype patch (276 in all, in <a href="https://github.com/serhiy-storchaka/tcltk-dev/tree/main/tcl-triage/prototypes">tcl-triage/prototypes</a>). Updated 2026-10-22: the emoji before each ticket id shows its progress.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">307</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">177</span> Already fixed</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">115</span> Not a bug / RFE</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">67</span> Not reproduced</a><a class="navchip c-docs cur" href="docs.html" aria-current="page"><span class="n">63</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">44</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="closed" aria-pressed="false"><span aria-hidden="true">✅</span> <span class="n">1</span> Closed</button><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">62</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, subsystem, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="docs"><h2><span class="dot c-docs"></span>Docs <span class="cnt">63</span></h2><details class="t" id="e4c24e86b5" data-s="e4c24e86b5 timer documentation typos 18. commands m-z docs (mostly fixed on main; one item left)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>e4c24e86b5</span><span class="yr">2026</span><span class="ti">timer documentation typos</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/e4c24e86b5.patch">patch</a><span class="vd">DOCS (mostly fixed on main; one item left)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/e4c24e86b5">Open ticket e4c24e86b5</a> · 18. Commands M-Z · filed 2026-08-10</p><div class="lab">Full verdict</div><p>DOCS (mostly fixed on main; one item left)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> doc/timer.n on main (2026-10-16). All the typos were fixed in <a class="h" href="https://core.tcl-lang.org/tcl/info/a14a16c336">a14a16c336</a>. The indentation of the <code>after ms script</code> and "Wall clock events" paragraphs was fixed by the .RS/.PP blocks cherry-picked in <a class="h" href="https://core.tcl-lang.org/tcl/info/151d53761e">151d53761e</a> (2026-09-07). The only item left: "Note that the output differs from after info." still sits after the event-loop paragraph at the end of DESCRIPTION, not under <code>timer info</code>. (timer exists only in 9.1.)
+</li>
+<li><span class="k">Cause</span> doc/timer.n
+</li>
+<li><span class="k">Prototype</span> prototypes/e4c24e86b5.patch (8 changed lines: moves the note into the <code>timer info</code> item as an .RS/.PP block; also fixes the stray space in <code>\fB monotonic</code>). Checked with <code>man -l</code>.
+</li>
+<li><span class="k">Suggested ticket comment</span> Indentation was fixed by <a class="h" href="https://core.tcl-lang.org/tcl/info/151d53761e">151d53761e</a>. Proposed patch moves "Note that the output differs from after info" under the timer info item; after that the ticket can be closed.
+</li></ul></div></details><details class="t" id="07000bd237" data-s="07000bd237 bignum documentation needs to be clarified w.r.t mp_int handling 56. libtommath docs" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>07000bd237</span><span class="yr">2025</span><span class="ti">Bignum documentation needs to be clarified w.r.t mp_int handling</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/07000bd237.patch">patch</a><span class="vd">DOCS</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/07000bd237">Open ticket 07000bd237</a> · 56. LibTomMath · filed 2025-11-10</p><div class="lab">Full verdict</div><p>DOCS</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> read generic/tclObj.c (main): Tcl_SetBignumObj either mp_clear()s the value (fits a wide) or moves its digits into the object and zeroes the mp_int (TclSetBignumInternalRep); GetBignumFromObj does mp_init_copy / mp_init_i64 or moves the digits out (Take on unshared), so the caller always owns an initialized mp_int on success; Tcl_InitBignumFromDouble returns TCL_ERROR before mp_init for Inf/NaN. doc/IntObj.3 says none of this; only the source comment for Tcl_GetBignumFromObj does.
+</li>
+<li><span class="k">Cause</span> doc/IntObj.3 lacks the ownership rules.
+</li>
+<li><span class="k">Prototype</span> prototypes/07000bd237.patch (14 added lines in doc/IntObj.3: two paragraphs, for New/Set and for Get/Take/InitBignumFromDouble)
+</li>
+<li><span class="k">Suggested ticket comment</span> Proposed doc patch for IntObj.3: New/SetBignumObj take over and clear the mp_int; Get/TakeBignumFromObj and Tcl_InitBignumFromDouble initialize it themselves and on success the caller must mp_clear it (on failure it is left uninitialized).
+</li></ul></div></details><details class="t" id="858a615194" data-s="858a615194 oo::define supports classvariable but this is not really documented 10. objects docs (partly not-a-bug: there is no `oo::define classvariable`; `classvariable` is a method-body command documented in classvariable(n), which the define.n example uses without saying so)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>858a615194</span><span class="yr">2025</span><span class="ti">oo::define supports classvariable but this is not really documented</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/858a615194.patch">patch</a><span class="vd">DOCS (partly NOT-A-BUG: there is no <code>oo::define classvariable</code>; <code>classvariable</code> is a method-body command documented in classvariable(n), which the …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/858a615194">Open ticket 858a615194</a> · 10. Objects · filed 2025-10-08</p><div class="lab">Full verdict</div><p>DOCS (partly NOT-A-BUG: there is no <code>oo::define classvariable</code>; <code>classvariable</code> is a method-body command documented in classvariable(n), which the define.n example uses without saying so)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main: <code>oo::define oo::object classvariable x</code> -&gt; invalid command name; ::oo::define::* has no classvariable.
+</li>
+<li><span class="k">Cause</span> doc/define.n example (TIP 478) uses classvariable without a pointer to classvariable(n); SEE ALSO lacks it. The earlier comment proposing to add it to the definitions list is mistaken.
+</li>
+<li><span class="k">Prototype</span> prototypes/858a615194.patch (35 lines, doc only): one explanatory sentence before the example + classvariable(n) in SEE ALSO. Class constants: no mechanism, left as is.
+</li>
+<li><span class="k">Suggested ticket comment</span> &amp;#91;classvariable&amp;#93; is not an oo::define subcommand but a command for use inside methods, documented in classvariable(n). Proposed doc patch: explain this in the define.n example and add classvariable(n) to SEE ALSO.
+</li></ul></div></details><details class="t" id="81ebe684b4" data-s="81ebe684b4 tclfindcompiledlocal() header comments are false 47. bytecode compiler docs (confirmed in main, 9.0, 8.6 sources)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>81ebe684b4</span><span class="yr">2025</span><span class="ti">TclFindCompiledLocal() header comments are false</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/81ebe684b4.patch">patch</a><span class="vd">DOCS (confirmed in main, 9.0, 8.6 sources)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/81ebe684b4">Open ticket 81ebe684b4</a> · 47. Bytecode Compiler · filed 2025-05-30</p><div class="lab">Full verdict</div><p>DOCS (confirmed in main, 9.0, 8.6 sources)</p><ul>
+<li><span class="k">Platform</span> docs (internal comment)
+</li>
+<li><span class="k">Tested</span> source reading of main generic/tclCompile.c; the 8.6/9.0 code has the same non-proc branch.
+</li>
+<li><span class="k">Cause</span> generic/tclCompile.c:TclFindCompiledLocal: when envPtr-&gt;procPtr is NULL (non-body script) it only looks up the frame's LocalCache and returns TCL_INDEX_NONE for a NULL name (and never creates); this branch came with 302b0120aa (2008-06-08, 8.6 dev), after the 8.5 comment was written.
+</li>
+<li><span class="k">Prototype</span> prototypes/81ebe684b4.patch (47 lines, comment only, no test): rewrites description/Results/Side effects to cover the non-proc case and the TCL_INDEX_NONE result of AnonymousLocal().
+</li>
+<li><span class="k">Suggested ticket comment</span> Since 302b0120aa (2008) the non-proc branch never creates locals, so NULL names give TCL_INDEX_NONE there. Proposed corrected header comment in prototype patch.
+</li></ul></div></details><details class="t" id="78f4421436" data-s="78f4421436 tcl_initstringrep has no description in doc/objecttype.3 10. objects docs (partly addressed: 8f9c7f5fd8, 2025-05-02, on main only; 9.0 still lacks it; 8.6 has no such api)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>78f4421436</span><span class="yr">2025</span><span class="ti">Tcl_InitStringRep has no description in doc/ObjectType.3</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/78f4421436.patch">patch</a><span class="vd">DOCS (partly addressed: 8f9c7f5fd8, 2025-05-02, on main only; 9.0 still lacks it; 8.6 has no such API)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/78f4421436">Open ticket 78f4421436</a> · 10. Objects · filed 2025-05-02</p><div class="lab">Full verdict</div><p>DOCS (partly addressed: 8f9c7f5fd8, 2025-05-02, on main only; 9.0 still lacks it; 8.6 has no such API)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> doc/ObjectType.3 in main, tcl9.0, tcl8.7.
+</li>
+<li><span class="k">Cause</span> since 4da790cbea (2024-02-20) the Tcl_InitStringRep paragraph was mislabelled "Tcl_FreeInternalRep performs ..." (so Tcl_FreeInternalRep had no real description); 8f9c7f5fd8 then added a second copy with the right name, leaving a duplicate. Code check: Tcl_InitStringRep uses Tcl_AttemptAlloc/Realloc and does not panic; it returns NULL on failure.
+</li>
+<li><span class="k">Prototype</span> prototypes/78f4421436.patch (56 lines, doc only): real Tcl_FreeInternalRep paragraph; one Tcl_InitStringRep paragraph (bytes must be NULL if a string rep exists, null termination, no panic, NULL on allocation failure); "uninitialzed" typo fixed. Applies to 9.0 too.
+</li>
+<li><span class="k">Suggested ticket comment</span> The paragraph headed Tcl_FreeInternalRep actually described Tcl_InitStringRep, so main now has it twice and 9.0 has it under the wrong name. Proposed doc patch fixes both; should go to 9.0 as well.
+</li></ul></div></details><details class="t" id="31fedb885e" data-s="31fedb885e tcl_exprlong documentation omission 69. other docs (behaviour confirmed in main, 9.0 and 8.6 by reading the code)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>31fedb885e</span><span class="yr">2025</span><span class="ti">Tcl_ExprLong documentation omission</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/31fedb885e.patch">patch</a><span class="vd">DOCS (behaviour confirmed in main, 9.0 and 8.6 by reading the code)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/31fedb885e">Open ticket 31fedb885e</a> · 69. Other · filed 2025-03-25</p><div class="lab">Full verdict</div><p>DOCS (behaviour confirmed in main, 9.0 and 8.6 by reading the code)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> generic/tclBasic.c on main, 9.0 and 8.6: Tcl_ExprLong/Tcl_ExprDouble/Tcl_ExprBoolean store 0 and Tcl_ExprString sets the result to 0 for "" ("Legacy compatibility"). The *Obj variants raise "empty expression". doc/ExprLong.3 does not mention this.
+</li>
+<li><span class="k">Cause</span> doc/ExprLong.3 omission (the code comment says this is deliberate legacy behaviour)
+</li>
+<li><span class="k">Prototype</span> prototypes/31fedb885e.patch (6 changed lines, docs only; checked the rendering with man -l)
+</li>
+<li><span class="k">Suggested ticket comment</span> Proposed doc fix (patch attached) documents the legacy behaviour: an empty string is not an error for Tcl_ExprLong/Double/Boolean/String, unlike expr and Tcl_ExprObj. Deprecating these functions (jan's suggestion) can be done separately.
+</li></ul></div></details><details class="t" id="236b4d8e75" data-s="236b4d8e75 fcopy / chan copy documentation none docs (still open: doc/fcopy.n is standalone, doc/chan.n `copy` is a shorter, partly different text)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>236b4d8e75</span><span class="yr">2024</span><span class="ti">fcopy / chan copy documentation</span><span class="vd">DOCS (still open: doc/fcopy.n is standalone, doc/chan.n <code>copy</code> is a shorter, partly different text)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/236b4d8e75">Open ticket 236b4d8e75</a> · None · filed 2024-04-23</p><div class="lab">Full verdict</div><p>DOCS (still open: doc/fcopy.n is standalone, doc/chan.n <code>copy</code> is a shorter, partly different text)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> compared doc/chan.n and doc/fcopy.n on main; checked the -size unit on main, 9.0.5, 8.6.18, 8.5.19 (4 x "ä" in a utf-8 file, both channels utf-8, <code>fcopy -size 2</code>).
+</li>
+<li><span class="k">Differences</span> (1) chan.n always says "characters", while fcopy.n says bytes for binary input and characters otherwise. (2) fcopy.n has a "Depreciated feature" paragraph: with the tcl8 profile and equal encodings the copy is binary and -size counts bytes. That is false on 9.0/main, where the copy gives 2 characters/4 bytes with both strict and tcl8; only 8.6/8.5 copy 2 bytes. (3) chan.n lacks fcopy.n's translation, encoding/profile and EILSEQ error-recovery sections. (4) chan.n has typos ("result in the error", "provides message"). fcopy.n also uses inchan/outchan where the synopsis says inputChan/outputChan, and spells it "Depreciated".
+</li>
+<li><span class="k">Prototype</span> none (docs restructuring; needs a decision on which text wins). The facts above should make the merge mechanical: move the translation/encoding/error sections to chan.n, drop the tcl8 paragraph for 9.x, and make fcopy.n a pointer like puts.n.
+</li>
+<li><span class="k">Suggested ticket comment</span> fcopy.n's "deprecated feature" paragraph (tcl8 profile + same encoding = binary copy, -size in bytes) does not match 9.0/main: <code>fcopy -size 2</code> copies 2 characters with both strict and tcl8; only 8.6 copied bytes. Apart from that, fcopy.n is a superset of chan.n (translation, encoding/profile, EILSEQ recovery), so its text can move into chan.n and fcopy.n can reference it.
+</li></ul></div></details><details class="t" id="a97680cbed" data-s="a97680cbed tcl_fsjointopath(): outdated comment 37. file system docs (still outdated in main, 9.0, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>a97680cbed</span><span class="yr">2023</span><span class="ti">Tcl_FSJoinToPath(): outdated comment</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/a97680cbed.patch">patch</a><span class="vd">DOCS (still outdated in main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/a97680cbed">Open ticket a97680cbed</a> · 37. File System · filed 2023-07-25</p><div class="lab">Full verdict</div><p>DOCS (still outdated in main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> source inspection: generic/tclFileName.c comments of Tcl_FSJoinToPath and TclFSJoinPathHelper (main), same comment in 9.0 and 8.6; the code just forwards to TclJoinPath (since 55c8c6c155), which does not touch the inputs' refcounts. doc/FileSystem.3 on main still says zero-refcount inputs "will be freed when this function returns", contradicting the general rule in the same page that zero-refcount values must not be passed.
+</li>
+<li><span class="k">Cause</span> comments/docs not updated after 55c8c6c155 (dgp, TclJoinPath refactoring)
+</li>
+<li><span class="k">Prototype</span> prototypes/a97680cbed.patch (62 lines, comments in tclFileName.c ×2 + FileSystem.3 paragraph; no test)
+</li>
+<li><span class="k">Suggested ticket comment</span> Still outdated on all branches, and the Tcl_FSJoinToPath paragraph in FileSystem.3 has the same stale statement. Proposed comment/doc fix: reference counts of the arguments are not changed and must not be zero.
+</li></ul></div></details><details class="t" id="5c2f6c2ff4" data-s="5c2f6c2ff4 info procs/body/args only return already auto_loaded procs 38. init - library - autoload docs (behaviour by design; reproduced on main, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>5c2f6c2ff4</span><span class="yr">2021</span><span class="ti">info procs/body/args only return already auto_loaded procs</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/5c2f6c2ff4.patch">patch</a><span class="vd">DOCS (behaviour by design; REPRODUCED on main, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/5c2f6c2ff4">Open ticket 5c2f6c2ff4</a> · 38. Init - Library - Autoload · filed 2021-01-06</p><div class="lab">Full verdict</div><p>DOCS (behaviour by design; REPRODUCED on main, 8.6)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main build, 8.6.18: <code>info body tcl_endOfWord</code> errors "isn't a procedure" and <code>info procs tcl_end*</code> is empty until the proc is called.
+</li>
+<li><span class="k">Cause</span> auto-loadable procs only exist in <code>auto_index</code> until <code>unknown</code>/<code>auto_load</code> sources them; <code>info</code> (generic/tclCmdIL.c) looks only at existing commands. Intended.
+</li>
+<li><span class="k">Prototype</span> prototypes/5c2f6c2ff4.patch (4 changed lines, docs only: info.n <code>info procs</code> paragraph mentions not-yet-loaded procs and <code>auto_load</code>)
+</li>
+<li><span class="k">Suggested ticket comment</span> This is by design: auto-loadable procedures do not exist until they are loaded, so <code>info procs/args/body/default</code> don't see them. Proposed doc note in info.n pointing to <code>auto_load</code>.
+</li></ul></div></details><details class="t" id="21e3c44ac9" data-s="21e3c44ac9 table encoding limitations? 10. objects docs" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>21e3c44ac9</span><span class="yr">2020</span><span class="ti">Table encoding limitations?</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/21e3c44ac9.patch">patch</a><span class="vd">DOCS</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/21e3c44ac9">Open ticket 21e3c44ac9</a> · 10. Objects · filed 2020-04-23</p><div class="lab">Full verdict</div><p>DOCS</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> reading generic/tclEncoding.c on main: TableEncodingData toUnicode/fromUnicode are still <code>unsigned short</code> pages indexed by the high byte, so .enc table encodings are limited to 1–2 byte sequences and BMP characters (anything above U+FFFF goes to the fallback). doc/Encoding.3 only implies it ("2-byte Unicode", "double-byte numbers").
+</li>
+<li><span class="k">Cause</span> by design of the .enc table format.
+</li>
+<li><span class="k">Prototype</span> prototypes/21e3c44ac9.patch (6 changed lines, doc/Encoding.3 only): one paragraph stating the 2-byte/BMP limit and pointing to Tcl_CreateEncoding.
+</li>
+<li><span class="k">Suggested ticket comment</span> Confirmed: table-based .enc files can only map up to 2-byte sequences to U+0000–U+FFFF; anything else needs Tcl_CreateEncoding(). Proposed doc clarification for doc/Encoding.3 (ENCODING FILES).
+</li></ul></div></details><details class="t" id="6e156333bc" data-s="6e156333bc documentation: contradiction in tcl_getsring/tcl_getstringfromobj vs tcl_updatestringproc 10. objects docs" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>6e156333bc</span><span class="yr">2019</span><span class="ti">Documentation: Contradiction in Tcl_GetSring/Tcl_GetStringFromObj vs Tcl_UpdateStringProc</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/6e156333bc.patch">patch</a><span class="vd">DOCS</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/6e156333bc">Open ticket 6e156333bc</a> · 10. Objects · filed 2019-07-22</p><div class="lab">Full verdict</div><p>DOCS</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> doc/StringObj.3 on main, 9.0 and 8.6 still says the pointer from Tcl_GetString is writable "so that extension author ... will be able to modify the string representation within the Tcl_UpdateStringProc", while ObjectType.3 says the updateStringProc is only called when bytes is NULL (calling Tcl_GetString from there would recurse). The sentence comes from <a class="h" href="https://core.tcl-lang.org/tcl/info/b1c464dbca">b1c464dbca</a> (msofer).
+</li>
+<li><span class="k">Cause</span> misleading sentence in doc/StringObj.3.
+</li>
+<li><span class="k">Prototype</span> prototypes/6e156333bc.patch (10 changed lines, doc only, for 9.x since it names Tcl_InitStringRep): says the pointer is writable for historical reasons but read-only in practice, and that an updateStringProc builds the rep itself (e.g. with Tcl_InitStringRep) and does not get it through Tcl_GetString. For 8.6 the same text without the Tcl_InitStringRep mention.
+</li>
+<li><span class="k">Suggested ticket comment</span> The reporter is right: an updateStringProc runs only when bytes is NULL, so it cannot use Tcl_GetString(). Proposed doc fix for StringObj.3: drop that rationale and say the returned pointer must be treated as read-only.
+</li></ul></div></details><details class="t" id="e7dea09f58" data-s="e7dea09f58 doc glitch in nre(3) 60. nre and coroutines docs (still present on main, 9.0, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>e7dea09f58</span><span class="yr">2018</span><span class="ti">Doc glitch in NRE(3)</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/e7dea09f58.patch">patch</a><span class="vd">DOCS (still present on main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/e7dea09f58">Open ticket e7dea09f58</a> · 60. NRE and coroutines · filed 2018-03-26</p><div class="lab">Full verdict</div><p>DOCS (still present on main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> by reading doc/NRE.3 on main, 9.0 and 8.6. The androwish diffs linked in the ticket cannot be fetched (no network), so the fix is reconstructed from the EXAMPLE section: the post-processing callback is called TheCmdPostProc in the text and the Tcl_NRAddCallback call but defined as TheCmdNRPostProc; <code>TheCmdNRObjProc</code> is missing its <code>(</code>; "a a wrapper"; the text says Tcl_NRCallObjProc while the code calls Tcl_NRCallObjProc2; Tcl_EvalObjEx/Tcl_NREvalObj are italic instead of bold; "possible implement".
+</li>
+<li><span class="k">Cause</span> doc/NRE.3 EXAMPLE section.
+</li>
+<li><span class="k">Prototype</span> prototypes/e7dea09f58.patch (12 changed lines, docs only, against main; 8.6 needs the same edits except the ...2 names)
+</li>
+<li><span class="k">Suggested ticket comment</span> The EXAMPLE section of NRE.3 is still inconsistent (TheCmdPostProc vs TheCmdNRPostProc, a missing parenthesis, "a a"). Proposed doc fix. (Please check it against chw's androwish diff <a class="h" href="https://core.tcl-lang.org/tcl/info/0d82e5310a">0d82e5310a</a>.)
+</li></ul></div></details><details class="t" id="f4c118f67c" data-s="f4c118f67c improve documentation on timezones for the clock command 16. commands a-h docs (still valid: clock.n time zones lists only the legacy abbreviations and gives no guidance on which location names to use; the list is also out of date)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>f4c118f67c</span><span class="yr">2018</span><span class="ti">Improve documentation on timezones for the clock command</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/f4c118f67c.patch">patch</a><span class="vd">DOCS (still valid: clock.n TIME ZONES lists only the legacy abbreviations and gives no guidance on which location names to use; the list is also ou…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/f4c118f67c">Open ticket f4c118f67c</a> · 16. Commands A-H · filed 2018-01-25</p><div class="lab">Full verdict</div><p>DOCS (still valid: clock.n TIME ZONES lists only the legacy abbreviations and gives no guidance on which location names to use; the list is also out of date)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> doc/clock.n on main, 9.0, 8.6 (same text) against the LegacyTimeZone table in library/clock.tcl
+</li>
+<li><span class="k">Cause</span> the abbreviation list in clock.n lacks akst, akdt, fwt, fst, kst, jdt, kdt and the military single letters, which clock.tcl accepts; nothing says that the abbreviations are ambiguous fixed offsets
+</li>
+<li><span class="k">Prototype</span> prototypes/f4c118f67c.patch (main, doc only, 28 changed lines): completes the list, mentions the military letters, and adds a paragraph that the abbreviations are ambiguous fixed offsets (cst = -0600, ist = +0530) with examples of :America/Chicago, :Asia/Shanghai, :Asia/Kolkata, :Europe/London. A full legacy-to-location table as the reporter suggests was not added (many abbreviations have several meanings, see the comments of <a class="h" href="https://core.tcl-lang.org/tcl/info/dc69e5ecf0">dc69e5ecf0</a>). Checked with <code>man -l</code>. Side note: the tzdata path in the text is the odd "/no_backup/tools/lib/tcl9.0/clock/tzdata" (tcl8.5 in 8.6)
+</li>
+<li><span class="k">Suggested ticket comment</span> Proposed doc update for clock.n in branch (name tbd): the abbreviation list now matches what clock.tcl accepts, and a new paragraph says that these are ambiguous fixed offsets and recommends location names such as :America/Chicago or :Asia/Shanghai. A complete mapping table is not practical because many abbreviations have several meanings.
+</li></ul></div></details><details class="t" id="3c05b4568a" data-s="3c05b4568a documentation for tcl_evalobj() is missing 45. parsing and eval docs (still missing on main, 9.0, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3c05b4568a</span><span class="yr">2017</span><span class="ti">Documentation for Tcl_EvalObj() is missing</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/3c05b4568a.patch">patch</a><span class="vd">DOCS (still missing on main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3c05b4568a">Open ticket 3c05b4568a</a> · 45. Parsing and Eval · filed 2017-11-21</p><div class="lab">Full verdict</div><p>DOCS (still missing on main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> by reading. Tcl_EvalObj is still a macro for <code>Tcl_EvalObjEx(interp, objPtr, 0)</code> in generic/tclDecls.h (main: "Deprecated Tcl procedures" block; also in 9.0 and 8.6), but doc/Eval.3 lists only its sibling Tcl_GlobalEvalObj (NAME, SYNOPSIS and the "older procedures that are now deprecated" paragraph). It was dropped from the docs in <a class="h" href="https://core.tcl-lang.org/tcl/info/f3b32fb71c">f3b32fb71c</a> (1999).
+</li>
+<li><span class="k">Cause</span> doc/Eval.3.
+</li>
+<li><span class="k">Prototype</span> prototypes/3c05b4568a.patch (8 changed lines, docs only: adds Tcl_EvalObj to NAME and SYNOPSIS, plus a sentence saying it is deprecated and equivalent to Tcl_EvalObjEx with flags 0)
+</li>
+<li><span class="k">Suggested ticket comment</span> Tcl_EvalObj still exists as a compatibility macro (Tcl_EvalObjEx with flags 0) but is missing from Eval.3, while Tcl_GlobalEvalObj is documented. Proposed doc fix that documents it as deprecated next to Tcl_GlobalEvalObj.
+</li></ul></div></details><details class="t" id="3121e79060" data-s="3121e79060 create manpages for {tcl,tk}::pkgconfig 54. configuration reporting docs (still missing in main/9.0/8.6; only regconfig.3 describes the generic list/get interface, tm.n mentions `tcl::pkgconfig get libdir,runtime`)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3121e79060</span><span class="yr">2017</span><span class="ti">Create manpages for {tcl,tk}::pkgconfig</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/3121e79060.patch">patch</a><span class="vd">DOCS (still missing in main/9.0/8.6; only RegConfig.3 describes the generic list/get interface, tm.n mentions <code>tcl::pkgconfig get libdir,runtime</code>)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3121e79060">Open ticket 3121e79060</a> · 54. Configuration Reporting · filed 2017-11-01</p><div class="lab">Full verdict</div><p>DOCS (still missing in main/9.0/8.6; only RegConfig.3 describes the generic list/get interface, tm.n mentions <code>tcl::pkgconfig get libdir,runtime</code>)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> doc/ of main, Tk main
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> prototypes/3121e79060.patch (main, new doc/pkgconfig.n, 52 lines; renders with nroff): synopsis, list/get, all keys of tclPkgConfig.c (booleans, *,install / *,runtime paths, dllfile,runtime), example, SEE ALSO Tcl_RegisterConfig. tk::pkgconfig would need its own page in Tk (keys differ: fontsystem etc.).
+</li>
+<li><span class="k">Suggested ticket comment</span> Proposed doc/pkgconfig.n describing tcl::pkgconfig and its keys; Tk needs a matching page for tk::pkgconfig.
+</li></ul></div></details><details class="t" id="9b3ca8dcad" data-s="9b3ca8dcad auto_load docs are lies 38. init - library - autoload docs (confirmed on main, 9.0, 8.6, 8.4)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>9b3ca8dcad</span><span class="yr">2017</span><span class="ti">auto_load docs are lies</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/9b3ca8dcad.patch">patch</a><span class="vd">DOCS (confirmed on main, 9.0, 8.6, 8.4)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/9b3ca8dcad">Open ticket 9b3ca8dcad</a> · 38. Init - Library - Autoload · filed 2017-06-22</p><div class="lab">Full verdict</div><p>DOCS (confirmed on main, 9.0, 8.6, 8.4)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> work-a2/9b3ca8dcad.tcl: with <code>auto_path</code> unset and env(TCLLIBPATH) pointing to a dir with a tclIndex, <code>auto_load</code> returns 0 on all versions. It does not fall back to TCLLIBPATH or the library dir.
+</li>
+<li><span class="k">Cause</span> library/init.tcl:auto_load returns 0 when <code>auto_path</code> does not exist (<code>if {![info exists auto_path]} {return 0}</code>); TCLLIBPATH is only used by tcl::InitAutoPath at startup (as tclvars.n and library.n's env(TCLLIBPATH) entry already say).
+</li>
+<li><span class="k">Prototype</span> prototypes/9b3ca8dcad.patch (10 changed lines, doc/library.n only): auto_path is initialized from TCLLIBPATH and the library dirs; with no auto_path only existing auto_index entries are used. No other misstatements found in the auto_load paragraph.
+</li>
+<li><span class="k">Suggested ticket comment</span> Confirmed: auto_load never reads env(TCLLIBPATH); that variable only seeds auto_path at startup, and without auto_path auto_load just returns 0. Proposed doc fix for library.n attached.
+</li></ul></div></details><details class="t" id="994f9d7a20" data-s="994f9d7a20 tcl_parsevar - new builtin commands docs (behaviour is intentional, the same on main and 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>994f9d7a20</span><span class="yr">2017</span><span class="ti">Tcl_ParseVar</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/994f9d7a20.patch">patch</a><span class="vd">DOCS (behaviour is intentional, the same on main and 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/994f9d7a20">Open ticket 994f9d7a20</a> · - New Builtin Commands · filed 2017-06-17</p><div class="lab">Full verdict</div><p>DOCS (behaviour is intentional, the same on main and 8.6)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> <code>testparsevar {$}</code>, <code>{$ x}</code>, <code>{$.}</code> on the main build and the 8.6 tip tcltest: each returns <code>$</code> with termPtr just past the <code>$</code>.
+</li>
+<li><span class="k">Cause</span> generic/tclParse.c:Tcl_ParseVar returns the static string "$" when Tcl_ParseVarName produces a single TCL_TOKEN_TEXT token (no variable name follows), matching the script-level rule that a lone <code>$</code> is literal. doc/ParseCmd.3 only mentions "value of the variable" and NULL.
+</li>
+<li><span class="k">Prototype</span> prototypes/994f9d7a20.patch (5 changed lines, doc/ParseCmd.3): documents the lone-<code>$</code> case.
+</li>
+<li><span class="k">Suggested ticket comment</span> Returning "$" is deliberate: a <code>$</code> without a following variable name is no substitution, same as in scripts. Proposed doc addition to ParseCmd.3 attached.
+</li></ul></div></details><details class="t" id="f44329748b" data-s="f44329748b lsort: obsolete parts in the documentation 17. commands i-l docs (confirmed: the paragraph is wrong since 8.5 and still in main, 9.0, 8.6 lsort.n)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>f44329748b</span><span class="yr">2016</span><span class="ti">lsort: obsolete parts in the documentation</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/f44329748b.patch">patch</a><span class="vd">DOCS (confirmed: the paragraph is wrong since 8.5 and still in main, 9.0, 8.6 lsort.n)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/f44329748b">Open ticket f44329748b</a> · 17. Commands I-L · filed 2016-08-25</p><div class="lab">Full verdict</div><p>DOCS (confirmed: the paragraph is wrong since 8.5 and still in main, 9.0, 8.6 lsort.n)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> <code>lsort -integer 0.0</code> errors on main and 8.6.18 ("expected integer but got 0.0") and returns 0.0 on 8.4.20; <code>lsort -real abc</code> errors on 8.6+ and is accepted on 8.4.
+</li>
+<li><span class="k">Cause</span> since 8.5, lsort validates the elements of a one-element list; the paragraph in doc/lsort.n describes the 8.4 behaviour.
+</li>
+<li><span class="k">Prototype</span> prototypes/f44329748b.patch (5 changed lines, doc/lsort.n): removes the paragraph.
+</li>
+<li><span class="k">Suggested ticket comment</span> Agreed: since 8.5 a single element is validated too (<code>lsort -integer 0.0</code> errors). Proposed fix: drop the obsolete paragraph from lsort.n.
+</li></ul></div></details><details class="t" id="f8bc8efdf5" data-s="f8bc8efdf5 tutorial lesson 15 uses listname inconsistently with lappend/linsert/lreplace 75. tutorial docs (claim valid; current tutorial text not checkable offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>f8bc8efdf5</span><span class="yr">2016</span><span class="ti">Tutorial lesson 15 uses listName inconsistently with lappend/linsert/lreplace</span><span class="vd">DOCS (claim valid; current tutorial text not checkable offline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/f8bc8efdf5">Open ticket f8bc8efdf5</a> · 75. Tutorial · filed 2016-08-23</p><div class="lab">Full verdict</div><p>DOCS (claim valid; current tutorial text not checkable offline)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main, 8.6: <code>linsert mylist 1 x</code> -&gt; <code>mylist x</code> (name used as a literal list); <code>linsert $mylist 1 oneandahalf</code> gives the expected result. doc/linsert.n and lreplace.n correctly use <code>list</code>.
+</li>
+<li><span class="k">Cause</span> Lesson 15 (Tcl15.html) signatures/examples pass a list name to linsert/lreplace, which take a list value.
+</li>
+<li><span class="k">Prototype</span> none (tutorial source not in tcl.fossil)
+</li>
+<li><span class="k">Suggested ticket comment</span> linsert and lreplace take a list value, not a variable name; Lesson 15 should use <code>list</code> in the synopses and <code>$mylist</code> in the examples.
+</li></ul></div></details><details class="t" id="9a829af10f" data-s="9a829af10f source encoding for modules (tcl::tm) not correctly documented 39. package manager docs (8.6 only; on 9.x the man page is already accurate)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>9a829af10f</span><span class="yr">2015</span><span class="ti">Source encoding for modules (tcl::tm) not correctly documented</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/9a829af10f.patch">patch</a><span class="vd">DOCS (8.6 only; on 9.x the man page is already accurate)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/9a829af10f">Open ticket 9a829af10f</a> · 39. Package Manager · filed 2015-12-09</p><div class="lab">Full verdict</div><p>DOCS (8.6 only; on 9.x the man page is already accurate)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> read library/tm.tcl and doc/tm.n on main, 9.0, 8.6
+</li>
+<li><span class="k">Cause</span> 8.6 tm.tcl registers <code>source -encoding utf-8 $file</code>, but doc/tm.n says modules are loaded with plain <code>source module_file</code>, which in 8.6 means the system encoding. In 9.0/9.1 tm.tcl uses plain <code>source $file</code>, and <code>source</code> defaults to utf-8 there, so the man page is right.
+</li>
+<li><span class="k">Prototype</span> prototypes/9a829af10f.patch (against core-8-6-branch, doc only, 9 changed lines: <code>source -encoding utf-8</code> in the three examples plus one sentence saying modules are always read as utf-8)
+</li>
+<li><span class="k">Suggested ticket comment</span> In 9.0+ <code>source</code> defaults to utf-8, so doc/tm.n is correct there. 8.6 tm.n still shows plain <code>source</code>. Proposed doc fix for core-8-6-branch: use <code>source -encoding utf-8</code> in the examples and state that modules are always read as utf-8.
+</li></ul></div></details><details class="t" id="3ce04c1873" data-s="3ce04c1873 return command documentation retrun option section &quot;misleading&quot; 18. commands m-z docs (main, 9.0, 8.6: same text)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3ce04c1873</span><span class="yr">2013</span><span class="ti">Return command documentation RETRUN OPTION section "misleading"</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/3ce04c1873.patch">patch</a><span class="vd">DOCS (main, 9.0, 8.6: same text)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3ce04c1873">Open ticket 3ce04c1873</a> · 18. Commands M-Z · filed 2013-08-26</p><div class="lab">Full verdict</div><p>DOCS (main, 9.0, 8.6: same text)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> 9.0.5, 8.6.18: <code>catch {return -code error -errorinfo {Oh no!} -errorcode {foo bar} foobar}</code> gives 2 (TCL_RETURN) and leaves ::errorInfo/::errorCode unchanged. The same <code>return</code> inside a proc that is caught sets both.
+</li>
+<li><span class="k">Cause</span> doc/return.n says -errorcode/-errorinfo are "also stored in the global variable" without saying this happens only when the error is actually raised, i.e. when the -level count reaches 0.
+</li>
+<li><span class="k">Prototype</span> prototypes/3ce04c1873.patch (doc only, 10 changed lines, doc/return.n on main; applies to 8.6 as well since the text is identical)
+</li>
+<li><span class="k">Suggested ticket comment</span> The globals are set only when the error is raised, i.e. when the -level count reaches 0. Evaluated directly in <code>catch</code>, <code>return</code> produces TCL_RETURN and no error. Proposed wording in doc/return.n.
+</li></ul></div></details><details class="t" id="197e2bf85c" data-s="197e2bf85c info frame &#x27;level&#x27; does not match documentation - new builtin commands docs (8.6 text is wrong; on 9.0/9.1 the entry now just says &quot;(to be determined)&quot;)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>197e2bf85c</span><span class="yr">2013</span><span class="ti">info frame 'level' does not match documentation</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/197e2bf85c.patch">patch</a><span class="vd">DOCS (8.6 text is wrong; on 9.0/9.1 the entry now just says "(to be determined)")</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/197e2bf85c">Open ticket 197e2bf85c</a> · - New Builtin Commands · filed 2013-07-14</p><div class="lab">Full verdict</div><p>DOCS (8.6 text is wrong; on 9.0/9.1 the entry now just says "(to be determined)")</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> 9.0.5, 8.6.18 with the reporter's script: same output as reported (frame 4 -&gt; level 1, frame 1 -&gt; level 2, and <code>level</code> present for the eval frames too). Inside <code>uplevel #0</code>, the frames of the uplevel'd script have no <code>level</code>.
+</li>
+<li><span class="k">Cause</span> generic/tclCmdIL.c:TclInfoFrame computes <code>level</code> as <code>varFramePtr-&gt;level - framePtr-&gt;framePtr-&gt;level</code>, i.e. an uplevel-style relative level (&gt;= 0) of the variable frame the command ran in. It is added only if that CallFrame is on the current callerVarPtr chain.
+</li>
+<li><span class="k">Prototype</span> prototypes/197e2bf85c.patch (doc only, 8 changed lines, doc/info.n on main; 8.6's info.n needs the same wording in its own paragraph)
+</li>
+<li><span class="k">Suggested ticket comment</span> <code>level</code> is the uplevel-style relative level (0 or positive) of the variable frame the command ran in, so <code>uplevel $level</code> gives its context. eval/source frames share their caller's level. Proposed doc wording for info.n (9.x currently says "to be determined").
+</li></ul></div></details><details class="t" id="3588809fff" data-s="3588809fff [namespace unknown] man page entry is in error 21. [namespace] docs (still wrong on main; behaviour is as the reporter says on main, 9.0, 8.6, 8.5)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3588809fff</span><span class="yr">2012</span><span class="ti">[namespace unknown] man page entry is in error</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/3588809fff.patch">patch</a><span class="vd">DOCS (still wrong on main; behaviour is as the reporter says on main, 9.0, 8.6, 8.5)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3588809fff">Open ticket 3588809fff</a> · 21. [namespace] · filed 2012-11-20</p><div class="lab">Full verdict</div><p>DOCS (still wrong on main; behaviour is as the reporter says on main, 9.0, 8.6, 8.5)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main, 9.0.5, 8.6.18, 8.5.19: [namespace eval foo {namespace unknown}] returns "" and an unknown command in foo goes to the global handler (also a custom one set with [namespace unknown ::myunk]).
+</li>
+<li><span class="k">Cause</span> doc/namespace.n says "The default handler for all namespaces is ::unknown".
+</li>
+<li><span class="k">Prototype</span> prototypes/3588809fff.patch (5 changed lines, docs only). It says ::unknown is the default for the global namespace, other namespaces default to empty and so use the global handler, and an empty script restores the default.
+</li>
+<li><span class="k">Suggested ticket comment</span> Confirmed, the man page is still wrong. Non-global namespaces default to an empty handler, which defers to the global namespace's handler. Proposed doc fix for namespace.n is available.
+</li></ul></div></details><details class="t" id="3547034fff" data-s="3547034fff tcl_invalidatestringrep documentation on shared objects none docs (main, 9.0, 8.6 man pages say nothing about shared values)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3547034fff</span><span class="yr">2012</span><span class="ti">Tcl_InvalidateStringRep documentation on shared objects</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/3547034fff.patch">patch</a><span class="vd">DOCS (main, 9.0, 8.6 man pages say nothing about shared values)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3547034fff">Open ticket 3547034fff</a> · None · filed 2012-07-22</p><div class="lab">Full verdict</div><p>DOCS (main, 9.0, 8.6 man pages say nothing about shared values)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> read doc/Object.3 and doc/ObjectType.3 on main, 9.0, 8.6
+</li>
+<li><span class="k">Cause</span> doc/Object.3 describes Tcl_InvalidateStringRep without saying it must not be used on a shared value.
+</li>
+<li><span class="k">Prototype</span> prototypes/3547034fff.patch (9 changed lines, doc only, doc/Object.3 after the Tcl_InvalidateStringRep paragraph; the same text applies to 9.0 and 8.6; checked with groff)
+</li>
+<li><span class="k">Suggested ticket comment</span> Proposed doc addition to Object.3: Tcl_InvalidateStringRep must only be called on an unshared value, and a shared value that has a string representation must keep it unchanged, because a regenerated string is not guaranteed to be identical.
+</li></ul></div></details><details class="t" id="3388256fff" data-s="3388256fff insufficient clarity in tutorial 31 75. tutorial docs (rfe-like improvement request; not checkable offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3388256fff</span><span class="yr">2011</span><span class="ti">insufficient clarity in Tutorial 31</span><span class="vd">DOCS (RFE-like improvement request; not checkable offline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3388256fff">Open ticket 3388256fff</a> · 75. Tutorial · filed 2011-08-08</p><div class="lab">Full verdict</div><p>DOCS (RFE-like improvement request; not checkable offline)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> none (text only)
+</li>
+<li><span class="k">Cause</span> Lesson 31 (packages) mentions pkgIndex.tcl only in a bullet list; the tutstack example does not show it.
+</li>
+<li><span class="k">Prototype</span> none (tutorial source not in tcl.fossil)
+</li>
+<li><span class="k">Suggested ticket comment</span> Lesson 31's example should include the pkgIndex.tcl (or a Tcl Module file name) and the auto_path step explicitly.
+</li></ul></div></details><details class="t" id="3376407fff" data-s="3376407fff tcl_parsecommand documentation bytes vs. chars 45. parsing and eval docs (still says &quot;characters&quot; on main)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3376407fff</span><span class="yr">2011</span><span class="ti">Tcl_ParseCommand documentation bytes vs. chars</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/3376407fff.patch">patch</a><span class="vd">DOCS (still says "characters" on main)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3376407fff">Open ticket 3376407fff</a> · 45. Parsing and Eval · filed 2011-07-23</p><div class="lab">Full verdict</div><p>DOCS (still says "characters" on main)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> doc/ParseCmd.3 on main; generic/tcl.h says <code>Tcl_Size size; /* Number of bytes in token. */</code> and the parser computes sizes as byte offsets
+</li>
+<li><span class="k">Cause</span> doc/ParseCmd.3 line 248: "the size field gives the total number of characters in the token"
+</li>
+<li><span class="k">Prototype</span> prototypes/3376407fff.patch (2 changed lines, docs only: "characters" -&gt; "bytes")
+</li>
+<li><span class="k">Suggested ticket comment</span> Confirmed: Tcl_Token.size is a byte count (tcl.h says so, like commentSize/commandSize). Proposed one-word fix to ParseCmd.3 is available.
+</li></ul></div></details><details class="t" id="3082225fff" data-s="3082225fff clock doc says error to use -timezone with free-form scan 06. time measurement docs (the doc is wrong on main, 9.0, 8.6, 8.5; the code accepts and uses -timezone)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3082225fff</span><span class="yr">2010</span><span class="ti">Clock doc says error to use -timezone with free-form scan</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/3082225fff.patch">patch</a><span class="vd">DOCS (the doc is wrong on main, 9.0, 8.6, 8.5; the code accepts and uses -timezone)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3082225fff">Open ticket 3082225fff</a> · 06. Time Measurement · filed 2010-10-06</p><div class="lab">Full verdict</div><p>DOCS (the doc is wrong on main, 9.0, 8.6, 8.5; the code accepts and uses -timezone)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main build, 9.0.5, 8.6.18, 8.5.19: <code>clock scan 10/12/2010 -timezone CST5CDT</code> gives 1286856000 and <code>-timezone :UTC</code> gives 1286841600; <code>-locale de</code> gives "legacy [clock scan] does not support -locale"
+</li>
+<li><span class="k">Cause</span> doc/clock.n FREE FORM SCAN says only -base and -gmt are accepted and that -timezone and -locale give an error. Only -locale does.
+</li>
+<li><span class="k">Prototype</span> prototypes/3082225fff.patch (6 changed lines, doc only, against main; the same paragraph is in 8.6 clock.n)
+</li>
+<li><span class="k">Suggested ticket comment</span> Free-form scan accepts -timezone and uses it for the default zone; only -locale is rejected. Proposed doc fix: list -timezone among the accepted options.
+</li></ul></div></details><details class="t" id="3056056fff" data-s="3056056fff tailcall&#x27;s testsuite and docs incomplete 60. nre and coroutines docs" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3056056fff</span><span class="yr">2010</span><span class="ti">tailcall's testsuite and docs incomplete</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/3056056fff.patch">patch</a><span class="vd">DOCS</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/3056056fff">Open ticket 3056056fff</a> · 60. NRE and coroutines · filed 2010-08-30</p><div class="lab">Full verdict</div><p>DOCS</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main, 8.6.18, 8.6.0: <code>catch {tailcall list x}</code> returns 2 and the proc still returns <code>x</code> at its end; a second caught tailcall replaces the first; <code>tailcall</code> with no args is accepted (synopsis says command is required) and cancels a pending tailcall. tailcall.test now has 40 tests incl. catch cases (tailcall-12.x), and the related tickets are about behaviour already covered.
+</li>
+<li><span class="k">Cause</span> doc/tailcall.n says nothing about TCL_RETURN, the no-argument form or catching, and wrongly says it may not be used inside [catch].
+</li>
+<li><span class="k">Prototype</span> prototypes/3056056fff.patch (13 changed lines, docs only)
+</li>
+<li><span class="k">Suggested ticket comment</span> The test suite has grown (tailcall.test, 40 tests incl. catch), but tailcall.n still lacks the TCL_RETURN, caught-tailcall and no-argument semantics. Proposed doc update attached to the triage (synopsis <code>?command?</code>, one paragraph).
+</li></ul></div></details><details class="t" id="2987629fff" data-s="2987629fff == operator precedence? 75. tutorial docs (not checkable offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2987629fff</span><span class="yr">2010</span><span class="ti">== operator precedence?</span><span class="vd">DOCS (not checkable offline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2987629fff">Open ticket 2987629fff</a> · 75. Tutorial · filed 2010-04-15</p><div class="lab">Full verdict</div><p>DOCS (not checkable offline)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> doc/expr.n on main/9.0/8.6 lists <code>== !=</code> in the precedence table (OK there).
+</li>
+<li><span class="k">Cause</span> Lesson 6 (Tcl6.html) operator list omits == and !=.
+</li>
+<li><span class="k">Prototype</span> none (tutorial source not in tcl.fossil)
+</li>
+<li><span class="k">Suggested ticket comment</span> expr.n lists <code>==</code>/<code>!=</code>; the tutorial's operator list in Lesson 6 should too.
+</li></ul></div></details><details class="t" id="2987620fff" data-s="2987620fff tutorial: typo in regexps (chap more examples of regular exp 75. tutorial docs (claim confirmed; current tutorial text not checkable offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2987620fff</span><span class="yr">2010</span><span class="ti">tutorial: typo in regexps (chap More Examples Of Regular Exp</span><span class="vd">DOCS (claim confirmed; current tutorial text not checkable offline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2987620fff">Open ticket 2987620fff</a> · 75. Tutorial · filed 2010-04-15</p><div class="lab">Full verdict</div><p>DOCS (claim confirmed; current tutorial text not checkable offline)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main, 8.6: <code>{([0-9])*\.?([0-9]*)}</code> on 87.65 gives first=7; <code>{([0-9]*)...}</code> gives 87. <code>{"([^"])*"}</code> gives <code>u</code>, <code>{"([^"]*)"}</code> gives <code>tavu</code>.
+</li>
+<li><span class="k">Cause</span> Tcl20a.html has the quantifier outside the capture group (<code>([0-9])*</code>, <code>([^"])*</code>).
+</li>
+<li><span class="k">Prototype</span> none (tutorial source not in tcl.fossil)
+</li>
+<li><span class="k">Suggested ticket comment</span> Confirmed: <code>([0-9])*</code> captures only the last digit; Tcl20a should use <code>([0-9]*)</code> and <code>"([^"]*)"</code>.
+</li></ul></div></details><details class="t" id="2963637fff" data-s="2963637fff lesson 39 text/example mismatch 75. tutorial docs (not checkable offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2963637fff</span><span class="yr">2010</span><span class="ti">Lesson 39 text/example mismatch</span><span class="vd">DOCS (not checkable offline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2963637fff">Open ticket 2963637fff</a> · 75. Tutorial · filed 2010-03-04</p><div class="lab">Full verdict</div><p>DOCS (not checkable offline)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> none (text only)
+</li>
+<li><span class="k">Cause</span> Lesson 39 (time) text describes a loop with variable k and multiplication; the example compares lsearch with array lookup.
+</li>
+<li><span class="k">Prototype</span> none (tutorial source not in tcl.fossil)
+</li>
+<li><span class="k">Suggested ticket comment</span> Lesson 39's text should be rewritten to describe the lsearch-vs-array example it actually shows.
+</li></ul></div></details><details class="t" id="2962834fff" data-s="2962834fff bugfixes in tutorial examples 75. tutorial docs (patch attached; not checkable offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2962834fff</span><span class="yr">2010</span><span class="ti">Bugfixes in tutorial examples</span><span class="vd">DOCS (patch attached; not checkable offline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2962834fff">Open ticket 2962834fff</a> · 75. Tutorial · filed 2010-03-03</p><div class="lab">Full verdict</div><p>DOCS (patch attached; not checkable offline)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> attachment 4a0c77ea97 read: fixes unterminated <code>puts "Directories:</code> / <code>"Files:</code> in Tcl25.html (real syntax errors) and replaces chan copy/chan close by fcopy/close in Tcl26a.html (8.4 compat; unnecessary for 8.5+). Lesson 40 echo server issues (no -blocking 0, gets&lt;0 treated as EOF) are real Tcl pitfalls.
+</li>
+<li><span class="k">Cause</span> example code errors in lessons 25, 26a, 40.
+</li>
+<li><span class="k">Prototype</span> none (attachment is against tcltutorial; Lesson 25 hunk applicable as is, 26a hunk should be dropped since the tutorial targets 8.5+)
+</li>
+<li><span class="k">Suggested ticket comment</span> The Lesson 25 hunk fixes real syntax errors; the 26a hunk is not needed for 8.5+. Lesson 40 should check &amp;#91;eof&amp;#93; and &amp;#91;fblocked&amp;#93; instead of treating gets &amp;lt; 0 as EOF.
+</li></ul></div></details><details class="t" id="2932053fff" data-s="2932053fff doc for itcl c api 81. bundled packages docs (still valid upstream)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2932053fff</span><span class="yr">2010</span><span class="ti">Doc for Itcl C API</span><span class="vd">DOCS (still valid upstream)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2932053fff">Open ticket 2932053fff</a> · 81. Bundled Packages · filed 2010-01-14</p><div class="lab">Full verdict</div><p>DOCS (still valid upstream)</p><ul>
+<li><span class="k">Platform</span> docs (Itcl, upstream)
+</li>
+<li><span class="k">Tested</span> itcl.fossil trunk doc/*.3: Object.3 still has NAME "Itcl_CreateObject, Itcl_DeleteObject, Itcl_FindObject, Itcl_IsObject, Itcl_IsObjectIsa" but its SYNOPSIS/ARGUMENTS describe Itcl_PreserveData/ReleaseData/EventuallyFree (copy of Preserve.3); the other pages are minimal.
+</li>
+<li><span class="k">Cause</span> Itcl doc/Object.3 copy-paste; C API never documented.
+</li>
+<li><span class="k">Prototype</span> none (documentation writing in the Itcl repo, not a small fix)
+</li>
+<li><span class="k">Suggested ticket comment</span> Still true in Itcl trunk (Object.3 synopsis is a copy of Preserve.3). This belongs to the Itcl tracker; suggest moving it there and closing here.
+</li></ul></div></details><details class="t" id="2837073fff" data-s="2837073fff retitle a few lessons, new lessons 75. tutorial docs (rfe: retitle introspection lessons, add event loop lesson)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2837073fff</span><span class="yr">2009</span><span class="ti">Retitle a few lessons, new lessons</span><span class="vd">DOCS (RFE: retitle introspection lessons, add event loop lesson)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2837073fff">Open ticket 2837073fff</a> · 75. Tutorial · filed 2009-08-13</p><div class="lab">Full verdict</div><p>DOCS (RFE: retitle introspection lessons, add event loop lesson)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (RFE; tutorial source not in tcl.fossil)
+</li>
+<li><span class="k">Suggested ticket comment</span> Feature request for the tutorial; should be retyped as RFE.
+</li></ul></div></details><details class="t" id="2779797fff" data-s="2779797fff inconsistent markup 75. tutorial docs (reported fixed in the tutorial source by tallniel 2009-12-23; website update status not checkable offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2779797fff</span><span class="yr">2009</span><span class="ti">inconsistent markup</span><span class="vd">DOCS (reported fixed in the tutorial source by tallniel 2009-12-23; website update status not checkable offline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2779797fff">Open ticket 2779797fff</a> · 75. Tutorial · filed 2009-04-23</p><div class="lab">Full verdict</div><p>DOCS (reported fixed in the tutorial source by tallniel 2009-12-23; website update status not checkable offline)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> some pages used old big-bold command markup.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> tallniel fixed the markup in 2009; if the published tutorial now shows consistent markup (e.g. Tcl34.html), this can be closed.
+</li></ul></div></details><details class="t" id="2624762fff" data-s="2624762fff tutorial updates for 8.5/8.6 new features 75. tutorial docs (rfe: lessons on tcloo, tdbc, coroutines, lambdas, ...)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2624762fff</span><span class="yr">2009</span><span class="ti">Tutorial updates for 8.5/8.6 new features</span><span class="vd">DOCS (RFE: lessons on TclOO, TDBC, coroutines, lambdas, ...)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2624762fff">Open ticket 2624762fff</a> · 75. Tutorial · filed 2009-02-21</p><div class="lab">Full verdict</div><p>DOCS (RFE: lessons on TclOO, TDBC, coroutines, lambdas, ...)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (RFE)
+</li>
+<li><span class="k">Suggested ticket comment</span> Feature request; should be retyped as RFE.
+</li></ul></div></details><details class="t" id="2610482fff" data-s="2610482fff typo in section nine of tutorial 75. tutorial docs (not checkable offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2610482fff</span><span class="yr">2009</span><span class="ti">typo in section nine of tutorial</span><span class="vd">DOCS (not checkable offline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2610482fff">Open ticket 2610482fff</a> · 75. Tutorial · filed 2009-02-17</p><div class="lab">Full verdict</div><p>DOCS (not checkable offline)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> Tcl6a.html: "a floating-point number can be as a 1 followed by 300 zeros" lacks "large as".
+</li>
+<li><span class="k">Prototype</span> none (tutorial source not in tcl.fossil)
+</li>
+<li><span class="k">Suggested ticket comment</span> Tcl6a.html should read "can be as large as a 1 followed by 300 zeros".
+</li></ul></div></details><details class="t" id="2561267fff" data-s="2561267fff tcl_setobjlength can produce invalid strings 10. objects docs (still true on main: tcl_setobjlength works on bytes, and doc/stringobj.3 does not warn about it)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2561267fff</span><span class="yr">2009</span><span class="ti">Tcl_SetObjLength can produce invalid strings</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/2561267fff.patch">patch</a><span class="vd">DOCS (still true on main: Tcl_SetObjLength works on bytes, and doc/StringObj.3 does not warn about it)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2561267fff">Open ticket 2561267fff</a> · 10. Objects · filed 2009-02-03</p><div class="lab">Full verdict</div><p>DOCS (still true on main: Tcl_SetObjLength works on bytes, and doc/StringObj.3 does not warn about it)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> code/doc reading on main (generic/tclStringObj.c Tcl_SetObjLength; doc/StringObj.3)
+</li>
+<li><span class="k">Cause</span> newLength is a byte count, with no check for character boundaries. Enlarging leaves arbitrary bytes in the gap, which the docs already mention.
+</li>
+<li><span class="k">Prototype</span> prototypes/2561267fff.patch (4 changed lines, doc only: newLength is in bytes, mid-character truncation or uninitialized bytes after enlarging give an invalid string)
+</li>
+<li><span class="k">Suggested ticket comment</span> Still true. Proposed doc addition to StringObj.3: newLength is a byte length, and truncating inside a multi-byte character (or not filling the bytes after enlarging) leaves an invalid string.
+</li></ul></div></details><details class="t" id="2544760fff" data-s="2544760fff [interp exists] accepts 0 arguments 20. [interp] docs (behaviour is intended and documented. &quot;if path is omitted, the invoking interpreter is used&quot;, and the wrong-args message says `interp exists ?path?`; only the man page synopsis says `path` is required)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2544760fff</span><span class="yr">2009</span><span class="ti">[interp exists] accepts 0 arguments</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/2544760fff.patch">patch</a><span class="vd">DOCS (behaviour is intended and documented. "If path is omitted, the invoking interpreter is used", and the wrong-args message says `interp exists …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2544760fff">Open ticket 2544760fff</a> · 20. [interp] · filed 2009-01-29</p><div class="lab">Full verdict</div><p>DOCS (behaviour is intended and documented. "If path is omitted, the invoking interpreter is used", and the wrong-args message says <code>interp exists ?path?</code>; only the man page synopsis says <code>path</code> is required)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main, 9.0.5, 8.6.18: <code>interp exists</code> returns 1; two arguments give <code>wrong # args: should be "interp exists ?path?"</code>
+</li>
+<li><span class="k">Cause</span> doc/interp.n synopsis <code>interp exists path</code> does not match the description or the implementation.
+</li>
+<li><span class="k">Prototype</span> prototypes/2544760fff.patch (2 changed lines, doc: synopsis <code>interp exists ?path?</code>). Removing the 0-argument form would be an incompatible change, which is TIP territory.
+</li>
+<li><span class="k">Suggested ticket comment</span> The 0-argument form is documented ("If path is omitted ...") and matches the wrong # args message. Proposed doc fix: show the path as optional in the synopsis. Removing the form would need a TIP.
+</li></ul></div></details><details class="t" id="2464922fff" data-s="2464922fff lesson 21: written before 8.1? 75. tutorial docs (claim confirmed; not checkable offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2464922fff</span><span class="yr">2008</span><span class="ti">Lesson 21: Written before 8.1?</span><span class="vd">DOCS (claim confirmed; not checkable offline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2464922fff">Open ticket 2464922fff</a> · 75. Tutorial · filed 2008-12-24</p><div class="lab">Full verdict</div><p>DOCS (claim confirmed; not checkable offline)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main: <code>regexp {a\tb} "a\tb"</code> -&gt; 1, <code>regexp {\x41} A</code> -&gt; 1 (the RE engine handles backslash escapes itself since 8.1, see doc/re_syntax.n).
+</li>
+<li><span class="k">Cause</span> Tcl21.html claims backslash sequences mean nothing to the regexp parser.
+</li>
+<li><span class="k">Prototype</span> none (tutorial source not in tcl.fossil)
+</li>
+<li><span class="k">Suggested ticket comment</span> Since 8.1 the RE engine understands \t, \n, \xhh (re_syntax.n), so Lesson 21's bullet is wrong and the hex example should use a braced RE.
+</li></ul></div></details><details class="t" id="2424616fff" data-s="2424616fff undocumented flags accepted by tcl_nreval* function 45. parsing and eval docs (still undocumented; doc/eval.3 has `.\&quot; todo: document tcl_eval_invoke and tcl_eval_noerr.`, and nre.3 refers to tcl_evalobjv for flags)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2424616fff</span><span class="yr">2008</span><span class="ti">Undocumented flags accepted by Tcl_NREval* function</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/2424616fff.patch">patch</a><span class="vd">DOCS (still undocumented; doc/Eval.3 has <code>.\" TODO: document TCL_EVAL_INVOKE and TCL_EVAL_NOERR.</code>, and NRE.3 refers to Tcl_EvalObjv for flags)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2424616fff">Open ticket 2424616fff</a> · 45. Parsing and Eval · filed 2008-12-13</p><div class="lab">Full verdict</div><p>DOCS (still undocumented; doc/Eval.3 has <code>.\" TODO: document TCL_EVAL_INVOKE and TCL_EVAL_NOERR.</code>, and NRE.3 refers to Tcl_EvalObjv for flags)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main doc/Eval.3, doc/NRE.3, generic/tcl.h, tclBasic.c:TclNREvalObjv / TEOV_PushExceptionHandlers
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> prototypes/2424616fff.patch (26 changed lines, doc only: TCL_EVAL_INVOKE and TCL_EVAL_NOERR entries in the FLAG BITS section of Eval.3, written from the tcl.h comment and the code; replaces the TODO)
+</li>
+<li><span class="k">Suggested ticket comment</span> Proposed documentation of TCL_EVAL_INVOKE and TCL_EVAL_NOERR in Eval.3 (NRE.3 refers there for flags), replacing the TODO comment.
+</li></ul></div></details><details class="t" id="2032614fff" data-s="2032614fff missleading &quot;switch&quot; example 75. tutorial docs (behaviour is correct per switch.n; whether the tcl8.html example misleads not checkable offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2032614fff</span><span class="yr">2008</span><span class="ti">Missleading "switch" example</span><span class="vd">DOCS (behaviour is correct per switch.n; whether the Tcl8.html example misleads not checkable offline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2032614fff">Open ticket 2032614fff</a> · 75. Tutorial · filed 2008-07-30</p><div class="lab">Full verdict</div><p>DOCS (behaviour is correct per switch.n; whether the Tcl8.html example misleads not checkable offline)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> none needed: in the braced form of switch, patterns are not substituted (doc/switch.n), so <code>$center</code> is a literal pattern; reporter's result is expected.
+</li>
+<li><span class="k">Cause</span> Lesson 8 shows variable patterns inside the braced form without stressing that no substitution happens there.
+</li>
+<li><span class="k">Prototype</span> none (tutorial source not in tcl.fossil)
+</li>
+<li><span class="k">Suggested ticket comment</span> Patterns in the braced form of &amp;#91;switch&amp;#93; are not substituted; Lesson 8 should say so next to the first example.
+</li></ul></div></details><details class="t" id="2028793fff" data-s="2028793fff namespace dependence of interp alias 20. [interp] docs (behaviour unchanged in main and 8.6, still undocumented in interp.n)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2028793fff</span><span class="yr">2008</span><span class="ti">Namespace dependence of interp alias</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/2028793fff.patch">patch</a><span class="vd">DOCS (behaviour unchanged in main and 8.6, still undocumented in interp.n)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2028793fff">Open ticket 2028793fff</a> · 20. [interp] · filed 2008-07-26</p><div class="lab">Full verdict</div><p>DOCS (behaviour unchanged in main and 8.6, still undocumented in interp.n)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main (own build), 8.6.18: the ticket's script gives the same results (<code>foo</code> goes to ::, <code>test::foo</code> goes to ::test::test::foo and creates ::test::test); also checked that a relative qualified name is resolved in the *source* interp's current namespace (<code>namespace eval ns {interp alias c a::b {} list}</code> creates ::a::b in child c). [proc] instead fails with "unknown namespace".
+</li>
+<li><span class="k">Cause</span> tclInterp.c:AliasCreate uses Tcl_CreateObjCommand/Tcl_NRCreateCommand rules (CrtObjCmd.3: unqualified name goes to the global namespace).
+</li>
+<li><span class="k">Prototype</span> prototypes/2028793fff.patch (7 changed lines, doc/interp.n only: describes how srcCmd is resolved)
+</li>
+<li><span class="k">Suggested ticket comment</span> Behaviour is unchanged in 9.1 and comes from Tcl_CreateObjCommand. Proposed doc addition to interp.n: an unqualified srcCmd goes into the global namespace, a relative qualified one is resolved in the source interp's current namespace, and missing namespaces are created.
+</li></ul></div></details><details class="t" id="2013699fff" data-s="2013699fff integer formats undocumented 48. number handling docs (still true on main: intobj.3 says nothing about which strings are integers; the syntax is documented only in getint.3 and expr.n)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2013699fff</span><span class="yr">2008</span><span class="ti">integer formats undocumented</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/2013699fff.patch">patch</a><span class="vd">DOCS (still true on main: IntObj.3 says nothing about which strings are integers; the syntax is documented only in GetInt.3 and expr.n)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/2013699fff">Open ticket 2013699fff</a> · 48. Number Handling · filed 2008-07-08</p><div class="lab">Full verdict</div><p>DOCS (still true on main: IntObj.3 says nothing about which strings are integers; the syntax is documented only in GetInt.3 and expr.n)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> doc reading (main); checked with [incr] on main and 8.6.18 which forms are accepted (whitespace, sign, 0b/0o/0d/0x, TIP 551 underscores; 0d and underscores are 9.0+ only, 017 is octal in 8.6, decimal in 9.x).
+</li>
+<li><span class="k">Cause</span> doc/IntObj.3 lacks a syntax paragraph.
+</li>
+<li><span class="k">Prototype</span> prototypes/2013699fff.patch (8 changed lines, docs only): one sentence in IntObj.3 pointing to Tcl_GetInt's syntax (whitespace, sign, radix prefixes, underscores), plus Tcl_GetInt in SEE ALSO.
+</li>
+<li><span class="k">Suggested ticket comment</span> GetInt.3 documents the integer syntax (incl. 0d and TIP 551 underscores) since 9.0; proposed doc patch makes IntObj.3 refer to it.
+</li></ul></div></details><details class="t" id="1801314fff" data-s="1801314fff numeric comparisons 101 - if: error in example code 75. tutorial docs (claim confirmed; not checkable offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1801314fff</span><span class="yr">2007</span><span class="ti">Numeric Comparisons 101 - if: Error in example code</span><span class="vd">DOCS (claim confirmed; not checkable offline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1801314fff">Open ticket 1801314fff</a> · 75. Tutorial · filed 2007-09-24</p><div class="lab">Full verdict</div><p>DOCS (claim confirmed; not checkable offline)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main, 8.6 (exit aliased in a child interp): <code>if "$$y != 1"</code> with y={[exit]} fails with <code>invalid character "$"</code> and never calls exit; <code>if "$y != 1"</code> does call exit.
+</li>
+<li><span class="k">Cause</span> the "dangerous example" in the if lesson (Tcl4.html?) uses <code>$$y</code>, which does not demonstrate the double substitution.
+</li>
+<li><span class="k">Prototype</span> none (tutorial source not in tcl.fossil)
+</li>
+<li><span class="k">Suggested ticket comment</span> Confirmed: <code>"$$y != 1"</code> only raises a syntax error; the example should use <code>"$y != 1"</code> to show &amp;#91;exit&amp;#93; being run.
+</li></ul></div></details><details class="t" id="1689385fff" data-s="1689385fff tcl_setobjlength documentation incomplete 10. objects docs (behaviour unchanged in main, 9.0, 8.6; doc/stringobj.3 still describes only the byte case)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1689385fff</span><span class="yr">2007</span><span class="ti">Tcl_SetObjLength documentation incomplete</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/1689385fff.patch">patch</a><span class="vd">DOCS (behaviour unchanged in main, 9.0, 8.6; doc/StringObj.3 still describes only the byte case)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1689385fff">Open ticket 1689385fff</a> · 10. Objects · filed 2007-03-27</p><div class="lab">Full verdict</div><p>DOCS (behaviour unchanged in main, 9.0, 8.6; doc/StringObj.3 still describes only the byte case)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main, 9.0 with <code>teststringobj newunicode</code> + <code>setlength</code>: on a 3-char pure-Unicode value <code>setlength 2</code> gives 2 chars (4 UTF-8 bytes); <code>setlength 4</code> on 1 char gives 4 chars. 8.6 has the same branch (code reading; its teststringobj lacks newunicode).
+</li>
+<li><span class="k">Cause</span> generic/tclStringObj.c Tcl_SetObjLength: when objPtr-&gt;bytes == NULL it resizes the Unicode rep, treating the length as characters, and leaves bytes NULL.
+</li>
+<li><span class="k">Prototype</span> prototypes/1689385fff.patch (13 changed lines, doc only: new paragraph in doc/StringObj.3 describing the pure-Unicode case, and the NUL guarantee limited to values with a string rep)
+</li>
+<li><span class="k">Suggested ticket comment</span> Still undocumented in 8.6/9.0/9.1. Proposed doc fix: say that for a value without string rep (pure Unicode) the length counts characters and objPtr-&gt;bytes stays NULL; call Tcl_GetString first when a byte buffer is needed.
+</li></ul></div></details><details class="t" id="1670783fff" data-s="1670783fff binary man page missing inf/nan ref 48. number handling docs — and the man page is now wrong on main/9.0: binary.n still says a value that overflows single precision becomes flt_max, but since [85ce4bf928] (48706a2425, 2022-11-05, 9.0 only) it becomes ±inf. 8.6 behaves as documented (flt_max, also for inf)." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1670783fff</span><span class="yr">2007</span><span class="ti">binary man page missing Inf/NaN ref</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/1670783fff.patch">patch</a><span class="vd">DOCS — and the man page is now wrong on main/9.0: binary.n still says a value that overflows single precision becomes FLT_MAX, but since [85ce4bf92…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1670783fff">Open ticket 1670783fff</a> · 48. Number Handling · filed 2007-02-28</p><div class="lab">Full verdict</div><p>DOCS — and the man page is now wrong on main/9.0: binary.n still says a value that overflows single precision becomes FLT_MAX, but since <a class="h" href="https://core.tcl-lang.org/tcl/info/85ce4bf928">85ce4bf928</a> (48706a2425, 2022-11-05, 9.0 only) it becomes ±Inf. 8.6 behaves as documented (FLT_MAX, also for Inf).</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main build, 9.0.5, 8.6.18: f/d/q/Q/r/R round-trip of Inf, -Inf, NaN, 1e400, 1e39. 9.x: all give ±Inf/NaN; 8.6: f/r/R give ±3.4028234663852886e+38 for Inf and 1e39. [binary scan] gives NaN(1), -NaN for non-default NaNs.
+</li>
+<li><span class="k">Cause</span> doc/binary.n not updated with the 9.0 change and never mentions special values.
+</li>
+<li><span class="k">Prototype</span> prototypes/1670783fff.patch (11 changed lines, docs only, for main/9.0): format f: overflow -&gt; infinity of the same sign, Inf/-Inf/NaN stored as IEEE special values; scan f: special values come back as Inf, -Inf, NaN, NaN(hex), possibly with a minus sign, and [expr] rejects NaN.
+</li>
+<li><span class="k">Suggested ticket comment</span> binary.n still describes the 8.6 FLT_MAX clamp, which <a class="h" href="https://core.tcl-lang.org/tcl/info/85ce4bf928">85ce4bf928</a> changed in 9.0 to storing ±Inf, and never mentions Inf/NaN. Proposed doc patch for 9.0/9.1.
+</li></ul></div></details><details class="t" id="1657421fff" data-s="1657421fff default translation of stdout on unix == crlf? 27. channel types docs (behaviour unchanged since 8.4 and deliberate: reproduced on 8.4.20, 8.6.18, 9.0.5, main)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1657421fff</span><span class="yr">2007</span><span class="ti">default translation of stdout on unix == crlf?</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/1657421fff.patch">patch</a><span class="vd">DOCS (behaviour unchanged since 8.4 and deliberate: REPRODUCED on 8.4.20, 8.6.18, 9.0.5, main)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1657421fff">Open ticket 1657421fff</a> · 27. Channel Types · filed 2007-02-11</p><div class="lab">Full verdict</div><p>DOCS (behaviour unchanged since 8.4 and deliberate: REPRODUCED on 8.4.20, 8.6.18, 9.0.5, main)</p><ul>
+<li><span class="k">Platform</span> unix
+</li>
+<li><span class="k">Tested</span> tclsh on a pty (python pty.fork): <code>fconfigure stdout -translation</code> is <code>crlf</code> on all versions and <code>puts</code> sends "\r\r\n" to the terminal (Tcl's CR plus the tty driver's ONLCR); stdin is <code>auto</code>. To a pipe/file stdout is <code>lf</code>.
+</li>
+<li><span class="k">Cause</span> unix/tclUnixChan.c: TclpGetDefaultStdChannel (and TclpOpenFileChannel for serial devices) set <code>-translation {auto crlf}</code> for every channel of ttyChannelType. CRLF keeps output readable when a script puts the terminal into raw mode (<code>exec stty raw</code>), at the cost of a stray CR in cooked mode, which only non-terminal consumers (acme, <code>script</code> logs) show. doc/chan.n says Unix output defaults to lf and doesn't mention terminals.
+</li>
+<li><span class="k">Prototype</span> prototypes/1657421fff.patch (doc/chan.n only, 5 changed lines, documents the terminal/serial default). Changing the default to lf would break the common <code>stty raw</code> idiom.
+</li>
+<li><span class="k">Suggested ticket comment</span> This is deliberate: terminals and serial ports default to <code>-translation {auto crlf}</code> so output stays correct in raw mode; in cooked mode the extra CR is harmless on real terminals. Proposed: document it in chan.n (patch available) and close.
+</li></ul></div></details><details class="t" id="1649077fff" data-s="1649077fff minor spelling corrections  75. tutorial docs (patch attached 43416cfd48; not checkable offline whether already applied)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1649077fff</span><span class="yr">2007</span><span class="ti">minor spelling corrections</span><span class="vd">DOCS (patch attached 43416cfd48; not checkable offline whether already applied)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1649077fff">Open ticket 1649077fff</a> · 75. Tutorial · filed 2007-01-31</p><div class="lab">Full verdict</div><p>DOCS (patch attached 43416cfd48; not checkable offline whether already applied)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> typos in tutorial html.
+</li>
+<li><span class="k">Prototype</span> none (patch is against tcltutorial)
+</li>
+<li><span class="k">Suggested ticket comment</span> Spelling patch against the tutorial source; apply what is still relevant and close.
+</li></ul></div></details><details class="t" id="1615319fff" data-s="1615319fff special treatment for &quot; 75. tutorial docs (not checkable offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1615319fff</span><span class="yr">2006</span><span class="ti">special treatment for "</span><span class="vd">DOCS (not checkable offline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1615319fff">Open ticket 1615319fff</a> · 75. Tutorial · filed 2006-12-13</p><div class="lab">Full verdict</div><p>DOCS (not checkable offline)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> none (rule is doc/Tcl.n rule [4]: <code>"</code> is special only at the start of a word)
+</li>
+<li><span class="k">Cause</span> Lesson on grouping with {} does not mention that " is also only special at word start.
+</li>
+<li><span class="k">Prototype</span> none (tutorial source not in tcl.fossil)
+</li>
+<li><span class="k">Suggested ticket comment</span> Tcl.n rule &amp;#91;4&amp;#93; covers this; the grouping lessons should mention that <code>"</code> inside a word is literal.
+</li></ul></div></details><details class="t" id="1610478fff" data-s="1610478fff titles 75. tutorial docs (rfe: drop &quot;101&quot; from lesson titles)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1610478fff</span><span class="yr">2006</span><span class="ti">Titles</span><span class="vd">DOCS (RFE: drop "101" from lesson titles)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1610478fff">Open ticket 1610478fff</a> · 75. Tutorial · filed 2006-12-06</p><div class="lab">Full verdict</div><p>DOCS (RFE: drop "101" from lesson titles)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (RFE)
+</li>
+<li><span class="k">Suggested ticket comment</span> Cosmetic request for the tutorial; RFE.
+</li></ul></div></details><details class="t" id="1525677fff" data-s="1525677fff tcl_interp in example code 75. tutorial docs (not checkable offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1525677fff</span><span class="yr">2006</span><span class="ti">TCL_INTERP in example code</span><span class="vd">DOCS (not checkable offline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1525677fff">Open ticket 1525677fff</a> · 75. Tutorial · filed 2006-07-20</p><div class="lab">Full verdict</div><p>DOCS (not checkable offline)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> Tcl26.html examples use a placeholder TCL_INTERP; <code>[info nameofexecutable]</code> would make them runnable.
+</li>
+<li><span class="k">Prototype</span> none (tutorial source not in tcl.fossil)
+</li>
+<li><span class="k">Suggested ticket comment</span> Replace the TCL_INTERP placeholder in Lesson 26 with &amp;#91;info nameofexecutable&amp;#93;.
+</li></ul></div></details><details class="t" id="1482667fff" data-s="1482667fff more detailed information on [if ... else] and spaces 75. tutorial docs (rfe-like improvement request)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1482667fff</span><span class="yr">2006</span><span class="ti">More detailed information on [if ... else] and spaces</span><span class="vd">DOCS (RFE-like improvement request)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1482667fff">Open ticket 1482667fff</a> · 75. Tutorial · filed 2006-05-05</p><div class="lab">Full verdict</div><p>DOCS (RFE-like improvement request)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> n/a (<code>}else{</code> and a brace on the next line are common beginner errors)
+</li>
+<li><span class="k">Prototype</span> none (tutorial source not in tcl.fossil)
+</li>
+<li><span class="k">Suggested ticket comment</span> Lesson 4/7 could add a short "common mistakes" note on <code>}else{</code> and newline before <code>{</code>.
+</li></ul></div></details><details class="t" id="1329568fff" data-s="1329568fff [socket -async] and [puts]: inadequate documentation? 24. channel commands docs question answered by current docs (socket.n -async section since 8.6.1, chan.n puts buffering); but testing found a reproduced regression (9.0, main; not 8.6, 8.7b1): closing a blocking `socket -async` while the connect is still pending loses the buffered data" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>1329568fff</span><span class="yr">2005</span><span class="ti">[socket -async] and [puts]: Inadequate documentation?</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/1329568fff.patch">patch</a><span class="vd">DOCS question answered by current docs (socket.n -async section since 8.6.1, chan.n puts buffering); but testing found a REPRODUCED regression (9.0…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1329568fff">Open ticket 1329568fff</a> · 24. Channel Commands · filed 2005-10-18</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Fixed)</strong></p><ul><li>💬 2026-10-16 <strong>serhiy.storchaka</strong>: The documentation now covers this: socket.n says that a blocking flush waits for the connection and a non-blocking one buffers the data, and chan.n says that non-blocking puts buffers without limit. Testing this found a 9.0 regression, reported as <a class="h" href="https://core.tcl-lang.org/tcl/info/251f46655c">251f46655c</a>.</li></ul></div><div class="lab">Full verdict</div><p>DOCS question answered by current docs (socket.n -async section since 8.6.1, chan.n puts buffering); but testing found a REPRODUCED regression (9.0, main; not 8.6, 8.7b1): closing a blocking <code>socket -async</code> while the connect is still pending loses the buffered data</p><ul>
+<li><span class="k">Platform</span> generic (docs) + unix (regression found while testing)
+</li>
+<li><span class="k">Tested</span> Python server with a full listen queue (accepts after 1-2 s) so the connect stays pending (work-a5/as): non-blocking <code>puts</code> of 1 MB before the connect finishes is buffered (no error, <code>-connecting 1</code>, <code>chan pending output</code> = 1000000) and a blocking <code>puts</code>+<code>flush</code> waits for the connect, on 8.6.18 and main. But <code>set s [socket -async ...]; puts $s hello; close $s</code> (or switching to blocking before close): 8.6.18 and 8.7b1 deliver the data; 9.0.5, 9.0 tip and main fail with "transport endpoint is not connected" and the server receives nothing (3/3 runs each).
+</li>
+<li><span class="k">Cause</span> generic/tclIO.c:Tcl_Close does a read half-close (close2Proc TCL_CLOSE_READ) before flushing. In 8.6/8.7 that was only done for channel types without a closeProc, so TCP sockets skipped it; since 9.0 (<a class="h" href="https://core.tcl-lang.org/tcl/info/d5bc305ad2">d5bc305ad2</a>, 2020-03-04, removal of the old closeProc) it always runs, and unix/tclUnixSock.c:TcpClose2Proc calls shutdown(SHUT_RD) on the still-connecting socket, which on Linux aborts the connect (strace: shutdown, then poll -&gt; SO_ERROR ECONNRESET). Windows' shutdown on an unconnected socket just fails with ENOTCONN (ignored), so probably Unix only.
+</li>
+<li><span class="k">Prototype</span> prototypes/1329568fff.patch (against main, also applies to core-9-0-branch; 47 changed lines, ~10 of them code: TcpClose2Proc skips a read-only shutdown while TCP_ASYNC_PENDING; test socket-14.20 (child server with -backlog 1 that accepts late) fails without the fix with "transport endpoint is not connected"). socket.test passes (180 passed, 12 skipped).
+</li>
+<li><span class="k">Suggested ticket comment</span> The docs now cover this (socket.n: blocking flush waits for the connect, non-blocking returns and buffers; chan.n: non-blocking puts buffers without limit). While testing I found a 9.0 regression: closing an async socket whose connect is still pending loses the buffered data, because Tcl_Close's read half-close does shutdown(SHUT_RD) on the connecting socket. Proposed fix: skip that shutdown while the connect is pending, test socket-14.20. Better tracked in its own ticket.
+</li></ul></div></details><details class="t" id="1274918fff" data-s="1274918fff doc: upvar and qualified varnames 07. variables docs" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1274918fff</span><span class="yr">2005</span><span class="ti">doc: upvar and qualified varNames</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/1274918fff.patch">patch</a><span class="vd">DOCS</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1274918fff">Open ticket 1274918fff</a> · 07. Variables · filed 2005-08-28</p><div class="lab">Full verdict</div><p>DOCS</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> doc/upvar.n on main still only talks about "local variables in the current procedure"; behaviour checked on main, 9.0, 8.6: outside a proc <code>namespace eval a {upvar #0 x y}</code> creates namespace var <code>::a::y</code>, <code>unset a::y</code> unsets <code>::x</code> but the link stays; qualified myVar inside a proc creates a namespace variable; missing parent namespace is an error. Since 9.0 (TIP 278) relative qualified names resolve only relative to the current namespace, so the "madness" in the 2006-08-26 comment is gone in 9.x (both vars land in <code>::c::b</code>), still present in 8.6.
+</li>
+<li><span class="k">Cause</span> missing documentation
+</li>
+<li><span class="k">Prototype</span> prototypes/1274918fff.patch (14 changed lines, doc only: two paragraphs in doc/upvar.n describing upvar outside procs and qualified otherVar/myVar; text matches 9.x semantics)
+</li>
+<li><span class="k">Suggested ticket comment</span> Proposed doc text for upvar.n: two paragraphs that document upvar outside procedures (namespace variable, link persists until the namespace is deleted) and qualified names, following TIP 278 rules in 9.x.
+</li></ul></div></details><details class="t" id="1237009fff" data-s="1237009fff lesson 41: clock lesson does not deal with 8.5 features 75. tutorial docs (rfe: mention `clock scan -format`)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1237009fff</span><span class="yr">2005</span><span class="ti">Lesson 41: clock lesson does not deal with 8.5 features</span><span class="vd">DOCS (RFE: mention <code>clock scan -format</code>)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1237009fff">Open ticket 1237009fff</a> · 75. Tutorial · filed 2005-07-12</p><div class="lab">Full verdict</div><p>DOCS (RFE: mention <code>clock scan -format</code>)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (RFE)
+</li>
+<li><span class="k">Suggested ticket comment</span> Feature request; a sentence on <code>clock scan ... -format</code> in Lesson 41 would suffice.
+</li></ul></div></details><details class="t" id="1072603fff" data-s="1072603fff tcl_pkgpath cross-platform documentation 38. init - library - autoload docs (partly addressed)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1072603fff</span><span class="yr">2004</span><span class="ti">tcl_pkgPath cross-platform documentation</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/1072603fff.patch">patch</a><span class="vd">DOCS (partly addressed)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/1072603fff">Open ticket 1072603fff</a> · 38. Init - Library - Autoload · filed 2004-11-24</p><div class="lab">Full verdict</div><p>DOCS (partly addressed)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> tcl_pkgPath is still set only by unix/tclUnixInit.c (not in win/). tclvars.n (8.4 and later) already says "It is not used on Windows", but pkgMkIndex.n and msgcat.n still tell readers to install into $tcl_pkgPath without a caveat.
+</li>
+<li><span class="k">Cause</span> docs.
+</li>
+<li><span class="k">Prototype</span> prototypes/1072603fff.patch (9 changed lines, doc only): pkgMkIndex.n and msgcat.n now say auto_path, with tcl_pkgPath as the Unix case.
+</li>
+<li><span class="k">Suggested ticket comment</span> tclvars.n already says tcl_pkgPath is not used on Windows. Proposed patch adjusts pkgMkIndex.n and msgcat.n to refer to auto_path, mentioning tcl_pkgPath only for Unix.
+</li></ul></div></details><details class="t" id="967565ffff" data-s="967565ffff [info level] reports current interp&#x27;s callframes only 20. [interp] docs (behaviour by design: levels are per-interp, the same ones [uplevel]/[upvar] use)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>967565ffff</span><span class="yr">2004</span><span class="ti">[info level] reports current interp's CallFrames only</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/967565ffff.patch">patch</a><span class="vd">DOCS (behaviour by design: levels are per-interp, the same ones [uplevel]/[upvar] use)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/967565ffff">Open ticket 967565ffff</a> · 20. [interp] · filed 2004-06-06</p><div class="lab">Full verdict</div><p>DOCS (behaviour by design: levels are per-interp, the same ones [uplevel]/[upvar] use)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> attached test.tcl on main, 9.0, 8.6 — the alias target in the parent sees ::test::procA (parent interp) as level 1, not procC in the child
+</li>
+<li><span class="k">Cause</span> each interp has its own CallFrame stack (iPtr-&gt;varFramePtr); doc/info.n does not say so (and still calls the argument "number" while the synopsis says "level")
+</li>
+<li><span class="k">Prototype</span> prototypes/967565ffff.patch (11 changed lines, docs only, no test) — doc/info.n: one sentence that only the current interp's frames are counted, plus number→level
+</li>
+<li><span class="k">Suggested ticket comment</span> By design: &amp;#91;info level&amp;#93; counts the call frames of the current interp only, the same levels &amp;#91;uplevel&amp;#93; and &amp;#91;upvar&amp;#93; use. Proposed doc clarification for info.n; a cross-interp stack walk would need a TIP.
+</li></ul></div></details><details class="t" id="945570ffff" data-s="945570ffff public routines need private #define&#x27;s 37. file system docs (still true: tcl.h includes only &lt;stdio.h&gt;; filesystem.3 names r_ok/w_ok/x_ok/f_ok and o_rdonly etc. but not their headers). the tcl_statbuf part is mostly solved by the tip 316 accessors (tcl_getmodefromstat etc.)." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>945570ffff</span><span class="yr">2004</span><span class="ti">public routines need private #define's</span><span class="vd">DOCS (still true: tcl.h includes only &lt;stdio.h&gt;; FileSystem.3 names R_OK/W_OK/X_OK/F_OK and O_RDONLY etc. but not their headers). The Tcl_StatBuf p…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/945570ffff">Open ticket 945570ffff</a> · 37. File System · filed 2004-04-30</p><div class="lab">Full verdict</div><p>DOCS (still true: tcl.h includes only &lt;stdio.h&gt;; FileSystem.3 names R_OK/W_OK/X_OK/F_OK and O_RDONLY etc. but not their headers). The Tcl_StatBuf part is mostly solved by the TIP 316 accessors (Tcl_GetModeFromStat etc.).</p><ul>
+<li><span class="k">Platform</span> generic (API/docs)
+</li>
+<li><span class="k">Tested</span> code reading of main generic/tcl.h, doc/FileSystem.3
+</li>
+<li><span class="k">Cause</span> design. Defining these in tcl.h would clash with system headers (nijtmans 2012); new TCL_* names would need a TIP.
+</li>
+<li><span class="k">Prototype</span> none (needs a decision: document the headers, or add TCL_* constants via a TIP)
+</li>
+<li><span class="k">Suggested ticket comment</span> Still applies to Tcl_FSAccess modes and the openFileChannelProc flags; the stat part is covered by the TIP 316 accessors. Either document the needed system headers in FileSystem.3 or propose TCL_* constants in a TIP.
+</li></ul></div></details><details class="t" id="624919ffff" data-s="624919ffff tcl_appendtoobj docs confusing 10. objects docs — dkf&#x27;s 2002 doc fix is in (bytes are tutf-8, nulls as 0xc0 0x80), but the argument text in doc/stringobj.3 still says the bytes &quot;may contain embedded null characters unless numchars is negative&quot; (wrong argument name, and contradicts the next sentence)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>624919ffff</span><span class="yr">2002</span><span class="ti">Tcl_AppendToObj docs confusing</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/624919ffff.patch">patch</a><span class="vd">DOCS — dkf's 2002 doc fix is in (bytes are TUTF-8, nulls as 0xC0 0x80), but the argument text in doc/StringObj.3 still says the bytes "may contain …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/624919ffff">Open ticket 624919ffff</a> · 10. Objects · filed 2002-10-17</p><div class="lab">Full verdict</div><p>DOCS — dkf's 2002 doc fix is in (bytes are TUTF-8, nulls as 0xC0 0x80), but the argument text in doc/StringObj.3 still says the bytes "may contain embedded null characters unless numChars is negative" (wrong argument name, and contradicts the next sentence)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> raw NUL key via testbytestring on main/9.0 tcltest: $r($b) works but [info exists r($b)] gives 0 (non-compiled path truncates at the NUL); on 8.6 even $r($b) fails. Invalid input, so this backs up the doc rule rather than being a bug of its own
+</li>
+<li><span class="k">Cause</span> doc wording only
+</li>
+<li><span class="k">Prototype</span> prototypes/624919ffff.patch (10 changed lines, docs only) — say plainly that the first length bytes must not contain a raw null byte; also fixes the <code>\fIfIobjPtr\fR</code> typo in the Tcl_IsEmpty synopsis
+</li>
+<li><span class="k">Suggested ticket comment</span> Still confusing: StringObj.3 says the bytes "may contain embedded null characters unless numChars is negative", yet nulls must be 0xC0 0x80 in TUTF-8. Proposed doc fix stating that raw null bytes are not allowed.
+</li></ul></div></details><details class="t" id="414930ffff" data-s="414930ffff undocumented public apis, namespace 21. [namespace] docs" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>414930ffff</span><span class="yr">2001</span><span class="ti">Undocumented public APIs, namespace</span><span class="vd">DOCS</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/414930ffff">Open ticket 414930ffff</a> · 21. [namespace] · filed 2001-04-09</p><div class="lab">Full verdict</div><p>DOCS</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> grep of doc/*.3 and generic/*.decls in main: Tcl_AppendExportList, Tcl_CreateNamespace etc. are in tcl.decls and doc/Namespace.3 (done 2007). The remaining Tcl_FindNamespaceVar, Tcl_PushCallFrame, Tcl_PopCallFrame, Tcl_AddInterpResolvers, Tcl_GetInterpResolvers, Tcl_RemoveInterpResolvers, Tcl_SetNamespaceResolvers, Tcl_GetNamespaceResolvers are still only in tclInt.decls (internal stubs) and undocumented.
+</li>
+<li><span class="k">Cause</span> these are internal (tclInt.h) APIs despite the Tcl_ prefix.
+</li>
+<li><span class="k">Prototype</span> none (decision whether to make them public is a TIP matter)
+</li>
+<li><span class="k">Suggested ticket comment</span> All remaining names are internal stubs (tclInt.decls), not public API; documenting them means promoting them via a TIP. Suggest closing as "Won't Fix" (internal) or merging with <a class="h" href="https://core.tcl-lang.org/tcl/info/218101ffff">218101ffff</a>.
+</li></ul></div></details><details class="t" id="219149ffff" data-s="219149ffff bad interaction of input redirect from named pipe with backg 27. channel types docs (reproduced on main, 9.0, 8.6; by design according to ferrieux, 2013)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>219149ffff</span><span class="yr">2000</span><span class="ti">bad interaction of input redirect from named pipe with backg</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcl-triage/prototypes/219149ffff.patch">patch</a><span class="vd">DOCS (REPRODUCED on main, 9.0, 8.6; by design according to ferrieux, 2013)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/219149ffff">Open ticket 219149ffff</a> · 27. Channel Types · filed 2000-10-26</p><div class="lab">Full verdict</div><p>DOCS (REPRODUCED on main, 9.0, 8.6; by design according to ferrieux, 2013)</p><ul>
+<li><span class="k">Platform</span> unix
+</li>
+<li><span class="k">Tested</span> <code>exec mkfifo fifo; exec cat &lt;fifo &gt;@stdout &amp;</code> on main, 9.0.5, 8.6.18: exec never returns (an <code>after 2000</code> timer cannot fire, killed by timeout). <code>exec sh -c {cat &lt;fifo} &gt;@stdout &amp;</code> returns at once and works.
+</li>
+<li><span class="k">Cause</span> generic/tclPipe.c:TclCreatePipeline opens redirection files in the parent (FileForRedirect -&gt; TclpOpenFile) before forking, so that errors can be reported synchronously. open() of a FIFO with no writer blocks.
+</li>
+<li><span class="k">Prototype</span> prototypes/219149ffff.patch (7 changed lines, doc/exec.n only: documents the blocking open and the <code>sh -c</code> workaround; no test, docs only)
+</li>
+<li><span class="k">Suggested ticket comment</span> Still the case: exec opens redirection files itself before it returns (so it can report errors), and opening a FIFO with no writer blocks. Proposed doc change for exec.n, with <code>exec sh -c {cat &lt;fifo} &amp;</code> as the workaround.
+</li></ul></div></details><details class="t" id="218101ffff" data-s="218101ffff no man page for library procedures tcl_addinterpresolver tcl 21. [namespace] docs" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>218101ffff</span><span class="yr">2000</span><span class="ti">no man page for library procedures Tcl_AddInterpResolver Tcl</span><span class="vd">DOCS</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcl/tktview/218101ffff">Open ticket 218101ffff</a> · 21. [namespace] · filed 2000-10-26</p><div class="lab">Full verdict</div><p>DOCS</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main doc/*.3 has no page for Tcl_AddInterpResolvers / Tcl_GetInterpResolvers / Tcl_RemoveInterpResolvers / Tcl_SetNamespaceResolvers / Tcl_GetNamespaceResolvers; they're still only in tclInt.decls (internal stubs 111ff). Attachments Resolver.3 and resolver.c are present in the repo and complete.
+</li>
+<li><span class="k">Cause</span> internal API with a Tcl_ prefix; never made public.
+</li>
+<li><span class="k">Prototype</span> none (doc for an internal API; promoting it needs a TIP, and dkf noted the types would need documenting too)
+</li>
+<li><span class="k">Suggested ticket comment</span> Still internal-only (tclInt.decls) in 9.1. George's Resolver.3 is attached and could be a base if a TIP makes the resolver API public; otherwise suggest closing together with <a class="h" href="https://core.tcl-lang.org/tcl/info/414930ffff">414930ffff</a>.
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch and of the Unix and Windows VM runs.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

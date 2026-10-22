@@ -1,0 +1,146 @@
+Index: generic/tclPkg.c
+==================================================================
+--- generic/tclPkg.c
++++ generic/tclPkg.c
+@@ -65,10 +65,18 @@
+     PkgAvail *availPtr;		/* First in list of all available versions of
+ 				 * this package. */
+     const void *clientData;	/* Client data. */
+ } Package;
+ 
++/*
++ * Marker stored in Package.clientData while the "package unknown" script is
++ * running for that package, to detect [package require] of the same package
++ * from an index script.
++ */
++
++static const char unknownInProgress[] = "";
++
+ typedef struct Require {
+     void *clientDataPtr;
+     const char *name;
+     Package *pkgPtr;
+     char *versionToProvide;
+@@ -524,15 +532,29 @@
+ 
+ 	TclNRAddCallback(interp, PkgRequireCoreFinal,
+ 		reqPtr, INT2PTR(reqc), reqv, NULL);
+ 	return TCL_OK;
+     }
++
++    if (reqPtr->pkgPtr->clientData == unknownInProgress) {
++	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
++		"circular package dependency:"
++		" attempt to find %s requires %s", name, name));
++	AddRequirementsToResult(interp, reqc, reqv);
++	Tcl_AppendResult(interp, " (\"package require\" in an index script?)",
++		(char *)NULL);
++	Tcl_SetErrorCode(interp, "TCL", "PACKAGE", "CIRCULARITY", (char *)NULL);
++	return TCL_ERROR;
++    }
+ 
+     /*
+      * Invoke the "package unknown" script synchronously.
+      */
+ 
++    if (reqPtr->pkgPtr->clientData == NULL) {
++	reqPtr->pkgPtr->clientData = unknownInProgress;
++    }
+     Tcl_DStringInit(&command);
+     Tcl_DStringAppend(&command, script, -1);
+     Tcl_DStringAppendElement(&command, name);
+     AddRequirementsToDString(&command, reqc, reqv);
+ 
+@@ -550,10 +572,19 @@
+ {
+     Require *reqPtr = (Require *)data[0];
+     int reqc = (int)PTR2INT(data[1]);
+     Tcl_Obj **const reqv = (Tcl_Obj **)data[2];
+     const char *name = reqPtr->name; /* Name of desired package. */
++
++    /*
++     * pkgPtr may now be invalid, so refresh it.
++     */
++
++    reqPtr->pkgPtr = FindPackage(interp, name);
++    if (reqPtr->pkgPtr->clientData == unknownInProgress) {
++	reqPtr->pkgPtr->clientData = NULL;
++    }
+ 
+     if ((result != TCL_OK) && (result != TCL_ERROR)) {
+ 	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 		"bad return code: %d", result));
+ 	Tcl_SetErrorCode(interp, "TCL", "PACKAGE", "BADRESULT", (char *)NULL);
+@@ -563,16 +594,10 @@
+ 	Tcl_AddErrorInfo(interp,
+ 		"\n    (\"package unknown\" script)");
+ 	return result;
+     }
+     Tcl_ResetResult(interp);
+-
+-    /*
+-     * pkgPtr may now be invalid, so refresh it.
+-     */
+-
+-    reqPtr->pkgPtr = FindPackage(interp, name);
+     TclNRAddCallback(interp, SelectPackage,
+ 	    reqPtr, INT2PTR(reqc), reqv, (void *)PkgRequireCoreFinal);
+     return TCL_OK;
+ }
+ 
+@@ -658,11 +683,11 @@
+     /*
+      * Check whether we're already attempting to load some version of this
+      * package (circular dependency detection).
+      */
+ 
+-    if (pkgPtr->clientData != NULL) {
++    if (pkgPtr->clientData != NULL && pkgPtr->clientData != unknownInProgress) {
+ 	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 		"circular package dependency:"
+ 		" attempt to provide %s %s requires %s",
+ 		name, (char *) pkgPtr->clientData, name));
+ 	AddRequirementsToResult(interp, reqc, reqv);
+
+Index: tests/package.test
+==================================================================
+--- tests/package.test
++++ tests/package.test
+@@ -426,10 +426,36 @@
+     package require foo 1
+ } -cleanup {
+     package forget foo
+     package forget bar
+ } -returnCodes error -match glob -result {circular package dependency:*}
++test package-3.30.1 {Tcl_PkgRequire: package require in package unknown, bug 1805928} -setup {
++    set oldUnknown [package unknown]
++    package forget foo
++} -body {
++    package unknown {apply {args {
++	package require foo
++	package ifneeded foo 1 {package provide foo 1}
++    }}}
++    package require foo
++} -cleanup {
++    package unknown $oldUnknown
++    package forget foo
++} -returnCodes error -result {circular package dependency: attempt to find foo requires foo ("package require" in an index script?)}
++test package-3.30.2 {Tcl_PkgRequire: package unknown finds what it registered itself} -setup {
++    set oldUnknown [package unknown]
++    package forget foo
++} -body {
++    package unknown {apply {args {
++	package ifneeded foo 1 {package provide foo 1}
++	package require foo
++    }}}
++    list [package require foo] [package require foo]
++} -cleanup {
++    package unknown $oldUnknown
++    package forget foo
++} -result {1 1}
+ test package-3.31 {Tcl_PkgRequire: consistent return values (1162286)} -setup {
+     package forget foo
+ } -body {
+     package ifneeded foo 1 {package provide foo 1; error foo}
+     package require foo 1
+

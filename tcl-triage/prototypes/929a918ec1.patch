@@ -1,0 +1,22 @@
+Index: doc/configurable.n
+==================================================================
+--- doc/configurable.n
++++ doc/configurable.n
+@@ -144,11 +144,15 @@
+ .SH "ADVANCED USAGE"
+ .PP
+ The configurable class system is comprised of several pieces. The
+ \fBoo::configurable\fR metaclass works by mixing in a class and setting
+ definition namespaces during object creation that provide the other bits and
+-pieces of machinery. The key pieces of the implementation are enumerated here
++pieces of machinery. Because of this, a configurable class that also needs
++other mixins must add them with \fBmixin \-append\fR; a plain \fBmixin\fR
++replaces the whole mixin list, including \fBoo::configuresupport::configurable\fR,
++and the \fBconfigure\fR method disappears.
++The key pieces of the implementation are enumerated here
+ so that they can be used by other code:
+ .\" COMMAND: configurable
+ .TP
+ \fBoo::configuresupport::configurable\fR
+ .
+

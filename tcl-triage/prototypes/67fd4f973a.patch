@@ -1,0 +1,63 @@
+Index: generic/tclEnv.c
+==================================================================
+--- generic/tclEnv.c
++++ generic/tclEnv.c
+@@ -705,10 +705,20 @@
+     if (flags & TCL_TRACE_READS) {
+ 	Tcl_DString valueString;
+ 	const char *value = TclGetEnv(name2, &valueString);
+ 
+ 	if (value == NULL) {
++	    /*
++	     * The variable may have been removed from the environment by
++	     * another interpreter: remove the stale array element too, so
++	     * that [info exists] agrees. [Bug 67fd4f973a] Elements without
++	     * a value are kept, they may hold traces (see env-7.3).
++	     */
++
++	    if (Tcl_GetVar2(interp, name1, name2, 0) != NULL) {
++		Tcl_UnsetVar2(interp, name1, name2, 0);
++	    }
+ 	    return (char *) "no such variable";
+ 	}
+ 	Tcl_SetVar2(interp, name1, name2, value, 0);
+ 	Tcl_DStringFree(&valueString);
+     }
+
+Index: tests/env.test
+==================================================================
+--- tests/env.test
++++ tests/env.test
+@@ -545,10 +545,31 @@
+ 	[info exists ::env(ENV110)] \
+ 	[catch {set ::env(ENV110)} error] \
+ 	$error
+ } -result {1 foo {} 0 1 {can't read "::env(ENV110)": no such variable}}
+ 
++test env-12.0 {
++    Bug [67fd4f973a] - info exists after unset of env var in other interp
++} -setup {
++    set i [interp create]
++    proc envExists12 {name} {info exists ::env($name)}
++} -cleanup {
++    interp delete $i
++    rename envExists12 {}
++    unset -nocomplain ::env(ENV120) ::env(ENV121)
++} -body {
++    set ::env(ENV120) foo
++    $i eval {set ::env(ENV120)}
++    $i eval {unset ::env(ENV120)}
++    $i eval {set ::env(ENV121) bar}
++    set ::env(ENV121)
++    unset ::env(ENV121)
++    list [envExists12 ENV120] [info exists ::env(ENV120)] \
++	[$i eval {info exists ::env(ENV121)}] \
++	[catch {set ::env(ENV120)}] [array names ::env ENV12*]
++} -result {0 0 0 1 {}}
++
+ 
+ 
+ # cleanup
+ rename getenv {}
+ rename envrestore {}
+

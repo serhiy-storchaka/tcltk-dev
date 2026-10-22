@@ -1,0 +1,87 @@
+Index: tests/fCmd.test
+==================================================================
+--- tests/fCmd.test
++++ tests/fCmd.test
+@@ -2053,10 +2053,26 @@
+     }
+     file delete -force tfa
+ } -cleanup {
+     while {[catch {file delete -force tfa}]} {}
+ } -result {}
++
++test fCmd-20.3 {TraverseUnixTree: delete -force with read-only subdirectories: Bugs 38a31dffdf, b43efdfd61} -setup {
++    catch {file delete -force -- tfa}
++} -constraints {unix notRoot} -body {
++    file mkdir tfa/a/b
++    close [open tfa/a/b/f w]
++    file attributes tfa/a/b -permissions 0o500
++    file attributes tfa/a -permissions 0o500
++    file attributes tfa -permissions 0o500
++    list [catch {file delete -force tfa} msg] $msg [file exists tfa]
++} -cleanup {
++    catch {file attributes tfa -permissions 0o777}
++    catch {file attributes tfa/a -permissions 0o777}
++    catch {file attributes tfa/a/b -permissions 0o777}
++    catch {file delete -force -- tfa}
++} -result {0 {} 0}
+ 
+ #
+ # Feature testing for TclCopyFilesCmd
+ #
+ test fCmd-21.1 {copy : single file to nonexistant} -setup {
+
+Index: unix/tclUnixFCmd.c
+==================================================================
+--- unix/tclUnixFCmd.c
++++ unix/tclUnixFCmd.c
+@@ -1224,11 +1224,13 @@
+ 
+ static int
+ TraversalDelete(
+     Tcl_DString *srcPtr,	/* Source pathname (native). */
+     TCL_UNUSED(Tcl_DString *),
+-    TCL_UNUSED(const Tcl_StatBuf *),
++    const Tcl_StatBuf *statBufPtr,
++				/* Stat info for the directory (lstat), or
++				 * NULL. */
+     int type,			/* Reason for call - see TraverseUnixTree(). */
+     Tcl_DString *errorPtr)	/* If non-NULL, uninitialized or free DString
+ 				 * filled with UTF-8 name of file causing
+ 				 * error. */
+ {
+@@ -1236,12 +1238,33 @@
+     case DOTREE_F:
+ 	if (TclpDeleteFile(Tcl_DStringValue(srcPtr)) == 0) {
+ 	    return TCL_OK;
+ 	}
+ 	break;
+-    case DOTREE_PRED:
++    case DOTREE_PRED: {
++	/*
++	 * The directory could be read. With -force its contents must be
++	 * deletable too, so make it writable and searchable by the owner, as
++	 * DoRemoveDirectory does for the top directory. [Bug 38a31dffdf]
++	 * [Bug b43efdfd61]
++	 */
++
++	Tcl_StatBuf statBuf;
++
++	if (statBufPtr == NULL) {
++	    /* The FTS traversal does not stat for deletion. */
++	    if (TclOSlstat(Tcl_DStringValue(srcPtr), &statBuf) != 0) {
++		return TCL_OK;
++	    }
++	    statBufPtr = &statBuf;
++	}
++	if ((statBufPtr->st_mode & (S_IWUSR|S_IXUSR)) != (S_IWUSR|S_IXUSR)) {
++	    chmod(Tcl_DStringValue(srcPtr),			/* INTL: Native. */
++		    (mode_t) ((statBufPtr->st_mode & 07777) | S_IWUSR|S_IXUSR));
++	}
+ 	return TCL_OK;
++    }
+     case DOTREE_POSTD:
+ 	if (DoRemoveDirectory(srcPtr, 0, NULL) == 0) {
+ 	    return TCL_OK;
+ 	}
+ 	break;
+

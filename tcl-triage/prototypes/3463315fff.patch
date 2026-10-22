@@ -1,0 +1,35 @@
+Index: win/tclWinFile.c
+==================================================================
+--- win/tclWinFile.c
++++ win/tclWinFile.c
+@@ -2730,15 +2730,26 @@
+ 		    HANDLE handle;
+ 
+ 		    handle = FindFirstFileW((WCHAR *) nativePath, &fData);
+ 		    if (handle == INVALID_HANDLE_VALUE) {
+ 			/*
+-			 * This is usually the '/' in 'c:/' at end of string.
++			 * The GetFileAttributesEx above already verified
++			 * existence of the file. The FindFirstFile may fail
++			 * either because it is the root directory or
++			 * because listing the directory content is denied
++			 * or redirected (WOW64) (Bugs d40d8db3fb, 3463315).
++			 * In such a case, just copy the part.
+ 			 */
+ 
+-			Tcl_DStringAppend(&dsNorm, (const char *) L"/",
+-				sizeof(WCHAR));
++			Tcl_DString dsPart;
++
++			Tcl_WinUtfToTChar(lastValidPathEnd,
++				currentPathEndPosition - lastValidPathEnd,
++				&dsPart);
++			Tcl_DStringAppend(&dsNorm, Tcl_DStringValue(&dsPart),
++				Tcl_DStringLength(&dsPart));
++			Tcl_DStringFree(&dsPart);
+ 		    } else {
+ 			WCHAR *nativeName;
+ 
+ 			if (fData.cFileName[0] != '\0') {
+ 			    nativeName = fData.cFileName;
+

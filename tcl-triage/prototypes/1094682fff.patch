@@ -1,0 +1,76 @@
+Index: tests/iogt.test
+==================================================================
+--- tests/iogt.test
++++ tests/iogt.test
+@@ -34,19 +34,17 @@
+ set path(__echo_srv__.tcl) [makeFile {
+ #!/usr/local/bin/tclsh
+ # -*- tcl -*-
+ # echo server
+ #
+-# arguments, options: port to listen on for connections.
++# arguments, options: address and port to listen on for connections.
+ #                     delay till echo of first block
+ #                     delay between blocks
+ #                     blocksize ...
+ 
+-set port [lindex $argv 0]
+-set fdelay [lindex $argv 1]
+-set idelay [lindex $argv 2]
+-set bsizes [lrange $argv 3 end]
++lassign $argv addr port fdelay idelay
++set bsizes [lrange $argv 4 end]
+ set c 0
+ 
+ proc newconn {sock rhost rport} {
+     variable fdelay
+     variable c
+@@ -120,11 +118,11 @@
+ }
+ 
+ #fileevent stdin readable {exit ;#cut}
+ 
+ # main
+-socket -server newconn -myaddr [tcltests::localIPv4Address] $port
++socket -server newconn -myaddr $addr $port
+ vwait forever
+ } __echo_srv__.tcl]
+ 
+ ########################################################################
+ 
+@@ -136,16 +134,19 @@
+     upvar 1 sock sk
+ 
+     # Fixed port, not so good. Lets hope for the best, for now.
+     set port 4000
+ 
+-    exec tclsh __echo_srv__.tcl $port $fdelay $idelay {*}$blocks >@stdout &
++    set addr [tcltests::localIPv4Address]
++    variable path
++    exec [interpreter] $path(__echo_srv__.tcl) $addr $port $fdelay $idelay \
++	{*}$blocks >@stdout &
+     after 500
+ 
+     #puts stdout "> $port"; flush stdout
+ 
+-    set sk [socket localhost $port]
++    set sk [socket $addr $port]
+     fconfigure $sk -blocking 0 -buffering full \
+ 	-buffersize [expr {10+[llength $data]}]
+     puts -nonewline $sk $data
+ 
+     # The channel is prepared to go off.
+@@ -771,11 +772,11 @@
+ 
+ test iogt-5.0 {EOF simulation} -setup {
+     set fin [open $path(dummy) r]
+     set fout [open $path(dummyout) w]
+     set trail [list]
+-} -constraints {testchannel knownBug} -result {
++} -constraints {testchannel knownBug} -body {
+     audit_flow trail -attach $fin
+     stopafter_audit d trail 20 -attach $fin
+     audit_flow trail -attach $fout
+     fconfigure $fin -buffersize 20
+     fconfigure $fout -buffersize 10
+

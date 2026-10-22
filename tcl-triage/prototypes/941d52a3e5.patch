@@ -1,0 +1,156 @@
+Index: generic/tclDictObj.c
+==================================================================
+--- generic/tclDictObj.c
++++ generic/tclDictObj.c
+@@ -3864,11 +3864,11 @@
+     Tcl_Obj *const pathv[],	/* The elements of the path to the subdict. */
+     Tcl_Obj *keysPtr)		/* List of keys to be synchronized. This is
+ 				 * the result value from TclDictWithInit. */
+ {
+     Tcl_Obj *dictPtr, *leafPtr, *valPtr;
+-    Tcl_Size i, allocdict, keyc;
++    Tcl_Size i, allocdict, changed, keyc;
+     Tcl_Obj **keyv;
+ 
+     /*
+      * If the dictionary variable doesn't exist, drop everything silently.
+      */
+@@ -3885,39 +3885,23 @@
+ 
+     if (Tcl_DictObjSize(interp, dictPtr, &i) != TCL_OK) {
+ 	return TCL_ERROR;
+     }
+ 
+-    if (Tcl_IsShared(dictPtr)) {
+-	dictPtr = Tcl_DuplicateObj(dictPtr);
+-	allocdict = 1;
+-    } else {
+-	allocdict = 0;
+-    }
++    /*
++     * Find the leaf dictionary without modifying anything yet, so that a
++     * dictionary none of whose values were changed keeps its string
++     * representation. [Bug 941d52a3e5]
++     */
+ 
+     if (pathc > 0) {
+-	/*
+-	 * Want to get to the dictionary which we will update; need to do
+-	 * prepare-for-update unsharing along the path *but* avoid generating
+-	 * an error on a non-extant path (we'll treat that the same as a
+-	 * non-extant variable. Luckily, the unsharing operation isn't
+-	 * deeply damaging if we don't go on to update; it's just less than
+-	 * perfectly efficient (but no memory should be leaked).
+-	 */
+-
+ 	leafPtr = TclTraceDictPath(interp, dictPtr, pathc, pathv,
+-		DICT_PATH_EXISTS | DICT_PATH_UPDATE);
++		DICT_PATH_EXISTS);
+ 	if (leafPtr == NULL) {
+-	    if (allocdict) {
+-		TclDecrRefCount(dictPtr);
+-	    }
+ 	    return TCL_ERROR;
+ 	}
+ 	if (leafPtr == DICT_PATH_NON_EXISTENT) {
+-	    if (allocdict) {
+-		TclDecrRefCount(dictPtr);
+-	    }
+ 	    return TCL_OK;
+ 	}
+     } else {
+ 	leafPtr = dictPtr;
+     }
+@@ -3924,13 +3908,46 @@
+ 
+     /*
+      * Now process our updates on the leaf dictionary.
+      */
+ 
++    allocdict = 0;
++    changed = 0;
+     TclListObjGetElements(NULL, keysPtr, &keyc, &keyv);
+     for (i=0 ; i<keyc ; i++) {
+ 	valPtr = Tcl_ObjGetVar2(interp, keyv[i], NULL, 0);
++	if (!changed) {
++	    Tcl_Obj *oldPtr;
++
++	    Tcl_DictObjGet(NULL, leafPtr, keyv[i], &oldPtr);
++	    if (oldPtr == valPtr) {
++		continue;
++	    }
++
++	    /*
++	     * First real change: unshare the dictionary and the path to the
++	     * leaf before updating it.
++	     */
++
++	    changed = 1;
++	    if (Tcl_IsShared(dictPtr)) {
++		dictPtr = Tcl_DuplicateObj(dictPtr);
++		allocdict = 1;
++	    }
++	    if (pathc > 0) {
++		leafPtr = TclTraceDictPath(interp, dictPtr, pathc, pathv,
++			DICT_PATH_EXISTS | DICT_PATH_UPDATE);
++		if (leafPtr == NULL || leafPtr == DICT_PATH_NON_EXISTENT) {
++		    if (allocdict) {
++			TclDecrRefCount(dictPtr);
++		    }
++		    return (leafPtr == NULL) ? TCL_ERROR : TCL_OK;
++		}
++	    } else {
++		leafPtr = dictPtr;
++	    }
++	}
+ 	if (valPtr == NULL) {
+ 	    Tcl_DictObjRemove(NULL, leafPtr, keyv[i]);
+ 	} else if (leafPtr == valPtr) {
+ 	    /*
+ 	     * Someone is messing us around, trying to build a recursive
+@@ -3939,10 +3956,13 @@
+ 
+ 	    Tcl_DictObjPut(NULL, leafPtr, keyv[i], Tcl_DuplicateObj(valPtr));
+ 	} else {
+ 	    Tcl_DictObjPut(NULL, leafPtr, keyv[i], valPtr);
+ 	}
++    }
++    if (!changed) {
++	return TCL_OK;
+     }
+ 
+     /*
+      * Ensure that none of the dictionaries in the chain still have a string
+      * rep.
+
+Index: tests/dict.test
+==================================================================
+--- tests/dict.test
++++ tests/dict.test
+@@ -1684,10 +1684,25 @@
+ 		}
+ 	    }
+ 	}}
+     }}
+ } 1,2
++test dict-22.26 {dict with keeps string rep if nothing changed: bug 941d52a3e5} {
++    set d "\n\tone 1\n\ttwo 2\n"
++    set r [apply {d {dict with d {}; return $d}} $d]
++    dict with d {}
++    list [expr {$r eq $d}] [expr {$d eq "\n\tone 1\n\ttwo 2\n"}]
++} {1 1}
++test dict-22.27 {dict with keeps string rep if nothing changed: bug 941d52a3e5} {
++    apply {{} {
++	set d "a {\n x 1 }  b 2"
++	dict with d a {}
++	set r1 $d
++	dict with d a {set x 3}
++	list $r1 $d
++    }}
++} [list "a {\n x 1 }  b 2" {a {x 3} b 2}]
+ 
+ proc linenumber {} {
+     dict get [info frame -1] line
+ }
+ test dict-23.1 {dict compilation crash: Bug 3487626} {
+

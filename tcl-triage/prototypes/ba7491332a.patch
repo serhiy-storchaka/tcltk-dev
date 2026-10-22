@@ -1,0 +1,48 @@
+Index: generic/itclBase.c
+==================================================================
+--- generic/itclBase.c
++++ generic/itclBase.c
+@@ -257,12 +257,18 @@
+ 
+     infoPtr = (ItclObjectInfo*)Itcl_Alloc(sizeof(ItclObjectInfo));
+ 
+     nsPtr = Tcl_CreateNamespace(interp, ITCL_NAMESPACE, infoPtr, FreeItclObjectInfo);
+     if (nsPtr == NULL) {
++	/*
++	 * E.g. the namespace already exists. Tcl_CreateNamespace has left an
++	 * error message in the interpreter. Don't panic: this can be reached
++	 * from a safe interpreter. [Bug ba7491332a]
++	 */
++
+ 	Itcl_Free(infoPtr);
+-	Tcl_Panic("Itcl: cannot create namespace: \"%s\" \n", ITCL_NAMESPACE);
++	return TCL_ERROR;
+     }
+ 
+     nsPtr = Tcl_CreateNamespace(interp, ITCL_INTDICTS_NAMESPACE,
+ 	    NULL, NULL);
+     if (nsPtr == NULL) {
+
+Index: tests/interp.test
+==================================================================
+--- tests/interp.test
++++ tests/interp.test
+@@ -81,8 +81,17 @@
+ 	}
+ 	DeleteSelf ds
+     }
+     interp delete child
+ } {}
++
++test interp-1.6 {::itcl namespace already exists, bug ba7491332a} -setup {
++    interp create -safe child
++} -body {
++    child eval {namespace eval itcl {set some variable}}
++    list [catch {load "" Itcl child} msg] $msg
++} -cleanup {
++    interp delete child
++} -result {1 {can't create namespace "::itcl": already exists}}
+ 
+ ::tcltest::cleanupTests
+ return
+

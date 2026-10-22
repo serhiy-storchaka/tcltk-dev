@@ -1,0 +1,20 @@
+Index: doc/info.n
+==================================================================
+--- doc/info.n
++++ doc/info.n
+@@ -322,10 +322,14 @@
+ Returns the names of all visible procedures. If \fIpattern\fR is given, returns
+ only those names that match according to \fBstring match\fR.  Only the final
+ component in \fIpattern\fR is actually considered a pattern.  Any qualifying
+ components simply select a namespace.  See \fBNAMESPACE RESOLUTION\fR in the
+ manual page of the \fBnamespace\fR command.
++Procedures that are only known to the auto-loader (see \fBauto_load\fR in
++\fBlibrary\fR(n)) and have not been loaded yet are not included; likewise
++\fBinfo args\fR, \fBinfo body\fR and \fBinfo default\fR report an error
++for such procedures until they are loaded, e.g., with \fBauto_load\fR.
+ .\" METHOD: script
+ .TP
+ \fBinfo script\fR ?\fIfilename\fR?
+ .
+ Returns the pathname of the innermost script currently being evaluated, or the
+

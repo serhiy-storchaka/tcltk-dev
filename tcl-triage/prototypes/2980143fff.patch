@@ -1,0 +1,43 @@
+Index: generic/threadCmd.c
+==================================================================
+--- generic/threadCmd.c
++++ generic/threadCmd.c
+@@ -2830,11 +2830,12 @@
+      * Return result to caller
+      */
+ 
+     if (resultPtr->code == TCL_ERROR) {
+ 	if (resultPtr->errorCode) {
+-	    Tcl_SetErrorCode(interp, resultPtr->errorCode, (char *)NULL);
++	    Tcl_SetObjErrorCode(interp,
++		    Tcl_NewStringObj(resultPtr->errorCode, TCL_INDEX_NONE));
+ 	    Tcl_Free(resultPtr->errorCode);
+ 	}
+ 	if (resultPtr->errorInfo) {
+ 		Tcl_AppendObjToErrorInfo(interp, Tcl_NewStringObj(resultPtr->errorInfo, TCL_INDEX_NONE));
+ 	    Tcl_Free(resultPtr->errorInfo);
+
+Index: tests/thread.test
+==================================================================
+--- tests/thread.test
++++ tests/thread.test
+@@ -358,10 +358,18 @@
+     }
+     after cancel $e
+     ThreadReap
+     set res
+ } -match regexp -result {^HEAD(?:(?: TMR-0| AHEAD ASYNC){2} SYNC| AHEAD ASYNC SYNC TMR-0) IDLE$}
++
++test thread-11.13 {Thread_Send preserve list errorCode (bug [2980143fff])} {
++    ThreadReap
++    set tid [thread::create]
++    set c [catch {thread::send $tid {error ERR INFO {MY CODE}}} msg opts]
++    ThreadReap
++    list $c $msg $errorCode [dict get $opts -errorcode]
++} {1 ERR {MY CODE} {MY CODE}}
+ 
+ test thread-12.0 {thread::wait} {
+     ThreadReap
+     set tid [thread::create {set x 5; thread::wait}]
+     thread::send $tid {set x} five
+

@@ -1,0 +1,64 @@
+Index: library/tcltest/tcltest.tcl
+==================================================================
+--- library/tcltest/tcltest.tcl
++++ library/tcltest/tcltest.tcl
+@@ -2440,14 +2440,16 @@
+ 	set doTest 0
+ 	set constraints [string trim $constraints]
+ 	if {[string match {*[$\[]*} $constraints] != 0} {
+ 	    # full expression, e.g. {$foo > [info tclversion]}
+ 	    catch {set doTest [uplevel #0 [list expr $constraints]]}
+-	} elseif {[regexp {[^.:_a-zA-Z0-9 \n\r\t]+} $constraints] != 0} {
++	} elseif {[regexp {[^.:_a-zA-Z0-9 \n\r\t-]} $constraints]
++		|| [regexp {(?:^|[^.:\w])-|-(?:[^.:\w]|$)} $constraints]} {
+ 	    # something like {a || b} should be turned into
+ 	    # $testConstraints(a) || $testConstraints(b).
+-	    regsub -all {[.\w]+} $constraints {$testConstraints(&)} c
++	    # A "-" between name characters is part of the name (bug-123).
++	    regsub -all {[.\w]+(?:-[.\w]+)*} $constraints {$testConstraints(&)} c
+ 	    catch {set doTest [eval [list expr $c]]}
+ 	} elseif {![catch {llength $constraints}]} {
+ 	    # just simple constraints such as {unixOnly fonts}.
+ 	    set doTest 1
+ 	    foreach constraint $constraints {
+
+Index: tests/tcltest.test
+==================================================================
+--- tests/tcltest.test
++++ tests/tcltest.test
+@@ -1881,10 +1881,34 @@
+     unset -nocomplain script msg
+ } -body {
+     child msg $script
+     regexp "Total.+8.+Passed.+2.+Skipped.+2.+Failed.+4" $msg \
+ } -result 1
++
++test tcltest-28.1 {constraint names with a dash, bug 9f4feaaaa1} -setup {
++    set script [makeFile {
++	package require tcltest
++	namespace import tcltest::*
++	testConstraint dash-off 0
++	test t-1 {} -constraints dash-on -body {}
++	test t-2 {} -constraints {dash-off || dash-on} -body {}
++	test t-3 {} -constraints {dash-on && !dash-off} -body {}
++	test t-4 {} -constraints {dash-on && dash-off} -body {}
++	test t-5 {} -constraints {
++	    dash-on
++	} -body {}
++	cleanupTests
++    } dashConstraint.tcl]
++} -cleanup {
++    removeFile $script
++    unset -nocomplain script msg1 msg2
++} -body {
++    child msg1 $script
++    child msg2 $script -constraints dash-on
++    list [regexp "Total.+5.+Passed.+0.+Skipped.+5.+Failed.+0" $msg1] \
++	[regexp "Total.+5.+Passed.+4.+Skipped.+1.+Failed.+0" $msg2]
++} -result {1 1}
+ 
+ 
+ cleanupTests
+ }
+ 
+

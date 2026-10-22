@@ -1,0 +1,18 @@
+Index: doc/Thread.3
+==================================================================
+--- doc/Thread.3
++++ doc/Thread.3
+@@ -103,12 +103,10 @@
+ and join it.
+ .PP
+ Restrictions: On some UNIX systems the pthread-library does not
+ contain the functionality to specify the stack size of a thread. The
+ specified value for the stack size is ignored on these systems.
+-Windows currently does not support joinable threads. This
+-flag value is therefore ignored on this platform.
+ .PP
+ Tcl provides the \fBTcl_ExitThread\fR and \fBTcl_FinalizeThread\fR functions
+ for terminating threads and invoking optional per-thread exit
+ handlers.  See the \fBTcl_Exit\fR page for more information on these
+ procedures.
+

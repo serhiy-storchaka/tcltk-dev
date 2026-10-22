@@ -1,0 +1,21 @@
+Index: library/clock.tcl
+==================================================================
+--- library/clock.tcl
++++ library/clock.tcl
+@@ -2978,12 +2978,13 @@
+ #
+ # Results:
+ #	Returns the system time zone.
+ #
+ # Side effects:
+-#	Stores the system time zone in the 'CachedSystemTimeZone'
+-#	variable, since determining it may be an expensive process.
++#	If neither TCL_TZ nor TZ is set in the environment, stores the
++#	system time zone in the 'CachedSystemTimeZone' variable, since
++#	determining it may be an expensive process.
+ #
+ #----------------------------------------------------------------------
+ 
+ proc ::tcl::clock::GetSystemTimeZone {} {
+     variable CachedSystemTimeZone
+

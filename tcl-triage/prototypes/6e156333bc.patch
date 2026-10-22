@@ -1,0 +1,26 @@
+Index: doc/StringObj.3
+==================================================================
+--- doc/StringObj.3
++++ doc/StringObj.3
+@@ -183,15 +183,15 @@
+ \fIlengthPtr\fR if it is non-NULL.  If the value's UTF string
+ representation is invalid (its byte pointer is NULL), the string
+ representation is regenerated from the value's internal
+ representation.  The storage referenced by the returned byte pointer
+ is owned by the value manager.  It is passed back as a writable
+-pointer so that extension author creating their own \fBTcl_ObjType\fR
+-will be able to modify the string representation within the
+-\fBTcl_UpdateStringProc\fR of their \fBTcl_ObjType\fR.  Except for that
+-limited purpose, the pointer returned by \fBTcl_GetStringFromObj\fR
+-or \fBTcl_GetString\fR should be treated as read-only.  It is
++pointer for historical reasons, but it should be treated as read-only.
++(A \fBTcl_UpdateStringProc\fR is only called when the string
++representation is invalid, so it cannot obtain it with these
++procedures; it creates the string representation itself, for example
++with \fBTcl_InitStringRep\fR, which returns a buffer to fill in.)  It is
+ recommended that this pointer be assigned to a (const char *) variable.
+ Even in the limited situations where writing to this pointer is
+ acceptable, one should take care to respect the copy-on-write
+ semantics required by \fBTcl_Obj\fR's, with appropriate calls
+ to \fBTcl_IsShared\fR and \fBTcl_DuplicateObj\fR prior to any
+

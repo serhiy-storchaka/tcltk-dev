@@ -1,0 +1,43 @@
+Index: generic/tclCmdIL.c
+==================================================================
+--- generic/tclCmdIL.c
++++ generic/tclCmdIL.c
+@@ -694,11 +694,11 @@
+ 	    }
+ 	    Tcl_ListObjAppendElement(interp, listPtr, elemObjPtr);
+ 	    Tcl_SetObjResult(interp, listPtr);
+ 	    return TCL_OK;
+ 	}
+-	if ((nsPtr != globalNsPtr) && !specificNsInPattern) {
++	if (!specificNsInPattern) {
+ 	    Tcl_HashTable *tablePtr = NULL;	/* Quell warning. */
+ 
+ 	    for (i=0 ; i<nsPtr->commandPathLength ; i++) {
+ 		Namespace *pathNsPtr = nsPtr->commandPathArray[i].nsPtr;
+ 
+
+Index: tests/namespace.test
+==================================================================
+--- tests/namespace.test
++++ tests/namespace.test
+@@ -2874,10 +2874,19 @@
+ } -cleanup {
+     catch {namespace delete ::test_ns_1}
+     catch {namespace delete ::test_ns_2}
+     catch {namespace delete ::test_ns_3}
+ } -result {foo0 {foo1 foo2 foo0} {foo2 foo1 foo0} {foo1 foo2 foo0} {foo2 foo0}}
++test namespace-51.14.1 {info commands follows path from global namespace (bug [58b96f6744])} -setup {
++    set p [namespace path]
++    namespace path ::tcl::mathfunc
++} -body {
++    list [info commands sin] [info commands sinh*]
++} -cleanup {
++    namespace path $p
++    unset p
++} -result {sin sinh}
+ test namespace-51.15 {namespace resolution path control} -body {
+     namespace eval ::test_ns_2 {
+ 	proc foo {} {return 2}
+     }
+     namespace eval ::test_ns_1 {
+

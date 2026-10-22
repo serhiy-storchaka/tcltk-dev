@@ -1,0 +1,18 @@
+Index: doc/ParseCmd.3
+==================================================================
+--- doc/ParseCmd.3
++++ doc/ParseCmd.3
+@@ -243,11 +243,11 @@
+ present in the array.
+ Each token contains four fields.
+ The \fItype\fR field selects one of several token types
+ that are described below.  The \fIstart\fR field
+ points to the first character in the token and the \fIsize\fR field
+-gives the total number of characters in the token.  Some token types,
++gives the total number of bytes in the token.  Some token types,
+ such as \fBTCL_TOKEN_WORD\fR and \fBTCL_TOKEN_VARIABLE\fR, consist of
+ several component tokens, which immediately follow the parent token;
+ the \fInumComponents\fR field describes how many of these there are.
+ The \fItype\fR field has one of the following values:
+ .IP \fBTCL_TOKEN_WORD\fR
+

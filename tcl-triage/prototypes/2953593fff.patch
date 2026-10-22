@@ -1,0 +1,102 @@
+Index: generic/tclIO.c
+==================================================================
+--- generic/tclIO.c
++++ generic/tclIO.c
+@@ -4627,10 +4627,12 @@
+     Channel *chanPtr = (Channel *) chan;
+     ChannelState *statePtr = chanPtr->state;
+ 				/* State info for channel */
+     ChannelBuffer *bufPtr;
+     int inEofChar, skip, copiedTotal, oldFlags, oldRemoved;
++    bool skippedLF = false;	/* Was a "\n" after a "\r" from a previous
++				 * call skipped? */
+     Tcl_Size oldLength;
+     Tcl_Encoding encoding;
+     char *dst, *dstEnd, *eol, *eof;
+     Tcl_EncodingState oldState;
+ 
+@@ -4807,19 +4809,27 @@
+ 	    }
+ 	    break;
+ 	case TCL_TRANSLATE_AUTO:
+ 	    eol = dst;
+ 	    skip = 1;
+-	    if (GotFlag(statePtr, INPUT_SAW_CR)) {
+-		if ((eol < dstEnd) && (*eol == '\n')) {
++	    if (GotFlag(statePtr, INPUT_SAW_CR) && (eol < dstEnd)) {
++		/*
++		 * Only the first character after the "\r" may be skipped, so
++		 * reset the flag as soon as new data is seen, and set it again
++		 * if a skipped "\n" is pushed back below. [Bug 2953593]
++		 */
++
++		ResetFlag(statePtr, INPUT_SAW_CR);
++		if (*eol == '\n') {
+ 		    /*
+ 		     * Skip the raw bytes that make up the '\n'.
+ 		     */
+ 
+ 		    int rawRead;
+ 		    char tmp[TCL_UTF_MAX];
+ 
++		    skippedLF = true;
+ 		    bufPtr = gs.bufPtr;
+ 		    Tcl_ExternalToUtf(NULL, gs.encoding, RemovePoint(bufPtr),
+ 			    gs.rawRead, statePtr->inputEncodingFlags
+ 				| TCL_ENCODING_NO_TERMINATE, &gs.state, tmp,
+ 			    sizeof(tmp), &rawRead, NULL, NULL);
+@@ -4990,10 +5000,13 @@
+     }
+     CommonGetsCleanup(chanPtr);
+ 
+     statePtr->inputEncodingState = oldState;
+     statePtr->inputEncodingFlags = oldFlags;
++    if (skippedLF) {
++	SetFlag(statePtr, INPUT_SAW_CR);
++    }
+     Tcl_SetObjLength(objPtr, oldLength);
+ 
+     /*
+      * We didn't get a complete line so we need to indicate to UpdateInterest
+      * that the gets blocked. It will wait for more data instead of firing a
+
+Index: tests/io.test
+==================================================================
+--- tests/io.test
++++ tests/io.test
+@@ -3291,10 +3291,34 @@
+ } -cleanup {
+     close $s
+     if {$c ne {}} { close $c }
+     unset -nocomplain ::done ::cli ::cnt s c
+ } -result [lrepeat 6 {<1 line>} {<2 line>} {<3 line>}]
++
++test io-29.36.3 {gets on translation auto, "\r" then a buffer without eol, bug [2953593]} -setup {
++    lassign [chan pipe] r w
++    fconfigure $r -blocking 0 -translation auto
++    fconfigure $w -translation binary -buffering none
++    set res {}
++} -body {
++    puts -nonewline $w "a\r"
++    lappend res [gets $r]
++    puts -nonewline $w "b"
++    lappend res [gets $r] [fblocked $r]
++    puts -nonewline $w "\nc\n"
++    lappend res [gets $r] [gets $r]
++    puts -nonewline $w "d\r"
++    lappend res [gets $r]
++    puts -nonewline $w "e"
++    lappend res [gets $r]
++    puts -nonewline $w "\n\rf\n"
++    lappend res [gets $r] [gets $r] [gets $r]
++} -cleanup {
++    close $w
++    close $r
++    unset -nocomplain r w res
++} -result {a {} 1 b c d {} e {} f}
+ 
+ # Test end of line translations. Procedures tested are Tcl_Write, Tcl_Read.
+ 
+ test io-30.1 {Tcl_Write lf, Tcl_Read lf} {
+     file delete $path(test1)
+

@@ -1,0 +1,117 @@
+Index: tests/winFCmd.test
+==================================================================
+--- tests/winFCmd.test	
++++ tests/winFCmd.test	
+@@ -579,10 +579,26 @@
+     testfile cp tf1 tf2
+     list [file writable tf2] [contents tf2]
+ } -cleanup {
+     cleanup
+ } -result {1 tf1}
++
++testConstraint winSymLinks [expr {[testConstraint win] && ![catch {
++    set f [file join [temporaryDirectory] symlinkprobe]
++    file link -symbolic $f [info nameofexecutable]
++    file delete $f
++}]}]
++test winFCmd-2.18 {TclpCopyFile: copy a symbolic link as a link [Bug 972c35d41d]} -setup {
++    cleanup
++} -constraints {win winSymLinks} -body {
++    createfile tf1 tf1
++    file link -symbolic tf2 tf1
++    file copy tf2 tf3
++    list [file type tf3] [contents tf3]
++} -cleanup {
++    cleanup
++} -result {link tf1}
+ 
+ test winFCmd-3.1 {TclpDeleteFile: errno: EACCES} -body {
+     testfile rm $cdfile $cdrom/dummy~~.fil
+ } -constraints {win cdrom testfile} -returnCodes error -result EACCES
+ test winFCmd-3.2 {TclpDeleteFile: errno: EISDIR} -setup {
+
+Index: win/tclWinFCmd.c
+==================================================================
+--- win/tclWinFCmd.c	
++++ win/tclWinFCmd.c	
+@@ -99,10 +99,11 @@
+ static void		StatError(Tcl_Interp *interp, Tcl_Obj *fileName);
+ static int		ConvertFileNameFormat(Tcl_Interp *interp,
+ 			    int objIndex, Tcl_Obj *fileName, int longShort,
+ 			    Tcl_Obj **attributePtrPtr);
+ static int		DoCopyFile(const WCHAR *srcPtr, const WCHAR *dstPtr);
++static BOOL		CopyFileOrLink(const WCHAR *src, const WCHAR *dst);
+ static int		DoCreateDirectory(const WCHAR *pathPtr);
+ static int		DoRemoveJustDirectory(const WCHAR *nativeSrc,
+ 			    int ignoreError, Tcl_DString *errorPtr);
+ static int		DoRemoveDirectory(Tcl_DString *pathPtr, int recursive,
+ 			    Tcl_DString *errorPtr);
+@@ -442,11 +443,11 @@
+     /*
+      * The CopyFile API would throw an exception under NT if one of the
+      * arguments is a char block device.
+      */
+ 
+-    if (CopyFileW(nativeSrc, nativeDst, 0) != FALSE) {
++    if (CopyFileOrLink(nativeSrc, nativeDst) != FALSE) {
+ 	retval = TCL_OK;
+     }
+ 
+     if (retval != -1) {
+ 	return retval;
+@@ -477,11 +478,11 @@
+ 		Tcl_SetErrno(EISDIR);
+ 	    }
+ 	    if (dstAttr & FILE_ATTRIBUTE_READONLY) {
+ 		SetFileAttributesW(nativeDst,
+ 			dstAttr & ~((DWORD)FILE_ATTRIBUTE_READONLY));
+-		if (CopyFileW(nativeSrc, nativeDst, 0) != FALSE) {
++		if (CopyFileOrLink(nativeSrc, nativeDst) != FALSE) {
+ 		    return TCL_OK;
+ 		}
+ 
+ 		/*
+ 		 * Still can't copy onto dst. Return that error, and restore
+@@ -617,10 +618,41 @@
+     }
+ 
+     return TCL_ERROR;
+ }
+ 
++/*
++ *---------------------------------------------------------------------------
++ *
++ * CopyFileOrLink --
++ *
++ *	Copy a file, but copy a symbolic link as a link, like on Unix [Bug
++ *	972c35d41d]. Without the privilege to create symbolic links, copy the
++ *	target as before.
++ *
++ *---------------------------------------------------------------------------
++ */
++
++#ifndef COPY_FILE_COPY_SYMLINK
++#   define COPY_FILE_COPY_SYMLINK 0x00000800
++#endif
++
++static BOOL
++CopyFileOrLink(
++    const WCHAR *nativeSrc,
++    const WCHAR *nativeDst)
++{
++    if (CopyFileExW(nativeSrc, nativeDst, NULL, NULL, NULL,
++	    COPY_FILE_COPY_SYMLINK)) {
++	return TRUE;
++    }
++    if (GetLastError() != ERROR_PRIVILEGE_NOT_HELD) {
++	return FALSE;
++    }
++    return CopyFileW(nativeSrc, nativeDst, 0);
++}
++
+ /*
+  *---------------------------------------------------------------------------
+  *
+  * TclpObjCreateDirectory --
+  *
+

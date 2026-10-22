@@ -1,0 +1,182 @@
+ADDED    compat/mkdtemp.c
+Index: compat/mkdtemp.c
+==================================================================
+--- /dev/null
++++ compat/mkdtemp.c
+@@ -0,0 +1,69 @@
++/*
++ * mkdtemp.c --
++ *
++ *	Source code for the "mkdtemp" library routine, for systems that lack
++ *	it (e.g., Solaris 8).
++ *
++ * See the file "license.terms" for information on usage and redistribution of
++ * this file, and for a DISCLAIMER OF ALL WARRANTIES.
++ */
++
++#include <errno.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++
++/*
++ *----------------------------------------------------------------------
++ *
++ * mkdtemp --
++ *
++ *	Create a temporary directory from a template.
++ *
++ * Results:
++ *	The template, or NULL (with errno set) in the case of an error.
++ *
++ * Side effects:
++ *	The template is updated to contain the real directory name.
++ *
++ *----------------------------------------------------------------------
++ */
++
++char *
++mkdtemp(
++    char *tmpl)		/* Template for directory name. */
++{
++    static const char alphanumerics[] =
++	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
++    char *a, *b;
++    int result, count, alphanumericsLen = strlen(alphanumerics); /* == 62 */
++
++    a = tmpl + strlen(tmpl);
++    while (a > tmpl && *(a-1) == 'X') {
++	a--;
++    }
++
++    if (a == tmpl) {
++	errno = EINVAL;
++	return NULL;
++    }
++
++    /*
++     * mkdir() fails with EEXIST if the name is taken, so there is no race
++     * between choosing the name and creating the directory. Give up after
++     * 100 attempts.
++     */
++
++    count = 100;
++    do {
++	for (b=a ; *b ; b++) {
++	    float r = rand() / ((float) RAND_MAX + 1);
++
++	    *b = alphanumerics[(int)(r * alphanumericsLen)];
++	}
++	result = mkdir(tmpl, 0700);
++    } while (result == -1 && errno == EEXIST && --count > 0);
++
++    return (result == 0) ? tmpl : NULL;
++}
+
+Index: unix/Makefile.in
+==================================================================
+--- unix/Makefile.in
++++ unix/Makefile.in
+@@ -1946,10 +1946,13 @@
+ # though they may be placed in a static executable or library. Since they are
+ # included in both the tcl library and the stub library, they need to be
+ # relocatable.
+ #--------------------------------------------------------------------------
+ 
++mkdtemp.o: $(COMPAT_DIR)/mkdtemp.c
++	$(CC) -c $(STUB_CC_SWITCHES) $(COMPAT_DIR)/mkdtemp.c
++
+ mkstemp.o: $(COMPAT_DIR)/mkstemp.c
+ 	$(CC) -c $(STUB_CC_SWITCHES) $(COMPAT_DIR)/mkstemp.c
+ 
+ strncasecmp.o: $(COMPAT_DIR)/strncasecmp.c
+ 	$(CC) -c $(STUB_CC_SWITCHES) $(COMPAT_DIR)/strncasecmp.c
+
+Index: unix/configure
+==================================================================
+--- unix/configure
++++ unix/configure
+@@ -8493,10 +8493,24 @@
+ 
+ done
+ # Nb: if getcwd uses popen and pwd(1) (like SunOS 4) we should really
+ # define USEGETWD even if the posix getcwd exists. Add a test ?
+ 
++ac_fn_c_check_func "$LINENO" "mkdtemp" "ac_cv_func_mkdtemp"
++if test "x$ac_cv_func_mkdtemp" = xyes
++then :
++  printf '%s\n' "#define HAVE_MKDTEMP 1" >>confdefs.h
++
++else case e in #(
++  e) case " $LIBOBJS " in
++  *" mkdtemp.$ac_objext "* ) ;;
++  *) LIBOBJS="$LIBOBJS mkdtemp.$ac_objext"
++ ;;
++esac
++ ;;
++esac
++fi
+ ac_fn_c_check_func "$LINENO" "mkstemp" "ac_cv_func_mkstemp"
+ if test "x$ac_cv_func_mkstemp" = xyes
+ then :
+   printf '%s\n' "#define HAVE_MKSTEMP 1" >>confdefs.h
+ 
+
+Index: unix/configure.ac
+==================================================================
+--- unix/configure.ac
++++ unix/configure.ac
+@@ -229,11 +229,11 @@
+ # Check if Posix compliant getcwd exists, if not we'll use getwd.
+ AC_CHECK_FUNCS(getcwd, , [AC_DEFINE(USEGETWD, 1, [Is getcwd Posix-compliant?])])
+ # Nb: if getcwd uses popen and pwd(1) (like SunOS 4) we should really
+ # define USEGETWD even if the posix getcwd exists. Add a test ?
+ 
+-AC_REPLACE_FUNCS(mkstemp waitpid)
++AC_REPLACE_FUNCS(mkdtemp mkstemp waitpid)
+ AC_CHECK_FUNC(strerror, , [AC_DEFINE(NO_STRERROR, 1, [Do we have strerror()])])
+ AC_CHECK_FUNC(getwd, , [AC_DEFINE(NO_GETWD, 1, [Do we have getwd()])])
+ AC_CHECK_FUNC(wait3, , [AC_DEFINE(NO_WAIT3, 1, [Do we have wait3()])])
+ AC_CHECK_FUNC(fork, , [AC_DEFINE(NO_FORK, 1, [Do we have fork()])])
+ AC_CHECK_FUNC(mknod, , [AC_DEFINE(NO_MKNOD, 1, [Do we have mknod()])])
+
+Index: unix/tclConfig.h.in
+==================================================================
+--- unix/tclConfig.h.in
++++ unix/tclConfig.h.in
+@@ -147,10 +147,13 @@
+ /* Define to 1 if you have the 'localtime_r' function. */
+ #undef HAVE_LOCALTIME_R
+ 
+ /* Define to 1 if you have the 'lseek64' function. */
+ #undef HAVE_LSEEK64
++
++/* Define to 1 if you have the 'mkdtemp' function. */
++#undef HAVE_MKDTEMP
+ 
+ /* Define to 1 if you have the 'mkstemp' function. */
+ #undef HAVE_MKSTEMP
+ 
+ /* Define to 1 if you have the 'mkstemps' function. */
+
+Index: unix/tclUnixPort.h
+==================================================================
+--- unix/tclUnixPort.h
++++ unix/tclUnixPort.h
+@@ -300,10 +300,14 @@
+ 
+ #ifdef GETTOD_NOT_DECLARED
+ extern int	gettimeofday(struct timeval *tp,
+ 			    struct timezone *tzp);
+ #endif
++
++#ifndef HAVE_MKDTEMP
++extern char *	mkdtemp(char *tmpl);
++#endif
+ 
+ /*
+  *---------------------------------------------------------------------------
+  * Define access mode constants if they aren't already defined.
+  *---------------------------------------------------------------------------
+

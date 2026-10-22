@@ -1,0 +1,111 @@
+Index: library/http/http.tcl
+==================================================================
+--- library/http/http.tcl
++++ library/http/http.tcl
+@@ -748,10 +748,25 @@
+ 
+     if {[catch {eof $sock} res] || $res} {
+ 	# The server has half-closed the socket.
+ 	# If a new write has started, its transaction will fail and
+ 	# will then be error-handled.
++	variable socketMapping
++	variable socketCoEvent
++	set map [array get socketMapping]
++	set ndx [lsearch -exact $map $sock]
++	if {    ($ndx > 0)
++	     && [info exists socketCoEvent([lindex $map $ndx-1])]
++	     && [dict size $socketCoEvent([lindex $map $ndx-1])]
++	} {
++	    # A request has already been scheduled (by an idle-time
++	    # OpenSocket) to reuse this socket.  Leave the socket to that
++	    # request, which will detect eof and replay itself on a new
++	    # socket [Bug 3764f4e81f].
++	    catch {fileevent $sock readable {}}
++	    return
++	}
+ 	CloseSocket $sock
+     }
+     return
+ }
+ 
+@@ -3619,11 +3634,14 @@
+ 		    }
+ 		    Log ^X$tk end of response (error) - token $token
+ 		    Finish $token $msg
+ 		    return
+ 		}
+-	    } elseif {$nsl >= 0} {
++	    } elseif {$nsl > 0} {
++		# An empty line is ignored here: it can be the CRLF left over
++		# from the previous chunked response on a persistent socket.
++		# If eof follows, the request must still be replayed.
+ 		##Log - connecting 1 - token $token
+ 		set state(state) "header"
+ 	    } elseif {    ([catch {eof $sock} tmp] || $tmp)
+ 		       && [info exists state(reusing)]
+ 		       && $state(reusing)
+
+Index: tests/http11.test
+==================================================================
+--- tests/http11.test
++++ tests/http11.test
+@@ -1057,10 +1057,58 @@
+     close $chan
+     removeFile testfile.tmp
+     halt_httpd
+ } -result {status ok code {HTTP/1.1 200 OK} crc ok connection close query-length 122880}
+ 
++test http11-5.1.$ThreadLevel "reuse persistent socket after server restart, bug 3764f4e81f" -setup {
++    proc restart_httpd {port {old {}}} {
++	if {$old ne ""} {
++	    # Wait until the old server has exited.
++	    fconfigure $old -blocking 1
++	    puts $old quit
++	    read $old
++	    close $old
++	}
++	if {$port eq ""} {
++	    return
++	}
++	set h [open |[list [interpreter] -encoding utf-8 \
++		[file join [pwd] [file dirname [info script]] httpd11.tcl] \
++		$port] r+]
++	fconfigure $h -buffering line
++	gets $h
++	return $h
++    }
++    set s [socket -server {} -myaddr localhost 0]
++    set port [lindex [fconfigure $s -sockname] 2]
++    close $s
++    set chan [open [makeFile {} testfile.tmp] wb+]
++    set res {}
++} -body {
++    set h [restart_httpd $port]
++    set tok [http::geturl http://localhost:$port/testdoc.html \
++		 -keepalive 1 -channel $chan -timeout 5000]
++    lappend res [http::status $tok]
++    http::cleanup $tok
++    # No event loop between the restart and the next request.
++    foreach i {1 2 3} {
++	set h [restart_httpd $port $h]
++	set tok [http::geturl http://localhost:$port/testdoc.html \
++		     -keepalive 1 -timeout 5000]
++	lappend res [http::status $tok] [check_crc $tok]
++	http::cleanup $tok
++    }
++    set res
++} -cleanup {
++    catch {http::cleanup $tok}
++    restart_httpd {} $h
++    close $chan
++    removeFile testfile.tmp
++    rename restart_httpd {}
++    unset -nocomplain h s port chan res tok i
++} -result {ok ok ok ok ok ok ok}
++
+ # -------------------------------------------------------------------------
+ 
+ # Eliminate valgrind "still reachable" reports on outstanding "Detached"
+ # structures in the detached list which stem from PipeClose2Proc not waiting
+ # around for background processes to complete, meaning that previous calls to
+

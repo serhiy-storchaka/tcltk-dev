@@ -1,0 +1,57 @@
+Index: unix/tclUnixNotfy.c
+==================================================================
+--- unix/tclUnixNotfy.c
++++ unix/tclUnixNotfy.c
+@@ -997,13 +997,21 @@
+ 		pthread_mutex_lock(&notifierMutex);
+ 	    }
+ #else /* !__CYGWIN__ */
+ 	    if (timePtr != NULL) {
+ 		Tcl_Time now;
++		struct timeval tv;
+ 		struct timespec ptime;
+ 
+-		Tcl_GetTime(&now);
++		/*
++		 * pthread_cond_timedwait() needs the real (not virtual) absolute
++		 * time, see Tcl_SetTimeProc. [Bug 3328635]
++		 */
++
++		(void) gettimeofday(&tv, NULL);
++		now.sec = tv.tv_sec;
++		now.usec = tv.tv_usec;
+ 		ptime.tv_sec = timePtr->sec + now.sec +
+ 			(timePtr->usec + now.usec) / 1000000;
+ 		ptime.tv_nsec = 1000 * ((timePtr->usec + now.usec) % 1000000);
+ 
+ 		pthread_cond_timedwait(&tsdPtr->waitCV, &notifierMutex, &ptime);
+
+Index: unix/tclUnixThrd.c
+==================================================================
+--- unix/tclUnixThrd.c
++++ unix/tclUnixThrd.c
+@@ -547,17 +547,22 @@
+     pcondPtr = *((pthread_cond_t **)condPtr);
+     if (timePtr == NULL) {
+ 	pthread_cond_wait(pcondPtr, pmutexPtr);
+     } else {
+ 	Tcl_Time now;
++	struct timeval tv;
+ 
+ 	/*
+ 	 * Make sure to take into account the microsecond component of the
+ 	 * current time, including possible overflow situations. [Bug #411603]
++	 * pthread_cond_timedwait() needs the real (not virtual) absolute
++	 * time, see Tcl_SetTimeProc. [Bug 3328635]
+ 	 */
+ 
+-	Tcl_GetTime(&now);
++	(void) gettimeofday(&tv, NULL);
++	now.sec = tv.tv_sec;
++	now.usec = tv.tv_usec;
+ 	ptime.tv_sec = timePtr->sec + now.sec +
+ 	    (timePtr->usec + now.usec) / 1000000;
+ 	ptime.tv_nsec = 1000 * ((timePtr->usec + now.usec) % 1000000);
+ 	pthread_cond_timedwait(pcondPtr, pmutexPtr, &ptime);
+     }
+

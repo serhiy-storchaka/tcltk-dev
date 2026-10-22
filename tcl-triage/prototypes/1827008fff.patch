@@ -1,0 +1,65 @@
+Index: tests/fCmd.test
+==================================================================
+--- tests/fCmd.test
++++ tests/fCmd.test
+@@ -592,10 +592,18 @@
+     file mkdir [file join td1 td2]
+     file attributes [file join td1 td2] -permissions u+rwx
+     set res [list [catch {file delete -force td1} msg]]
+     lappend res [file exists td1] $msg
+ } -result {0 0 {}}
++test fCmd-5.13 {TclFileDeleteCmd: path ending in ".." [Bug 1827008]} -setup {
++    cleanup
++} -constraints {notRoot} -body {
++    file mkdir [file join td1 td2 td3] [file join td1 td2 td4]
++    createfile [file join td1 td2 tf1]
++    file delete -force [file join td1 td2 td3 ..]
++    list [file exists td1] [file exists [file join td1 td2]]
++} -result {1 0}
+ 
+ test fCmd-6.1 {CopyRenameOneFile: bad source} {notRoot emptyTest} {
+     # can't test this, because it's caught by FileCopyRename
+ } {}
+ test fCmd-6.2 {CopyRenameOneFile: bad target} {notRoot emptyTest} {
+
+Index: unix/tclUnixFCmd.c
+==================================================================
+--- unix/tclUnixFCmd.c
++++ unix/tclUnixFCmd.c
+@@ -809,10 +809,35 @@
+ {
+     Tcl_DString ds;
+     Tcl_DString pathString;
+     int ret;
+     Tcl_Obj *transPtr = Tcl_FSGetTranslatedPath(NULL, pathPtr);
++
++    if (transPtr != NULL) {
++	/*
++	 * rmdir() fails on a path ending in "..", and the recursive traversal
++	 * below would only empty the directory, so use the normalized path.
++	 * [Bug 1827008]
++	 */
++
++	Tcl_Size len;
++	const char *str = TclGetStringFromObj(transPtr, &len);
++
++	while (len > 1 && str[len - 1] == '/') {
++	    len--;
++	}
++	if (len >= 2 && str[len - 1] == '.' && str[len - 2] == '.'
++		&& (len == 2 || str[len - 3] == '/')) {
++	    Tcl_Obj *normPtr = Tcl_FSGetNormalizedPath(NULL, pathPtr);
++
++	    if (normPtr != NULL) {
++		Tcl_IncrRefCount(normPtr);
++		Tcl_DecrRefCount(transPtr);
++		transPtr = normPtr;
++	    }
++	}
++    }
+ 
+     ret = Tcl_UtfToExternalDStringEx(NULL, NULL,
+ 	    (transPtr != NULL ? TclGetString(transPtr) : NULL),
+ 	    -1, TCL_ENCODING_PROFILE_TCL8, &pathString, NULL);
+     if (transPtr != NULL) {
+

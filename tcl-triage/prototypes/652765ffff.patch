@@ -1,0 +1,20 @@
+Index: doc/trace.n
+==================================================================
+--- doc/trace.n
++++ doc/trace.n
+@@ -67,11 +67,13 @@
+ operation).
+ \fIOp\fR indicates what operation is being performed on the
+ command, and is one of \fBrename\fR or \fBdelete\fR as
+ defined above.  The trace operation cannot be used to stop a command
+ from being deleted.  Tcl will always remove the command once the trace
+-is complete.  Recursive renaming or deleting will not cause further traces
++is complete.  Errors raised by \fIcommandPrefix\fR are ignored: they
++neither abort the rename or delete operation nor are reported to the caller.
++Recursive renaming or deleting will not cause further traces
+ of the same type to be evaluated, so a delete trace which itself
+ deletes the command, or a rename trace which itself renames the
+ command will not cause further trace evaluations to occur.
+ Both \fIoldName\fR and \fInewName\fR are fully qualified with any namespace(s)
+ in which they appear.
+

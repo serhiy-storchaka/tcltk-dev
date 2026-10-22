@@ -1,0 +1,23 @@
+Index: generic/tclEvent.c
+==================================================================
+--- generic/tclEvent.c
++++ generic/tclEvent.c
+@@ -1392,10 +1392,17 @@
+ 
+     TclFinalizeMemorySubsystem();
+ 
+   alreadyFinalized:
+     TclFinalizeLock();
++
++    /*
++     * Permit a later Tcl_FindExecutable()/Tcl_InitSubsystems() to start
++     * over. [Bug 35a839cba8]
++     */
++
++    inExit = false;
+ }
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
+

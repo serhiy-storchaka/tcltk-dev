@@ -1,0 +1,22 @@
+Index: doc/clock.n
+==================================================================
+--- doc/clock.n
++++ doc/clock.n
+@@ -895,13 +895,13 @@
+ .QW 2000
+ represent a year, a time of day, or a quantity?)  No set of rules
+ for interpreting free-form dates and times has been found to
+ give unsurprising results in all cases.
+ .PP
+-If free-form scan is used, only the \fB\-base\fR and \fB\-gmt\fR
+-options are accepted.  The \fB\-timezone\fR and \fB\-locale\fR
+-options will result in an error if \fB\-format\fR is not supplied.
++If free-form scan is used, only the \fB\-base\fR, \fB\-gmt\fR and
++\fB\-timezone\fR options are accepted.  The \fB\-locale\fR
++option will result in an error if \fB\-format\fR is not supplied.
+ .PP
+ For the benefit of users who need to understand legacy code that
+ uses free-form scan, the documentation for how free-form scan
+ interprets a string is included here:
+ .PP
+

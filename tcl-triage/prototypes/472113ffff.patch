@@ -1,0 +1,84 @@
+Index: generic/tclNamesp.c
+==================================================================
+--- generic/tclNamesp.c
++++ generic/tclNamesp.c
+@@ -4758,12 +4758,41 @@
+ 	    Tcl_GetCommandFullName(interp, cmd, resultPtr);
+ 	}
+ 	break;
+     }
+     case OPT_VARIABLE: {
+-	Tcl_Var var = Tcl_FindNamespaceVar(interp,
+-		TclGetString(objv[objc-1]), NULL, /*flags*/ 0);
++	Tcl_Size len;
++	const char *name = TclGetStringFromObj(objv[objc-1], &len);
++	const char *open = NULL;
++	Tcl_Var var;
++
++	if (len > 0 && name[len-1] == ')') {
++	    open = strchr(name, '(');
++	}
++	if (open != NULL) {
++	    /*
++	     * Array element: resolve the array part and append the index,
++	     * whether or not the element exists. [Bug 472113]
++	     */
++
++	    Tcl_DString ds;
++	    Var *varPtr;
++
++	    Tcl_DStringInit(&ds);
++	    Tcl_DStringAppend(&ds, name, open - name);
++	    var = Tcl_FindNamespaceVar(interp, Tcl_DStringValue(&ds), NULL,
++		    /*flags*/ 0);
++	    Tcl_DStringFree(&ds);
++	    varPtr = (Var *) var;
++	    if (varPtr != NULL && !(TclIsVarScalar(varPtr)
++		    && !TclIsVarUndefined(varPtr))) {
++		Tcl_GetVariableFullName(interp, var, resultPtr);
++		Tcl_AppendToObj(resultPtr, open, name + len - open);
++	    }
++	    break;
++	}
++	var = Tcl_FindNamespaceVar(interp, name, NULL, /*flags*/ 0);
+ 
+ 	if (var != NULL) {
+ 	    Tcl_GetVariableFullName(interp, var, resultPtr);
+ 	}
+ 	break;
+
+Index: tests/namespace.test
+==================================================================
+--- tests/namespace.test
++++ tests/namespace.test
+@@ -1652,10 +1652,29 @@
+ 	     [namespace which -variable v3] \
+ 	     [namespace which -variable ::test_ns_2::v2] \
+ 	     [catch {namespace which -variable ::test_ns_2::noSuchVar} msg] $msg
+     }
+ } -result {0 {} ::test_ns_3::v3 ::test_ns_2::v2 0 {}}
++test namespace-34.8 {NamespaceWhichCmd, array elements [Bug 472113]} -setup {
++    namespace eval test_ns_1 {
++	variable ary
++	set ary(i) v
++	variable undef
++	variable sc 1
++    }
++} -body {
++    namespace eval test_ns_1 {
++	list [namespace which -variable ary(i)] \
++	    [namespace which -variable {ary(no such)}] \
++	    [namespace which -variable ::test_ns_1::ary(i)] \
++	    [namespace which -variable undef(x)] \
++	    [namespace which -variable sc(x)] \
++	    [namespace which -variable noSuchVar(x)]
++    }
++} -cleanup {
++    namespace delete test_ns_1
++} -result {::test_ns_1::ary(i) {::test_ns_1::ary(no such)} ::test_ns_1::ary(i) ::test_ns_1::undef(x) {} {}}
+ 
+ test namespace-35.1 {FreeNsNameInternalRep, resulting ref count > 0} -setup {
+     catch {namespace delete {*}[namespace children :: test_ns_*]}
+ } -body {
+     namespace eval test_ns_1 {
+

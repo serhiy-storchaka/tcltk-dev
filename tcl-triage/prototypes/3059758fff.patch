@@ -1,0 +1,65 @@
+Index: generic/tclExecute.c
+==================================================================
+--- generic/tclExecute.c
++++ generic/tclExecute.c
+@@ -2230,12 +2230,18 @@
+ 	    checkInterp = 1;
+ 	    iPtr->flags |= ERR_ALREADY_LOGGED;
+ 	}
+ 
+ 	if (result != TCL_OK) {
++	    /*
++	     * Trace before backing up pc: after that it points at the last
++	     * byte of the invoke instruction, not at an opcode.
++	     */
++
++	    TRACE("%" SIZEd " => ... after \"%.20s\": ", objc, cmdNameBuf);
+ 	    pc--;
+-	    goto processExceptionReturn;
++	    goto processExceptionReturnTraced;
+ 	}
+ 
+ 	/*
+ 	 * Push the call's object result and continue execution with the next
+ 	 * instruction.
+@@ -7828,37 +7834,12 @@
+ 	 * something different from TCL_OK, or else INST_BREAK or
+ 	 * INST_CONTINUE were called.
+ 	 */
+ 
+     processExceptionReturn:
+-#ifdef TCL_COMPILE_DEBUG
+-	switch (*pc) {
+-#ifndef REMOVE_DEPRECATED_OPCODES
+-	case INST_INVOKE_STK1:
+-	    numArgs = TclGetUInt1AtPtr(pc + 1);
+-	    TRACE("%u => ... after \"%.20s\": ", (unsigned)numArgs, cmdNameBuf);
+-	    break;
+-#endif // REMOVE_DEPRECATED_OPCODES
+-	case INST_INVOKE_STK:
+-	    numArgs = TclGetUInt4AtPtr(pc + 1);
+-	    TRACE("%u => ... after \"%.20s\": ", (unsigned)numArgs, cmdNameBuf);
+-	    break;
+-	case INST_INVOKE_EXPANDED:
+-	    TRACE(" => ... after \"%.20s\": ", cmdNameBuf);
+-	    break;
+-	case INST_EVAL_STK:
+-	    /*
+-	     * Note that the object at stacktop has to be used before doing
+-	     * the cleanup.
+-	     */
+-
+-	    TRACE("\"%.30s\" => ", O2S(OBJ_AT_TOS));
+-	    break;
+-	default:
+-	    TRACE("=> ");
+-	}
+-#endif
++	TRACE("=> ");
++    processExceptionReturnTraced:
+ 	if ((result == TCL_CONTINUE) || (result == TCL_BREAK)) {
+ 	    rangePtr = GetExceptRangeForPc(pc, result, codePtr);
+ 	    if (rangePtr == NULL) {
+ 		TRACE_APPEND("no encl. loop or catch, returning %s\n",
+ 			StringForResultCode(result));
+

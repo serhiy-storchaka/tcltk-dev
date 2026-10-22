@@ -1,0 +1,38 @@
+Index: doc/binary.n
+==================================================================
+--- doc/binary.n
++++ doc/binary.n
+@@ -504,12 +504,13 @@
+ representation in the output string.  This representation is not
+ portable across architectures, so it should not be used to communicate
+ floating point numbers across the network.  The size of a floating
+ point number may vary across architectures, so the number of bytes
+ that are generated may vary.  If the value overflows the
+-machine's native representation, then the value of FLT_MAX
+-as defined by the system will be used instead.  Because Tcl uses
++machine's native representation, then an infinity of the same sign
++is stored instead.  The values \fBInf\fR, \fB\-Inf\fR and \fBNaN\fR
++are stored as the corresponding IEEE special values.  Because Tcl uses
+ double-precision floating point numbers internally, there may be some
+ loss of precision in the conversion to single-precision.  For example,
+ on a Windows system running on an Intel Pentium processor,
+ .RS
+ .PP
+@@ -968,11 +969,15 @@
+ .QW \fB*\fR ,
+ then all of the remaining bytes in
+ \fIstring\fR will be scanned.  If \fIcount\fR is omitted, then one
+ single-precision floating point number will be scanned.  The size of a
+ floating point number may vary across architectures, so the number of
+-bytes that are scanned may vary.  If the data does not represent a
++bytes that are scanned may vary.  IEEE infinities and not-a-number
++values are stored as \fBInf\fR, \fB\-Inf\fR and \fBNaN\fR (or
++\fBNaN(\fIhex\fB)\fR with a non-default payload, possibly preceded by a
++minus sign); note that \fBexpr\fR raises an error for a NaN operand.
++If the data does not represent a
+ valid floating point number, the resulting value is undefined and
+ compiler dependent.  For example, on a MS-Windows system running on an
+ x86/x64 processor,
+ .RS
+ .PP
+

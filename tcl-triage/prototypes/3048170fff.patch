@@ -1,0 +1,70 @@
+Index: generic/tclInterp.c
+==================================================================
+--- generic/tclInterp.c
++++ generic/tclInterp.c
+@@ -4519,10 +4519,23 @@
+      * check. This is OK because we're swallowing the cost in the overall cost
+      * of the event loop. [Bug 2891362]
+      */
+ 
+     iPtr->limit.granularityTicker = 0;
++
++    /*
++     * If the time limit is already marked as exceeded, its handlers are
++     * running right now (e.g. one of them entered the event loop) and the
++     * interpreter is in the middle of something. Leave the check to the
++     * Tcl_LimitCheck that runs them; a new limit re-arms this timer.
++     * [Bug 3027822] [Bug 3048170]
++     */
++
++    if (iPtr->limit.exceeded & TCL_LIMIT_TIME) {
++	Tcl_Release(interp);
++	return;
++    }
+ 
+     code = Tcl_LimitCheck(interp);
+     if (code != TCL_OK) {
+ 	Tcl_AddErrorInfo(interp, "\n    (while waiting for event)");
+ 	Tcl_BackgroundException(interp, code);
+
+Index: tests/interp.test
+==================================================================
+--- tests/interp.test
++++ tests/interp.test
+@@ -3502,10 +3502,35 @@
+     lappend result [catch {interp eval $i [list expr 1+3]} msg] $msg
+ } -cleanup {
+     interp delete $i
+ } -result [lrepeat 6 1 {command count limit exceeded}]
+ 
++test interp-34.15 {time limit callback entering the event loop: Bug 3027822, 3048170} -setup {
++    proc cb1 {i} {
++	after 50 {set ::done 1}
++	vwait ::done
++	$i limit time {*}[_ms_limit_args 10000]
++    }
++    set i [interp create]
++    set ::result {}
++    interp alias $i bgerr {} lappend ::result
++    $i eval {interp bgerror {} bgerr}
++} -body {
++    $i limit time {*}[_ms_limit_args 20] -granularity 1 -command [list cb1 $i]
++    lappend ::result [catch {
++	$i eval {
++	    set t [expr {[clock milliseconds] + 100}]
++	    for {set n 0} {[clock milliseconds] < $t} {incr n} {
++		set r [expr {cos($n) * sin($n)}]
++	    }
++	    string is double -strict $r
++	}
++    } msg] $msg
++} -cleanup {
++    interp delete $i
++    rename cb1 {}
++} -result {0 1}
+ test interp-35.1 {interp limit syntax} -body {
+     interp limit
+ } -returnCodes error -result {wrong # args: should be "interp limit path limitType ?-option value ...?"}
+ test interp-35.2 {interp limit syntax} -body {
+     interp limit {}
+

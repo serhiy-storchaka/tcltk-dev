@@ -1,0 +1,22 @@
+Index: doc/scan.n
+==================================================================
+--- doc/scan.n
++++ doc/scan.n
+@@ -28,11 +28,15 @@
+ corresponding variable.
+ If no \fIvarName\fR variables are specified, then \fBscan\fR works in an
+ inline manner, returning the data that would otherwise be stored in the
+ variables as a list.  In the inline case, an empty string is returned when
+ the end of the input string is reached before any conversions have been
+-performed.
++performed.  Otherwise the list has one element for each conversion
++specifier that would store a value; an element is an empty string if
++scanning stopped before its conversion was performed.  For example,
++\fBscan 0.99 %d.%d.%d\fR returns
++.QW "\fB0 99 {}\fR" .
+ .SH "DETAILS ON SCANNING"
+ .PP
+ \fBScan\fR operates by scanning \fIstring\fR and \fIformat\fR together.
+ If the next character in \fIformat\fR is a blank or tab then it
+ matches any number of white space characters in \fIstring\fR (including
+

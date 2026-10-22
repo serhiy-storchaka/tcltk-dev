@@ -1,0 +1,18 @@
+Index: win/Makefile.in
+==================================================================
+--- win/Makefile.in
++++ win/Makefile.in
+@@ -1088,11 +1088,11 @@
+ 	$(RM) minizip${HOST_EXEEXT} *.${HOST_OBJEXT}
+ 	$(RMDIR) *.vfs
+ 
+ distclean: distclean-packages clean
+ 	$(RM) Makefile config.status config.cache config.log tclConfig.sh \
+-		config.status.lineno tclsh.exe.manifest tclUuid.h
++		config.status.lineno tclsh.exe.manifest tcl.pc tclUuid.h
+ 
+ #
+ # Bundled package targets
+ #
+ 
+

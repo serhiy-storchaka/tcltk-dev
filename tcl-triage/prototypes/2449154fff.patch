@@ -1,0 +1,68 @@
+Index: generic/tclEvent.c
+==================================================================
+--- generic/tclEvent.c
++++ generic/tclEvent.c
+@@ -427,10 +427,17 @@
+     }
+ 
+     result = TclDictGet(NULL, objv[2], "-errorinfo", &valuePtr);
+     if (result == TCL_OK && valuePtr != NULL) {
+ 	Tcl_AppendObjToErrorInfo(interp, valuePtr);
++    } else if (code != TCL_ERROR) {
++	/*
++	 * Non-error exception without -errorinfo: start errorInfo from the
++	 * message instead of using a stale one. [Bug 2449154]
++	 */
++
++	Tcl_AddErrorInfo(interp, "");
+     }
+ 
+     if (code == TCL_ERROR) {
+ 	Tcl_SetObjResult(interp, tempObjv[1]);
+     }
+
+Index: tests/event.test
+==================================================================
+--- tests/event.test
++++ tests/event.test
+@@ -290,10 +290,18 @@
+     ::tcl::Bgerror msg {-level 0 -code 5}
+     return $::res
+ } -cleanup {
+     rename bgerror {}
+ } -result {command returned bad code: 5}
++test event-5.16 {Default [interp bgerror] handler: errorInfo [Bug 2449154]} -body {
++    proc bgerror {m} {set ::res $::errorInfo}
++    set ::errorInfo stale
++    ::tcl::Bgerror msg {-level 0 -code 2}
++    return $::res
++} -cleanup {
++    rename bgerror {}
++} -result {command returned bad code: 2}
+ 
+ test event-6.1 {BgErrorDeleteProc procedure} -setup {
+     catch {interp delete foo}
+     interp create foo
+     set erroutfile [makeFile Unmodified err.out]
+@@ -431,10 +439,20 @@
+ # goes to stderr ideally one would use sub interp and transfer a fake stderr
+ # to it, unfortunately the current interp tcl API does not allow that. The
+ # other option would be to use fork a test but it then becomes more a
+ # file/exec test than a bgerror test.
+ 
++test event-7.8 {no bgerror, chan event returns [Bug 2449154]} -body {
++    exec [interpreter] << {
++	catch {error stale}
++	set f [open [info nameofexecutable]]
++	chan event $f readable {chan event $f readable {}; return}
++	after 2000 set a 0
++	vwait a
++    }
++} -constraints {exec} -returnCodes error -result {command returned bad code: 2}
++
+ # end of bgerror tests
+ catch {rename bgerror {}}
+ 
+ test event-8.1 {Tcl_CreateExitHandler procedure} {stdio testexithandler} {
+     set child [open |[list [interpreter]] r+]
+

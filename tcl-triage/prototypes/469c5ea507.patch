@@ -1,0 +1,202 @@
+Index: tests/fCmd.test
+==================================================================
+--- tests/fCmd.test
++++ tests/fCmd.test
+@@ -2929,10 +2929,32 @@
+ } -cleanup {
+     set ::env(HOME) $oldHome
+ } -constraints testfstildeexpand -body {
+     string tolower [testfstildeexpand ~$::tcl_platform(user)]
+ } -match glob -result [gethomedirglob $::tcl_platform(user)]
++
++test fCmd-33.1 {file operations when cwd no longer exists: Bug 469c5ea507} -setup {
++    set script [makeFile {
++	foreach cmd {{file delete spong} {file mkdir spong}} {
++	    catch $cmd msg
++	    puts $msg
++	}
++    } fCmd-33.1.tcl]
++    set script [file normalize $script]
++    set dir [pwd]
++    set tmp [file normalize [file join [temporaryDirectory] fCmd-33.1]]
++    file mkdir $tmp
++} -constraints {unix notRoot} -body {
++    cd $tmp
++    file delete $tmp
++    exec [interpreter] $script
++} -cleanup {
++    cd $dir
++    removeFile fCmd-33.1.tcl
++    catch {file delete -force $tmp}
++} -result {
++can't create directory "spong": no such file or directory}
+ 
+ 
+ # cleanup
+ cleanup
+ if {[testConstraint unix]} {
+
+Index: unix/tclUnixFCmd.c
+==================================================================
+--- unix/tclUnixFCmd.c
++++ unix/tclUnixFCmd.c
+@@ -301,12 +301,17 @@
+ int
+ TclpObjRenameFile(
+     Tcl_Obj *srcPathPtr,
+     Tcl_Obj *destPathPtr)
+ {
+-    return DoRenameFile((const char *)Tcl_FSGetNativePath(srcPathPtr),
+-	    (const char *)Tcl_FSGetNativePath(destPathPtr));
++    const char *src = (const char *)Tcl_FSGetNativePath(srcPathPtr);
++    const char *dst = (const char *)Tcl_FSGetNativePath(destPathPtr);
++
++    if (src == NULL || dst == NULL) {
++	return TCL_ERROR;
++    }
++    return DoRenameFile(src, dst);
+ }
+ 
+ static int
+ DoRenameFile(
+     const char *src,		/* Pathname of file or dir to be renamed
+@@ -418,17 +423,21 @@
+ TclpObjCopyFile(
+     Tcl_Obj *srcPathPtr,
+     Tcl_Obj *destPathPtr)
+ {
+     const char *src = (const char *)Tcl_FSGetNativePath(srcPathPtr);
++    const char *dst = (const char *)Tcl_FSGetNativePath(destPathPtr);
+     Tcl_StatBuf srcStatBuf;
+ 
++    if (src == NULL || dst == NULL) {
++	return TCL_ERROR;
++    }
+     if (TclOSlstat(src, &srcStatBuf) != 0) {		/* INTL: Native. */
+ 	return TCL_ERROR;
+     }
+ 
+-    return DoCopyFile(src, (const char *)Tcl_FSGetNativePath(destPathPtr), &srcStatBuf);
++    return DoCopyFile(src, dst, &srcStatBuf);
+ }
+ 
+ static int
+ DoCopyFile(
+     const char *src,		/* Pathname of file to be copied (native). */
+@@ -636,11 +645,16 @@
+ 
+ int
+ TclpObjDeleteFile(
+     Tcl_Obj *pathPtr)
+ {
+-    return TclpDeleteFile(Tcl_FSGetNativePath(pathPtr));
++    const void *path = Tcl_FSGetNativePath(pathPtr);
++
++    if (path == NULL) {
++	return TCL_ERROR;
++    }
++    return TclpDeleteFile(path);
+ }
+ 
+ int
+ TclpDeleteFile(
+     const void *path)		/* Pathname of file to be removed (native). */
+@@ -679,11 +693,16 @@
+ 
+ int
+ TclpObjCreateDirectory(
+     Tcl_Obj *pathPtr)
+ {
+-    return DoCreateDirectory((const char *)Tcl_FSGetNativePath(pathPtr));
++    const char *path = (const char *)Tcl_FSGetNativePath(pathPtr);
++
++    if (path == NULL) {
++	return TCL_ERROR;
++    }
++    return DoCreateDirectory(path);
+ }
+ 
+ static int
+ DoCreateDirectory(
+     const char *path)		/* Pathname of directory to create (native). */
+@@ -1520,11 +1539,11 @@
+ 	}
+ 	gid = groupPtr->gr_gid;
+     }
+ 
+     native = (const char *)Tcl_FSGetNativePath(fileName);
+-    result = chown(native, (uid_t) -1, (gid_t) gid);	/* INTL: Native. */
++    result = native ? chown(native, (uid_t) -1, (gid_t) gid) : -1; /* INTL: Native. */
+ 
+     if (result != 0) {
+ 	if (interp != NULL) {
+ 	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 		    "could not set group for file \"%s\": %s",
+@@ -1591,11 +1610,11 @@
+ 	}
+ 	uid = pwPtr->pw_uid;
+     }
+ 
+     native = (const char *)Tcl_FSGetNativePath(fileName);
+-    result = chown(native, (uid_t) uid, (gid_t) -1);	/* INTL: Native. */
++    result = native ? chown(native, (uid_t) uid, (gid_t) -1) : -1; /* INTL: Native. */
+ 
+     if (result != 0) {
+ 	if (interp != NULL) {
+ 	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 		    "could not set owner for file \"%s\": %s",
+@@ -1685,11 +1704,11 @@
+ 	    return TCL_ERROR;
+ 	}
+     }
+ 
+     native = (const char *)Tcl_FSGetNativePath(fileName);
+-    result = chmod(native, newMode);		/* INTL: Native. */
++    result = native ? chmod(native, newMode) : -1;	/* INTL: Native. */
+     if (result != 0) {
+ 	if (interp != NULL) {
+ 	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 		    "could not set permissions for file \"%s\": %s",
+ 		    TclGetString(fileName), Tcl_PosixError(interp)));
+
+Index: unix/tclUnixFile.c
+==================================================================
+--- unix/tclUnixFile.c
++++ unix/tclUnixFile.c
+@@ -728,11 +728,16 @@
+ int
+ TclpObjLstat(
+     Tcl_Obj *pathPtr,		/* Path of file to stat */
+     Tcl_StatBuf *bufPtr)	/* Filled with results of stat call. */
+ {
+-    return TclOSlstat((const char *)Tcl_FSGetNativePath(pathPtr), bufPtr);
++    const char *path = (const char *)Tcl_FSGetNativePath(pathPtr);
++
++    if (path == NULL) {
++	return -1;
++    }
++    return TclOSlstat(path, bufPtr);
+ }
+ 
+ /*
+  *---------------------------------------------------------------------------
+  *
+@@ -1252,11 +1257,16 @@
+ int
+ TclpUtime(
+     Tcl_Obj *pathPtr,		/* File to modify */
+     struct utimbuf *tval)	/* New modification date structure */
+ {
+-    return utime((const char *)Tcl_FSGetNativePath(pathPtr), tval);
++    const char *path = (const char *)Tcl_FSGetNativePath(pathPtr);
++
++    if (path == NULL) {
++	return -1;
++    }
++    return utime(path, tval);
+ }
+ 
+ #ifdef __CYGWIN__
+ 
+ int
+

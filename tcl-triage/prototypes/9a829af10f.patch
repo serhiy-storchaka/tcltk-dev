@@ -1,0 +1,42 @@
+Index: doc/tm.n
+==================================================================
+--- doc/tm.n
++++ doc/tm.n
+@@ -80,12 +80,15 @@
+ A Tcl Module is a Tcl Package contained in a single file, and no other
+ files required by it. This file has to be \fBsource\fRable. In other
+ words, a Tcl Module is always imported via:
+ .PP
+ .CS
+-source module_file
++source -encoding utf-8 module_file
+ .CE
++.PP
++Note that a Tcl Module is always read in the \fButf-8\fR encoding,
++independent of the system encoding.
+ .PP
+ The \fBload\fR command is not directly used. This restriction is not
+ an actual limitation, as some may believe.
+ Ever since 8.4 the Tcl \fBsource\fR command reads only until the first
+ ^Z character. This allows us to combine an arbitrary Tcl script with
+@@ -169,17 +172,17 @@
+ \fIindex\fR and \fIprovide script\fRs entered into the package
+ database for them.
+ For a module file \fBMF\fR the \fIindex script\fR is always:
+ .PP
+ .CS
+-package ifneeded \fBPNAME PVERSION\fR [list source \fBMF\fR]
++package ifneeded \fBPNAME PVERSION\fR [list source -encoding utf-8 \fBMF\fR]
+ .CE
+ .PP
+ and the \fIprovide script\fR embedded in the above is:
+ .PP
+ .CS
+-source \fBMF\fR
++source -encoding utf-8 \fBMF\fR
+ .CE
+ .PP
+ Both package name \fBPNAME\fR and package version \fBPVERSION\fR are
+ extracted from the filename \fBMF\fR according to the definition
+ below:
+

@@ -1,0 +1,141 @@
+Index: tests/fileName.test
+==================================================================
+--- tests/fileName.test
++++ tests/fileName.test
+@@ -1141,10 +1141,36 @@
+     glob -path hello -path salut *
+ } -result {"-path" may only be used once}
+ test filename-11.51 {Tcl_GlobCmd} -returnCodes error -body {
+     glob -dir hello -dir salut *
+ } -result {"-directory" may only be used once}
++test filename-11.52 {Tcl_GlobCmd: -types {l hidden} on dangling links: bug 391bc0fd2c} -constraints {
++    unix symbolicLinkFile
++} -setup {
++    set dir [makeDirectory globLinks391]
++    close [open [file join $dir target] w]
++    file link -symbolic [file join $dir badlink] target
++    file link -symbolic [file join $dir .badlink] target
++    file delete [file join $dir target]
++} -body {
++    list [glob -nocomplain -tails -types l -dir $dir *] \
++	[glob -nocomplain -tails -types {hidden l} -dir $dir *]
++} -cleanup {
++    file delete -force $dir
++} -result {badlink .badlink}
++test filename-11.53 {Tcl_GlobCmd: -types hidden without search permission: bug 391bc0fd2c} -constraints {
++    unix notRoot
++} -setup {
++    set dir [makeDirectory globPerm391]
++    file mkdir [file join $dir .h] [file join $dir v]
++    file attributes $dir -permissions 0600
++} -body {
++    glob -nocomplain -tails -types hidden -dir $dir .h
++} -cleanup {
++    file attributes $dir -permissions 0700
++    file delete -force $dir
++} -result {.h}
+ 
+ file rename $horribleglobname globTest
+ file delete -force $tildeglobname
+ set globname globTest
+ unset horribleglobname tildeglobname
+
+Index: unix/tclUnixFile.c
+==================================================================
+--- unix/tclUnixFile.c
++++ unix/tclUnixFile.c
+@@ -462,10 +462,11 @@
+     const char *nativeEntry,	/* Native path to check. */
+     const char *nativeName,	/* Native filename to check. */
+     Tcl_GlobTypeData *types)	/* Type description to match against. */
+ {
+     Tcl_StatBuf buf;
++    int statDone = 0;
+ 
+     if (types == NULL) {
+ 	/*
+ 	 * Simply check for the file's existence, but do it with lstat, in
+ 	 * case it is a link to a file which doesn't exist (since that case
+@@ -476,11 +477,21 @@
+ 	    return 0;
+ 	}
+ 	return 1;
+     }
+ 
+-    if (types->perm != 0) {
++#ifndef MAC_OSX_TCL
++    /*
++     * On Unix, hidden files are recognized by name, no stat() is needed.
++     * [Bug 391bc0fd2c]
++     */
++
++    if ((types->perm & TCL_GLOB_PERM_HIDDEN) && (*nativeName != '.')) {
++	return 0;
++    }
++#endif /* MAC_OSX_TCL */
++    if (types->perm & ~TCL_GLOB_PERM_HIDDEN) {
+ 	if (TclOSstat(nativeEntry, &buf) != 0) {
+ 	    /*
+ 	     * Either the file has disappeared between the 'readdir' call and
+ 	     * the 'stat' call, or the file is a link to a file which doesn't
+ 	     * exist (which we could ascertain with lstat), or there is some
+@@ -489,10 +500,11 @@
+ 	     * therefore it is not added to the list of files to return.
+ 	     */
+ 
+ 	    return 0;
+ 	}
++	statDone = 1;
+ 
+ 	/*
+ 	 * readonly means that there are NO write permissions (even for user),
+ 	 * but execute is OK for anybody OR that the user immutable flag is
+ 	 * set (where supported).
+@@ -507,20 +519,16 @@
+ 		(access(nativeEntry, R_OK) != 0)) ||
+ 	    ((types->perm & TCL_GLOB_PERM_W) &&
+ 		(access(nativeEntry, W_OK) != 0)) ||
+ 	    ((types->perm & TCL_GLOB_PERM_X) &&
+ 		(access(nativeEntry, X_OK) != 0))
+-#ifndef MAC_OSX_TCL
+-	    || ((types->perm & TCL_GLOB_PERM_HIDDEN) &&
+-		(*nativeName != '.'))
+-#endif /* MAC_OSX_TCL */
+ 		) {
+ 	    return 0;
+ 	}
+     }
+     if (types->type != 0) {
+-	if (types->perm == 0) {
++	if (!statDone) {
+ 	    /*
+ 	     * We haven't yet done a stat on the file.
+ 	     */
+ 
+ 	    if (TclOSstat(nativeEntry, &buf) != 0) {
+@@ -535,10 +543,11 @@
+ 			&& S_ISLNK(buf.st_mode)) {
+ 		    return 1;
+ 		}
+ 		return 0;
+ 	    }
++	    statDone = 1;
+ 	}
+ 
+ 	/*
+ 	 * In order bcdpsfl as in 'find -t'
+ 	 */
+@@ -575,11 +584,11 @@
+ #ifdef MAC_OSX_TCL
+     if (types->macType != NULL || types->macCreator != NULL ||
+ 	    (types->perm & TCL_GLOB_PERM_HIDDEN)) {
+ 	int matchResult;
+ 
+-	if (types->perm == 0 && types->type == 0) {
++	if (!statDone) {
+ 	    /*
+ 	     * We haven't yet done a stat on the file.
+ 	     */
+ 
+ 	    if (TclOSstat(nativeEntry, &buf) != 0) {
+

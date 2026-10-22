@@ -1,0 +1,60 @@
+Index: doc/NRE.3
+==================================================================
+--- doc/NRE.3
++++ doc/NRE.3
+@@ -180,14 +180,14 @@
+         \fITheCmdOldObjProc\fR, clientData, TheCmdDeleteProc);
+ .CE
+ .PP
+ To avoid consuming space on the C stack, \fITheCmdOldObjProc\fR is renamed to
+ \fITheCmdNRObjProc\fR and the postprocessing step is split into a separate
+-function, \fITheCmdPostProc\fR, which is pushed onto the function stack.
+-\fITcl_EvalObjEx\fR is replaced with \fITcl_NREvalObj\fR, which uses a
++function, \fITheCmdNRPostProc\fR, which is pushed onto the function stack.
++\fBTcl_EvalObjEx\fR is replaced with \fBTcl_NREvalObj\fR, which uses a
+ trampoline instead of consuming space on the C stack.  A new version of
+-\fITheCmdOldObjProc\fR is just a a wrapper that uses \fBTcl_NRCallObjProc\fR to
++\fITheCmdOldObjProc\fR is just a wrapper that uses \fBTcl_NRCallObjProc2\fR to
+ call \fITheCmdNRObjProc\fR:
+ .PP
+ .CS
+ int
+ \fITheCmdOldObjProc\fR(
+@@ -201,21 +201,21 @@
+ }
+ .CE
+ .PP
+ .CS
+ int
+-\fITheCmdNRObjProc\fR
++\fITheCmdNRObjProc\fR(
+     void *clientData,
+     Tcl_Interp *interp,
+     Tcl_Size objc,
+     Tcl_Obj *const *objv)
+ {
+     Tcl_Obj *objPtr;
+ 
+     \fI... preparation ...\fR
+ 
+-    \fBTcl_NRAddCallback\fR(interp, \fITheCmdPostProc\fR,
++    \fBTcl_NRAddCallback\fR(interp, \fITheCmdNRPostProc\fR,
+             data0, data1, data2, data3);
+     /* \fIdata0 .. data3\fR are up to four one-word items to
+      * pass to the postprocessing procedure */
+ 
+     return \fBTcl_NREvalObj\fR(interp, objPtr, 0);
+@@ -237,11 +237,11 @@
+     return result;
+ }
+ .CE
+ .PP
+ Any function comprising a routine can push other functions, making it possible
+-implement looping and sequencing constructs using the function stack.
++to implement looping and sequencing constructs using the function stack.
+ .PP
+ .SH "REFERENCE COUNT MANAGEMENT"
+ .PP
+ The first \fIobjc\fR values in the \fIobjv\fR array passed to the functions
+ \fBTcl_NRCallObjProc\fR, \fBTcl_NREvalObjv\fR, and \fBTcl_NRCmdSwap\fR should
+

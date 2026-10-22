@@ -1,0 +1,105 @@
+Index: unix/configure
+==================================================================
+--- unix/configure
++++ unix/configure
+@@ -9798,11 +9798,18 @@
+ 
+ printf '%s\n' "#define HAVE_EVENTFD 1" >>confdefs.h
+ 
+ fi
+ 
+-done;;
++done
++	ac_fn_c_check_header_compile "$LINENO" "sys/queue.h" "ac_cv_header_sys_queue_h" "$ac_includes_default"
++if test "x$ac_cv_header_sys_queue_h" = xyes
++then :
++  printf '%s\n' "#define HAVE_SYS_QUEUE_H 1" >>confdefs.h
++
++fi
++;;
+   xDragonFlyBSD|xFreeBSD|xNetBSD|xOpenBSD)
+ 	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: kqueue(2)" >&5
+ printf '%s\n' "kqueue(2)" >&6; }
+ 	# Messy because we want to check if *all* the headers are present, and not
+ 	# just *any*
+
+Index: unix/configure.ac
+==================================================================
+--- unix/configure.ac
++++ unix/configure.ac
+@@ -340,11 +340,12 @@
+   xLinux)
+ 	AC_MSG_RESULT([epoll(7)])
+ 	AC_CHECK_HEADERS([sys/epoll.h],
+ 	    [AC_DEFINE(NOTIFIER_EPOLL, [1], [Is epoll(7) supported?])])
+ 	AC_CHECK_HEADERS([sys/eventfd.h],
+-	    [AC_DEFINE(HAVE_EVENTFD, [1], [Is eventfd(2) supported?])]);;
++	    [AC_DEFINE(HAVE_EVENTFD, [1], [Is eventfd(2) supported?])])
++	AC_CHECK_HEADERS([sys/queue.h]);;
+   xDragonFlyBSD|xFreeBSD|xNetBSD|xOpenBSD)
+ 	AC_MSG_RESULT([kqueue(2)])
+ 	# Messy because we want to check if *all* the headers are present, and not
+ 	# just *any*
+ 	tcl_kqueue_headers=x
+
+Index: unix/tclConfig.h.in
+==================================================================
+--- unix/tclConfig.h.in
++++ unix/tclConfig.h.in
+@@ -252,10 +252,13 @@
+ /* Define to 1 if you have the <sys/modem.h> header file. */
+ #undef HAVE_SYS_MODEM_H
+ 
+ /* Define to 1 if you have the <sys/param.h> header file. */
+ #undef HAVE_SYS_PARAM_H
++
++/* Define to 1 if you have the <sys/queue.h> header file. */
++#undef HAVE_SYS_QUEUE_H
+ 
+ /* Should we include <sys/select.h>? */
+ #undef HAVE_SYS_SELECT_H
+ 
+ /* Define to 1 if you have the <sys/stat.h> header file. */
+
+Index: unix/tclEpollNotfy.c
+==================================================================
+--- unix/tclEpollNotfy.c
++++ unix/tclEpollNotfy.c
+@@ -23,11 +23,36 @@
+ #include <signal.h>
+ #include <sys/epoll.h>
+ #ifdef HAVE_EVENTFD
+ #include <sys/eventfd.h>
+ #endif /* HAVE_EVENTFD */
++#ifdef HAVE_SYS_QUEUE_H
+ #include <sys/queue.h>
++#else
++/*
++ * Minimal subset of the BSD <sys/queue.h> list macros, for C libraries
++ * (e.g. musl) that do not provide that header.
++ */
++#define LIST_HEAD(name, type)						\
++    struct name { struct type *lh_first; }
++#define LIST_ENTRY(type)						\
++    struct { struct type *le_next; struct type **le_prev; }
++#define LIST_INIT(head)	((head)->lh_first = NULL)
++#define LIST_INSERT_HEAD(head, elm, field) do {				\
++	if (((elm)->field.le_next = (head)->lh_first) != NULL)		\
++	    (head)->lh_first->field.le_prev = &(elm)->field.le_next;	\
++	(head)->lh_first = (elm);					\
++	(elm)->field.le_prev = &(head)->lh_first;			\
++    } while (0)
++#define LIST_REMOVE(elm, field) do {					\
++	if ((elm)->field.le_next != NULL)				\
++	    (elm)->field.le_next->field.le_prev = (elm)->field.le_prev;	\
++	*(elm)->field.le_prev = (elm)->field.le_next;			\
++    } while (0)
++#define LIST_FOREACH(var, head, field)					\
++    for ((var) = (head)->lh_first; (var); (var) = (var)->field.le_next)
++#endif /* HAVE_SYS_QUEUE_H */
+ 
+ /*
+  * This structure is used to keep track of the notifier info for a registered
+  * file.
+  */
+

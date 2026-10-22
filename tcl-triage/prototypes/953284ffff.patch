@@ -1,0 +1,113 @@
+Index: generic/tclIOUtil.c
+==================================================================
+--- generic/tclIOUtil.c
++++ generic/tclIOUtil.c
+@@ -3660,11 +3660,21 @@
+     if (fsPtr) {
+ 	if (fsPtr->linkProc == NULL) {
+ 	    Tcl_SetErrno(ENOTSUP);
+ 	    return NULL;
+ 	} else {
+-	    return fsPtr->linkProc(pathPtr, toPtr, linkAction);
++	    Tcl_Obj *resultPtr = fsPtr->linkProc(pathPtr, toPtr, linkAction);
++
++	    if (toPtr != NULL && resultPtr != NULL) {
++		/*
++		 * A new link changes how existing paths through it resolve.
++		 * Invalidate cached normalized paths. [Bug 953284]
++		 */
++
++		Tcl_FSMountsChanged(NULL);
++	    }
++	    return resultPtr;
+ 	}
+     }
+ 
+     /*
+      * If S_IFLNK isn't defined the machine doesn't support symbolic links, so
+
+Index: generic/tclPathObj.c
+==================================================================
+--- generic/tclPathObj.c
++++ generic/tclPathObj.c
+@@ -1832,10 +1832,17 @@
+ 	    fsPathPtr->normPathPtr = copy;
+ 
+ 	    TclDecrRefCount(dir);
+ 	}
+ 	PATHFLAGS(pathPtr) = 0;
++
++	/*
++	 * The normalized path depends on the current state of the filesystem
++	 * (e.g. symbolic links). [Bug 953284]
++	 */
++
++	fsPathPtr->filesystemEpoch = TclFSEpoch();
+     }
+ 
+     /*
+      * Ensure cwd hasn't changed.
+      */
+@@ -1863,10 +1870,11 @@
+ 	     */
+ 
+ 	    TclFSNormalizeToUniquePath(interp, copy, cwdLen-1);
+ 	    fsPathPtr->normPathPtr = copy;
+ 	    Tcl_IncrRefCount(fsPathPtr->normPathPtr);
++	    fsPathPtr->filesystemEpoch = TclFSEpoch();
+ 	}
+     }
+     if (fsPathPtr->normPathPtr == NULL) {
+ 	Tcl_Obj *useThisCwd = NULL;
+ 
+@@ -1948,10 +1956,11 @@
+ 	if (fsPathPtr->normPathPtr) {
+ 	    Tcl_DecrRefCount(fsPathPtr->normPathPtr);
+ 	}
+ 	fsPathPtr->normPathPtr = TclFSNormalizeAbsolutePath(interp,
+ 		absolutePath);
++	fsPathPtr->filesystemEpoch = TclFSEpoch();
+ 
+ 	if (useThisCwd != NULL) {
+ 	    /*
+ 	     * We just need to free an object we allocated above for relative
+ 	     * paths (this was returned by Tcl_FSJoinToPath above), and then
+
+Index: tests/fileSystem.test
+==================================================================
+--- tests/fileSystem.test
++++ tests/fileSystem.test
+@@ -466,10 +466,32 @@
+     cd $home
+     removeDirectory A $home
+     cd $save
+     removeDirectory ce3a211dcb
+ } -result 1
++test filesystem-1.55 {Bug 953284: normalized path cache outdated by file link} -setup {
++    set w [makeDirectory wrong]
++    makeFile wrong file $w
++    set r [makeDirectory right]
++    makeFile right file $r
++    set link [file join [file dirname $w] link953284]
++    file link $link $w
++} -constraints hasLinks -body {
++    set p1 [file join $link file]
++    set p2 [file join $link file]
++    file normalize $p1
++    file delete $link
++    file link $link $r
++    list [file tail [file dirname [file normalize $p1]]] \
++	    [file tail [file dirname [file normalize $p2]]]
++} -cleanup {
++    file delete $link
++    removeFile file $r
++    removeDirectory right
++    removeFile file $w
++    removeDirectory wrong
++} -result {right right}
+ 
+ test filesystem-2.0 {new native path} {unix} {
+    foreach f [lsort [glob -nocomplain /usr/bin/c*]] {
+        catch {file readlink $f}
+    }
+

@@ -1,0 +1,18 @@
+Index: doc/GetIndex.3
+==================================================================
+--- doc/GetIndex.3
++++ doc/GetIndex.3
+@@ -42,11 +42,11 @@
+ The size of the structure is given by \fIoffset\fR.
+ Note that, unless the \fBTCL_INDEX_TEMP_TABLE\fR flag is specified,
+ references to the \fIstructTablePtr\fR may be retained in the
+ internal representation of \fIobjPtr\fR, so this should represent the
+ address of a statically-allocated array of structures.
+-.AP int offset in
++.AP Tcl_Size offset in
+ The offset to add to structTablePtr to get to the next entry.
+ The end of the array is marked by a NULL string pointer.
+ .AP "const char" *msg in
+ Null-terminated string describing what is being looked up, such as
+ \fBoption\fR.  This string is included in error messages.
+

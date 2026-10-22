@@ -1,0 +1,372 @@
+Index: generic/tclUtf.c
+==================================================================
+--- generic/tclUtf.c
++++ generic/tclUtf.c
+@@ -2279,18 +2279,21 @@
+  *	None.
+  *
+  *----------------------------------------------------------------------
+  */
+ 
+-bool
+-TclUniCharCaseMatch(
++/* Returns 1, 0 or -1 (string exhausted), see StringCaseMatch in tclUtil.c. */
++
++static int
++UniCharCaseMatch(
+     const Tcl_UniChar *uniStr,	/* Unicode String. */
+     const Tcl_UniChar *uniPattern,
+ 				/* Pattern, which may contain special
+ 				 * characters. */
+     int nocase)			/* 0 for case sensitive, 1 for insensitive */
+ {
++    int result;
+     Tcl_UniChar ch1 = 0, p;
+ 
+     while (1) {
+ 	p = *uniPattern;
+ 
+@@ -2302,11 +2305,11 @@
+ 
+ 	if (p == 0) {
+ 	    return (*uniStr == 0);
+ 	}
+ 	if ((*uniStr == 0) && (p != '*')) {
+-	    return false;
++	    return -1;
+ 	}
+ 
+ 	/*
+ 	 * Check for a "*" as the next pattern character. It matches any
+ 	 * substring. We handle this by skipping all the characters up to the
+@@ -2347,15 +2350,16 @@
+ 			while (*uniStr && (p != *uniStr)) {
+ 			    uniStr++;
+ 			}
+ 		    }
+ 		}
+-		if (TclUniCharCaseMatch(uniStr, uniPattern, nocase)) {
+-		    return true;
++		result = UniCharCaseMatch(uniStr, uniPattern, nocase);
++		if (result != 0) {
++		    return result;
+ 		}
+ 		if (*uniStr == 0) {
+-		    return false;
++		    return -1;
+ 		}
+ 		uniStr++;
+ 	    }
+ 	}
+ 
+@@ -2445,10 +2449,21 @@
+ 	}
+ 	uniStr++;
+ 	uniPattern++;
+     }
+ }
++
++bool
++TclUniCharCaseMatch(
++    const Tcl_UniChar *uniStr,	/* Unicode String. */
++    const Tcl_UniChar *uniPattern,
++				/* Pattern, which may contain special
++				 * characters. */
++    int nocase)			/* 0 for case sensitive, 1 for insensitive */
++{
++    return UniCharCaseMatch(uniStr, uniPattern, nocase) == 1;
++}
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
+  * TclUniCharMatch --
+@@ -2467,19 +2482,20 @@
+  *	None.
+  *
+  *----------------------------------------------------------------------
+  */
+ 
+-bool
+-TclUniCharMatch(
++static int
++UniCharMatch(
+     const Tcl_UniChar *string,	/* Unicode String. */
+     Tcl_Size strLen,		/* Length of String */
+     const Tcl_UniChar *pattern,	/* Pattern, which may contain special
+ 				 * characters. */
+     Tcl_Size ptnLen,		/* Length of Pattern */
+     int nocase)			/* 0 for case sensitive, 1 for insensitive */
+ {
++    int result;
+     const Tcl_UniChar *stringEnd, *patternEnd;
+     Tcl_UniChar p;
+ 
+     stringEnd = string + strLen;
+     patternEnd = pattern + ptnLen;
+@@ -2494,11 +2510,11 @@
+ 	if (pattern == patternEnd) {
+ 	    return (string == stringEnd);
+ 	}
+ 	p = *pattern;
+ 	if ((string == stringEnd) && (p != '*')) {
+-	    return false;
++	    return -1;
+ 	}
+ 
+ 	/*
+ 	 * Check for a "*" as the next pattern character. It matches any
+ 	 * substring. We handle this by skipping all the characters up to the
+@@ -2539,16 +2555,17 @@
+ 			while ((string < stringEnd) && (p != *string)) {
+ 			    string++;
+ 			}
+ 		    }
+ 		}
+-		if (TclUniCharMatch(string, stringEnd - string,
+-			pattern, patternEnd - pattern, nocase)) {
+-		    return true;
++		result = UniCharMatch(string, stringEnd - string,
++			pattern, patternEnd - pattern, nocase);
++		if (result != 0) {
++		    return result;
+ 		}
+ 		if (string == stringEnd) {
+-		    return false;
++		    return -1;
+ 		}
+ 		string++;
+ 	    }
+ 	}
+ 
+@@ -2636,13 +2653,25 @@
+ 	}
+ 	string++;
+ 	pattern++;
+     }
+ }
++
++bool
++TclUniCharMatch(
++    const Tcl_UniChar *string,	/* Unicode String. */
++    Tcl_Size strLen,		/* Length of String */
++    const Tcl_UniChar *pattern,	/* Pattern, which may contain special
++				 * characters. */
++    Tcl_Size ptnLen,		/* Length of Pattern */
++    int nocase)			/* 0 for case sensitive, 1 for insensitive */
++{
++    return UniCharMatch(string, strLen, pattern, ptnLen, nocase) == 1;
++}
+ 
+ /*
+  * Local Variables:
+  * mode: c
+  * c-basic-offset: 4
+  * fill-column: 78
+  * End:
+  */
+
+Index: generic/tclUtil.c
+==================================================================
+--- generic/tclUtil.c
++++ generic/tclUtil.c
+@@ -2138,17 +2138,25 @@
+  *	None.
+  *
+  *----------------------------------------------------------------------
+  */
+ 
+-int
+-Tcl_StringCaseMatch(
++/*
++ * The static helpers return 1 for a match, 0 for no match and -1 if the
++ * string ran out before the pattern: then no outer '*' can do better by
++ * consuming more characters, so retrying stops. This keeps the matching time
++ * polynomial instead of exponential. [Bug a4a7f2abd3]
++ */
++
++static int
++StringCaseMatch(
+     const char *str,		/* String. */
+     const char *pattern,	/* Pattern, which may contain special
+ 				 * characters. */
+     int nocase)			/* 0 for case sensitive, 1 for insensitive */
+ {
++    int result;
+     Tcl_Size charLen;
+     int p, ch1 = 0, ch2 = 0;
+ 
+     while (1) {
+ 	p = *pattern;
+@@ -2161,11 +2169,11 @@
+ 
+ 	if (p == '\0') {
+ 	    return *str == '\0';
+ 	}
+ 	if ((*str == '\0') && (p != '*')) {
+-	    return 0;
++	    return -1;
+ 	}
+ 
+ 	/*
+ 	 * Check for a "*" as the next pattern character. It matches any
+ 	 * substring. We handle this by calling ourselves recursively for each
+@@ -2230,15 +2238,16 @@
+ 			    }
+ 			    str += charLen;
+ 			}
+ 		    }
+ 		}
+-		if (Tcl_StringCaseMatch(str, pattern, nocase)) {
+-		    return 1;
++		result = StringCaseMatch(str, pattern, nocase);
++		if (result != 0) {
++		    return result;
+ 		}
+ 		if (*str == '\0') {
+-		    return 0;
++		    return -1;
+ 		}
+ 		str += TclUtfToUniChar(str, &ch1);
+ 	    }
+ 	}
+ 
+@@ -2354,10 +2363,20 @@
+ 	} else if (ch1 != ch2) {
+ 	    return 0;
+ 	}
+     }
+ }
++
++int
++Tcl_StringCaseMatch(
++    const char *str,		/* String. */
++    const char *pattern,	/* Pattern, which may contain special
++				 * characters. */
++    int nocase)			/* 0 for case sensitive, 1 for insensitive */
++{
++    return StringCaseMatch(str, pattern, nocase) == 1;
++}
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
+  * TclByteArrayMatch --
+@@ -2375,20 +2394,21 @@
+  *	None.
+  *
+  *----------------------------------------------------------------------
+  */
+ 
+-bool
+-TclByteArrayMatch(
++static int
++ByteArrayMatch(
+     const unsigned char *string,/* String. */
+     Tcl_Size strLen,		/* Length of String */
+     const unsigned char *pattern,
+ 				/* Pattern, which may contain special
+ 				 * characters. */
+     Tcl_Size ptnLen,		/* Length of Pattern */
+     TCL_UNUSED(int) /*flags*/)
+ {
++    int result;
+     const unsigned char *stringEnd, *patternEnd;
+     unsigned char p;
+ 
+     stringEnd = string + strLen;
+     patternEnd = pattern + ptnLen;
+@@ -2403,11 +2423,11 @@
+ 	if (pattern == patternEnd) {
+ 	    return string == stringEnd;
+ 	}
+ 	p = *pattern;
+ 	if ((string == stringEnd) && (p != '*')) {
+-	    return false;
++	    return -1;
+ 	}
+ 
+ 	/*
+ 	 * Check for a "*" as the next pattern character. It matches any
+ 	 * substring. We handle this by skipping all the characters up to the
+@@ -2438,16 +2458,17 @@
+ 		if ((p != '[') && (p != '?') && (p != '\\')) {
+ 		    while ((string < stringEnd) && (p != *string)) {
+ 			string++;
+ 		    }
+ 		}
+-		if (TclByteArrayMatch(string, stringEnd - string,
+-			pattern, patternEnd - pattern, 0)) {
+-		    return true;
++		result = ByteArrayMatch(string, stringEnd - string,
++			pattern, patternEnd - pattern, 0);
++		if (result != 0) {
++		    return result;
+ 		}
+ 		if (string == stringEnd) {
+-		    return false;
++		    return -1;
+ 		}
+ 		string++;
+ 	    }
+ 	}
+ 
+@@ -2531,10 +2552,23 @@
+ 	}
+ 	string++;
+ 	pattern++;
+     }
+ }
++
++bool
++TclByteArrayMatch(
++    const unsigned char *string,/* String. */
++    Tcl_Size strLen,		/* Length of String */
++    const unsigned char *pattern,
++				/* Pattern, which may contain special
++				 * characters. */
++    Tcl_Size ptnLen,		/* Length of Pattern */
++    int flags)
++{
++    return ByteArrayMatch(string, strLen, pattern, ptnLen, flags) == 1;
++}
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
+  * TclStringMatchObj --
+
+Index: tests/string.test
+==================================================================
+--- tests/string.test
++++ tests/string.test
+@@ -1463,10 +1463,28 @@
+ 	    [run {string match *===* $longString}]
+ } {0 1 1 1 0 0}
+ test string-11.55.$noComp {string match, invalid binary optimization} {
+     [format string] match \u0141 [binary format c 65]
+ } 0
++test string-11.56.$noComp {string match, no exponential backtracking: bug a4a7f2abd3} -body {
++    set res {}
++    foreach {c nocase} {a 0 a 1 \u0141 0 \u0141 1 \U1F600 0} {
++	set s [string repeat $c 30]
++	set p [string repeat $c* 30]b
++	string length $s; string length $p
++	set t [lindex [time {lappend res [run {string match {*}[expr {$nocase ? "-nocase" : ""}] $p $s}]}] 0]
++	lappend res [expr {$t < 1000000}]
++    }
++    set s [binary format a* [string repeat a 30]]
++    set p [binary format a* [string repeat a* 30]b]
++    set t [lindex [time {lappend res [run {string match $p $s}]}] 0]
++    lappend res [expr {$t < 1000000}]
++    lappend res [run {string match [string repeat a* 30] [string repeat a 30]}]
++    lappend res [run {string match *a*b*c* xxaxxbxxcxx}] [run {string match *a*b*c* xxaxxcxxbxx}]
++} -cleanup {
++    unset -nocomplain res s p t c nocase
++} -result {0 1 0 1 0 1 0 1 0 1 0 1 1 1 0}
+ 
+ test stringComp-12.1.0.$noComp {Bug 3588366: end-offsets before start} {
+     apply {s {
+ 	string range $s 0 end-5
+     }} 12345
+

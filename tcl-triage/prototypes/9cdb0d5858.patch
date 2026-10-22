@@ -1,0 +1,20 @@
+Index: unix/Makefile.in
+==================================================================
+--- unix/Makefile.in
++++ unix/Makefile.in
+@@ -2083,12 +2083,12 @@
+ 		    mkdir -p $(PKG_DIR)/$$pkg; \
+ 		    if [ ! -f $(PKG_DIR)/$$pkg/Makefile ] ; then \
+ 			( cd $(PKG_DIR)/$$pkg; \
+ 			  $$i/configure --with-tcl=../.. \
+ 			      --with-tclinclude=$(GENERIC_DIR) \
+-			      $(PKG_CFG_ARGS) --libdir=$(PACKAGE_DIR) \
+-			      --enable-shared; ) || exit $$?; \
++			      --enable-shared $(PKG_CFG_ARGS) \
++			      --libdir=$(PACKAGE_DIR); ) || exit $$?; \
+ 		    fi; \
+ 		fi; \
+ 	    fi; \
+ 	done
+ 
+

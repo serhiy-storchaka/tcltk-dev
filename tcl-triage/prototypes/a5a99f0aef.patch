@@ -1,0 +1,46 @@
+Index: generic/tclCmdIL.c
+==================================================================
+--- generic/tclCmdIL.c
++++ generic/tclCmdIL.c
+@@ -3372,10 +3372,19 @@
+ 	Tcl_SetErrorCode(interp, "TCL", "OPERATION", "LSEARCH",
+ 		"BAD_OPTION_MIX", (char *)NULL);
+ 	result = TCL_ERROR;
+ 	goto done;
+     }
++
++    if (bisect && mode == EXACT) {
++	/*
++	 * -exact given after -bisect: -bisect implies -sorted, which uses exact
++	 * comparison anyway, so don't let -exact turn off the bisection.
++	 */
++
++	mode = SORTED;
++    }
+ 
+     if (bisect && (allMatches || negatedMatch)) {
+ 	Tcl_SetObjResult(interp, Tcl_NewStringObj(
+ 		"-bisect is not compatible with -all or -not", -1));
+ 	Tcl_SetErrorCode(interp, "TCL", "OPERATION", "LSEARCH",
+
+Index: tests/lsearch.test
+==================================================================
+--- tests/lsearch.test
++++ tests/lsearch.test
+@@ -544,10 +544,15 @@
+     lsearch -bisect -integer {5 5 5 5} 5
+ } {3}
+ test lsearch-22.6 {lsearch -sorted, all equal} {
+     lsearch -sorted -integer {5 5 5 5} 5
+ } {0}
++test lsearch-22.7 {lsearch -bisect -exact, option order, bug a5a99f0aef} {
++    list [lsearch -bisect -exact {a c e} d] [lsearch -exact -bisect {a c e} d] \
++	[lsearch -bisect -exact -stride 2 -index 0 {one two} three] \
++	[lsearch -exact -bisect -stride 2 -index 0 {one two} three]
++} {1 1 0 0}
+ 
+ test lsearch-23.1 {lsearch -stride option, errors} -body {
+     lsearch -stride {a b} a
+ } -returnCodes error -result {"-stride" option must be followed by stride length}
+ test lsearch-23.2 {lsearch -stride option, errors} -body {
+

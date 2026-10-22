@@ -1,0 +1,19 @@
+Index: unix/tclUnixPort.h
+==================================================================
+--- unix/tclUnixPort.h
++++ unix/tclUnixPort.h
+@@ -142,10 +142,13 @@
+ #ifdef HAVE_INTTYPES_H
+ #   include <inttypes.h>
+ #endif
+ #include <limits.h>
+ #include <unistd.h>
++#ifdef HAVE_STRINGS_H
++#   include <strings.h>	/* strcasecmp, strncasecmp (POSIX) */
++#endif
+ 
+ MODULE_SCOPE int TclUnixSetBlockingMode(int fd, int mode);
+ 
+ #include <utime.h>
+ 
+

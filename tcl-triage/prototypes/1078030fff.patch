@@ -1,0 +1,32 @@
+Index: win/tclWinDde.c
+==================================================================
+--- win/tclWinDde.c
++++ win/tclWinDde.c
+@@ -967,11 +967,25 @@
+ static void
+ DdeExitProc(
+     void *dummy)		/* Not used. */
+ {
+     (void)dummy;
+-    DdeNameService(ddeInstance, NULL, 0, DNS_UNREGISTER);
++
++    /*
++     * This handler can be registered more than once (by Dde_Init in each
++     * interpreter and by Initialize), and dde may never have been
++     * initialized at all [Bug 1078030].
++     */
++
++    if (ddeInstance == 0) {
++	return;
++    }
++    if (ddeServiceGlobal != 0) {
++	DdeNameService(ddeInstance, NULL, 0, DNS_UNREGISTER);
++	DdeFreeStringHandle(ddeInstance, ddeServiceGlobal);
++	ddeServiceGlobal = 0;
++    }
+     DdeUninitialize(ddeInstance);
+     ddeInstance = 0;
+ }
+ 
+ /*
+

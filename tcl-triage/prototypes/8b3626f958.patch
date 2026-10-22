@@ -1,0 +1,18 @@
+Index: README.md
+==================================================================
+--- README.md
++++ README.md
+@@ -96,11 +96,11 @@
+ 
+ ## <a id="complangtcl">5.</a> Tcl newsgroup
+ There is a USENET newsgroup, "`comp.lang.tcl`", intended for the exchange of
+ information about Tcl, Tk, and related applications.  The newsgroup is a
+ great place to ask general information questions.  For bug reports, please
+-see the "Support and bug fixes" section below.
++see the "[Support and Training](#support)" section below.
+ 
+ ## <a id="wiki">6.</a> Tcl'ers Wiki
+ There is a [wiki-based open community site](https://wiki.tcl-lang.org/)
+ covering all aspects of Tcl/Tk.
+ 
+

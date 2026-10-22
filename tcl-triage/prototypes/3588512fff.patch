@@ -1,0 +1,22 @@
+Index: doc/expr.n
+==================================================================
+--- doc/expr.n
++++ doc/expr.n
+@@ -205,11 +205,15 @@
+ comparisons above, which have the same precedence.
+ .VE TIP461
+ .TP 20
+ \fB==\0\0!=\fR
+ .
+-Boolean equal and not equal.
++Boolean numeric-preferring equal and not equal. If either argument is not
++numeric, the values are compared as strings, as with \fBeq\fR and \fBne\fR.
++Boolean words such as \fBtrue\fR and \fBfalse\fR are not numeric, so
++\fB0 == false\fR is 0; use \fBbool()\fR or \fB!!\fR to normalize booleans
++before comparing them.
+ .TP 20
+ \fBeq\0\0ne\fR
+ .
+ Boolean string equal and string not equal.
+ .TP 20
+

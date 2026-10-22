@@ -1,0 +1,58 @@
+Index: generic/tclEnv.c
+==================================================================
+--- generic/tclEnv.c	
++++ generic/tclEnv.c	
+@@ -657,10 +657,20 @@
+ 
+     if (flags & TCL_TRACE_WRITES) {
+ 	const char *value;
+ 
+ 	value = Tcl_GetVar2(interp, "env", name2, TCL_GLOBAL_ONLY);
++#if defined(_WIN32)
++	/*
++	 * Setting to empty string on Windows -> unset env variable. This
++	 * will recurse back to this function.
++	 */
++	if (value[0] == '\0') {
++	    (void)Tcl_UnsetVar2(interp, "env", name2, TCL_GLOBAL_ONLY);
++	    return NULL;
++	}
++#endif
+ 	TclSetEnv(name2, value);
+ 	TclEnvEpoch++;
+     }
+ 
+     /*
+
+Index: tests/env.test
+==================================================================
+--- tests/env.test	
++++ tests/env.test	
+@@ -456,10 +456,26 @@
+     if {$result ne $::env(USERPROFILE)} {
+ 	list ERROR $result ne $::env(USERPROFILE)
+     }
+ } -result {}
+ 
++test env-11.0 {
++    Bug [b492c33154] - info exists return true after setting env to ""
++} -constraints win -setup {
++    set ::env(ENV110) foo
++} -cleanup {
++    unset -nocomplain ::env(ENV110)
++} -body {
++    list \
++        [info exists ::env(ENV110)] \
++	$::env(ENV110) \
++        [set ::env(ENV110) ""] \
++        [info exists ::env(ENV110)] \
++        [catch {set ::env(ENV110)} error] \
++        $error
++} -result {1 foo {} 0 1 {can't read "::env(ENV110)": no such variable}}
++
+ 
+ 
+ # cleanup
+ rename getenv {}
+ rename envrestore {}
+

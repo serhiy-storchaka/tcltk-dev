@@ -1,0 +1,33 @@
+Index: doc/IntObj.3
+==================================================================
+--- doc/IntObj.3
++++ doc/IntObj.3
+@@ -162,11 +162,15 @@
+ \fBTcl_TakeBignumFromObj\fR routines attempt to retrieve an integral
+ value of the appropriate type from the Tcl value \fIobjPtr\fR.  If the
+ attempt succeeds, then \fBTCL_OK\fR is returned, and the value is
+ written to the storage provided by the caller.  The attempt might
+ fail if \fIobjPtr\fR does not hold an integral value, or if the
+-value exceeds the range of the target type.  If the attempt fails,
++value exceeds the range of the target type.  A string representation
++holds an integral value if it has the syntax accepted by \fBTcl_GetInt\fR
++(see its manual page): optional white space and sign, an optional
++\fB0b\fR, \fB0o\fR, \fB0d\fR or \fB0x\fR radix prefix, and digits that
++may be separated by underscores.  If the attempt fails,
+ then \fBTCL_ERROR\fR is returned, and if \fIinterp\fR is non-NULL,
+ an error message is left in \fIinterp\fR.  The \fBTcl_ObjType\fR
+ of \fIobjPtr\fR may be changed to make subsequent calls to the
+ same routine more efficient. Unlike the other functions,
+ \fBTcl_TakeBignumFromObj\fR may set the content of the Tcl value
+@@ -208,9 +212,9 @@
+ object may be modified; it is intended to be used when the value is
+ .QW consumed
+ by the operation at this point.
+ 
+ .SH "SEE ALSO"
+-Tcl_NewObj, Tcl_DecrRefCount, Tcl_IncrRefCount, Tcl_GetObjResult
++Tcl_NewObj, Tcl_DecrRefCount, Tcl_IncrRefCount, Tcl_GetObjResult, Tcl_GetInt
+ .SH KEYWORDS
+ integer, integer value, integer type, internal representation, value,
+ value type, string representation
+

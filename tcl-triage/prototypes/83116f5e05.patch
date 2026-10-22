@@ -1,0 +1,23 @@
+Index: doc/Async.3
+==================================================================
+--- doc/Async.3
++++ doc/Async.3
+@@ -65,10 +65,17 @@
+ structure in the event of a core built with \fI\-\-enable\-threads\fR.  The token
+ created by \fBTcl_AsyncCreate\fR contains the needed thread information it
+ was called from so that calling \fBTcl_AsyncMark\fR(\fItoken\fR) will only yield
+ the origin thread into the asynchronous handler.
+ .PP
++In a core built with \fI\-\-enable\-threads\fR, \fBTcl_AsyncMark\fR
++locks a mutex and is therefore not async-signal-safe: calling it from a
++POSIX signal handler can deadlock if the signal interrupts a thread that
++holds the same mutex.  Only in a core built without threads does
++\fBTcl_AsyncMark\fR merely set flags, which is safe in a signal handler.
++(Tcl 8.7 and later provide \fBTcl_AsyncMarkFromSignal\fR for this purpose.)
++.PP
+ \fBTcl_AsyncCreate\fR creates an asynchronous handler and returns
+ a token for it.
+ The asynchronous handler must be created before
+ any occurrences of the asynchronous event that it is intended
+ to handle (it is not safe to create a handler at the time of
+

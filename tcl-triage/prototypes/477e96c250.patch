@@ -1,0 +1,69 @@
+Index: generic/tclOOBasic.c
+==================================================================
+--- generic/tclOOBasic.c
++++ generic/tclOOBasic.c
+@@ -1889,10 +1889,24 @@
+ 		"method not defined by a class", TCL_AUTO_LENGTH));
+ 	OO_ERROR(interp, UNMATCHED_CONTEXT);
+ 	return TCL_ERROR;
+     }
+     Tcl_Namespace *clsNsPtr = clsPtr->thisPtr->namespacePtr;
++
++    /*
++     * A method defined with [classmethod] is declared by the class delegate,
++     * named "<class namespace>:: oo ::delegate". Use the namespace of the
++     * class that owns the delegate instead. [Bug 477e96c250]
++     */
++
++    Command *cmdPtr = (Command *) clsPtr->thisPtr->command;
++    if (cmdPtr && cmdPtr->nsPtr && cmdPtr->nsPtr->parentPtr
++	    && !strcmp(cmdPtr->nsPtr->name, " oo ")
++	    && !strcmp(Tcl_GetCommandName(interp, (Tcl_Command) cmdPtr),
++		    "delegate")) {
++	clsNsPtr = (Tcl_Namespace *) cmdPtr->nsPtr->parentPtr;
++    }
+ 
+     // Check the list of variable names
+     for (Tcl_Size i = 1; i < objc; i++) {
+ 	const char *varName = TclGetString(objv[i]);
+ 	if (Tcl_StringMatch(varName, "*(*)")) {
+
+Index: tests/ooUtil.test
+==================================================================
+--- tests/ooUtil.test
++++ tests/ooUtil.test
+@@ -495,10 +495,33 @@
+     set q [xyz new]
+     list [$p a] [$q a]
+ } -returnCodes error -cleanup {
+     parent destroy
+ } -result {bad variable name "::x": can't create a local variable with a namespace separator in it}
++
++test ooUtil-6.4 {classvariable in classmethod, bug 477e96c250} -setup {
++    oo::class create parent
++} -body {
++    oo::class create xyz {
++	superclass parent
++	initialise {
++	    variable x 1
++	}
++	classmethod a {} {
++	    classvariable x
++	    incr x
++	}
++	method b {} {
++	    classvariable x
++	    incr x
++	}
++    }
++    oo::class create sub {superclass xyz}
++    list [xyz a] [[xyz new] b] [sub a] [[sub new] b] [set [info object namespace xyz]::x]
++} -cleanup {
++    parent destroy
++} -result {2 3 4 5 5}
+ 
+ test ooUtil-7.1 {TIP 478: link calling pattern} -setup {
+     oo::class create parent
+ } -body {
+     oo::class create cls {
+

@@ -1,0 +1,76 @@
+Index: tests/unixFile.test
+==================================================================
+--- tests/unixFile.test
++++ tests/unixFile.test
+@@ -26,18 +26,23 @@
+     set oldPath $env(PATH)
+     file attributes [makeFile "" junk] -perm 0o777
+ }
+ set absPath [file join [temporaryDirectory] junk]
+ 
++# Without a match on the PATH, the kernel's idea of the executable is used
++# where available. [Bug 1224888]
++if {[catch {file readlink /proc/self/exe} notFound]} {
++    set notFound {}
++}
+ test unixFile-1.1 {Tcl_FindExecutable} {testfindexecutable unix} {
+     set env(PATH) ""
+     testfindexecutable junk
+ } $absPath
+ test unixFile-1.2 {Tcl_FindExecutable} {testfindexecutable unix} {
+     set env(PATH) "/dummy"
+     testfindexecutable junk
+-} {}
++} $notFound
+ test unixFile-1.3 {Tcl_FindExecutable} {testfindexecutable unix} {
+     set env(PATH) "/dummy:[pwd]"
+     testfindexecutable junk
+ } $absPath
+ test unixFile-1.4 {Tcl_FindExecutable} {testfindexecutable unix} {
+@@ -45,11 +50,11 @@
+     testfindexecutable junk
+ } $absPath
+ test unixFile-1.5 {Tcl_FindExecutable} {testfindexecutable unix} {
+     set env(PATH) "/dummy:/dummy"
+     testfindexecutable junk
+-} {}
++} $notFound
+ test unixFile-1.6 {Tcl_FindExecutable} {testfindexecutable unix} {
+     set env(PATH) "/dummy::/dummy"
+     testfindexecutable junk
+ } $absPath
+ test unixFile-1.7 {Tcl_FindExecutable} {testfindexecutable unix} {
+
+Index: unix/tclUnixFile.c
+==================================================================
+--- unix/tclUnixFile.c
++++ unix/tclUnixFile.c
+@@ -150,10 +150,27 @@
+ 	    p = "./";
+ 	} else {
+ 	    p++;
+ 	}
+     }
++
++    /*
++     * Not found in the PATH (e.g. a CGI started with a bare argv[0]). Ask
++     * the kernel, where it can tell us. [Bug 1224888]
++     */
++
++    {
++	char exe[PATH_MAX];
++	ssize_t len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
++
++	if (len > 0 && exe[0] == '/') {
++	    exe[len] = '\0';
++	    TclDStringClear(&buffer);
++	    name = Tcl_DStringAppend(&buffer, exe, len);
++	    goto gotName;
++	}
++    }
+     TclNewObj(obj);
+     TclSetObjNameOfExecutable(obj, NULL);
+     goto getShlibName;
+ 
+     /*
+

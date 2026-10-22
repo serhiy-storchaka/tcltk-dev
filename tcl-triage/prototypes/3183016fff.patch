@@ -1,0 +1,118 @@
+Index: tests/fileSystem.test
+==================================================================
+--- tests/fileSystem.test
++++ tests/fileSystem.test
+@@ -466,10 +466,22 @@
+     cd $home
+     removeDirectory A $home
+     cd $save
+     removeDirectory ce3a211dcb
+ } -result 1
++test filesystem-1.55 {[Bug 3183016] - normalize .. after a relative link} -setup {
++    set home [makeDirectory 3183016]
++    file mkdir [file join $home test1 test2]
++    file link -symbolic [file join $home test1 test2 link] ../../test1
++} -constraints {hasLinks unix} -body {
++    list [testPathEqual [file normalize [file join $home test1 test2 link ..]] \
++	    [file normalize $home]] \
++	[testPathEqual [file normalize [file join $home test1 test2 link .. x]] \
++	    [file normalize [file join $home x]]]
++} -cleanup {
++    removeDirectory 3183016
++} -result {ok ok}
+ 
+ test filesystem-2.0 {new native path} {unix} {
+    foreach f [lsort [glob -nocomplain /usr/bin/c*]] {
+        catch {file readlink $f}
+    }
+
+Index: unix/tclUnixFCmd.c
+==================================================================
+--- unix/tclUnixFCmd.c
++++ unix/tclUnixFCmd.c
+@@ -2133,10 +2133,20 @@
+ 	 * the call to realpath() in that case.
+ 	 */
+ 
+ 	const char *lastDir = strrchr(currentPathEndPosition, '/');
+ 
++	if (lastDir != NULL && lastDir[1] == '.' && (lastDir[2] == '\0'
++		|| (lastDir[2] == '.' && lastDir[3] == '\0'))) {
++	    /*
++	     * A trailing "." or ".." can be left by the expansion of a
++	     * relative link in TclFSNormalizeAbsolutePath. It is not a link
++	     * itself, so resolve the whole path. [Bug 3183016]
++	     */
++
++	    lastDir = path + pathLen;
++	}
+ 	if (lastDir != NULL) {
+ 	    /* Not a path of form /xxx so intermediate parts need resolution */
+ 	    if (Tcl_UtfToExternalDStringEx(interp, NULL, path,
+ 		    lastDir-path, 0, &ds, NULL) != TCL_OK) {
+ 		Tcl_DStringFree(&ds);
+
+Index: tests/winFile.test
+==================================================================
+--- tests/winFile.test	
++++ tests/winFile.test	
+@@ -213,9 +213,28 @@
+ } -result {}
+ 
+ if {[testConstraint win]} {
+     file delete $fname
+ }
++
++test winFile-5.1 {cd .. from a junction: pwd and relative paths agree [Bug 3183016]} -constraints {
++    win
++} -setup {
++    set savedir [pwd]
++    set base [makeDirectory winFile-5.1]
++    file mkdir $base/test1/test2
++    close [open $base/test1/test2/in_test2 w]
++    file link -symbolic $base/test1/test2/link $base/test1
++} -body {
++    cd $base/test1/test2/link
++    cd ..
++    list [expr {[pwd] eq [file normalize $base]}] [lsort [glob *]] \
++	[file isdirectory test1] [file exists in_test2]
++} -cleanup {
++    cd $savedir
++    file delete $base/test1/test2/link
++    removeDirectory winFile-5.1
++} -result {1 test1 1 0}
+ 
+ # cleanup
+ cleanupTests
+ return
+
+Index: win/tclWinFile.c
+==================================================================
+--- win/tclWinFile.c	
++++ win/tclWinFile.c	
+@@ -2035,12 +2035,23 @@
+ TclpObjChdir(
+     Tcl_Obj *pathPtr)		/* Path to new working directory. */
+ {
+     int result;
+     const WCHAR *nativePath;
++    Tcl_Obj *normPathPtr;
+ 
+-    nativePath = (const WCHAR *)Tcl_FSGetNativePath(pathPtr);
++    /*
++     * Use the normalized path, which [pwd] will report. The translated path
++     * may contain ".." after a junction, which Windows resolves lexically,
++     * and the process cwd would differ from [pwd]. [Bug 3183016]
++     */
++
++    normPathPtr = Tcl_FSGetNormalizedPath(NULL, pathPtr);
++    if (!normPathPtr) {
++	return -1;
++    }
++    nativePath = (const WCHAR *)Tcl_FSGetNativePath(normPathPtr);
+ 
+     if (!nativePath) {
+ 	return -1;
+     }
+     result = SetCurrentDirectoryW(nativePath);
+

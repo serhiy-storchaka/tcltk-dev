@@ -1,0 +1,105 @@
+Index: generic/tclLink.c
+==================================================================
+--- generic/tclLink.c
++++ generic/tclLink.c
+@@ -571,11 +571,12 @@
+     const char *str;
+     const char *endPtr;
+     Tcl_Size length;
+ 
+     str = TclGetStringFromObj(objPtr, &length);
+-    if ((length == 1) && (str[0] == '.')) {
++    if (((length == 1) && (str[0] == '.')) || ((length == 2)
++	    && (str[0] == '+' || str[0] == '-') && (str[1] == '.'))) {
+ 	objPtr->typePtr = &invalidRealType;
+ 	objPtr->internalRep.doubleValue = 0.0;
+ 	return TCL_OK;
+     }
+     if (TclParseNumber(NULL, objPtr, NULL, str, length, &endPtr,
+@@ -610,11 +611,11 @@
+  * GetInvalidIntFromObj --
+  *
+  *	This function checks for integer representations, which are valid
+  *	when linking with C variables, but which are invalid in other
+  *	contexts in Tcl. Handled are "+", "-", "", "0x", "0b", "0d" and "0o"
+- *	(upperand lowercase). See bug [39f6304c2e].
++ *	(upper- and lowercase, optionally signed). See bug [39f6304c2e].
+  *
+  *----------------------------------------------------------------------
+  */
+ static int
+ GetInvalidIntFromObj(
+@@ -622,17 +623,23 @@
+     int *intPtr)
+ {
+     Tcl_Size length;
+     const char *str = TclGetStringFromObj(objPtr, &length);
+ 
++    if ((length == 1) && strchr("+-", str[0])) {
++	*intPtr = (str[0] == '+');
++	return TCL_OK;
++    }
++    if ((length > 0) && strchr("+-", str[0])) {
++	/* Signed prefix, like "-0x". */
++	str++;
++	length--;
++    }
+     if ((length == 0) || ((length == 2) && (str[0] == '0')
+ 	    && strchr("xXbBoOdD", str[1]))) {
+ 	*intPtr = 0;
+ 	return TCL_OK;
+-    } else if ((length == 1) && strchr("+-", str[0])) {
+-	*intPtr = (str[0] == '+');
+-	return TCL_OK;
+     }
+     return TCL_ERROR;
+ }
+ 
+ /*
+@@ -640,12 +647,13 @@
+  *
+  * GetInvalidDoubleFromObj --
+  *
+  *	This function checks for double representations, which are valid
+  *	when linking with C variables, but which are invalid in other
+- *	contexts in Tcl. Handled are "+", "-", "", ".", "0x", "0b" and "0o"
+- *	(upper- and lowercase) and sequences like "1e-". See bug [39f6304c2e].
++ *	contexts in Tcl. Handled are "+", "-", "", ".", "-.", "0x", "0b" and
++ *	"0o" (upper- and lowercase, optionally signed) and sequences like
++ *	"1e-". See bug [39f6304c2e].
+  *
+  *----------------------------------------------------------------------
+  */
+ static int
+ GetInvalidDoubleFromObj(
+
+Index: tests/link.test
+==================================================================
+--- tests/link.test
++++ tests/link.test
+@@ -203,10 +203,24 @@
+     set ulong "0X"
+     set float "0B"
+     set uwide "0D"
+     concat [testlink get] | $int $real $bool $string $wide $char $uchar $short $ushort $uint $long $ulong $float $uwide
+ } -result {0 0.0 0 0 0 0 0 0 0 0 0 0 0.0 0 | 0x 0b 0 0 0D 0X 0B 0D 0x 0b 0d 0X 0B 0D}
++
++test link-2.11 {signed prefixes of valid values [Bug 39f6304c2e]} -constraints {testlink} -setup {
++    testlink delete
++} -body {
++    testlink set 43 1.21 4 - 56785678 64 250 30000 60000 0xbaadbeef 12321 32123 3.25 1231231234
++    testlink create 1 1 1 1 1 1 1 1 1 1 1 1 1 1
++    set int "-0x"
++    set real "-."
++    set wide "+0b"
++    set short "-0o"
++    set float "+."
++    set uwide "+0d"
++    concat [testlink get] | $int $real $wide $short $float $uwide
++} -result {0 0.0 1 - 0 64 250 0 60000 -1163018513 12321 32123 0.0 0 | -0x -. +0b -0o +. +0d}
+ 
+ test link-3.1 {read-only variables} -constraints {testlink} -setup {
+     testlink delete
+ } -body {
+     testlink set 43 1.23 4 - 56785678 64 250 30000 60000 0xbeefbabe 12321 32123 3.25 1231231234
+

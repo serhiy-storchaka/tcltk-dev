@@ -1,0 +1,24 @@
+Index: tests/cmdMZ.test
+==================================================================
+--- tests/cmdMZ.test
++++ tests/cmdMZ.test
+@@ -433,15 +433,15 @@
+     if {[testConstraint valgrind] && ([lindex $m1 0] >= 100 || [lindex $m1 2] <= 500)} {
+ 	tcltest::Skip "too-slow-by-valgrind"
+     }
+     list [list \
+ 	[expr {[lindex $m1 0] < [lindex $m2 0]}] \
+-	[expr {[lindex $m1 0] < 100}] \
++	[expr {[lindex $m1 0] * 5 < [lindex $m2 0]}] \
+ 	[expr {[lindex $m2 0] > 100}] \
+-	[expr {[lindex $m1 2] > 500}] \
++	[expr {[lindex $m1 2] > [lindex $m2 2] * 5}] \
+ 	[expr {[lindex $m2 2] < 500}] \
+-	[expr {[lindex $m1 4] > 10000}] \
++	[expr {[lindex $m1 4] > [lindex $m2 4] * 5}] \
+ 	[expr {[lindex $m2 4] < 10000}] \
+ 	[expr {[lindex $m1 6] > 5 && [lindex $m1 6] < 100}] \
+ 	[expr {[lindex $m2 6] > 5 && [lindex $m2 6] < 100}] \
+     ] $m1 $m2; # interesting only in error case.
+ } -match glob -result [list [lrepeat 9 1] *]
+

@@ -1,0 +1,71 @@
+Index: generic/tclUtil.c
+==================================================================
+--- generic/tclUtil.c
++++ generic/tclUtil.c
+@@ -4348,28 +4348,19 @@
+ 	Tcl_Encoding current = Tcl_GetEncoding(NULL, NULL);
+ 
+ 	if (pgvPtr->encoding != current) {
+ 	    /*
+ 	     * The system encoding has changed since the global string value
+-	     * was saved. Convert the global value to be based on the new
+-	     * system encoding.
++	     * was saved. The saved value is in the native (system) encoding,
++	     * so just start a new epoch: the per-thread copies will be
++	     * regenerated from the unchanged native bytes using the new
++	     * system encoding. Converting the native bytes themselves is
++	     * lossy and corrupted the value. [Bug ab4307e01b]
+ 	     */
+ 
+-	    Tcl_DString native;
+-
+ 	    Tcl_MutexLock(&pgvPtr->mutex);
+ 	    epoch = ++pgvPtr->epoch;
+-	    Tcl_UtfToExternalDString(pgvPtr->encoding, pgvPtr->value,
+-		    pgvPtr->numBytes, &native);
+-	    Tcl_ExternalToUtfDString(current, Tcl_DStringValue(&native),
+-	    Tcl_DStringLength(&native), &newValue);
+-	    Tcl_DStringFree(&native);
+-	    ckfree(pgvPtr->value);
+-	    pgvPtr->value = (char *)ckalloc(Tcl_DStringLength(&newValue) + 1);
+-	    memcpy(pgvPtr->value, Tcl_DStringValue(&newValue),
+-		    Tcl_DStringLength(&newValue) + 1);
+-	    Tcl_DStringFree(&newValue);
+ 	    Tcl_FreeEncoding(pgvPtr->encoding);
+ 	    pgvPtr->encoding = current;
+ 	    Tcl_MutexUnlock(&pgvPtr->mutex);
+ 	} else {
+ 	    Tcl_FreeEncoding(current);
+
+Index: tests/encoding.test
+==================================================================
+--- tests/encoding.test
++++ tests/encoding.test
+@@ -724,10 +724,26 @@
+     encoding dirs ? ?
+ } -result {wrong # args: should be "encoding dirs ?dirList?"}
+ test encoding-27.2 {encoding dirs basic behavior} -returnCodes error -body {
+     encoding dirs "\{not a list"
+ } -result "expected directory list but got \"\{not a list\""
++test encoding-27.3 {changing system encoding keeps encoding dirs, bug ab4307e01b} -constraints {
++    exec
++} -setup {
++    set fName [makeFile {
++	set save [encoding system]
++	set dirs [encoding dirs]
++	encoding system gb12345
++	encoding dirs
++	encoding system $save
++	puts [expr {[encoding dirs] eq $dirs}]
++    } enc273.tcl]
++} -body {
++    exec [interpreter] $fName
++} -cleanup {
++    removeFile enc273.tcl
++} -result 1
+ 
+ }
+ 
+ 
+ test encoding-28.0 {all encodings load} -body {
+

@@ -1,0 +1,181 @@
+Index: generic/tclBasic.c
+==================================================================
+--- generic/tclBasic.c
++++ generic/tclBasic.c
+@@ -4565,11 +4565,14 @@
+     /*
+      * If there is a tailcall, schedule it next
+      */
+ 
+     if (data[1] && (data[1] != INT2PTR(1))) {
+-	TclNRAddCallback(interp, TclNRTailcallEval, data[1], NULL, NULL, NULL);
++	Tcl_Obj *listPtr = (Tcl_Obj *)data[1];
++
++	data[1] = NULL;
++	TclNRAddCallback(interp, TclNRTailcallEval, listPtr, NULL, NULL, NULL);
+     }
+ 
+     /* OPT ??
+      * Do not interrupt a series of cleanups with async or limit checks:
+      * just check at the end?
+@@ -8711,10 +8714,11 @@
+      * Add the callback in the caller's env, then instruct TEBC to yield.
+      */
+ 
+     iPtr->execEnvPtr = corPtr->callerEEPtr;
+     TclSetTailcall(interp, listPtr);
++    corPtr->yieldPtr = listPtr;
+     iPtr->execEnvPtr = corPtr->eePtr;
+ 
+     return TclNRYieldObjCmd(INT2PTR(CORO_ACTIVATE_YIELDM), interp, 1, objv);
+ }
+ 
+@@ -8908,10 +8912,25 @@
+ 	/*
+ 	 * Coroutine is active: yield
+ 	 */
+ 
+ 	if (corPtr->stackLevel != stackLevel) {
++	    NRE_callback *runPtr;
++
++	    iPtr->execEnvPtr = corPtr->callerEEPtr;
++	    if (corPtr->yieldPtr) {
++		for (runPtr = TOP_CB(interp); runPtr; runPtr = runPtr->nextPtr) {
++		    if (runPtr->data[1] == corPtr->yieldPtr) {
++			runPtr->data[1] = NULL;
++			Tcl_DecrRefCount(corPtr->yieldPtr);
++			corPtr->yieldPtr = NULL;
++			break;
++		    }
++		}
++	    }
++	    iPtr->execEnvPtr = corPtr->eePtr;
++
+ 	    Tcl_SetObjResult(interp, Tcl_NewStringObj(
+ 		    "cannot yield: C stack busy", -1));
+ 	    Tcl_SetErrorCode(interp, "TCL", "COROUTINE", "CANT_YIELD",
+ 		    (char *)NULL);
+ 	    return TCL_ERROR;
+@@ -8923,10 +8942,11 @@
+ 	    corPtr->nargs = COROUTINE_ARGUMENTS_ARBITRARY;
+ 	} else {
+ 	    Tcl_Panic("Yield received an option which is not implemented");
+ 	}
+ 
++	corPtr->yieldPtr = NULL;
+ 	corPtr->stackLevel = NULL;
+ 
+ 	numLevels = iPtr->numLevels;
+ 	iPtr->numLevels = corPtr->auxNumLevels;
+ 	corPtr->auxNumLevels = numLevels - corPtr->auxNumLevels;
+@@ -9248,10 +9268,11 @@
+     corPtr->running.varFramePtr = iPtr->rootFramePtr;
+     corPtr->running.cmdFramePtr = NULL;
+     corPtr->running.lineLABCPtr = corPtr->lineLABCPtr;
+     corPtr->stackLevel = NULL;
+     corPtr->auxNumLevels = 0;
++    corPtr->yieldPtr = NULL;
+ 
+     /*
+      * Create the coro's execEnv, switch to it to push the exit and coro
+      * command callbacks, then switch back.
+      */
+
+Index: generic/tclExecute.c
+==================================================================
+--- generic/tclExecute.c
++++ generic/tclExecute.c
+@@ -2582,10 +2582,11 @@
+ 	 */
+ 
+ 	Tcl_IncrRefCount(valuePtr);
+ 	iPtr->execEnvPtr = corPtr->callerEEPtr;
+ 	TclSetTailcall(interp, valuePtr);
++	corPtr->yieldPtr = valuePtr;
+ 	iPtr->execEnvPtr = corPtr->eePtr;
+ 	yieldParameter = (PTR2INT(NULL)+1);	/*==CORO_ACTIVATE_YIELDM*/
+ 
+     doYield:
+ 	/* TIP #280: Record the last piece of info needed by
+
+Index: generic/tclInt.h
+==================================================================
+--- generic/tclInt.h
++++ generic/tclInt.h
+@@ -1438,10 +1438,14 @@
+ 				 * stored here; for suspended coroutines it
+ 				 * holds the nesting numLevels at yield. */
+     int nargs;                  /* Number of args required for resuming this
+ 				 * coroutine; -2 means "0 or 1" (default), -1
+ 				 * means "any" */
++    Tcl_Obj *yieldPtr;		/* The command to yield to.  Stored here in
++				 * order to reset splice point in
++				 * TclNRCoroutineActivateCallback if the
++				 * coroutine is busy. */
+ } CoroutineData;
+ 
+ typedef struct ExecEnv {
+     ExecStack *execStackPtr;	/* Points to the first item in the evaluation
+ 				 * stack on the heap. */
+
+Index: tests/coroutine.test
+==================================================================
+--- tests/coroutine.test
++++ tests/coroutine.test
+@@ -752,10 +752,55 @@
+     boom   ; # does not crash: the coro floor is a good insulator
+     list
+ } -cleanup {
+     rename boom {}; rename cc {}; rename c {}
+ } -result {}
++test coroutine-7.13 {
++	issue f9800d52bd61f240
++
++	vwait is not NRE-enabled, and yieldto cannot find the right splicing spot
++} -body {
++	coroutine c0 apply [list {} {
++		variable done
++		yield
++		yieldto c1
++		after 0 c2
++		vwait [namespace current]::done
++	} [namespace current]]
++
++	coroutine c1 apply [list {} {
++		yield
++		tailcall c0
++	} [namespace current]]
++
++	coroutine c2 apply [list {} {
++		variable done
++		yield
++		yieldto try {yieldto c1} on error {} [list after 0 [list [info coroutine]]]
++		yieldto try {yieldto c1} on error {} [list after 0 [list [info coroutine]]]
++		set done 1
++	} [namespace current]]
++
++	after 0 [list [namespace which c0]]
++	vwait [namespace current]::done
++	return $done
++} -result 1
++test coroutine-7.14 {failed yieldto in time body, bug cc592ec70d} -setup {
++    coroutine c2 apply {{} {
++	yield
++    }}
++} -body {
++    coroutine c1 apply {{} {
++	set res {}
++	foreach i {0 1} {
++	    lappend res [catch {time {yieldto c2} 1} msg] $msg
++	}
++	return $res
++    }}
++} -cleanup {
++    catch {rename c2 {}}
++} -result {1 {cannot yield: C stack busy} 1 {cannot yield: C stack busy}}
+ 
+ test coroutine-8.0.0 {coro inject executed} -body {
+     coroutine demo apply {{} { foreach i {1 2} yield }}
+     demo
+     set ::result none
+

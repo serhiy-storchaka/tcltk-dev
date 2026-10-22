@@ -1,0 +1,51 @@
+Index: generic/tclTimer.c
+==================================================================
+--- generic/tclTimer.c
++++ generic/tclTimer.c
+@@ -263,18 +263,19 @@
+ /*
+  *----------------------------------------------------------------------
+  *
+  * TimerExitProc --
+  *
+- *	This function is call at exit or unload time to remove the timer and
+- *	idle event sources.
++ *	This function is called at exit or unload time to remove the timer
++ *	event source and the remaining timer and idle handlers.
+  *
+  * Results:
+  *	None.
+  *
+  * Side effects:
+- *	Removes the timer and idle event sources and remaining events.
++ *	Removes the timer event source and frees the remaining timer and idle
++ *	handlers.
+  *
+  *----------------------------------------------------------------------
+  */
+ 
+ static void
+@@ -297,10 +298,22 @@
+ 		tsdPtr->firstTimerHandlerPtr[timerHandlerIndex] = timerHandlerPtr->nextPtr;
+ 		Tcl_Free(timerHandlerPtr);
+ 		timerHandlerPtr = tsdPtr->firstTimerHandlerPtr[timerHandlerIndex];
+ 	    }
+ 	}
++
++	/*
++	 * Free the idle handlers which have been neither called nor cancelled.
++	 */
++
++	while (tsdPtr->idleList != NULL) {
++	    IdleHandler *idlePtr = tsdPtr->idleList;
++
++	    tsdPtr->idleList = idlePtr->nextPtr;
++	    Tcl_Free(idlePtr);
++	}
++	tsdPtr->lastIdlePtr = NULL;
+     }
+ }
+ 
+ /*
+  *--------------------------------------------------------------
+

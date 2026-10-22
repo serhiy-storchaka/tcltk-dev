@@ -1,0 +1,60 @@
+Index: generic/tclInterp.c
+==================================================================
+--- generic/tclInterp.c
++++ generic/tclInterp.c
+@@ -3574,10 +3574,18 @@
+ 	    return result;
+ 	}
+ 
+ 	(void) TclPushStackFrame(childInterp, &framePtr, (Tcl_Namespace *) nsPtr,
+ 		/*isProcFrame*/ 0);
++
++	/*
++	 * Like [namespace eval], give the new level a command for [info level].
++	 * [Bug 2978770]
++	 */
++
++	((CallFrame *) framePtr)->objc = objc;
++	((CallFrame *) framePtr)->objv = objv;
+     }
+ 
+     TclNRAddCallback(interp, NRPostInvokeHidden, childInterp,
+ 	    TOP_CB(childInterp), framePtr, NULL);
+     return TclNRInvoke(NULL, childInterp, objc, objv);
+
+Index: tests/interp.test
+==================================================================
+--- tests/interp.test
++++ tests/interp.test
+@@ -1688,10 +1688,30 @@
+     while executing
+ "coroutine"
+     invoked from within
+ "child invokehidden coroutine"}
+ 
++test interp-20.51 {invokehidden -namespace: info level [Bug 2978770]} -setup {
++    interp create child
++    child eval {
++	proc lv args {
++	    list [info level] [info level 1] [info level [info level]]
++	}
++	proc err {} {error boom}
++    }
++    child hide lv
++    child hide err
++} -body {
++    list [child invokehidden lv] [child invokehidden -namespace :: lv x] \
++	    [child invokehidden -global lv] \
++	    [catch {child invokehidden -namespace :: err} m o] \
++	    [lrange [dict get $o -errorstack] 0 5]
++} -cleanup {
++    unset -nocomplain m o
++    interp delete child
++} -result {{1 lv lv} {2 {lv x} {lv x}} {2 lv lv} 1 {INNER {returnImm boom {}} CALL err CALL err}}
++
+ test interp-21.1 {interp hidden} {
+     interp hidden {}
+ } ""
+ test interp-21.2 {interp hidden} {
+     interp hidden
+

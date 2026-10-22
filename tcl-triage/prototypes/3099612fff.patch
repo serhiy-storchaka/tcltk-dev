@@ -1,0 +1,30 @@
+Index: tests/fileSystem.test
+==================================================================
+--- tests/fileSystem.test
++++ tests/fileSystem.test
+@@ -466,10 +466,24 @@
+     cd $home
+     removeDirectory A $home
+     cd $save
+     removeDirectory ce3a211dcb
+ } -result 1
++test filesystem-1.56 {[Bug 3099612] - access through relative link and ..} -setup {
++    set home [makeDirectory 3099612]
++    file mkdir [file join $home etc httpd] [file join $home var run] \
++	[file join $home var tmp]
++    file link -symbolic [file join $home etc httpd run] ../../var/run
++} -constraints {hasLinks unix} -body {
++    set p [file join $home etc httpd run .. tmp .]
++    file stat $p a
++    file stat [file join $home var tmp] b
++    list [file exists $p] [file isdirectory $p] [expr {$a(ino) == $b(ino)}] \
++	[file exists [file join $home etc tmp]]
++} -cleanup {
++    removeDirectory 3099612
++} -result {1 1 1 0}
+ 
+ test filesystem-2.0 {new native path} {unix} {
+    foreach f [lsort [glob -nocomplain /usr/bin/c*]] {
+        catch {file readlink $f}
+    }
+

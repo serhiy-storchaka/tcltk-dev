@@ -1,0 +1,56 @@
+Index: generic/tclUtil.c
+==================================================================
+--- generic/tclUtil.c
++++ generic/tclUtil.c
+@@ -3439,10 +3439,18 @@
+     if (value == NULL
+ 	    || Tcl_GetIntFromObj(NULL, value, &prec) != TCL_OK
+ 	    || prec < 0 || prec > TCL_MAX_PREC) {
+ 	return (char *) "improper value for precision";
+     }
++    if (prec != *precisionPtr) {
++	/*
++	 * Constant expressions are folded into literals at compile time with
++	 * the old precision; force a recompile. [Bug 2859027]
++	 */
++
++	((Interp *) interp)->compileEpoch++;
++    }
+     *precisionPtr = prec;
+     return NULL;
+ }
+ 
+ /*
+
+Index: tests/util.test
+==================================================================
+--- tests/util.test
++++ tests/util.test
+@@ -1195,10 +1195,26 @@
+     expr {1.1e16}
+ } {11000000000000000.0}
+ test util-11.23 {Tcl_PrintDouble - scaling} {
+     expr {1.1e17}
+ } {1.1e+17}
++test util-11.24 {Bug 2859027: tcl_precision and folded constant expressions} -setup {
++    set saved_precision $::tcl_precision
++    proc util-11.24 {} {expr {1.1 + 2.2}}
++} -body {
++    set ::tcl_precision 0
++    set r [util-11.24]
++    string length $r
++    set ::tcl_precision 3
++    set r2 [util-11.24]
++    string length $r2
++    list $r $r2
++} -cleanup {
++    set ::tcl_precision $saved_precision
++    rename util-11.24 {}
++    unset -nocomplain r r2 saved_precision
++} -result {3.3000000000000003 3.3}
+ 
+ test util-12.1 {TclDoubleDigits - Inf} {testdoubledigits ieeeFloatingPoint} {
+      testdoubledigits Inf -1 shortest
+ } {Infinity 9999 +}
+ test util-12.2 {TclDoubleDigits - -Inf} {testdoubledigits ieeeFloatingPoint} {
+

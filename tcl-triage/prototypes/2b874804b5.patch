@@ -1,0 +1,24 @@
+Index: win/buildall.vc.bat
+==================================================================
+--- win/buildall.vc.bat
++++ win/buildall.vc.bat
+@@ -64,15 +64,16 @@
+ set OPTS=none
+ if not %SYMBOLS%.==. set OPTS=symbols
+ nmake -nologo -f makefile.vc release htmlhelp OPTS=%OPTS% %1
+ if errorlevel 1 goto error
+ 
+-:: Build the static core and shell.
++:: Build the static core and shell, and the static dde library that
++:: "install" copies.
+ ::
+ set OPTS=static
+ if not %SYMBOLS%.==. set OPTS=symbols,static
+-nmake -nologo -f makefile.vc shell OPTS=%OPTS% %1
++nmake -nologo -f makefile.vc shell dlls OPTS=%OPTS% %1
+ if errorlevel 1 goto error
+ 
+ set OPTS=
+ set SYMBOLS=
+ goto end
+

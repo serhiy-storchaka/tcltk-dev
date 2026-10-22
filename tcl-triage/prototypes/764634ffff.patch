@@ -1,0 +1,36 @@
+Index: unix/configure
+==================================================================
+--- unix/configure
++++ unix/configure
+@@ -7053,10 +7053,12 @@
+ else case e in #(
+   e)
+ 		CFLAGS="$CFLAGS -DHAVE_TZSET -std1 -ieee" ;;
+ esac
+ fi
++	    # Tru64 on Alpha is always 64-bit (LP64); nothing to do for --enable-64bit
++	    do64bit_ok=yes
+ 	    # see pthread_intro(3) for pthread support on osf1, k.furukawa
+ 	    CFLAGS="$CFLAGS -DHAVE_PTHREAD_ATTR_SETSTACKSIZE"
+ 	    CFLAGS="$CFLAGS -DTCL_THREAD_STACK_MIN=PTHREAD_STACK_MIN*64"
+ 	    LIBS=`echo $LIBS | sed s/-lpthreads//`
+ 	    if test "$GCC" = yes
+
+Index: unix/tcl.m4
+==================================================================
+--- unix/tcl.m4
++++ unix/tcl.m4
+@@ -1529,10 +1529,12 @@
+ 	    AS_IF([test $doRpath = yes], [
+ 		CC_SEARCH_FLAGS='"-Wl,-rpath,${LIB_RUNTIME_DIR}"'
+ 		LD_SEARCH_FLAGS='-rpath ${LIB_RUNTIME_DIR}'])
+ 	    AS_IF([test "$GCC" = yes], [CFLAGS="$CFLAGS -mieee"], [
+ 		CFLAGS="$CFLAGS -DHAVE_TZSET -std1 -ieee"])
++	    # Tru64 on Alpha is always 64-bit (LP64); nothing to do for --enable-64bit
++	    do64bit_ok=yes
+ 	    # see pthread_intro(3) for pthread support on osf1, k.furukawa
+ 	    CFLAGS="$CFLAGS -DHAVE_PTHREAD_ATTR_SETSTACKSIZE"
+ 	    CFLAGS="$CFLAGS -DTCL_THREAD_STACK_MIN=PTHREAD_STACK_MIN*64"
+ 	    LIBS=`echo $LIBS | sed s/-lpthreads//`
+ 	    AS_IF([test "$GCC" = yes], [
+

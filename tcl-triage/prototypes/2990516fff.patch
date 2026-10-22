@@ -1,0 +1,56 @@
+Index: library/tm.tcl
+==================================================================
+--- library/tm.tcl
++++ library/tm.tcl
+@@ -319,14 +319,18 @@
+     regexp {^(\d+)\.(\d+)} [package provide tcl] - major minor
+     set exe [file normalize [info nameofexecutable]]
+ 
+     # Note that we're using [::list], not [list] because [list] means
+     # something other than [::list] in this namespace.
+-    roots [::list \
+-	    [file dirname [info library]] \
+-	    [file join [file dirname [file dirname $exe]] lib] \
+-	    ]
++    set rootlist [::list [file dirname [info library]]]
++    # The configured libdir is where binary modules are installed; it can
++    # differ from both of the guesses (e.g. --libdir=.../lib64, zipfs).
++    if {![catch {::tcl::pkgconfig get libdir,runtime} libdir]} {
++	lappend rootlist $libdir
++    }
++    lappend rootlist [file join [file dirname [file dirname $exe]] lib]
++    roots $rootlist
+ 
+     for {set n $minor} {$n >= 0} {incr n -1} {
+ 	foreach ev [::list \
+ 			TCL${major}.${n}_TM_PATH \
+ 			TCL${major}_${n}_TM_PATH \
+
+Index: tests/tm.test
+==================================================================
+--- tests/tm.test
++++ tests/tm.test
+@@ -232,10 +232,22 @@
+     foreach p $defaults {::tcl::tm::path add $p}
+ } -body {
+     ::tcl::tm::roots [list /FOO /BAR]
+     ::tcl::tm::path list
+ } -result [concat [genpaths /BAR] [genpaths /FOO]]
++
++test tm-3.14 {tm: default paths include the configured libdir, bug 2990516} -setup {
++    set defaults [::tcl::tm::path list]
++    foreach p $defaults {::tcl::tm::path remove $p}
++} -cleanup {
++    foreach p [::tcl::tm::path list] {::tcl::tm::path remove $p}
++    foreach p $defaults {::tcl::tm::path add $p}
++} -body {
++    ::tcl::tm::Defaults
++    expr {[file normalize [file join [::tcl::pkgconfig get libdir,runtime] \
++	    tcl[lindex [split [info tclversion] .] 0] site-tcl]] in [::tcl::tm::path list]}
++} -result 1
+ 
+ rename genpaths {}
+ ::tcltest::cleanupTests
+ return
+ 
+

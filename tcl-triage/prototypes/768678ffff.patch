@@ -1,0 +1,161 @@
+Index: generic/tclPipe.c
+==================================================================
+--- generic/tclPipe.c
++++ generic/tclPipe.c
+@@ -30,10 +30,11 @@
+ 
+ /*
+  * Declarations for local functions defined in this file:
+  */
+ 
++static int		RedirectedStreams(Tcl_Size argc, const char **argv);
+ static TclFile		FileForRedirect(Tcl_Interp *interp, const char *spec,
+ 			    int atOk, const char *arg, const char *nextArg,
+ 			    int flags, int *skipPtr, int *closePtr,
+ 			    int *releasePtr);
+ 
+@@ -363,10 +364,62 @@
+ 		"child process exited abnormally", -1));
+     }
+     return result;
+ }
+ 
++/*
++ *----------------------------------------------------------------------
++ *
++ * RedirectedStreams --
++ *
++ *	Scans the arguments of a pipeline for redirections of the standard
++ *	input and output, without opening any file or creating any process.
++ *	Used by Tcl_OpenCommandChannel to reject a pipeline that conflicts
++ *	with the access mode before it is started.
++ *
++ * Results:
++ *	An OR-ed combination of TCL_STDIN and TCL_STDOUT.
++ *
++ * Side effects:
++ *	None.
++ *
++ *----------------------------------------------------------------------
++ */
++
++static int
++RedirectedStreams(
++    Tcl_Size argc,		/* Number of entries in argv. */
++    const char **argv)		/* Pipeline arguments, as for
++				 * TclCreatePipeline. */
++{
++    Tcl_Size i;
++    int result = 0;
++
++    for (i = 0; i < argc; i++) {
++	const char *p = argv[i];
++
++	if (*p == '<') {
++	    result |= TCL_STDIN;
++	} else if (*p == '>') {
++	    result |= TCL_STDOUT;
++	} else if (p[0] == '2' && p[1] == '>') {
++	    p++;
++	} else {
++	    continue;
++	}
++
++	/*
++	 * A bare operator (e.g. ">" or "2>@") takes the next argument.
++	 */
++
++	if (p[strspn(p, "<>&@")] == '\0') {
++	    i++;
++	}
++    }
++    return result;
++}
++
+ /*
+  *----------------------------------------------------------------------
+  *
+  * TclCreatePipeline --
+  *
+@@ -1034,10 +1087,26 @@
+     inPipe = outPipe = errFile = NULL;
+ 
+     inPipePtr = (flags & TCL_STDIN) ? &inPipe : NULL;
+     outPipePtr = (flags & TCL_STDOUT) ? &outPipe : NULL;
+     errFilePtr = (flags & TCL_STDERR) ? &errFile : NULL;
++
++    /*
++     * Reject redirections that conflict with the access mode before anything
++     * is started, so that the pipeline has no side effects. [Bug 768678]
++     */
++
++    if (flags & TCL_ENFORCE_MODE) {
++	int redirected = RedirectedStreams(argc, argv);
++
++	if ((flags & TCL_STDOUT) && (redirected & TCL_STDOUT)) {
++	    goto stdoutRedirected;
++	}
++	if ((flags & TCL_STDIN) && (redirected & TCL_STDIN)) {
++	    goto stdinRedirected;
++	}
++    }
+ 
+     numPids = TclCreatePipeline(interp, argc, argv, &pidPtr, inPipePtr,
+ 	    outPipePtr, errFilePtr);
+ 
+     if (numPids < 0) {
+@@ -1049,18 +1118,20 @@
+      * constraints.
+      */
+ 
+     if (flags & TCL_ENFORCE_MODE) {
+ 	if ((flags & TCL_STDOUT) && (outPipe == NULL)) {
++	stdoutRedirected:
+ 	    Tcl_SetObjResult(interp, Tcl_NewStringObj(
+ 		    "can't read output from command:"
+ 		    " standard output was redirected", -1));
+ 	    Tcl_SetErrorCode(interp, "TCL", "OPERATION", "EXEC",
+ 		    "BADREDIRECT", (char *)NULL);
+ 	    goto error;
+ 	}
+ 	if ((flags & TCL_STDIN) && (inPipe == NULL)) {
++	stdinRedirected:
+ 	    Tcl_SetObjResult(interp, Tcl_NewStringObj(
+ 		    "can't write input to command:"
+ 		    " standard input was redirected", -1));
+ 	    Tcl_SetErrorCode(interp, "TCL", "OPERATION", "EXEC",
+ 		    "BADREDIRECT", (char *)NULL);
+
+Index: tests/ioCmd.test
+==================================================================
+--- tests/ioCmd.test
++++ tests/ioCmd.test
+@@ -417,10 +417,27 @@
+     list [catch {open "| echo > \"$path(test5)\"" r+} msg] $msg $::errorCode
+ } {1 {can't read output from command: standard output was redirected} {TCL OPERATION EXEC BADREDIRECT}}
+ test iocmd-11.4 {I/O to command pipelines} {notValgrind unixOrWin} {
+     list [catch {open "| no_such_command_exists" rb} msg] $msg $::errorCode
+ } {1 {couldn't execute "no_such_command_exists": no such file or directory} {POSIX ENOENT {no such file or directory}}}
++
++test iocmd-11.5 {pipeline rejected by access mode is not started} -constraints {
++    unixOrWin unixExecs
++} -setup {
++    file delete $path(test5)
++} -body {
++    list [catch {open "| echo foo > \"$path(test5)\"" r} msg] $msg \
++	[file exists $path(test5)]
++} -result {1 {can't read output from command: standard output was redirected} 0}
++test iocmd-11.6 {pipeline rejected by access mode is not started} -constraints {
++    unixOrWin unixExecs
++} -setup {
++    file delete $path(test5)
++} -body {
++    list [catch {open "| cat << foo > \"$path(test5)\"" w} msg] $msg \
++	[file exists $path(test5)]
++} -result {1 {can't write input to command: standard input was redirected} 0}
+ 
+ test iocmd-12.1 {POSIX open access modes: RDONLY} {
+     file delete $path(test1)
+     set f [open $path(test1) w]
+     puts $f "Two lines: this one"
+

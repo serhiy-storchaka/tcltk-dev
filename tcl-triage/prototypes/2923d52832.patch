@@ -1,0 +1,65 @@
+Index: generic/tclExecute.c
+==================================================================
+--- generic/tclExecute.c
++++ generic/tclExecute.c
+@@ -5924,30 +5924,12 @@
+ 	nocase = TclGetInt1AtPtr(pc + 1);
+ 	valuePtr = OBJ_AT_TOS;		/* String */
+ 	value2Ptr = OBJ_UNDER_TOS;	/* Pattern */
+ 	TRACE("%.20s %.20s => ", O2S(valuePtr), O2S(value2Ptr));
+ 
+-	/*
+-	 * Check that at least one of the objects is Unicode before promoting
+-	 * both.
+-	 */
+-
+-	if (TclHasInternalRep(valuePtr, &tclStringType)
+-		|| TclHasInternalRep(value2Ptr, &tclStringType)) {
+-	    Tcl_UniChar *ustring1 = Tcl_GetUnicodeFromObj(valuePtr, &slength);
+-	    Tcl_UniChar *ustring2 = Tcl_GetUnicodeFromObj(value2Ptr, &length2);
+-	    match = TclUniCharMatch(ustring1, slength, ustring2, length2,
+-		    nocase);
+-	} else if (TclIsPureByteArray(valuePtr) && TclIsPureByteArray(value2Ptr) && !nocase) {
+-	    Tcl_Size wlen1 = 0, wlen2 = 0;
+-	    unsigned char *bytes1 = Tcl_GetBytesFromObj(NULL, valuePtr, &wlen1);
+-	    unsigned char *bytes2 = Tcl_GetBytesFromObj(NULL, value2Ptr, &wlen2);
+-	    match = TclByteArrayMatch(bytes1, wlen1, bytes2, wlen2, 0);
+-	} else {
+-	    match = Tcl_StringCaseMatch(TclGetString(valuePtr),
+-		    TclGetString(value2Ptr), nocase);
+-	}
++	match = TclStringMatchObj(valuePtr, value2Ptr,
++		nocase ? TCL_MATCH_NOCASE : 0);
+ 
+ 	TRACE_APPEND("%d\n", match);
+ 
+ 	/*
+ 	 * Peep-hole optimisation: if you're about to jump, do jump from here.
+
+Index: generic/tclUtil.c
+==================================================================
+--- generic/tclUtil.c
++++ generic/tclUtil.c
+@@ -2563,17 +2563,18 @@
+ {
+     bool match;
+     Tcl_Size length = 0, plen = 0;
+ 
+     /*
+-     * Promote based on the type of incoming object.
++     * Check that at least one of the objects is Unicode before promoting
++     * both. This is also the implementation of INST_STR_MATCH.
+      * XXX: Currently doesn't take advantage of exact-ness that
+      * XXX: TclReToGlob tells us about
+-    trivial = nocase ? 0 : TclMatchIsTrivial(TclGetString(ptnObj));
+      */
+ 
+-    if (TclHasInternalRep(strObj, &tclStringType) || (strObj->typePtr == NULL)) {
++    if (TclHasInternalRep(strObj, &tclStringType)
++	    || TclHasInternalRep(ptnObj, &tclStringType)) {
+ 	Tcl_UniChar *udata, *uptn;
+ 
+ 	udata = Tcl_GetUnicodeFromObj(strObj, &length);
+ 	uptn  = Tcl_GetUnicodeFromObj(ptnObj, &plen);
+ 	match = TclUniCharMatch(udata, length, uptn, plen, flags);
+

@@ -1,0 +1,78 @@
+Index: generic/tclTrace.c
+==================================================================
+--- generic/tclTrace.c
++++ generic/tclTrace.c
+@@ -1361,10 +1361,19 @@
+ 		if (state == NULL) {
+ 		    state = Tcl_SaveInterpState(interp, code);
+ 		}
+ 		traceCode = TraceExecutionProc(tcmdPtr, interp, curLevel,
+ 			command, (Tcl_Command) cmdPtr, objc, objv);
++		if (traceCode == TCL_OK) {
++		    /*
++		     * Each trace sees the result of the traced command, not
++		     * that of the previous trace. [Bug 2811381]
++		     */
++
++		    (void) Tcl_RestoreInterpState(interp, state);
++		    state = NULL;
++		}
+ 		if (tcmdPtr->refCount-- <= 1) {
+ 		    Tcl_Free(tcmdPtr);
+ 		}
+ 	    }
+ 	}
+@@ -1499,10 +1508,15 @@
+ 			tcmdPtr->curCode = code;
+ 		    }
+ 		    traceCode = tracePtr->proc(tracePtr->clientData, interp,
+ 			    curLevel, command, (Tcl_Command) cmdPtr, objc,
+ 			    objv);
++		    if (traceCode == TCL_OK) {
++			/* Don't pass this result to the next trace. */
++			Tcl_RestoreInterpState(interp, state);
++			state = NULL;
++		    }
+ 		}
+ 	    } else {
+ 		/*
+ 		 * Old-style trace.
+ 		 */
+
+Index: tests/trace.test
+==================================================================
+--- tests/trace.test
++++ tests/trace.test
+@@ -2651,10 +2651,31 @@
+     proc foo args {}
+     trace add execution foo enter {rename foo {}; error bar;#}
+     catch foo m
+     return -level 0 $m[unset m]
+ } bar
++
++test trace-40.2 {Bug 2811381: each leave trace gets the command result} -setup {
++    set res {}
++    proc foo {} {return hello}
++    proc foo2 {} {set x inner}
++} -body {
++    trace add execution foo leave {apply {{c code r op} {
++	lappend ::res first:$r; return first}}}
++    trace add execution foo leave {apply {{c code r op} {
++	lappend ::res second:$r; return second}}}
++    lappend res [foo]
++    trace add execution foo2 leavestep {apply {{c code r op} {
++	lappend ::res s1:$r; return s1}}}
++    trace add execution foo2 leavestep {apply {{c code r op} {
++	lappend ::res s2:$r; return s2}}}
++    lappend res [foo2]
++} -cleanup {
++    rename foo {}
++    rename foo2 {}
++    unset res
++} -result {first:hello second:hello hello s1:inner s2:inner inner}
+ 
+ # Delete procedures when done, so we don't clash with other tests
+ # (e.g. foobar will clash with 'unknown' tests).
+ catch {rename foobar {}}
+ catch {rename foo {}}
+

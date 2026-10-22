@@ -1,0 +1,38 @@
+Index: generic/tclZipfs.c
+==================================================================
+--- generic/tclZipfs.c
++++ generic/tclZipfs.c
+@@ -2434,14 +2434,12 @@
+ 				 * the ZIP is unprotected. */
+ {
+     ZipFile *zf;
+     int ret;
+ 
++    TclZipfsInit();
+     ReadLock();
+-    if (!ZipFS.initialized) {
+-	ZipfsSetup();
+-    }
+ 
+     /*
+      * No mount point, so list all mount points and what is mounted there.
+      */
+ 
+@@ -2548,15 +2546,12 @@
+     if (mountPoint == NULL || data == NULL) {
+ 	ZIPFS_ERROR(interp, "mount point and/or data are null");
+ 	return TCL_ERROR;
+     }
+ 
+-    /* TODO - how come a *read* lock suffices for initialzing ? */
++    TclZipfsInit();
+     ReadLock();
+-    if (!ZipFS.initialized) {
+-	ZipfsSetup();
+-    }
+ 
+     Tcl_DString ds;
+     Tcl_DStringInit(&ds);
+     ret = NormalizeMountPoint(interp, mountPoint, &ds);
+     if (ret != TCL_OK) {
+

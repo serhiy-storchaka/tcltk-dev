@@ -1,0 +1,75 @@
+Index: library/tcltest/tcltest.tcl
+==================================================================
+--- library/tcltest/tcltest.tcl
++++ library/tcltest/tcltest.tcl
+@@ -2392,10 +2392,11 @@
+ #
+ proc tcltest::Skipped {name constraints} {
+     variable testLevel
+     variable numTests
+     variable testConstraints
++    variable Option
+ 
+     if {$testLevel == 1} {
+ 	incr numTests(Total)
+     }
+     # skip the test if it's name matches an element of skip
+@@ -2459,10 +2460,22 @@
+ 		    # running
+ 		    set constraints $constraint
+ 		    break
+ 		}
+ 	    }
++	}
++	if {$doTest && [limitConstraints]} {
++	    # A constraint expression is satisfied in limitConstraints mode
++	    # only if it refers to at least one of the selected constraints
++	    # (bug 572400).
++	    set doTest 0
++	    foreach c [regexp -all -inline {[.\w]+} $constraints] {
++		if {$c in $Option(-constraints)} {
++		    set doTest 1
++		    break
++		}
++	    }
+ 	}
+ 
+ 	if {!$doTest} {
+ 	    _noticeSkipped $name $constraints
+ 	    return 1
+
+Index: tests/tcltest.test
+==================================================================
+--- tests/tcltest.test
++++ tests/tcltest.test
+@@ -273,10 +273,29 @@
+ test tcltest-5.2 {tcltest -constraints 'knownBug' -limitconstraints 1} {unixOrWin} {
+     set result [child msg test.tcl -constraints knownBug -verbose 'p' -limitconstraints 1]
+     list $result [regexp a-1.0 $msg] [regexp b-1.0 $msg] [regexp c-1.0 $msg] \
+ 	    [regexp "Total.+4.+Passed.+1.+Skipped.+3.+Failed.+0" $msg]
+ } {0 0 0 1 1}
++test tcltest-5.2b {-limitconstraints 1 and constraint expressions, bug 572400} -setup {
++    set script [makeFile {
++	package require tcltest 2.6
++	namespace import ::tcltest::test
++	tcltest::testConstraint foo 0
++	test e-1.0 {not foo} {!foo} {} {}
++	test e-2.0 {knownBug or foo} {knownBug || foo} {} {}
++	test e-3.0 {full expr} {$::tcl_version > 0} {} {}
++	tcltest::cleanupTests
++	exit
++    } testLimitExpr.tcl]
++} -constraints unixOrWin -body {
++    child msg $script -constraints knownBug -limitconstraints 1 -verbose ps
++    list [regexp {e-1.0 SKIPPED} $msg] [regexp {e-2.0 PASSED} $msg] \
++	    [regexp {e-3.0 SKIPPED} $msg]
++} -cleanup {
++    removeFile $script
++    unset -nocomplain script msg
++} -result {1 1 1}
+ 
+ test tcltest-5.3 {testConstraint - constraint empty (tcltest::safeFetch)}  {
+     -body {
+ 	set r1 [testConstraint tcltestFakeConstraint]
+ 	set r2 [testConstraint tcltestFakeConstraint 4]
+

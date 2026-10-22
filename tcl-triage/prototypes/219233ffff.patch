@@ -1,0 +1,126 @@
+Index: generic/tclUtf.c
+==================================================================
+--- generic/tclUtf.c
++++ generic/tclUtf.c
+@@ -2387,11 +2387,11 @@
+ 		    return false;
+ 		}
+ 		startChar = (nocase ? Tcl_UniCharToLower(*uniPattern)
+ 			: *uniPattern);
+ 		uniPattern++;
+-		if (*uniPattern == '-') {
++		if ((*uniPattern == '-') && (uniPattern[1] != ']')) {
+ 		    uniPattern++;
+ 		    if (*uniPattern == 0) {
+ 			return false;
+ 		    }
+ 		    endChar = (nocase ? Tcl_UniCharToLower(*uniPattern)
+@@ -2579,11 +2579,12 @@
+ 		if ((*pattern == ']') || (pattern == patternEnd)) {
+ 		    return false;
+ 		}
+ 		startChar = (nocase ? Tcl_UniCharToLower(*pattern) : *pattern);
+ 		pattern++;
+-		if (*pattern == '-') {
++		if ((*pattern == '-') && ((pattern + 1 == patternEnd)
++			|| (pattern[1] != ']'))) {
+ 		    pattern++;
+ 		    if (pattern == patternEnd) {
+ 			return false;
+ 		    }
+ 		    endChar = (nocase ? Tcl_UniCharToLower(*pattern)
+
+Index: generic/tclUtil.c
+==================================================================
+--- generic/tclUtil.c
++++ generic/tclUtil.c
+@@ -2285,11 +2285,11 @@
+ 		    pattern += TclUtfToUniChar(pattern, &startChar);
+ 		    if (nocase) {
+ 			startChar = Tcl_UniCharToLower(startChar);
+ 		    }
+ 		}
+-		if (*pattern == '-') {
++		if ((*pattern == '-') && (pattern[1] != ']')) {
+ 		    pattern++;
+ 		    if (*pattern == '\0') {
+ 			return 0;
+ 		    }
+ 		    if (UCHAR(*pattern) < 0x80) {
+@@ -2478,11 +2478,12 @@
+ 		if ((*pattern == ']') || (pattern == patternEnd)) {
+ 		    return false;
+ 		}
+ 		startChar = *pattern;
+ 		pattern++;
+-		if (*pattern == '-') {
++		if ((*pattern == '-') && ((pattern + 1 == patternEnd)
++			|| (pattern[1] != ']'))) {
+ 		    pattern++;
+ 		    if (pattern == patternEnd) {
+ 			return false;
+ 		    }
+ 		    endChar = *pattern;
+
+Index: tests/string.test
+==================================================================
+--- tests/string.test
++++ tests/string.test
+@@ -1463,10 +1463,23 @@
+ 	    [run {string match *===* $longString}]
+ } {0 1 1 1 0 0}
+ test string-11.55.$noComp {string match, invalid binary optimization} {
+     [format string] match \u0141 [binary format c 65]
+ } 0
++test string-11.56.$noComp {string match, "-" before "]" is literal, bug 219233} {
++    list [string match {[.-]} -] [string match {[.-]} A] \
++	[string match {*[.-]*} 2.1-Beta] [string match {[a-z_/-]} \\] \
++	[string match -nocase {[.-]} -] [string match {[a-]} \]] \
++	[string match "\[\u0101-\]" -] [string match "\[\u0101-\]" \u0100]
++} {1 0 1 0 1 0 1 0}
++test string-11.57.$noComp {string match, "-" before "]" in byte arrays and Unicode objects, bug 219233} {
++    set u [string repeat \u0101 1]
++    string length $u
++    list [string match [binary format a* {[.-]}] [binary format a -]] \
++	[string match [binary format a* {[.-]}] [binary format a A]] \
++	[string match "\[$u-\]" -] [string match "\[$u-\]" \u0100]
++} {1 0 1 0}
+ 
+ test stringComp-12.1.0.$noComp {Bug 3588366: end-offsets before start} {
+     apply {s {
+ 	string range $s 0 end-5
+     }} 12345
+
+Index: tests/util.test
+==================================================================
+--- tests/util.test
++++ tests/util.test
+@@ -350,23 +350,23 @@
+ test util-5.39 {Tcl_StringMatch: reverse range} {
+     Wrapper_Tcl_StringMatch {[w-k]} "a"
+ } 0
+ test util-5.40 {Tcl_StringMatch: skip correct number of ']'} {
+     Wrapper_Tcl_StringMatch {[A-]x} Ax
+-} 0
++} 1
+ test util-5.41 {Tcl_StringMatch: skip correct number of ']'} {
+     Wrapper_Tcl_StringMatch {[A-]]x} Ax
+-} 1
++} 0
+ test util-5.42 {Tcl_StringMatch: skip correct number of ']'} {
+     Wrapper_Tcl_StringMatch {[A-]]x} \xE1x
+ } 0
+ test util-5.43 {Tcl_StringMatch: skip correct number of ']'} {
+     Wrapper_Tcl_StringMatch \[A-]\xE1]x \xE1x
+-} 1
++} 0
+ test util-5.44 {Tcl_StringMatch: skip correct number of ']'} {
+     Wrapper_Tcl_StringMatch {[A-]h]x} hx
+-} 1
++} 0
+ test util-5.45 {Tcl_StringMatch} {
+     # if (*pattern == '\x00')
+     # badly formed pattern, still treats as a set
+     Wrapper_Tcl_StringMatch {[a} a
+ } 1
+

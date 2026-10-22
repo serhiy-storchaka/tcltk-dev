@@ -1,0 +1,41 @@
+Index: doc/clock.n
+==================================================================
+--- doc/clock.n
++++ doc/clock.n
+@@ -818,20 +818,30 @@
+ .PP
+ .CS
+  gmt     ut      utc     bst     wet     wat     at
+  nft     nst     ndt     ast     adt     est     edt
+  cst     cdt     mst     mdt     pst     pdt     yst
+- ydt     hst     hdt     cat     ahst    nt      idlw
+- cet     cest    met     mewt    mest    swt     sst
+- eet     eest    bt      it      zp4     zp5     ist
+- zp6     wast    wadt    jt      cct     jst     cast
++ ydt     akst    akdt    hst     hdt     cat     ahst
++ nt      idlw    cet     cest    met     mewt    mest
++ swt     sst     fwt     fst     eet     eest    bt
++ it      zp4     zp5     ist     zp6     wast    wadt
++ jt      cct     jst     kst     cast    jdt     kdt
+  cadt    east    eadt    gst     nzt     nzst    nzdt
+  idle
+ .CE
+ .PP
++and the single-letter military zones \fBa\fR to \fBz\fR (except \fBj\fR).
+ If it is a string in the above list, it designates a known
+-time zone, and is interpreted as such.
++time zone with a fixed offset from UTC, and is interpreted as such.
++These abbreviations are ambiguous (for example, \fBcst\fR is used
++both for US Central Standard Time and China Standard Time, \fBist\fR
++for India, Israel and Irish Standard Time; Tcl gives each one fixed
++meaning, \fBcst\fR being \-0600 and \fBist\fR +0530) and do not follow
++daylight saving time changes, so it is better to use location names
++such as \fB:America/Chicago\fR, \fB:Asia/Shanghai\fR,
++\fB:Asia/Kolkata\fR or \fB:Europe/London\fR (see below) with the
++\fB\-timezone\fR option, or numeric offsets.
+ .PP
+ For time zones in case [1] that do not match any of the above strings,
+ and always for cases [2]-[6], the following rules apply.
+ .PP
+ If the time zone begins with a colon, it is one of a
+

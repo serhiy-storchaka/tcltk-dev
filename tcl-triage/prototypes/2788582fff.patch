@@ -1,0 +1,141 @@
+Index: generic/tclBinary.c
+==================================================================
+--- generic/tclBinary.c
++++ generic/tclBinary.c
+@@ -799,10 +799,23 @@
+  *	See the user documentation.
+  *
+  *----------------------------------------------------------------------
+  */
+ 
++/*
++ * Advance the offset in the first pass of [binary format], reporting an
++ * error instead of overflowing. [Bug 2788582]
++ */
++
++#define ADD_OFFSET(n) \
++    do {								\
++	if ((n) > BYTEARRAY_MAX_LEN - offset) {				\
++	    goto tooLong;						\
++	}								\
++	offset += (n);							\
++    } while (0)
++
+ static int
+ BinaryFormatCmd(
+     TCL_UNUSED(void *),
+     Tcl_Interp *interp,		/* Current interpreter. */
+     Tcl_Size objc,		/* Number of arguments. */
+@@ -869,15 +882,15 @@
+ 	    } else if (count == BINARY_NOCOUNT) {
+ 		count = 1;
+ 	    }
+ 	    arg++;
+ 	    if (cmd == 'a' || cmd == 'A') {
+-		offset += count;
++		ADD_OFFSET(count);
+ 	    } else if (cmd == 'b' || cmd == 'B') {
+-		offset += (count + 7) / 8;
++		ADD_OFFSET(count / 8 + (count % 8 != 0));
+ 	    } else {
+-		offset += (count + 1) / 2;
++		ADD_OFFSET(count / 2 + (count % 2));
+ 	    }
+ 	    break;
+ 	case 'c':
+ 	    size = 1;
+ 	    goto doNumbers;
+@@ -945,11 +958,14 @@
+ 			&listv) != TCL_OK) {
+ 		    return TCL_ERROR;
+ 		}
+ 		arg++;
+ 	    }
+-	    offset += count*size;
++	    if (count > BYTEARRAY_MAX_LEN / size) {
++		goto tooLong;
++	    }
++	    ADD_OFFSET(count * size);
+ 	    break;
+ 
+ 	case 'x':
+ 	    if (count == BINARY_ALL) {
+ 		Tcl_SetObjResult(interp, Tcl_NewStringObj(
+@@ -956,11 +972,11 @@
+ 			"cannot use \"*\" in format string with \"x\"", -1));
+ 		return TCL_ERROR;
+ 	    } else if (count == BINARY_NOCOUNT) {
+ 		count = 1;
+ 	    }
+-	    offset += count;
++	    ADD_OFFSET(count);
+ 	    break;
+ 	case 'X':
+ 	    if (count == BINARY_NOCOUNT) {
+ 		count = 1;
+ 	    }
+@@ -992,10 +1008,13 @@
+     if (offset > length) {
+ 	length = offset;
+     }
+     if (length == 0) {
+ 	return TCL_OK;
++    }
++    if (length > BYTEARRAY_MAX_LEN) {
++	goto tooLong;
+     }
+ 
+     /*
+      * Prepare the result object by preallocating the calculated number of
+      * bytes and filling with nulls.
+@@ -1278,10 +1297,17 @@
+ 
+   badIndex:
+     errorString = "not enough arguments for all format specifiers";
+     goto error;
+ 
++  tooLong:
++    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
++	    "max size for a Tcl value (%" TCL_SIZE_MODIFIER "d bytes) exceeded",
++	    BYTEARRAY_MAX_LEN));
++    Tcl_SetErrorCode(interp, "TCL", "MEMORY", (char *)NULL);
++    return TCL_ERROR;
++
+   badField:
+     {
+ 	Tcl_UniChar ch = 0;
+ 	char buf[5] = "";
+ 
+
+Index: tests/binary.test
+==================================================================
+--- tests/binary.test
++++ tests/binary.test
+@@ -3083,10 +3083,26 @@
+     testbytestring $ret
+ } -cleanup {
+     unset -nocomplain opt ret dssz
+ } -returnCodes 1 -result "byte sequence length exceeds INT_MAX"
+ 
++test binary-81.1 {Binary format: huge count, bug 2788582} -body {
++    binary format a99999999999999999999 A
++} -returnCodes 1 -match glob -result {max size for a Tcl value (* bytes) exceeded}
++test binary-81.2 {Binary format: huge count, bug 2788582} -body {
++    binary format x9223372036854775807
++} -returnCodes 1 -match glob -result {max size for a Tcl value (* bytes) exceeded}
++test binary-81.3 {Binary format: offset overflow, bug 2788582} -body {
++    binary format x9223372036854775000x9000
++} -returnCodes 1 -match glob -result {max size for a Tcl value (* bytes) exceeded}
++test binary-81.4 {Binary format: huge @ offset, bug 2788582} -body {
++    list [catch {binary format @9223372036854775807} msg] $msg $::errorCode
++} -match glob -result {1 {max size for a Tcl value (* bytes) exceeded} {TCL MEMORY}}
++test binary-81.5 {Binary format: huge @ offset, bug 2788582} -body {
++    binary format @9223372036854775807a1 A
++} -returnCodes 1 -match glob -result {max size for a Tcl value (* bytes) exceeded}
++
+ # ----------------------------------------------------------------------
+ # cleanup
+ 
+ ::tcltest::cleanupTests
+ return
+

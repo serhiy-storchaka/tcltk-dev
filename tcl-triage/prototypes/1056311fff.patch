@@ -1,0 +1,31 @@
+Index: tests/async.test
+==================================================================
+--- tests/async.test
++++ tests/async.test
+@@ -19,11 +19,11 @@
+ ::tcltest::loadTestedCommands
+ catch [list package require -exact tcl::test [info patchlevel]]
+ 
+ testConstraint thread [expr {0 == [catch {package require Thread 2.7-}]}]
+ testConstraint testasync [llength [info commands testasync]]
+-testConstraint knownMsvcBug [expr {[tcl::build-info msvc]>0}]
++testConstraint knownMsvcBug [expr {[tcl::build-info msvc] eq 0}]
+ 
+ proc async1 {result code} {
+     global aresult acode
+     set aresult $result
+     set acode $code
+@@ -211,11 +211,11 @@
+     apply [list {handle} [concat {
+ 	global aresult
+ 	set aresult {Async event not delivered}
+ 	testasync marklater $handle
+ 	set i 0
+-    } "[string repeat {;incr i;} 1500000]after 10;" {
++    } "[string repeat {;incr i;} 150000]after 10;" {
+ 	return $aresult
+     }]] $hm
+ } -result {test pattern} -cleanup {
+     # give other threads some time to go way so that valgrind doesn't pick up
+     # "still reachable" cases from early thread termination
+

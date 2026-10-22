@@ -1,0 +1,23 @@
+Index: macosx/tclMacOSXNotify.c
+==================================================================
+--- macosx/tclMacOSXNotify.c
++++ macosx/tclMacOSXNotify.c
+@@ -491,14 +491,13 @@
+ 	}
+ 	CFRunLoopAddObserver(runLoop, runLoopObserver, kCFRunLoopCommonModes);
+ 
+ 	/*
+ 	 * Create a second CFRunLoopObserver with the same callback as above
+-	 * for the tclEventsOnlyRunLoopMode to ensure that the callback can be
+-	 * re-entered via Tcl_ServiceAll() in the kCFRunLoopBeforeWaiting case
+-	 * (CFRunLoop prevents observer callback re-entry of a given observer
+-	 * instance).
++	 * for the tclEventsOnlyRunLoopMode, which is not one of the common
++	 * modes, so that the waitingList is also updated on run loop entry
++	 * and exit when Tcl_WaitForEvent runs the run loop in that mode.
+ 	 */
+ 
+ 	runLoopObserverTcl = CFRunLoopObserverCreate(NULL,
+ 		kCFRunLoopEntry|kCFRunLoopExit, TRUE,
+ 		LONG_MIN, UpdateWaitingListAndServiceEvents,
+

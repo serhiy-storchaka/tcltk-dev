@@ -1,0 +1,21 @@
+Index: doc/ParseCmd.3
+==================================================================
+--- doc/ParseCmd.3
++++ doc/ParseCmd.3
+@@ -158,11 +158,14 @@
+ .PP
+ \fBTcl_ParseVar\fR parses a Tcl variable reference such as \fB$abc\fR
+ or \fB$x([expr {$index + 1}])\fR from the beginning of its \fIstart\fR
+ argument.  The first character of \fIstart\fR must be \fB$\fR.  If
+ the variable name is parsed successfully, \fBTcl_ParseVar\fR returns a
+-pointer to the string value of the variable.  If an error occurs while
++pointer to the string value of the variable.  If the \fB$\fR is not
++followed by a variable name (for example \fIstart\fR is just \fB$\fR or
++\fB$ \fR), then there is no substitution and \fBTcl_ParseVar\fR returns a
++pointer to the static string \fB$\fR.  If an error occurs while
+ parsing, then NULL is returned and an error message is left in
+ \fIinterp\fR's result.
+ .PP
+ The information left at \fI*parsePtr\fR
+ by \fBTcl_ParseCommand\fR, \fBTcl_ParseExpr\fR, \fBTcl_ParseBraces\fR,
+

@@ -1,0 +1,21 @@
+Index: tools/tcltk-man2html.tcl
+==================================================================
+--- tools/tcltk-man2html.tcl
++++ tools/tcltk-man2html.tcl
+@@ -1,12 +1,12 @@
+ #!/usr/bin/env tclsh
+ 
+ if {[catch {package require Tcl 8.6-} msg]} {
+     puts stderr "ERROR: $msg"
+-    puts stderr "If running this script from 'make html', set the\
+-	NATIVE_TCLSH environment\nvariable to point to an installed\
+-	tclsh9.0 (or the equivalent tclsh90.exe\non Windows)."
++    puts stderr "If running this script from 'make html', pass\
++	NATIVE_TCLSH=<path> to make\n(or re-run configure) to point to an\
++	installed tclsh 8.6 or later."
+     exit 1
+ }
+ 
+ # Convert Ousterhout format man pages into highly crosslinked hypertext.
+ #
+

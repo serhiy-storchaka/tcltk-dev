@@ -1,0 +1,48 @@
+Index: generic/tclBasic.c
+==================================================================
+--- generic/tclBasic.c
++++ generic/tclBasic.c
+@@ -10162,10 +10162,11 @@
+     /*
+      * Ensure that the command is looked up in the correct namespace.
+      */
+ 
+     iPtr->lookupNsPtr = lookupNsPtr;
++    Tcl_AllowExceptions(interp);
+     Tcl_NREvalObj(interp, Tcl_NewListObj(objc - 2, objv + 2), 0);
+     iPtr->numLevels--;
+ 
+     SAVE_CONTEXT(corPtr->running);
+     RESTORE_CONTEXT(corPtr->caller);
+
+Index: tests/coroutine.test
+==================================================================
+--- tests/coroutine.test
++++ tests/coroutine.test
+@@ -1112,10 +1112,25 @@
+     }
+ } -cleanup {
+     interp delete $i
+ } -result {ok ok {abc ::cbody1} {{1 2 3} ::cbody2} ok ok {{abc def} ::cbody1} {{1 2 3 4 5 6} ::cbody2} {abc def} {1 2 3 4 5 6}}
+ 
++test coroutine-bug-723a2f4ac3 {break from resumed coroutine at top level} -setup {
++    set f [makeFile {
++	proc p0 {} {yield; return -code break}
++	coroutine c0 p0
++	while 1 c0
++	coroutine c1 try {yield; break}
++	while 1 c1
++	puts ok
++    } coro723.tcl]
++} -body {
++    exec [interpreter] $f
++} -cleanup {
++    removeFile coro723.tcl
++} -result ok
++
+ # cleanup
+ unset lambda
+ ::tcltest::cleanupTests
+ 
+ return
+

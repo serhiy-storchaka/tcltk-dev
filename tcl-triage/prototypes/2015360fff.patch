@@ -1,0 +1,35 @@
+Index: generic/tclCompCmdsGR.c
+==================================================================
+--- generic/tclCompCmdsGR.c
++++ generic/tclCompCmdsGR.c
+@@ -256,11 +256,10 @@
+ 		realCond = false;
+ 		if (!boolVal) {
+ 		    compileScripts = false;
+ 		}
+ 	    } else {
+-		Tcl_ResetResult(interp);
+ 		PUSH_EXPR_TOKEN(testTokenPtr, wordIdx);
+ 		if (jumpFalseFixupArray.next >= jumpFalseFixupArray.end) {
+ 		    TclExpandJumpFixupArray(&jumpFalseFixupArray);
+ 		}
+ 		jumpIndex = jumpFalseFixupArray.next++;
+
+Index: generic/tclCompile.c
+==================================================================
+--- generic/tclCompile.c
++++ generic/tclCompile.c
+@@ -1604,12 +1604,10 @@
+     Tcl_Obj *objPtr,
+     int flags)
+ {
+     ByteCode *codePtr = CompileSubstObj(interp, objPtr, flags);
+ 
+-    /* TODO: Confirm we do not need this. */
+-    /* Tcl_ResetResult(interp); */
+     return TclNRExecuteByteCode(interp, codePtr);
+ }
+ 
+ /*
+  *----------------------------------------------------------------------
+

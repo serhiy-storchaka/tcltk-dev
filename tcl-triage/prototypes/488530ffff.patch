@@ -1,0 +1,43 @@
+Index: generic/tclIOUtil.c
+==================================================================
+--- generic/tclIOUtil.c
++++ generic/tclIOUtil.c
+@@ -1721,10 +1721,18 @@
+ 		"couldn't read file \"%s\": %s",
+ 		TclGetString(pathPtr), Tcl_PosixError(interp)));
+ 	return result;
+     }
+ 
++    /*
++     * Start reading at the beginning even if the channel shares the offset
++     * of an already read descriptor, as with /dev/fd/N for setuid scripts on
++     * Solaris. Channels that cannot seek are fine as they are. [Bug 488530]
++     */
++
++    (void) Tcl_Seek(chan, 0, SEEK_SET);
++
+     /*
+      * The eof character is \x1A (^Z). Tcl uses it on every platform to allow
+      * for scripted documents. [Bug: 2040]
+      */
+ 
+@@ -1855,10 +1863,18 @@
+ 	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 		"couldn't read file \"%s\": %s",
+ 		TclGetString(pathPtr), Tcl_PosixError(interp)));
+ 	return TCL_ERROR;
+     }
++
++    /*
++     * Start reading at the beginning even if the channel shares the offset
++     * of an already read descriptor, as with /dev/fd/N for setuid scripts on
++     * Solaris. Channels that cannot seek are fine as they are. [Bug 488530]
++     */
++
++    (void) Tcl_Seek(chan, 0, SEEK_SET);
+     TclPkgFileSeen(interp, TclGetString(pathPtr));
+ 
+     /*
+      * The eof character is \x1A (^Z). Tcl uses it on every platform to allow
+      * for scripted documents. [Bug: 2040]
+

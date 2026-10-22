@@ -1,0 +1,34 @@
+Index: unix/configure
+==================================================================
+--- unix/configure
++++ unix/configure
+@@ -5979,10 +5979,11 @@
+   e)
+ 		if test "$GCC" = yes
+ then :
+ 
+ 		    SHLIB_LD='${CC} -shared -Wl,-bexpall'
++		    LDFLAGS="$LDFLAGS -Wl,-brtl"
+ 
+ else case e in #(
+   e)
+ 		    SHLIB_LD="/bin/ld -bhalt:4 -bM:SRE -bexpall -H512 -T512 -bnoentry"
+ 		    LDFLAGS="$LDFLAGS -brtl"
+
+Index: unix/tcl.m4
+==================================================================
+--- unix/tcl.m4
++++ unix/tcl.m4
+@@ -1037,10 +1037,11 @@
+ 		])
+ 		LD_SEARCH_FLAGS='-R ${LIB_RUNTIME_DIR}'
+ 	    ], [
+ 		AS_IF([test "$GCC" = yes], [
+ 		    SHLIB_LD='${CC} -shared -Wl,-bexpall'
++		    LDFLAGS="$LDFLAGS -Wl,-brtl"
+ 		], [
+ 		    SHLIB_LD="/bin/ld -bhalt:4 -bM:SRE -bexpall -H512 -T512 -bnoentry"
+ 		    LDFLAGS="$LDFLAGS -brtl"
+ 		])
+ 		SHLIB_LD="${SHLIB_LD} ${SHLIB_LD_FLAGS}"
+

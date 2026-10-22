@@ -1,0 +1,23 @@
+Index: tests/scan.test
+==================================================================
+--- tests/scan.test
++++ tests/scan.test
+@@ -923,10 +923,17 @@
+ 	    lappend result $xfail=[format %.17g $d]
+ 	}
+     }
+     set result
+ } {}
++
++test scan-16.1 {XPG index beyond the evaluation stack, bug 2030670} -body {
++    # Grows a zero-sized TclStackAlloc block so that it must move.
++    set r [scan 1 {%100000$d}]
++    list [llength $r] [lindex $r end]
++} -result {100000 1}
++
+ 
+ # TODO - also need to scan NaN's
+ 
+ catch {rename int_range {}}
+ 
+

@@ -1,0 +1,136 @@
+Index: generic/tclArithSeries.c
+==================================================================
+--- generic/tclArithSeries.c
++++ generic/tclArithSeries.c
+@@ -350,12 +350,12 @@
+ 
+     /*
+      * To improve numerical stability use wide arithmetic instead of IEEE-754
+      * when distance and step do not exceed wide-integers.
+      */
+-    if (((double)WIDE_MIN <= end && end <= (double)WIDE_MAX) &&
+-	    ((double)WIDE_MIN <= step && step <= (double)WIDE_MAX)) {
++    if (((double)WIDE_MIN <= end && end < (double)WIDE_MAX) &&
++	    ((double)WIDE_MIN <= step && step < (double)WIDE_MAX)) {
+ 	Tcl_WideInt iend = end < 0 ? end - 0.5 : end + 0.5;
+ 	Tcl_WideInt istep = step < 0 ? step - 0.5 : step + 0.5;
+ 	if (istep) { /* avoid div by zero, steps like 0.1, precision 0 */
+ 	    Tcl_WideInt ilen = (iend / istep) + 1;
+ 	    return (ilen < 0 ? 0 : ilen);
+@@ -625,10 +625,28 @@
+  * Side Effects:
+  *	May alter the Tcl_Obj's type. May set the interpreter result.
+  *
+  *----------------------------------------------------------------------
+  */
++/*
++ * Convert a double to a wide integer, saturating instead of overflowing
++ * (casting an out-of-range double is undefined behaviour). [Bug 475db43843]
++ */
++static inline Tcl_WideInt
++DoubleToWide(
++    double d)
++{
++    if (d >= (double)WIDE_MAX) {	/* (double)WIDE_MAX is 2**63 */
++	return WIDE_MAX;
++    } else if (d <= (double)WIDE_MIN) {
++	return WIDE_MIN;
++    } else if (isnan(d)) {
++	return 0;
++    }
++    return (Tcl_WideInt)d;
++}
++
+ static int
+ ExtractNumber(
+     Tcl_Interp *interp,		// Where to report errors.
+     bool useDoubles,		// Whether we're looking for doubles.
+     Tcl_WideInt *intNumberPtr,	// Where to write the integer value.
+@@ -648,11 +666,11 @@
+ 	return TCL_ERROR;
+     }
+     if (useDoubles) {
+ 	if (type != TCL_NUMBER_INT) {
+ 	    double value = *(double *)ptr;
+-	    *intNumberPtr = (Tcl_WideInt)value;
++	    *intNumberPtr = DoubleToWide(value);
+ 	    *dblNumberPtr = value;
+ 	} else {
+ 	    Tcl_WideInt value = *(Tcl_WideInt *)ptr;
+ 	    *intNumberPtr = value;
+ 	    *dblNumberPtr = (double)value;
+@@ -662,11 +680,11 @@
+ 	    Tcl_WideInt value = *(Tcl_WideInt *)ptr;
+ 	    *intNumberPtr = value;
+ 	    *dblNumberPtr = (double)value;
+ 	} else {
+ 	    double value = *(double *)ptr;
+-	    *intNumberPtr = (Tcl_WideInt)value;
++	    *intNumberPtr = DoubleToWide(value);
+ 	    *dblNumberPtr = value;
+ 	}
+     }
+     return TCL_OK;
+ }
+@@ -780,11 +798,11 @@
+ 	precision = maxObjPrecision(startObj, NULL, stepObj);
+ 
+ 	dend = dstart + (dstep * (double)(len-1));
+ 	// Make computed end value match argument(s) precision
+ 	dend = ArithRound(dend, precision);
+-	end = dend;
++	end = DoubleToWide(dend);
+     }
+ 
+     /*
+      * todo: check whether the boundary must be rather LIST_MAX, to be more
+      * similar to plain lists, otherwise it'd generate an error or panic later
+
+Index: generic/tclExecute.c
+==================================================================
+--- generic/tclExecute.c
++++ generic/tclExecute.c
+@@ -9402,12 +9402,14 @@
+ 	    goto cleanupOnError;
+ 	}
+ 	switch (type) {
+ 	case TCL_NUMBER_DOUBLE: {
+ 	    double dCount = *((const double *) ptr);
+-	    Tcl_WideInt wCount = (Tcl_WideInt) dCount;
+-	    if (dCount - wCount == 0.0) {
++	    // Check the range first: casting e.g. -Inf is undefined behaviour.
++	    if (dCount > (double)WIDE_MIN && dCount < (double)WIDE_MAX
++		    && dCount == floor(dCount)) {
++		Tcl_WideInt wCount = (Tcl_WideInt) dCount;
+ 		Tcl_DecrRefCount(count);
+ 		// Switch to the object holding integer version of the count.
+ 		TclNewIntObj(count, wCount);
+ 		Tcl_IncrRefCount(count);
+ 	    }
+
+Index: tests/lseq.test
+==================================================================
+--- tests/lseq.test
++++ tests/lseq.test
+@@ -1217,10 +1217,20 @@
+ test lseq-bug-999b6966b2-0 {Bug 999b6966b2 - lseq has incorrect results in edge cases} -body {
+     lmap i [lseq -9 9] { lseq 10 10 $i }
+ } -result {10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10}
+ 
+ # cleanup
++test lseq-bug-475db43843-0 {Bug 475db43843 - doubles outside the wide range} -body {
++    list [lseq 1e50 count 1 1] [lseq 1e300 count 2 1e300] \
++	[llength [lseq 0.0 9223372036854775808.0 1e18]] \
++	[apply {{} {lseq 0 count -Inf}}]
++} -returnCodes error -result {expected integer but got "-Inf"}
++test lseq-bug-475db43843-1 {Bug 475db43843 - doubles outside the wide range} -body {
++    list [lseq 1e50 count 1 1] [lseq 1e300 count 2 1e300] \
++	[llength [lseq 0.0 9223372036854775808.0 1e18]]
++} -result {1e+50 {1e+300 2e+300} 10}
++
+ ::tcltest::cleanupTests
+ 
+ return
+ 
+ # Local Variables:
+

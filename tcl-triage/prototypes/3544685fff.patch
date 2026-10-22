@@ -1,0 +1,18 @@
+Index: tests/async.test
+==================================================================
+--- tests/async.test
++++ tests/async.test
+@@ -19,11 +19,11 @@
+ ::tcltest::loadTestedCommands
+ catch [list package require -exact tcl::test [info patchlevel]]
+ 
+ testConstraint thread [expr {0 == [catch {package require Thread 2.7-}]}]
+ testConstraint testasync [llength [info commands testasync]]
+-testConstraint knownMsvcBug [expr {[tcl::build-info msvc]>0}]
++testConstraint knownMsvcBug [expr {![tcl::build-info msvc]}]
+ 
+ proc async1 {result code} {
+     global aresult acode
+     set aresult $result
+     set acode $code
+

@@ -1,0 +1,185 @@
+Index: generic/tclBasic.c
+==================================================================
+--- generic/tclBasic.c
++++ generic/tclBasic.c
+@@ -400,11 +400,11 @@
+     {"read",		Tcl_ReadObjCmd,		NULL,			NULL,	CMD_IS_SAFE},
+     {"seek",		Tcl_SeekObjCmd,		NULL,			NULL,	CMD_IS_SAFE},
+     {"socket",		Tcl_SocketObjCmd,	NULL,			NULL,	CMD_NONE},
+     {"source",		Tcl_SourceObjCmd,	NULL,			TclNRSourceObjCmd,	CMD_NONE},
+     {"tell",		Tcl_TellObjCmd,		NULL,			NULL,	CMD_IS_SAFE},
+-    {"time",		Tcl_TimeObjCmd,		NULL,			NULL,	CMD_IS_SAFE},
++    {"time",		Tcl_TimeObjCmd,		NULL,			TclNRTimeObjCmd,	CMD_IS_SAFE},
+     {"timerate",	Tcl_TimeRateObjCmd,	NULL,			NULL,	CMD_IS_SAFE},
+     {"unload",		Tcl_UnloadObjCmd,	NULL,			NULL,	CMD_NONE},
+     {"update",		Tcl_UpdateObjCmd,	NULL,			NULL,	CMD_IS_SAFE},
+     {"vwait",		Tcl_VwaitObjCmd,	NULL,			NULL,	CMD_IS_SAFE},
+     {NULL,		NULL,			NULL,			NULL,	CMD_NONE}
+
+Index: generic/tclCmdMZ.c
+==================================================================
+--- generic/tclCmdMZ.c
++++ generic/tclCmdMZ.c
+@@ -23,10 +23,11 @@
+ #include "tclTomMath.h"
+ 
+ static inline Tcl_Obj *	During(Tcl_Interp *interp, int resultCode,
+ 			    Tcl_Obj *oldOptions, Tcl_Obj *errorInfo);
+ static Tcl_NRPostProc	SwitchPostProc;
++static Tcl_NRPostProc	TimeLoopCallback;
+ static Tcl_NRPostProc	TryPostBody;
+ static Tcl_NRPostProc	TryPostFinal;
+ static Tcl_NRPostProc	TryPostHandler;
+ static int		UniCharIsAscii(int character);
+ static int		UniCharIsHexDigit(int character);
+@@ -4101,47 +4102,81 @@
+  *----------------------------------------------------------------------
+  */
+ 
+ int
+ Tcl_TimeObjCmd(
++    void *clientData,
++    Tcl_Interp *interp,		/* Current interpreter. */
++    Tcl_Size objc,		/* Number of arguments. */
++    Tcl_Obj *const *objv)	/* Argument objects. */
++{
++    return Tcl_NRCallObjProc2(interp, TclNRTimeObjCmd, clientData, objc, objv);
++}
++
++typedef struct {
++    long long count;		/* Requested number of iterations. */
++    long long left;		/* Iterations still to run. */
++    long long start;		/* Start time (clicks or microseconds). */
++} TimeState;
++
++int
++TclNRTimeObjCmd(
+     TCL_UNUSED(void *),
+     Tcl_Interp *interp,		/* Current interpreter. */
+     Tcl_Size objc,		/* Number of arguments. */
+     Tcl_Obj *const *objv)	/* Argument objects. */
+ {
+-    Tcl_Obj *objPtr;
+-    Tcl_Obj *objs[4];
+-    int result;
+-    long long i, count;
+-    double totalMicroSec;
+-    long long start, stop;
++    TimeState *statePtr;
++    long long count;
+ 
+     if (objc == 2) {
+ 	count = 1;
+     } else if (objc == 3) {
+-	result = TclGetWideIntFromObj(interp, objv[2], &count);
+-	if (result != TCL_OK) {
+-	    return result;
++	if (TclGetWideIntFromObj(interp, objv[2], &count) != TCL_OK) {
++	    return TCL_ERROR;
+ 	}
+     } else {
+ 	Tcl_WrongNumArgs(interp, 1, objv, "command ?count?");
+ 	return TCL_ERROR;
+     }
+ 
+-    objPtr = objv[1];
+-    i = count;
++    statePtr = (TimeState *)Tcl_Alloc(sizeof(TimeState));
++    statePtr->count = count;
++    statePtr->left = count;
++    Tcl_IncrRefCount(objv[1]);
+ #ifndef TCL_WIDE_CLICKS
+-    start = Tcl_GetMonotonicTime();
++    statePtr->start = Tcl_GetMonotonicTime();
+ #else
+-    start = TclpGetWideClicks();
++    statePtr->start = TclpGetWideClicks();
+ #endif
+-    while (i-- > 0) {
+-	result = TclEvalObjEx(interp, objPtr, 0, NULL, 0);
+-	if (result != TCL_OK) {
+-	    return result;
+-	}
++    TclNRAddCallback(interp, TimeLoopCallback, statePtr, objv[1], NULL, NULL);
++    return TCL_OK;
++}
++
++static int
++TimeLoopCallback(
++    void *data[],
++    Tcl_Interp *interp,
++    int result)
++{
++    TimeState *statePtr = (TimeState *)data[0];
++    Tcl_Obj *objPtr = (Tcl_Obj *)data[1];
++    Tcl_Obj *objs[4];
++    long long count = statePtr->count, start = statePtr->start, stop;
++    double totalMicroSec;
++
++    if (result == TCL_OK && statePtr->left-- > 0) {
++	TclNRAddCallback(interp, TimeLoopCallback, statePtr, objPtr,
++		NULL, NULL);
++	return TclNREvalObjEx(interp, objPtr, 0, NULL, 0);
++    }
++    Tcl_Free(statePtr);
++    Tcl_DecrRefCount(objPtr);
++    if (result != TCL_OK) {
++	return result;
+     }
++
+ #ifndef TCL_WIDE_CLICKS
+     stop = Tcl_GetMonotonicTime();
+     totalMicroSec = (double) (stop - start);
+ #else
+     stop = TclpGetWideClicks();
+
+Index: generic/tclInt.h
+==================================================================
+--- generic/tclInt.h
++++ generic/tclInt.h
+@@ -3227,10 +3227,11 @@
+  */
+ 
+ MODULE_SCOPE Tcl_ObjCmdProc2 TclNRApplyObjCmd;
+ MODULE_SCOPE Tcl_ObjCmdProc2 TclNREvalObjCmd;
+ MODULE_SCOPE Tcl_ObjCmdProc2 TclNRCatchObjCmd;
++MODULE_SCOPE Tcl_ObjCmdProc2 TclNRTimeObjCmd;
+ MODULE_SCOPE Tcl_ObjCmdProc2 TclNRExprObjCmd;
+ MODULE_SCOPE Tcl_ObjCmdProc2 TclNRForObjCmd;
+ MODULE_SCOPE Tcl_ObjCmdProc2 TclNRForeachCmd;
+ MODULE_SCOPE Tcl_ObjCmdProc2 TclNRIfObjCmd;
+ MODULE_SCOPE Tcl_ObjCmdProc2 TclNRLfilterCmd;
+
+Index: tests/cmdMZ.test
+==================================================================
+--- tests/cmdMZ.test
++++ tests/cmdMZ.test
+@@ -397,10 +397,27 @@
+ 	incr x
+     }
+     time {incr y; eval $m1} 5
+     list $y $x
+ } {5 20}
++test cmdMZ-5.9 {Tcl_TimeObjCmd: yield inside time, bug e68d7234df} -body {
++    coroutine cmdMZcoro apply {{} {
++	yield start
++	time {yield [incr i]} 3
++	return done
++    }}
++    list [cmdMZcoro] [cmdMZcoro] [cmdMZcoro] [cmdMZcoro] [info commands cmdMZcoro]
++} -cleanup {
++    catch {rename cmdMZcoro {}}
++} -result {1 2 3 done {}}
++test cmdMZ-5.10 {Tcl_TimeObjCmd: delete coroutine suspended in time} -body {
++    coroutine cmdMZcoro apply {{} {
++	time {yield} 3
++    }}
++    rename cmdMZcoro {}
++    info commands cmdMZcoro
++} -result {}
+ 
+ test cmdMZ-6.1 {Tcl_TimeRateObjCmd: basic format of command} {
+     list [catch {timerate} msg] $msg
+ } {1 {wrong # args: should be "timerate ?-direct? ?-calibrate? ?-overhead double? command ?time ?max-count??"}}
+ test cmdMZ-6.2.1 {Tcl_TimeRateObjCmd: basic format of command} {
+

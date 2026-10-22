@@ -1,0 +1,72 @@
+Index: generic/tclListObj.c
+==================================================================
+--- generic/tclListObj.c
++++ generic/tclListObj.c
+@@ -3054,16 +3054,22 @@
+ 	    break;
+ 	}
+ 	indexArray++;
+ 
+ 	/*
+-	 * Special case 0-length lists. The Tcl indexing function treat
+-	 * will return any value beyond length as TCL_SIZE_MAX for this
+-	 * case.
++	 * Special case 0-length lists. The Tcl indexing function returns
++	 * TCL_SIZE_MAX both for "end+1" and for huge indices in this case.
++	 * Only the former is valid; tell them apart by re-evaluating the
++	 * index as if the list had one element.
+ 	 */
+ 	if ((index == TCL_SIZE_MAX) && (elemCount == 0)) {
+-	    index = 0;
++	    Tcl_Size index1;
++
++	    if ((TclGetIntForIndexM(NULL, indexArray[-1], 0,
++		    &index1) == TCL_OK) && (index1 == 1)) {
++		index = 0;
++	    }
+ 	}
+ 	if (index < 0 || index > elemCount
+ 		|| (valueObj == NULL && index >= elemCount)) {
+ 	    /* ...the index points outside the sublist. */
+ 	    if (interp != NULL) {
+
+Index: tests/lset.test
+==================================================================
+--- tests/lset.test
++++ tests/lset.test
+@@ -467,10 +467,34 @@
+     set x {test 1}
+     testevalex {lset x end end+1 2}
+     testevalex {lset x end end+1 3}
+     testevalex {lset x end end end+1 4}
+ } {test {1 2 {3 4}}}
++
++test lset-17.1 {lset - huge index on empty list, bug 13d3c0d764} -body {
++    set x {}
++    lset x 0x7fffffffffffffff X
++} -returnCodes error -result {index "0x7fffffffffffffff" out of range}
++test lset-17.2 {lset - huge index on empty list, bug 13d3c0d764} -body {
++    set x {}
++    lset x 0x10000000000000000 X
++} -returnCodes error -result {index "0x10000000000000000" out of range}
++test lset-17.3 {lset - huge index on empty sublist, bug 13d3c0d764} -body {
++    set x {a {}}
++    lset x 1 0x7fffffffffffffff X
++} -returnCodes error -result {index "0x7fffffffffffffff" out of range}
++test lset-17.4 {lset - end+1 on empty list} -body {
++    set x {}
++    lset x end+1 X
++    lset x end+1 Y
++    set y {}
++    lset y end--1 Z
++    list $x $y
++} -result {{X Y} Z}
++test lset-17.5 {lset - huge index on empty list, compiled} -body {
++    apply {{} {set x {}; lset x 0x7fffffffffffffff X}}
++} -returnCodes error -result {index "0x7fffffffffffffff" out of range}
+ 
+ catch {unset noRead}
+ catch {unset noWrite}
+ catch {rename failTrace {}}
+ catch {unset ::x}
+

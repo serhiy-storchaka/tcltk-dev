@@ -1,0 +1,74 @@
+Index: library/http/http.tcl
+==================================================================
+--- library/http/http.tcl
++++ library/http/http.tcl
+@@ -4094,11 +4094,12 @@
+ 	    } err]} {
+ 		Log ^X$tk end of response (error ${err}) - token $token
+ 		Finish $token $err
+ 		return
+ 	    } else {
+-		if {[info exists state(-progress)]} {
++		# Report progress only if response body data has been read.
++		if {[info exists state(-progress)] && ($n > 0)} {
+ 		    namespace eval :: $state(-progress) \
+ 			[list $token $state(totalsize) $state(currentsize)]
+ 		}
+ 	    }
+ 	}
+
+Index: tests/http.test
+==================================================================
+--- tests/http.test
++++ tests/http.test
+@@ -728,10 +728,49 @@
+     resetWhileOpening 1
+ } -result {- reset {} {}}
+ test http-4.18.$ThreadLevel {reset while the socket command runs the event loop} -body {
+     resetWhileOpening 0
+ } -result {reset reset {} {}}
++
++test http-4.21.$ThreadLevel {-progress is not called without progress (bug [7ec0aa1400])} -setup {
++    # Chunked response; the chunk size lines, chunk data and the final chunk
++    # arrive in separate packets.
++    proc chunkServer {ch args} {
++	fconfigure $ch -blocking 0 -translation binary
++	fileevent $ch readable [list apply {{ch} {
++	    if {[catch {gets $ch line} n] || [eof $ch]} {
++		catch {close $ch}
++	    } elseif {$n >= 0 && [string trim $line] eq ""} {
++		fileevent $ch readable {}
++		set parts [list "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n"]
++		foreach data {abcde fghij} {
++		    lappend parts "5\r\n" "$data\r\n"
++		}
++		lappend parts "0\r\n" "\r\n"
++		set t 0
++		foreach part $parts {
++		    after [incr t 20] [list apply {{ch part} {
++			catch {puts -nonewline $ch $part; flush $ch}
++		    }} $ch $part]
++		}
++		after [incr t 20] [list catch [list close $ch]]
++	    }
++	}} $ch]
++    }
++    set srv [socket -server chunkServer -myaddr 127.0.0.1 0]
++    set srvurl http://127.0.0.1:[lindex [fconfigure $srv -sockname] 2]/
++    set calls {}
++} -body {
++    set token [http::geturl $srvurl -keepalive 0 -timeout 5000 \
++	    -progress {apply {{token total current} {lappend ::calls $current}}}]
++    list [http::status $token] [http::data $token] $calls
++} -cleanup {
++    http::cleanup $token
++    close $srv
++    rename chunkServer {}
++    unset -nocomplain srv srvurl calls token
++} -result {ok abcdefghij {5 10}}
+ 
+ test http-5.1.$ThreadLevel {http::formatQuery} {
+     http::formatQuery name1 value1 name2 "value two"
+ } {name1=value1&name2=value%20two}
+ # test http-5.2 obsoleted by 5.4 and 5.5 with http 2.5
+

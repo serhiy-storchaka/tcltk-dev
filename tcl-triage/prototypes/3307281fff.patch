@@ -1,0 +1,122 @@
+Index: generic/tclIO.c
+==================================================================
+--- generic/tclIO.c
++++ generic/tclIO.c
+@@ -737,22 +737,26 @@
+ Tcl_SetStdChannel(
+     Tcl_Channel channel,
+     int type)			/* One of TCL_STDIN, TCL_STDOUT, TCL_STDERR. */
+ {
+     ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
++    Tcl_Channel oldChannel = NULL;
+ 
+     int init = channel ? 1 : -1;
+     switch (type) {
+     case TCL_STDIN:
++	oldChannel = tsdPtr->stdinChannel;
+ 	tsdPtr->stdinInitialized = init;
+ 	tsdPtr->stdinChannel = channel;
+ 	break;
+     case TCL_STDOUT:
++	oldChannel = tsdPtr->stdoutChannel;
+ 	tsdPtr->stdoutInitialized = init;
+ 	tsdPtr->stdoutChannel = channel;
+ 	break;
+     case TCL_STDERR:
++	oldChannel = tsdPtr->stderrChannel;
+ 	tsdPtr->stderrInitialized = init;
+ 	tsdPtr->stderrChannel = channel;
+ 	if (channel) {
+ 	    ENCODING_PROFILE_SET(((Channel *)channel)->state->inputEncodingFlags,
+ 		    TCL_ENCODING_PROFILE_REPLACE);
+@@ -759,10 +763,19 @@
+ 	    ENCODING_PROFILE_SET(((Channel *)channel)->state->outputEncodingFlags,
+ 		    TCL_ENCODING_PROFILE_REPLACE);
+ 	}
+ 	break;
+     }
++
++    /*
++     * Invalidate the cached lookups of "stdin", "stdout" or "stderr" which
++     * still refer to the old channel. [Bug 3307281]
++     */
++
++    if (oldChannel != NULL && oldChannel != channel) {
++	((Channel *)oldChannel)->state->epoch++;
++    }
+ }
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
+
+Index: generic/tclTest.c
+==================================================================
+--- generic/tclTest.c
++++ generic/tclTest.c
+@@ -6582,10 +6582,28 @@
+ 	Tcl_GetChannelErrorInterp(interp, &msg);
+ 	Tcl_SetObjResult(interp, msg);
+ 	Tcl_DecrRefCount(msg);
+ 	return TCL_OK;
+     }
++
++    if ((cmdName[0] == 's') && (strncmp(cmdName, "setstdchannel", len) == 0)) {
++	static const char *const stdNames[] = {
++	    "stdin", "stdout", "stderr", NULL
++	};
++	int idx;
++
++	if (objc != 4) {
++	    Tcl_WrongNumArgs(interp, 2, objv, "channel stdin|stdout|stderr");
++	    return TCL_ERROR;
++	}
++	if (Tcl_GetIndexFromObj(interp, objv[3], stdNames, "standard channel",
++		0, &idx) != TCL_OK) {
++	    return TCL_ERROR;
++	}
++	Tcl_SetStdChannel(chan, TCL_STDIN << idx);
++	return TCL_OK;
++    }
+ 
+     /*
+      * "cut" is actually more a simplified detach facility as provided by the
+      * Thread package. Without the safeguards of a regular command (no
+      * checking that the command is truly cut'able, no mutexes for
+
+Index: tests/io.test
+==================================================================
+--- tests/io.test
++++ tests/io.test
+@@ -10037,10 +10037,30 @@
+     fconfigure $f -encoding utf-8 -profile strict -blocking 0 -buffersize 10 -translation lf -eofchar {}
+     list [catch { read_blocked $f 12 } e d] $e [dict getd $d -code ""] [dict getd $d -errorcode ""]
+ } -cleanup {
+     if {$f ne ""} {close $f}
+ } -result "0 START-\u30B3-DONE 0 {}"
++
++test io-bug-3307281 {Tcl_SetStdChannel invalidates cached stdout lookups} -constraints {
++    stdio testchannel
++} -setup {
++    set path(test1) [makeFile {} test1]
++} -body {
++    set out [exec [interpreter] << [string map [list @FILE@ $path(test1)] {
++	puts -nonewline ""
++	puts -nonewline stdout ""
++	set f [open {@FILE@} w]
++	testchannel setstdchannel $f stdout
++	puts a
++	puts stdout b
++	flush $f
++	exit
++    }]]
++    list $out [string map {\n " "} [readFile $path(test1)]]
++} -cleanup {
++    removeFile test1
++} -result {{} {a b }}
+ 
+ rename read_blocked {}
+ 
+ # cleanup
+ foreach file [list fooBar longfile script2 output test1 pipe my_script \
+

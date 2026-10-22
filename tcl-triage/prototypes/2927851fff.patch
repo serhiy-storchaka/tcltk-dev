@@ -1,0 +1,102 @@
+Index: win/tclWinChan.c
+==================================================================
+--- win/tclWinChan.c
++++ win/tclWinChan.c
+@@ -101,11 +101,11 @@
+ static int		FileTruncateProc(void *instanceData,
+ 			    long long length);
+ static DWORD		FileGetType(HANDLE handle);
+ static int		NativeIsComPort(const WCHAR *nativeName);
+ static Tcl_Channel	OpenFileChannel(HANDLE handle, char *channelName,
+-			    int permissions, int appendMode);
++			    int permissions, int appendMode, int reuse);
+ 
+ /*
+  * This structure describes the channel type structure for file based IO.
+  */
+ 
+@@ -1176,11 +1176,11 @@
+     case FILE_TYPE_CHAR:
+     case FILE_TYPE_DISK:
+     case FILE_TYPE_UNKNOWN:
+ 	channel = OpenFileChannel(handle, channelName,
+ 		channelPermissions,
+-		TEST_FLAG(mode, O_APPEND) ? FILE_APPEND : 0);
++		TEST_FLAG(mode, O_APPEND) ? FILE_APPEND : 0, 0);
+ 	break;
+ 
+     default:
+ 	/*
+ 	 * The handle is of an unknown type, probably /dev/nul equivalent or
+@@ -1249,11 +1249,11 @@
+ 	channel = TclpCreateCommandChannel(readFile, writeFile, NULL, 0, NULL);
+ 	break;
+ 
+     case FILE_TYPE_DISK:
+     case FILE_TYPE_CHAR:
+-	channel = OpenFileChannel(handle, channelName, mode, 0);
++	channel = OpenFileChannel(handle, channelName, mode, 0, 1);
+ 	break;
+ 
+     case FILE_TYPE_UNKNOWN:
+     default:
+ 	/*
+@@ -1295,11 +1295,11 @@
+ 	 *
+ 	 * Create the undefined channel, anyways, because we know the handle
+ 	 * is valid to something.
+ 	 */
+ 
+-	channel = OpenFileChannel(handle, channelName, mode, 0);
++	channel = OpenFileChannel(handle, channelName, mode, 0, 1);
+     }
+ 
+     return channel;
+ }
+ 
+@@ -1390,11 +1390,12 @@
+  *	Constructs a File channel for the specified standard OS handle. This
+  *	is a helper function to break up the construction of channels into
+  *	File, Console, or Serial.
+  *
+  * Results:
+- *	Returns the new channel, or NULL.
++ *	Returns the new channel, or NULL. If reuse is nonzero and a channel
++ *	for the same handle already exists, returns that channel.
+  *
+  * Side effects:
+  *	May open the channel and may cause creation of a file on the file
+  *	system.
+  *
+@@ -1406,22 +1407,28 @@
+     HANDLE handle,		/* Win32 HANDLE to swallow */
+     char *channelName,		/* Buffer to receive channel name */
+     int permissions,		/* OR'ed combination of TCL_READABLE,
+ 				 * TCL_WRITABLE, or TCL_EXCEPTION, indicating
+ 				 * which operations are valid on the file. */
+-    int appendMode)		/* OR'ed combination of bits indicating what
++    int appendMode,		/* OR'ed combination of bits indicating what
+ 				 * additional configuration of the channel is
+ 				 * present. */
++    int reuse)			/* Nonzero to return an existing channel for
++				 * the same handle. Must be zero for a handle
++				 * just returned by CreateFile: a channel with
++				 * the same handle value is then stale (its
++				 * handle was closed behind Tcl's back, e.g.
++				 * a std handle closed by the host). [2927851] */
+ {
+     FileInfo *infoPtr;
+     ThreadSpecificData *tsdPtr = FileInit();
+ 
+     /*
+      * See if a channel with this handle already exists.
+      */
+ 
+-    for (infoPtr = tsdPtr->firstFilePtr; infoPtr != NULL;
++    for (infoPtr = reuse ? tsdPtr->firstFilePtr : NULL; infoPtr != NULL;
+ 	    infoPtr = infoPtr->nextPtr) {
+ 	if (infoPtr->handle == (HANDLE) handle) {
+ 	    return ((permissions & (TCL_READABLE|TCL_WRITABLE|TCL_EXCEPTION))==infoPtr->validMask)
+ 		    ? infoPtr->channel : NULL;
+ 	}
+

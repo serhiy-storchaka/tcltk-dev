@@ -1,0 +1,32 @@
+Index: doc/StringObj.3
+==================================================================
+--- doc/StringObj.3
++++ doc/StringObj.3
+@@ -81,21 +81,21 @@
+ .sp
+ Tcl_Obj *
+ \fBTcl_ConcatObj\fR(\fIobjc, objv\fR)
+ .sp
+ int
+-\fBTcl_IsEmpty\fR(\fIfIobjPtr\fR)
++\fBTcl_IsEmpty\fR(\fIobjPtr\fR)
+ .fi
+ .SH ARGUMENTS
+ .AS "const Tcl_UniChar" *appendObjPtr in/out
+ .AP "const char" *bytes in
+ Points to a TUTF-8 (Tcl's internal modified UTF-8 encoding)
+ byte sequence bytes used to set or append to a string value.
+-This byte array may contain embedded null characters
+-unless \fInumChars\fR is negative.  (Applications needing null bytes
+-should represent them as the two-byte sequence \fI0xC0 0x80\fR used
+-in TUTF-8 to represent a null byte, use
++The first \fIlength\fR bytes must not contain a null byte: in TUTF-8
++the null character is the two-byte sequence \fI0xC0 0x80\fR, and a raw
++null byte gives undefined results.  (Applications with null bytes in
++their data should convert them to \fI0xC0 0x80\fR, use
+ \fBTcl_ExternalToUtf\fR to convert, or \fBTcl_NewByteArrayObj\fR if
+ the string is a collection of uninterpreted bytes.)
+ .AP Tcl_Size length in
+ The number of bytes to copy from \fIbytes\fR when
+ initializing, setting, or appending to a string value.
+

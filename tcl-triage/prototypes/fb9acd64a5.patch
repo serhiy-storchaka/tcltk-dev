@@ -1,0 +1,108 @@
+Index: generic/tclIO.c
+==================================================================
+--- generic/tclIO.c
++++ generic/tclIO.c
+@@ -980,10 +980,34 @@
+ 	}
+     }
+     return hTblPtr;
+ }
+ 
++/*
++ *----------------------------------------------------------------------
++ *
++ * TclInitChannelTable --
++ *
++ *	Ensures that the channel table of an interpreter exists, so that the
++ *	standard channels are registered in it.
++ *
++ * Results:
++ *	None.
++ *
++ * Side effects:
++ *	See GetChannelTable.
++ *
++ *----------------------------------------------------------------------
++ */
++
++void
++TclInitChannelTable(
++    Tcl_Interp *interp)
++{
++    (void) GetChannelTable(interp);
++}
++
+ /*
+  *----------------------------------------------------------------------
+  *
+  * DeleteChannelTable --
+  *
+
+Index: generic/tclInt.h
+==================================================================
+--- generic/tclInt.h
++++ generic/tclInt.h
+@@ -3362,10 +3362,11 @@
+ MODULE_SCOPE double	TclBignumToDouble(const void *bignum);
+ MODULE_SCOPE bool	TclByteArrayMatch(const unsigned char *string,
+ 			    Tcl_Size strLen, const unsigned char *pattern,
+ 			    Tcl_Size ptnLen, int flags);
+ MODULE_SCOPE double	TclCeil(const void *a);
++MODULE_SCOPE void	TclInitChannelTable(Tcl_Interp *interp);
+ MODULE_SCOPE void	TclChannelPreserve(Tcl_Channel chan);
+ MODULE_SCOPE void	TclChannelRelease(Tcl_Channel chan);
+ MODULE_SCOPE int	TclChannelGetBlockingMode(Tcl_Channel chan);
+ MODULE_SCOPE int	TclCheckArrayTraces(Tcl_Interp *interp, Var *varPtr,
+ 			    Var *arrayPtr, Tcl_Obj *name, Tcl_Size index);
+
+Index: generic/tclInterp.c
+==================================================================
+--- generic/tclInterp.c
++++ generic/tclInterp.c
+@@ -2810,10 +2810,18 @@
+ 		"interpreter named \"%s\" already exists, cannot create",
+ 		path));
+ 	return NULL;
+     }
+ 
++    /*
++     * Make sure the parent has registered the standard channels before the
++     * child can, so that closing them in the child does not close them in
++     * the parent too. [Bug fb9acd64a5]
++     */
++
++    TclInitChannelTable(parentInterp);
++
+     childInterp = Tcl_CreateInterp();
+     childPtr = &INTERP_INFO(childInterp)->child;
+     childPtr->parentInterp = parentInterp;
+     childPtr->childEntryPtr = hPtr;
+     childPtr->childInterp = childInterp;
+
+Index: tests/interp.test
+==================================================================
+--- tests/interp.test
++++ tests/interp.test
+@@ -3929,10 +3929,21 @@
+     $i set x "123 45"
+     interp eval $i readX
+ } -result {123 45} -cleanup {
+     interp delete $i
+ }
++
++test interp-41.1 {close stdout in child before parent used it, bug fb9acd64a5} -setup {
++    set f [makeFile {
++	[interp create] eval {close stdout}
++	puts stderr [catch {puts "hello"} msg]:$msg
++    } interp-41.1.tcl]
++} -body {
++    exec [interpreter] $f 2>@1
++} -cleanup {
++    removeFile interp-41.1.tcl
++} -result "hello\n0:"
+ 
+ #####################################################################
+ # Tests related to post-init callbacks using Tcl_RegisterPostInitProc
+ 
+ testConstraint testpostinit [llength [info commands testpostinit]]
+

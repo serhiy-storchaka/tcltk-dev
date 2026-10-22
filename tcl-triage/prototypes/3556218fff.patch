@@ -1,0 +1,149 @@
+Index: doc/string.n
+==================================================================
+--- doc/string.n
++++ doc/string.n
+@@ -293,10 +293,15 @@
+ .QW Z
+ and
+ .QW a ),
+ with \fB\-nocase\fR this is considered like {[A\-Za\-z]} (and
+ probably what was meant in the first place).
++A \fB]\fR immediately after the opening \fB[\fR is taken as a member of
++the set rather than as its end, so {[]a]} matches
++.QW ]
++or
++.QW a .
+ .IP \fB\e\fIx\fR 10
+ Matches the single character \fIx\fR.  This provides a way of avoiding
+ the special interpretation of the characters \fB*?[]\e\fR in
+ \fIpattern\fR.
+ .RE
+
+Index: generic/tclUtf.c
+==================================================================
+--- generic/tclUtf.c
++++ generic/tclUtf.c
+@@ -2376,16 +2376,18 @@
+ 	 * characters separated by "-").
+ 	 */
+ 
+ 	if (p == '[') {
+ 	    Tcl_UniChar startChar, endChar;
++	    const Tcl_UniChar *setStart = ++uniPattern;
+ 
+-	    uniPattern++;
+ 	    ch1 = (nocase ? Tcl_UniCharToLower(*uniStr) : *uniStr);
+ 	    uniStr++;
+ 	    while (1) {
+-		if ((*uniPattern == ']') || (*uniPattern == 0)) {
++		/* A "]" first in the set is a literal character. */
++		if (((*uniPattern == ']') && (uniPattern != setStart))
++			|| (*uniPattern == 0)) {
+ 		    return false;
+ 		}
+ 		startChar = (nocase ? Tcl_UniCharToLower(*uniPattern)
+ 			: *uniPattern);
+ 		uniPattern++;
+@@ -2569,16 +2571,18 @@
+ 	 * characters separated by "-").
+ 	 */
+ 
+ 	if (p == '[') {
+ 	    Tcl_UniChar ch1, startChar, endChar;
++	    const Tcl_UniChar *setStart = ++pattern;
+ 
+-	    pattern++;
+ 	    ch1 = (nocase ? Tcl_UniCharToLower(*string) : *string);
+ 	    string++;
+ 	    while (1) {
+-		if ((*pattern == ']') || (pattern == patternEnd)) {
++		/* A "]" first in the set is a literal character. */
++		if (((*pattern == ']') && (pattern != setStart))
++			|| (pattern == patternEnd)) {
+ 		    return false;
+ 		}
+ 		startChar = (nocase ? Tcl_UniCharToLower(*pattern) : *pattern);
+ 		pattern++;
+ 		if (*pattern == '-') {
+
+Index: generic/tclUtil.c
+==================================================================
+--- generic/tclUtil.c
++++ generic/tclUtil.c
+@@ -2259,12 +2259,12 @@
+ 	 * characters separated by "-").
+ 	 */
+ 
+ 	if (p == '[') {
+ 	    int startChar = 0, endChar = 0;
++	    const char *setStart = ++pattern;
+ 
+-	    pattern++;
+ 	    if (UCHAR(*str) < 0x80) {
+ 		ch1 = (int)
+ 			(nocase ? tolower(UCHAR(*str)) : UCHAR(*str));
+ 		str++;
+ 	    } else {
+@@ -2272,11 +2272,13 @@
+ 		if (nocase) {
+ 		    ch1 = Tcl_UniCharToLower(ch1);
+ 		}
+ 	    }
+ 	    while (1) {
+-		if ((*pattern == ']') || (*pattern == '\0')) {
++		/* A "]" first in the set is a literal character. */
++		if (((*pattern == ']') && (pattern != setStart))
++			|| (*pattern == '\0')) {
+ 		    return 0;
+ 		}
+ 		if (UCHAR(*pattern) < 0x80) {
+ 		    startChar = (int) (nocase
+ 			    ? tolower(UCHAR(*pattern)) : UCHAR(*pattern));
+@@ -2468,16 +2470,18 @@
+ 	 * characters separated by "-").
+ 	 */
+ 
+ 	if (p == '[') {
+ 	    unsigned char ch1, startChar, endChar;
++	    const unsigned char *setStart = ++pattern;
+ 
+-	    pattern++;
+ 	    ch1 = *string;
+ 	    string++;
+ 	    while (1) {
+-		if ((*pattern == ']') || (pattern == patternEnd)) {
++		/* A "]" first in the set is a literal character. */
++		if (((*pattern == ']') && (pattern != setStart))
++			|| (pattern == patternEnd)) {
+ 		    return false;
+ 		}
+ 		startChar = *pattern;
+ 		pattern++;
+ 		if (*pattern == '-') {
+
+Index: tests/string.test
+==================================================================
+--- tests/string.test
++++ tests/string.test
+@@ -1463,10 +1463,20 @@
+ 	    [run {string match *===* $longString}]
+ } {0 1 1 1 0 0}
+ test string-11.55.$noComp {string match, invalid binary optimization} {
+     [format string] match \u0141 [binary format c 65]
+ } 0
++test string-11.56.$noComp {string match, "]" first in a set (bug [3556218fff])} {
++    set rb \]
++    list [run {string match {[]a]} $rb}] [run {string match {[]a]} a}] \
++	[run {string match {[]a]} b}] [run {string match {x[]]y} x]y}] \
++	[run {string match {[a]]} a]}] [run {string match -nocase {[]A]} a}]
++} {1 1 0 1 1 1}
++test string-11.57.$noComp {string match, "]" first in a set, binary and unicode} {
++    list [run {string match [binary format a* {[]a]}] [binary format a* \]]}] \
++	[run {string match "\[\]ф\]" ф}] [run {string match "\[\]ф\]" \]}]
++} {1 1 1}
+ 
+ test stringComp-12.1.0.$noComp {Bug 3588366: end-offsets before start} {
+     apply {s {
+ 	string range $s 0 end-5
+     }} 12345
+

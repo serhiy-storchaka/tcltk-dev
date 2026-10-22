@@ -1,0 +1,61 @@
+Index: generic/tclPipe.c
+==================================================================
+--- generic/tclPipe.c
++++ generic/tclPipe.c
+@@ -506,18 +506,24 @@
+ 	switch (*p++) {
+ 	case '|':
+ 	    if (*p == '&') {
+ 		p++;
+ 	    }
+-	    if (*p == '\0') {
+-		if ((i == (lastBar + 1)) || (i == (argc - 1))) {
+-		    Tcl_SetObjResult(interp, Tcl_NewStringObj(
+-			    "illegal use of | or |& in command", -1));
+-		    Tcl_SetErrorCode(interp, "TCL", "OPERATION", "EXEC",
+-			    "PIPESYNTAX", (char *)NULL);
+-		    goto error;
+-		}
++	    if (*p != '\0') {
++		/*
++		 * Got a word starting with "|", e.g. "|foo", not a bar.
++		 */
++
++		needCmd = 0;
++		break;
++	    }
++	    if ((i == (lastBar + 1)) || (i == (argc - 1))) {
++		Tcl_SetObjResult(interp, Tcl_NewStringObj(
++			"illegal use of | or |& in command", -1));
++		Tcl_SetErrorCode(interp, "TCL", "OPERATION", "EXEC",
++			"PIPESYNTAX", (char *)NULL);
++		goto error;
+ 	    }
+ 	    lastBar = i;
+ 	    cmdCount++;
+ 	    needCmd = 1;
+ 	    break;
+
+Index: tests/exec.test
+==================================================================
+--- tests/exec.test
++++ tests/exec.test
+@@ -797,10 +797,17 @@
+ } -result \u4e4e\u68d9
+ test exec-22.1 {exec -encoding invalid encoding} -body {
+     exec -encoding nosuchencoding -- [interpreter] $path(echobin) abc
+ } -result {unknown encoding "nosuchencoding"} -returnCodes error
+ 
++test exec-23.2 {arguments starting with | [Bug 1862356]} -constraints {exec} -body {
++    exec [interpreter] $path(echo) |foo |&bar
++} -result {|foo |&bar}
++test exec-23.3 {command word starting with | [Bug 1862356]} -constraints {exec} -body {
++    exec [interpreter] $path(echo) a | |nosuchcommand
++} -returnCodes error -result {couldn't execute "|nosuchcommand": no such file or directory}
++
+ # ----------------------------------------------------------------------
+ # Tests specific to Windows which has more varied application types and
+ # search mechanism.
+ 
+ namespace eval tcl::test::exec {
+

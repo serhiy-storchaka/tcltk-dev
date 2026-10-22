@@ -1,0 +1,47 @@
+Index: generic/tclCompile.c
+==================================================================
+--- generic/tclCompile.c
++++ generic/tclCompile.c
+@@ -3314,23 +3314,32 @@
+  * TclFindCompiledLocal --
+  *
+  *	This procedure is called at compile time to look up and optionally
+  *	allocate an entry ("slot") for a variable in a procedure's array of
+  *	local variables. If the variable's name is NULL, a new temporary
+- *	variable is always created. (Such temporary variables can only be
+- *	referenced using their slot index.)
++ *	variable is created when compiling a procedure body. (Such temporary
++ *	variables can only be referenced using their slot index.)
++ *
++ *	When not compiling a procedure body (envPtr->procPtr is NULL), no
++ *	variable is ever created: a named variable is only looked up in the
++ *	local variable cache of the current frame, and a NULL name always
++ *	yields TCL_INDEX_NONE.
+  *
+  * Results:
+- *	If create is 0 and the name is non-NULL, then if the variable is
+- *	found, the index of its entry in the procedure's array of local
+- *	variables is returned; otherwise -1 is returned. If name is NULL, the
+- *	index of a new temporary variable is returned. Finally, if create is 1
+- *	and name is non-NULL, the index of a new entry is returned.
++ *	If the name is non-NULL and the variable is found, the index of its
++ *	entry in the array of local variables is returned. If it is not found,
++ *	the index of a new entry is returned if create is 1 and a procedure
++ *	body is being compiled; otherwise TCL_INDEX_NONE is returned. If name
++ *	is NULL, the index of a new temporary variable is returned when
++ *	compiling a procedure body, and TCL_INDEX_NONE otherwise. Callers
++ *	(including users of AnonymousLocal()) must therefore be prepared for a
++ *	TCL_INDEX_NONE result.
+  *
+  * Side effects:
+- *	Creates and registers a new local variable if create is 1 and the
+- *	variable is unknown, or if the name is NULL.
++ *	When compiling a procedure body, creates and registers a new local
++ *	variable if create is 1 and the variable is unknown, or if the name is
++ *	NULL.
+  *
+  *----------------------------------------------------------------------
+  */
+ 
+ Tcl_LVTIndex
+

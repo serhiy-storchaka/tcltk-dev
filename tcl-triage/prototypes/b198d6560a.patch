@@ -1,0 +1,64 @@
+Index: generic/tclCompCmdsSZ.c
+==================================================================
+--- generic/tclCompCmdsSZ.c
++++ generic/tclCompCmdsSZ.c
+@@ -1898,15 +1898,20 @@
+ 	 * Punt to the interpreted version.
+ 	 */
+ 
+ 	return TCL_ERROR;
+     }
+-    if (numWords < 3) {
+-	return TCL_ERROR;
++    if (numWords >= 3) {
++	/*
++	 * We stopped at "--"; skip it. Otherwise the options were followed by
++	 * exactly the value and the body list, which [switch] never treats as
++	 * options either. [Bug b198d6560a]
++	 */
++
++	tokenPtr = TokenAfter(tokenPtr);
++	numWords--;
+     }
+-    tokenPtr = TokenAfter(tokenPtr);
+-    numWords--;
+ 
+     /*
+      * The value to test against is going to always get pushed on the stack.
+      * But not yet; we need to verify that the rest of the command is
+      * compilable too.
+
+Index: tests/switch.test
+==================================================================
+--- tests/switch.test
++++ tests/switch.test
+@@ -864,10 +864,28 @@
+ } -result {expected integer but got "gorp"}
+ test switch-19.7 {switch -integer: compiled, splitlist} -returnCodes error -body {
+     switch -integer -- gorp {0 {error body}}
+ } -result {expected integer but got "gorp"}
+ 
++test switch-20.1 {switch options without --: compiled [Bug b198d6560a]} -body {
++    apply {a {
++	switch -exact $a {foo - bar {string cat ok} default {string cat no}}
++    }} bar
++} -result ok
++test switch-20.2 {switch options without --: compiled [Bug b198d6560a]} -body {
++    string match *jumpTable* [::tcl::unsupported::disassemble script {
++	switch -exact $a {foo - bar {string cat ok} default {string cat no}}
++    }]
++} -result 1
++test switch-20.3 {switch options without --: value looks like option} -body {
++    apply {a {
++	list [switch -exact $a {-exact {string cat ok} default {string cat no}}] \
++	    [switch -glob $a {-gl* {string cat ok} default {string cat no}}] \
++	    [switch -nocase $a {-GLOB {string cat ok} default {string cat no}}]
++    }} -glob
++} -result {no ok ok}
++
+ # cleanup
+ catch {rename foo {}}
+ ::tcltest::cleanupTests
+ return
+ 
+

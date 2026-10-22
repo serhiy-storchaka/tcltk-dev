@@ -1,0 +1,21 @@
+Index: tcl.m4
+==================================================================
+--- tcl.m4
++++ tcl.m4
+@@ -3071,13 +3071,12 @@
+ 	else
+ 	    AC_MSG_NOTICE([--prefix defaulting to /usr/local])
+ 	    prefix=/usr/local
+ 	fi
+     fi
+-    if test "${exec_prefix}" = "NONE" -a x"${prefix_default}" = x"yes" \
+-	-o x"${exec_prefix_default}" = x"yes" ; then
+-	if test x"${TCL_EXEC_PREFIX}" != x; then
++    if test "${exec_prefix}" = "NONE" -o x"${exec_prefix_default}" = x"yes" ; then
++	if test x"${prefix_default}" = x"yes" -a x"${TCL_EXEC_PREFIX}" != x; then
+ 	    AC_MSG_NOTICE([--exec-prefix defaulting to TCL_EXEC_PREFIX ${TCL_EXEC_PREFIX}])
+ 	    exec_prefix=${TCL_EXEC_PREFIX}
+ 	else
+ 	    AC_MSG_NOTICE([--exec-prefix defaulting to ${prefix}])
+ 	    exec_prefix=$prefix
+

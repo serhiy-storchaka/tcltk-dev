@@ -1,0 +1,62 @@
+Index: doc/FileSystem.3
+==================================================================
+--- doc/FileSystem.3
++++ doc/FileSystem.3
+@@ -681,14 +681,13 @@
+ valid path or NULL, and joins onto it the array of paths segments
+ given.
+ .PP
+ Returns a value, typically with reference count of zero (but it could be shared
+ under some conditions), containing the joined path. The caller must
+-add a reference count to the value before using it. If any of the values
+-passed into this function (\fIpathPtr\fR or \fIpath\fR elements) have
+-a reference count
+-of zero, they will be freed when this function returns.
++add a reference count to the value before using it. The values passed into
++this function (\fIpathPtr\fR and the \fIpath\fR elements) must not have a
++reference count of zero; their reference counts are not changed.
+ .PP
+ \fBTcl_FSConvertToPathType\fR tries to convert the given Tcl_Obj to a valid
+ Tcl path type, taking account of the fact that the cwd may have changed
+ even if this value is already supposedly of the correct type.
+ .PP
+
+Index: generic/tclFileName.c
+==================================================================
+--- generic/tclFileName.c
++++ generic/tclFileName.c
+@@ -738,14 +738,12 @@
+  * TclFSJoinPathHelper --
+  *
+  *	This function takes the given object, which should usually be a valid
+  *	path or NULL, and joins onto it the array of paths segments given.
+  *
+- *	The objects in the array given will temporarily have their refCount
+- *	increased by one, and then decreased by one when this function exits
+- *	(which means if they had zero refCount when we were called, they will
+- *	be freed).
++ *	The reference counts of pathPtr and of the objects in the array are
++ *	not changed; like all Tcl_FS* arguments they must not be zero.
+  *
+  * Results:
+  *	Returns object owned by the caller (which should increment its
+  *	refCount) - typically an object with refCount of zero.
+  *
+@@ -796,14 +794,12 @@
+  *	This function takes the given object, which should usually be a valid
+  *	path or NULL, and joins onto it the array of paths segments given.
+  *	This function behaves as the join command in that any non-relative paths
+  *	will cause all previous segments to be ignored.
+  *
+- *	The objects in the array given will temporarily have their refCount
+- *	increased by one, and then decreased by one when this function exits
+- *	(which means if they had zero refCount when we were called, they will
+- *	be freed).
++ *	The reference counts of pathPtr and of the objects in the array are
++ *	not changed; like all Tcl_FS* arguments they must not be zero.
+  *
+  * Results:
+  *	Returns object owned by the caller (which should increment its
+  *	refCount) - typically an object with refCount of zero.
+  *
+

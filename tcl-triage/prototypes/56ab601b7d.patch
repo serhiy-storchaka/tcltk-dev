@@ -1,0 +1,58 @@
+Index: generic/tclListObj.c
+==================================================================
+--- generic/tclListObj.c
++++ generic/tclListObj.c
+@@ -1949,13 +1949,18 @@
+ 
+     /*
+      * Mark the list as being canonical; although it will now have a string
+      * rep, it is one we derived through proper "canonical" quoting and so
+      * it's known to be free from nasties relating to [concat] and [eval].
++     * However, we only do this if the List is not shared, as a shared List
++     * may be referenced by other Tcl_Obj's with non-canonical string reps.
++     * [56ab601b7d]
+      */
+ 
+-    listRepPtr->canonicalFlag = 1;
++    if (listRepPtr->refCount < 2) {
++	listRepPtr->canonicalFlag = 1;
++    }
+ 
+     /*
+      * Handle empty list case first, so rest of the routine is simpler.
+      */
+ 
+
+Index: tests/listObj.test
+==================================================================
+--- tests/listObj.test
++++ tests/listObj.test
+@@ -207,10 +207,27 @@
+ } {a f b c d e}
+ 
+ test listobj-11.1 {Bug 3598580: Tcl_ListObjReplace refcount management} testobj {
+     testobj bug3598580
+ } 123
++
++test listobj-bug-56ab601b7d {canonical flag of shared list rep} -constraints {
++    testobj
++} -setup {
++    testobj freeallvars
++} -body {
++    teststringobj set 1 "list a ; list b"
++    testobj convert 1 list
++    testobj duplicate 1 2
++    testobj invalidateStringRep 2
++    # Regenerating the string rep of the copy must not make the original
++    # (with its non-canonical string rep) be treated as canonical
++    string length [testobj convert 2 list]
++    eval [testobj convert 1 list]
++} -cleanup {
++    testobj freeallvars
++} -result b
+ 
+ # cleanup
+ ::tcltest::cleanupTests
+ return
+ 
+

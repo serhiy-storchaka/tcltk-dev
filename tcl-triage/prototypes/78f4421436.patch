@@ -1,0 +1,56 @@
+Index: doc/ObjectType.3
+==================================================================
+--- doc/ObjectType.3
++++ doc/ObjectType.3
+@@ -114,32 +114,32 @@
+ set \fIobjPtr->typePtr\fR to the argument value \fItypePtr\fR,
+ but that is no longer guaranteed.  The \fIsetFromAnyProc\fR is
+ free to set the internal representation for \fIobjPtr\fR to make
+ use of another related Tcl_ObjType, if it sees fit.
+ .PP
+-\fBTcl_FreeInternalRep\fR performs the function of the existing internal
+-macro \fBTclInitStringRep\fR, but is extended to return a pointer to the
+-string rep, and to accept \fINULL\fR as a value for bytes.
+-When bytes is \fINULL\fR and \fIobjPtr\fR has no string rep, an uninitialzed
+-buffer of \fInumBytes\fR bytes is created for filling by the caller.
+-When \fIbytes\fR is \fINULL\fR and \fIobjPtr\fR has a string rep,
+-the string rep will be truncated to a length of \fInumBytes\fR bytes.
+-When \fInumBytes\fR is greater than zero, and the returned pointer is
+-\fINULL\fR, that indicates a failure to allocate memory for the string
+-representation.
+-The caller may then choose whether to raise an error or panic.
++\fBTcl_FreeInternalRep\fR frees the internal representation of
++\fIobjPtr\fR, if any, by calling the \fIfreeIntRepProc\fR of its type,
++and sets its type to \fBNULL\fR.
++The string representation, if present, is not affected; the caller must
++make sure that \fIobjPtr\fR has a valid string representation before
++the internal one is discarded.
+ .PP
+ \fBTcl_InitStringRep\fR performs the function of the existing internal macro
+ \fBTclInitStringRep\fR, but is extended to return a pointer to the string rep,
+-and to accept \fBNULL\fR as a value for bytes.
+-When \fIbytes\fR is \fBNULL\fR and \fIobjPtr\fR has no string rep, an uninitialzed
+-buffer of numBytes bytes is created for filling by the caller.
++and to accept \fBNULL\fR as a value for \fIbytes\fR.
++When \fIbytes\fR is not \fBNULL\fR, \fIobjPtr\fR must not already have a
++string rep; the first \fInumBytes\fR bytes of \fIbytes\fR are copied into a
++new string rep.
++When \fIbytes\fR is \fBNULL\fR and \fIobjPtr\fR has no string rep, an
++uninitialized buffer of \fInumBytes\fR bytes is created for filling by the caller.
+ When \fIbytes\fR is \fBNULL\fR and \fIobjPtr\fR has a string rep, the string
+-rep will be truncated to a length of numBytes bytes.
+-When numBytes is greater than zero, and the returned pointer is \fBNULL\fR, that
+-indicates a failure to allocate memory for the string representation.
+-The caller may then choose whether to raise an error or panic.
++rep will be truncated to a length of \fInumBytes\fR bytes.
++In all cases the string rep is terminated by a null byte.
++\fBTcl_InitStringRep\fR does not panic on memory allocation failure:
++when \fInumBytes\fR is greater than zero and the returned pointer is
++\fBNULL\fR, memory for the string representation could not be allocated,
++and the caller may then choose whether to raise an error or panic.
+ .PP
+ \fBTcl_HasStringRep\fR returns a boolean indicating whether or not a string
+ rep is currently stored in \fIobjPtr\fR.
+ This is used when the caller wants to act on \fIobjPtr\fR differently
+ depending on whether or not it is a pure value.
+

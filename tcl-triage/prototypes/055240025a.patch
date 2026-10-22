@@ -1,0 +1,146 @@
+Index: generic/tclNotify.c
+==================================================================
+--- generic/tclNotify.c
++++ generic/tclNotify.c
+@@ -71,10 +71,14 @@
+ 				 * during an event source traversal. */
+     bool initialized;		/* true if notifier has been initialized. */
+     EventSource *firstEventSourcePtr;
+ 				/* Pointer to first event source in list of
+ 				 * event sources for this thread. */
++    int sourceLoopLevel;	/* Number of active traversals of the event
++				 * source list. While it is nonzero, deleted
++				 * event sources are only marked (both procs
++				 * set to NULL) and unlinked later. */
+     Tcl_ThreadId threadId;	/* Thread that owns this notifier instance. */
+     void *clientData;		/* Opaque handle for platform specific
+ 				 * notifier. */
+     struct ThreadSpecificData *nextPtr;
+ 				/* Next notifier in global list of notifiers.
+@@ -358,10 +362,20 @@
+ 	    prevPtr = sourcePtr, sourcePtr = sourcePtr->nextPtr) {
+ 	if ((sourcePtr->setupProc != setupProc)
+ 		|| (sourcePtr->checkProc != checkProc)
+ 		|| (sourcePtr->clientData != clientData)) {
+ 	    continue;
++	}
++	if (tsdPtr->sourceLoopLevel > 0) {
++	    /*
++	     * Called from a setup or check proc: the list is being traversed,
++	     * so don't free the entry now. [Bug 055240025a]
++	     */
++
++	    sourcePtr->setupProc = NULL;
++	    sourcePtr->checkProc = NULL;
++	    return;
+ 	}
+ 	if (prevPtr == NULL) {
+ 	    tsdPtr->firstEventSourcePtr = sourcePtr->nextPtr;
+ 	} else {
+ 	    prevPtr->nextPtr = sourcePtr->nextPtr;
+@@ -368,10 +382,42 @@
+ 	}
+ 	Tcl_Free(sourcePtr);
+ 	return;
+     }
+ }
++
++/*
++ *----------------------------------------------------------------------
++ *
++ * EndSourceTraversal --
++ *
++ *	Ends a traversal of the event source list and, if it was the
++ *	outermost one, frees the sources deleted during the traversal.
++ *
++ *----------------------------------------------------------------------
++ */
++
++static void
++EndSourceTraversal(
++    ThreadSpecificData *tsdPtr)
++{
++    EventSource **linkPtr = &tsdPtr->firstEventSourcePtr;
++
++    if (--tsdPtr->sourceLoopLevel > 0) {
++	return;
++    }
++    while (*linkPtr != NULL) {
++	EventSource *sourcePtr = *linkPtr;
++
++	if (sourcePtr->setupProc == NULL && sourcePtr->checkProc == NULL) {
++	    *linkPtr = sourcePtr->nextPtr;
++	    Tcl_Free(sourcePtr);
++	} else {
++	    linkPtr = &sourcePtr->nextPtr;
++	}
++    }
++}
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
+  * Tcl_QueueEvent --
+@@ -1019,16 +1065,18 @@
+ 	 * Set up all the event sources for new events. This will cause the
+ 	 * block time to be updated if necessary.
+ 	 */
+ 
+ 	tsdPtr->inTraversal = true;
++	tsdPtr->sourceLoopLevel++;
+ 	for (sourcePtr = tsdPtr->firstEventSourcePtr; sourcePtr != NULL;
+ 		sourcePtr = sourcePtr->nextPtr) {
+ 	    if (sourcePtr->setupProc) {
+ 		sourcePtr->setupProc(sourcePtr->clientData, flags);
+ 	    }
+ 	}
++	EndSourceTraversal(tsdPtr);
+ 	tsdPtr->inTraversal = false;
+ 
+ 	if ((flags & TCL_DONT_WAIT) || tsdPtr->blockTimeSet) {
+ 	    time = tsdPtr->blockTime;
+ 	} else {
+@@ -1048,16 +1096,18 @@
+ 
+ 	/*
+ 	 * Check all the event sources for new events.
+ 	 */
+ 
++	tsdPtr->sourceLoopLevel++;
+ 	for (sourcePtr = tsdPtr->firstEventSourcePtr; sourcePtr != NULL;
+ 		sourcePtr = sourcePtr->nextPtr) {
+ 	    if (sourcePtr->checkProc) {
+ 		sourcePtr->checkProc(sourcePtr->clientData, flags);
+ 	    }
+ 	}
++	EndSourceTraversal(tsdPtr);
+ 
+ 	/*
+ 	 * Check for events queued by the notifier or event sources.
+ 	 */
+ 
+@@ -1158,10 +1208,11 @@
+      */
+ 
+     tsdPtr->inTraversal = true;
+     tsdPtr->blockTimeSet = false;
+ 
++    tsdPtr->sourceLoopLevel++;
+     for (sourcePtr = tsdPtr->firstEventSourcePtr; sourcePtr != NULL;
+ 	    sourcePtr = sourcePtr->nextPtr) {
+ 	if (sourcePtr->setupProc) {
+ 	    sourcePtr->setupProc(sourcePtr->clientData, TCL_ALL_EVENTS);
+ 	}
+@@ -1170,10 +1221,11 @@
+ 	    sourcePtr = sourcePtr->nextPtr) {
+ 	if (sourcePtr->checkProc) {
+ 	    sourcePtr->checkProc(sourcePtr->clientData, TCL_ALL_EVENTS);
+ 	}
+     }
++    EndSourceTraversal(tsdPtr);
+ 
+     while (Tcl_ServiceEvent(0)) {
+ 	result = 1;
+     }
+     if (TclServiceIdle()) {
+
