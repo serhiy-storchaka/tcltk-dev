@@ -1,0 +1,84 @@
+Index: generic/tkMenu.c
+==================================================================
+--- generic/tkMenu.c
++++ generic/tkMenu.c
+@@ -2501,19 +2501,33 @@
+     mePtr->nextCascadePtr = NULL;
+     if (Tk_InitOptions(menuPtr->interp, mePtr,
+ 	    mePtr->optionTable, menuPtr->tkwin) != TCL_OK) {
+-	Tcl_Free(mePtr);
+-	return NULL;
++	goto error;
+     }
+     mePtr->entryPtr = NULL;
+     TkMenuInitializeEntryDrawingFields(mePtr);
+     if (TkpMenuNewEntry(mePtr) != TCL_OK) {
+ 	Tk_FreeConfigOptions(mePtr, mePtr->optionTable,
+ 		menuPtr->tkwin);
+-	Tcl_Free(mePtr);
+-	return NULL;
++	goto error;
+     }
+ 
+     return mePtr;
++
++    /*
++     * Remove the slot of the entry which could not be created.
++     */
++
++  error:
++    Tcl_Free(mePtr);
++    for (i = index; i < menuPtr->numEntries - 1; i++) {
++	menuPtr->entries[i] = menuPtr->entries[i + 1];
++	menuPtr->entries[i]->index = i;
++    }
++    if (--menuPtr->numEntries == 0) {
++	Tcl_Free(menuPtr->entries);
++	menuPtr->entries = NULL;
++    }
++    return NULL;
+ }
+ 
+ /*
+Index: win/tkWinMenu.c
+==================================================================
+--- win/tkWinMenu.c
++++ win/tkWinMenu.c
+@@ -240,11 +240,6 @@
+ 	    curID = 1;
+ 	}
+ 
+-	/* Return error when we've checked all IDs without success. */
+-	if (curID == tsdPtr->lastCommandID) {
+-	    return TCL_ERROR;
+-	}
+-
+ 	commandEntryPtr = Tcl_CreateHashEntry(&tsdPtr->commandTable,
+ 		INT2PTR(curID), &isNew);
+ 	if (isNew) {
+@@ -253,6 +248,15 @@
+ 	    tsdPtr->lastCommandID = curID;
+ 	    return TCL_OK;
+ 	}
++
++	/*
++	 * Return error when we've checked all IDs, including the last
++	 * allocated one, without success.
++	 */
++
++	if (curID == tsdPtr->lastCommandID) {
++	    return TCL_ERROR;
++	}
+     }
+ }
+ 
+@@ -990,6 +994,9 @@
+     TkMenu *menuPtr = mePtr->menuPtr;
+ 
+     if (GetNewID(mePtr, &commandID) != TCL_OK) {
++	Tcl_SetObjResult(menuPtr->interp, Tcl_NewStringObj(
++		"No more menu entries can be allocated.", TCL_INDEX_NONE));
++	Tcl_SetErrorCode(menuPtr->interp, "TK", "MENU", "SYSTEM_RESOURCES", (char *)NULL);
+ 	return TCL_ERROR;
+     }
+     ScheduleMenuReconfigure(menuPtr);

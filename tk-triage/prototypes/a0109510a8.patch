@@ -1,0 +1,35 @@
+Index: unix/Makefile.in
+==================================================================
+--- unix/Makefile.in
++++ unix/Makefile.in
+@@ -619,10 +619,16 @@
+ # The private headers we want installed for install-private-headers
+ PRIVATE_HDRS = $(GENERIC_DIR)/tkInt.h $(GENERIC_DIR)/tkIntDecls.h \
+ 	$(GENERIC_DIR)/tkIntPlatDecls.h $(GENERIC_DIR)/tkPort.h \
+ 	$(TTK_HDRS) $(@TK_WINDOWINGSYSTEM@_PRIVATE_HDRS)
+ 
++# All headers the object files may depend on. Any change in them causes
++# a rebuild of all objects, since per-file dependencies are not tracked.
++X11_DEP_HDRS = $(UNIX_DIR)/*.h
++AQUA_DEP_HDRS = $(MAC_OSX_DIR)/*.h $(XLIB_DIR)/X11/*.h $(XLIB_DIR)/*.h
++DEP_HDRS = $(GENERIC_DIR)/*.h $(TTK_DIR)/*.h $(@TK_WINDOWINGSYSTEM@_DEP_HDRS)
++
+ DEMOPROGS = accessiblewidget browse hello ixset rmt rolodex square tcolor timer widget
+ 
+ SHELL_ENV = \
+ 	@LD_LIBRARY_PATH_VAR@="`pwd`:${TCL_BIN_DIR}:$${@LD_LIBRARY_PATH_VAR@}"; \
+ 	export @LD_LIBRARY_PATH_VAR@; \
+@@ -1018,10 +1024,12 @@
+ 	rm -f tkTestInit.o
+ 	mv tkAppInit.o tkTestInit.o
+ 	@if test -f tkAppInit.sav ; then \
+ 	    mv tkAppInit.sav tkAppInit.o; \
+ 	fi;
++
++$(OBJS) $(WISH_OBJS) $(TKTEST_OBJS) $(STUB_LIB_OBJS): $(DEP_HDRS)
+ 
+ tkAppInit.o: $(UNIX_DIR)/tkAppInit.c
+ 	$(CC) -c $(APP_CC_SWITCHES) $(UNIX_DIR)/tkAppInit.c
+ 
+ # Stub library objects - fixed rules
+

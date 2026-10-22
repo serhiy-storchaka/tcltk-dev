@@ -1,0 +1,19 @@
+Index: win/tkWinDraw.c
+==================================================================
+--- win/tkWinDraw.c
++++ win/tkWinDraw.c
+@@ -154,7 +154,13 @@
+     if (twdPtr->type == TWD_WINDOW) {
+ 	TkWindow *winPtr = twdPtr->window.winPtr;
+ 
+-	dc = GetDC(twdPtr->window.handle);
++	/*
++	 * A window whose creation failed (e.g. because the per-process quota
++	 * of USER objects is exhausted) has no handle. Don't let GetDC(NULL)
++	 * return the DC of the whole screen: drawing into it does nothing.
++	 */
++
++	dc = twdPtr->window.handle ? GetDC(twdPtr->window.handle) : NULL;
+ 	if (winPtr == NULL) {
+ 	    cmap = DefaultColormap(display, DefaultScreen(display));
+ 	} else {

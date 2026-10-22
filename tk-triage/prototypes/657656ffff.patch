@@ -1,0 +1,64 @@
+Index: library/tkfbox.tcl
+==================================================================
+--- library/tkfbox.tcl
++++ library/tkfbox.tcl
+@@ -609,10 +609,22 @@
+     if {$class eq "TkFDialog"} {
+ 	# Make the file list if this is a File Dialog, selecting all but
+ 	# 'd'irectory type files.
+ 	#
+ 	$data(icons) add $file [GlobFiltered [pwd] {f b c l p s}]
++
++	# Highlight the currently selected file, if it is in the list.
++	#
++	set n [$data(icons) index end]
++	for {set i 0} {$i < $n} {incr i} {
++	    if {[$data(icons) get $i] eq $data(selectFile)} {
++		$data(icons) selection set $i
++		$data(icons) selection anchor $i
++		$data(icons) see $i
++		break
++	    }
++	}
+     }
+ 
+     # Update the Directory: option menu
+     #
+     set list ""
+
+Index: tests/filebox.test
+==================================================================
+--- tests/filebox.test
++++ tests/filebox.test
+@@ -439,10 +439,30 @@
+ 		    -initialdir $fileDir
+ 		set gotmessage
+ 	    } \
+ 	    -match glob \
+ 	    -result "*RUBBISH*"
++
++	test filebox-7.3-$mode "tk_getOpenFile - -initialfile is highlighted" \
++	    -constraints {nonUnixUserInteraction x11} \
++	    -body {
++		after 100 {
++		    set icons $::tk::dialog::file::__tk_filedialog(icons)
++		    set res {}
++		    foreach i [$icons selection get] {
++			lappend res [$icons get $i]
++		    }
++		}
++		ToPressButton $parent cancel
++		tk_getOpenFile -parent $parent \
++		    -initialdir [tcltest::temporaryDirectory] -initialfile $tmpFile
++		set res
++	    } \
++	    -cleanup {
++		unset -nocomplain res icons
++	    } \
++	    -result $tmpFile
+     }
+ 
+     # The rest of the tests need to be executed on Unix only.
+     # They test whether the dialog box widgets were implemented correctly.
+     # These tests are not
+

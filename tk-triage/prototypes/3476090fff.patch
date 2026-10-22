@@ -1,0 +1,20 @@
+Index: doc/ParseArgv.3
+==================================================================
+--- doc/ParseArgv.3
++++ doc/ParseArgv.3
+@@ -56,10 +56,14 @@
+ assumes that \fIargv[0]\fR is a command name, so it is treated like
+ an argument that does not match \fIargTable\fR and returned to the
+ caller;  however, if the \fBTK_ARGV_DONT_SKIP_FIRST_ARG\fR bit is set in
+ \fIflags\fR then \fIargv[0]\fR will be processed just like the other
+ elements of \fIargv\fR.
++.PP
++As with other Tk library procedures, \fBTk_ParseArgv\fR may only be
++called after Tk has been initialized in \fIinterp\fR (for example by
++\fBTk_Init\fR), even if \fItkwin\fR is NULL.
+ .PP
+ \fBTk_ParseArgv\fR normally returns the value \fBTCL_OK\fR.  If an error
+ occurs while parsing the arguments, then \fBTCL_ERROR\fR is returned and
+ \fBTk_ParseArgv\fR will leave an error message in the result of
+ interpreter \fIinterp\fR in the standard Tcl fashion.  In
+

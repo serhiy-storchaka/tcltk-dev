@@ -1,0 +1,82 @@
+Index: generic/tkOption.c
+==================================================================
+--- generic/tkOption.c
++++ generic/tkOption.c
+@@ -1331,32 +1331,34 @@
+      * window's name or class; where found, add new information to the stacks.
+      */
+ 
+     for (iPtr = searchOrder; *iPtr != -1; iPtr++) {
+ 	Element *elPtr;
+-	int count;
++	int j, end;
+ 	Tk_Uid id;
+ 
+ 	i = *iPtr;
+ 	if (i & CLASS) {
+ 	    id = winPtr->classUid;
+ 	} else {
+ 	    id = winPtr->nameUid;
+ 	}
+-	elPtr = tsdPtr->stacks[i]->els;
+-	count = levelPtr->bases[i];
+ 
+ 	/*
+ 	 * For wildcard stacks, check all entries; for non-wildcard stacks,
+ 	 * only check things that matched in the parent.
+ 	 */
+ 
+-	if (!(i & WILDCARD)) {
+-	    elPtr += levelPtr[-1].bases[i];
+-	    count -= levelPtr[-1].bases[i];
+-	}
+-	for ( ; count > 0; elPtr++, count--) {
++	j = (i & WILDCARD) ? 0 : levelPtr[-1].bases[i];
++	end = levelPtr->bases[i];
++	for ( ; j < end; j++) {
++	    /*
++	     * ExtendStacks() can reallocate this stack, so the element
++	     * pointer must be recomputed on each iteration.
++	     */
++
++	    elPtr = &tsdPtr->stacks[i]->els[j];
+ 	    if (elPtr->nameUid != id) {
+ 		continue;
+ 	    }
+ 	    ExtendStacks(elPtr->child.arrayPtr, leaf);
+ 	}
+
+Index: tests/option.test
+==================================================================
+--- tests/option.test
++++ tests/option.test
+@@ -476,10 +476,28 @@
+     expr {[option get . notok notok] eq $expected}
+ } -cleanup {
+     removeFile $option5
+     unset expected
+ } -result 1
++
++test option-17.1 {SetupStacks: stack reallocated while scanning it} -setup {
++    option clear
++    deleteWindows
++} -body {
++    for {set i 0} {$i < 1000} {incr i} {
++	option add *opt17*x$i.foo v$i
++    }
++    option add *opt17b*y.foo w
++    frame .opt17
++    frame .opt17.x5
++    frame .opt17.opt17b
++    frame .opt17.opt17b.y
++    list [option get .opt17.x5 foo Foo] [option get .opt17.opt17b.y foo Foo]
++} -cleanup {
++    deleteWindows
++    option clear
++} -result {v5 w}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

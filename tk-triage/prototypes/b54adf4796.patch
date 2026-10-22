@@ -1,0 +1,55 @@
+Index: generic/ttk/ttkEntry.c
+==================================================================
+--- generic/ttk/ttkEntry.c
++++ generic/ttk/ttkEntry.c
+@@ -661,13 +661,16 @@
+ 	    goto done;
+ 	}
+     }
+ 
+     /* Reject the pending change if validation failed
+-     * or if a validation script changed the value.
++     * or if a validation script changed the value during prevalidation.
++     * When revalidating the current value there is no pending change
++     * to reject, so only the -validatecommand result matters.
+      */
+-    if (!change_ok || (entryPtr->core.flags & VALIDATION_SET_VALUE)) {
++    if (!change_ok || ((entryPtr->core.flags & VALIDATION_SET_VALUE)
++	    && (reason == VALIDATE_INSERT || reason == VALIDATE_DELETE))) {
+ 	code = TCL_BREAK;
+     }
+ 
+ done:
+     entryPtr->core.flags &= ~(VALIDATING|VALIDATION_SET_VALUE);
+
+Index: tests/ttk/validate.test
+==================================================================
+--- tests/ttk/validate.test
++++ tests/ttk/validate.test
+@@ -246,10 +246,25 @@
+     .e configure -validate all
+     .e validate
+     list [.e get] $textVar $validationData
+ } -result {dovaldata dovaldata {.e -1 -1 testdata testdata {} all forced}}
+ # DIFFERENCE: core entry disables validation, ttk entry does not.
++
++test validate-2.1.1 "Validation script changes value on revalidation" -setup {
++    proc validate-2.1.1 {W} {
++	$W delete 0 end
++	$W insert end newdata
++	return 1
++    }
++} -body {
++    .e configure -validate none -validatecommand {validate-2.1.1 %W}
++    set textVar testdata
++    .e configure -validate all
++    list [.e validate] [.e get] [.e state]
++} -cleanup {
++    rename validate-2.1.1 {}
++} -result {1 newdata {}}
+ 
+ #
+ # COMMON TEST CLEANUP
+ #
+ 
+

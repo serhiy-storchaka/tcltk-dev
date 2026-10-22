@@ -1,0 +1,163 @@
+Index: generic/ttk/ttkImage.c
+==================================================================
+--- generic/ttk/ttkImage.c
++++ generic/ttk/ttkImage.c
+@@ -187,11 +187,10 @@
+ 	}
+     }
+     return imageSpec->baseImage;
+ }
+ 
+-#if !defined(TK_NO_DOUBLE_BUFFERING) || defined(TTK_TILE_BATCH)
+ /* TtkSelectImageName --
+  *	Name of the image TtkSelectImage would pick, for photo lookup.
+  */
+ static Tcl_Obj *TtkSelectImageName(
+     Ttk_ImageSpec *imageSpec,
+@@ -203,11 +202,10 @@
+ 	    return imageSpec->names[i];
+ 	}
+     }
+     return imageSpec->baseName;
+ }
+-#endif /* !TK_NO_DOUBLE_BUFFERING || TTK_TILE_BATCH */
+ 
+ /*------------------------------------------------------------------------
+  * +++ Drawing utilities.
+  */
+ 
+@@ -507,10 +505,11 @@
+     int minWidth;		/* Minimum width; overrides image width */
+     int minHeight;		/* Minimum height; overrides image height */
+     Ttk_Sticky sticky;		/* -stickiness specification */
+     Ttk_Padding border;		/* Fixed border region */
+     Ttk_Padding padding;	/* Internal padding */
++    Tk_Window tkwin;		/* Window the images were acquired for */
+     unsigned epoch;		/* Bumps when a source image's pixels change */
+ 
+ #ifdef TILE_07_COMPAT
+     Ttk_ResourceCache cache;	/* Resource cache for images */
+     Ttk_StateMap imageMap;	/* State-based lookup table for images */
+@@ -530,10 +529,21 @@
+     TCL_UNUSED(int))
+ {
+     ImageData *imageData = (ImageData *)clientData;
+     imageData->epoch++;
+ }
++
++static void NullImageChanged(
++    TCL_UNUSED(void *),
++    TCL_UNUSED(int),
++    TCL_UNUSED(int),
++    TCL_UNUSED(int),
++    TCL_UNUSED(int),
++    TCL_UNUSED(int),
++    TCL_UNUSED(int))
++{
++}
+ 
+ static void FreeImageData(void *clientData)
+ {
+     ImageData *imageData = (ImageData *)clientData;
+     if (imageData->imageSpec)	{ TtkFreeImageSpec(imageData->imageSpec); }
+@@ -643,11 +653,11 @@
+     Drawable d,
+     Ttk_Box b,
+     Ttk_State state)
+ {
+     ImageData *imageData = (ImageData *)clientData;
+-    Tk_Image image = 0;
++    Tk_Image image = 0, tmpImage = NULL;
+     Tk_PhotoHandle photo = NULL;
+     int imgWidth, imgHeight;
+     Ttk_Box src, dst;
+ 
+ #ifdef TILE_07_COMPAT
+@@ -665,10 +675,28 @@
+ #endif
+ 
+     if (!image) {
+ 	return;
+     }
++
++    /*
++     * The image instances were acquired for the main window. A widget on
++     * another display, screen or visual needs its own instance.
++     */
++
++    if (Tk_Display(tkwin) != Tk_Display(imageData->tkwin)
++	    || Tk_ScreenNumber(tkwin) != Tk_ScreenNumber(imageData->tkwin)
++	    || Tk_Visual(tkwin) != Tk_Visual(imageData->tkwin)) {
++	Tcl_Obj *nameObj = TtkSelectImageName(imageData->imageSpec, state);
++
++	tmpImage = Tk_GetImage(NULL, tkwin, Tcl_GetString(nameObj),
++		NullImageChanged, NULL);
++	if (!tmpImage) {
++	    return;
++	}
++	image = tmpImage;
++    }
+ 
+ #ifdef TTK_TILE_BATCH
+     /*
+      * Resolve the photo behind the spec-selected image for batched tiling.
+      * NULL (non-photo image, or a TILE_07_COMPAT map image whose name is
+@@ -689,10 +717,13 @@
+     Tk_SizeOfImage(image, &imgWidth, &imgHeight);
+     src = Ttk_MakeBox(0, 0, imgWidth, imgHeight);
+     dst = Ttk_StickBox(b, imgWidth, imgHeight, imageData->sticky);
+ 
+     Ttk_Tile(tkwin, d, image, photo, src, dst, imageData->border);
++    if (tmpImage) {
++	Tk_FreeImage(tmpImage);
++    }
+ }
+ 
+ static const Ttk_ElementSpec ImageElementSpec =
+ {
+     TK_STYLE_VERSION_2,
+@@ -739,10 +770,11 @@
+ 	Tcl_Free(imageData);
+ 	return TCL_ERROR;
+     }
+ 
+     imageData->imageSpec = imageSpec;
++    imageData->tkwin = Tk_MainWindow(interp);
+     imageData->minWidth = imageData->minHeight = -1;
+     imageData->sticky = TTK_FILL_BOTH;
+     imageData->border = imageData->padding = Ttk_UniformPadding(0);
+ #ifdef TILE_07_COMPAT
+     imageData->cache = Ttk_GetResourceCache(interp);
+
+Index: tests/ttk/image.test
+==================================================================
+--- tests/ttk/image.test
++++ tests/ttk/image.test
+@@ -79,10 +79,26 @@
+     image delete test.image
+     update
+ } -cleanup {
+     destroy .ttk_image22
+ } -result {}
++
++test image-3.1 "Image element on another display - bug fde9dc2392" -constraints {
++    altDisplay
++} -setup {
++    image create photo test.image -width 16 -height 16
++    test.image put red -to 0 0 16 16
++    ttk::style element create test.image.element image test.image
++    ttk::style layout Test.TLabel {test.image.element -sticky nswe}
++} -body {
++    toplevel .t -screen $env(TK_ALT_DISPLAY)
++    pack [ttk::label .t.l -style Test.TLabel]
++    update
++} -cleanup {
++    destroy .t
++    image delete test.image
++} -result {}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

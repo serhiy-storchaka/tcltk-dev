@@ -1,0 +1,153 @@
+Index: library/menu.tcl
+==================================================================
+--- library/menu.tcl
++++ library/menu.tcl
+@@ -39,10 +39,13 @@
+ #			gives the name of the menu.  Otherwise this
+ #			value is empty.
+ # postedMb -		Name of the menubutton whose menu is currently
+ #			posted, or an empty string if nothing is posted
+ #			A grab is set on this widget.
++# postPointer -		Root coordinates of the mouse and the menubutton
++#			when a menu was posted by a button press on the
++#			menubutton, until the button is released.
+ # relief -		Used to save the original relief of the current
+ #			menubutton.
+ # window -		When the mouse is over a menu, this holds the
+ #			name of the menu;  it's cleared when the mouse
+ #			leaves the menu.
+@@ -292,10 +295,13 @@
+ 	return -options $opt $msg
+     }
+ 
+     set Priv(tearoff) $tearoff
+     if {$tearoff != 0 && [tk windowingsystem] ne "aqua"} {
++	if {$x ne ""} {
++	    set Priv(postPointer) [list {*}[winfo pointerxy $w] $w]
++	}
+ 	focus $menu
+ 	if {[winfo viewable $w]} {
+ 	    SaveGrabInfo $w
+ 	    grab -global $w
+ 	}
+@@ -330,10 +336,11 @@
+     set Priv(focus) ""
+ 
+     # Unpost menu(s) and restore some stuff that's dependent on
+     # what was posted.
+ 
++    unset -nocomplain Priv(postPointer)
+     after cancel [array get Priv menuActivatedTimer]
+     unset -nocomplain Priv(menuActivated)
+     after cancel [array get Priv menuDeactivatedTimer]
+     unset -nocomplain Priv(menuDeactivated)
+ 
+@@ -446,10 +453,11 @@
+ # w -			The name of the menubutton widget.
+ 
+ proc ::tk::MbButtonUp w {
+     variable ::tk::Priv
+ 
++    unset -nocomplain Priv(postPointer)
+     set menu [$w cget -menu]
+     set tearoff [expr {[tk windowingsystem] eq "x11" || \
+ 	    ($menu ne "" && [$menu cget -type] eq "tearoff")}]
+     if {($tearoff != 0) && $Priv(postedMb) eq $w \
+ 	    && $Priv(inMenubutton) eq $w} {
+@@ -610,10 +618,24 @@
+ #			a button release;  0 means because of keystroke.
+ 
+ proc ::tk::MenuInvoke {w buttonRelease} {
+     variable ::tk::Priv
+ 
++    if {$buttonRelease && [info exists Priv(postPointer)]} {
++	# The menu was posted over the menubutton by the button press and
++	# got the release of the same click.  Do not invoke the entry under
++	# the mouse, keep the menu posted instead.
++	lassign $Priv(postPointer) x0 y0 mb
++	unset Priv(postPointer)
++	lassign [winfo pointerxy $w] x y
++	if {abs($x - $x0) < 3 && abs($y - $y0) < 3} {
++	    if {[winfo class $mb] eq "TMenubutton"} {
++		ttk::menubutton::TransferGrab $mb
++	    }
++	    return
++	}
++    }
+     if {$buttonRelease && $Priv(window) eq ""} {
+ 	# Mouse was pressed over a menu without a menu button, then
+ 	# dragged off the menu (possibly with a cascade posted) and
+ 	# released.  Unpost everything and quit.
+ 
+
+Index: library/ttk/menubutton.tcl
+==================================================================
+--- library/ttk/menubutton.tcl
++++ library/ttk/menubutton.tcl
+@@ -194,10 +194,11 @@
+ 	$menu post $x $y $entry
+     } else {
+ 	$menu post $x $y
+     }
+     tk_menuSetFocus $menu
++    set ::tk::Priv(postPointer) [list {*}[winfo pointerxy $mb] $mb]
+ }
+ 
+ # TransferGrab (X11 only) --
+ #	Switch from pulldown mode (menubutton has an implicit grab)
+ #	to popdown mode (menu has an explicit grab).
+
+Index: tests/menubut.test
+==================================================================
+--- tests/menubut.test
++++ tests/menubut.test
+@@ -808,10 +808,48 @@
+     bind .b <Configure> {unset -nocomplain var}
+     update
+     destroy .b
+     unset new
+ } {}
++
++test menubutton-11.1 {release of the posting click over the menu does not invoke} -setup {
++    menubutton .mb -text Menu -menu .mb.m
++    menu .mb.m -tearoff 0
++    .mb.m add command -label One -command {set res invoked}
++    pack .mb
++    update
++    set res {}
++} -constraints x11 -body {
++    event generate .mb <Enter>
++    event generate .mb <Motion> -warp 1 -x 3 -y 3
++    update
++    event generate .mb <Button-1> -x 3 -y 3
++    event generate .mb.m <ButtonRelease-1> -x 3 -y 3
++    update
++    lappend res [winfo ismapped .mb.m]
++} -cleanup {
++    tk::MenuUnpost {}
++    destroy .mb
++} -result 1
++test menubutton-11.2 {release of the posting click over the menu does not invoke} -setup {
++    ttk::menubutton .mb -text Menu -menu .mb.m
++    menu .mb.m -tearoff 0
++    .mb.m add command -label One -command {set res invoked}
++    pack .mb
++    update
++    set res {}
++} -constraints x11 -body {
++    event generate .mb <Motion> -warp 1 -x 3 -y 3
++    update
++    event generate .mb <Button-1> -x 3 -y 3
++    event generate .mb.m <ButtonRelease-1> -x 3 -y 3
++    update
++    lappend res [winfo ismapped .mb.m]
++} -cleanup {
++    tk::MenuUnpost {}
++    destroy .mb
++} -result 1
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

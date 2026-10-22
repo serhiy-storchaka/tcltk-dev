@@ -1,0 +1,149 @@
+Index: tests/unixWm.test
+==================================================================
+--- tests/unixWm.test
++++ tests/unixWm.test
+@@ -1382,10 +1382,26 @@
+     wm transient .t3 .t2
+     lappend result [expr {[testwrapper .t2] eq ""}]
+     destroy .t2 .t3
+     set result
+ } {{} 0}
++test unixWm-37.6 {Tk_WmCmd procedure, "transient" option, withdrawn container} {unix testwrapper} {
++    destroy .t2 .t3
++    toplevel .t2
++    wm withdraw .t2
++    update
++    toplevel .t3
++    wm withdraw .t3
++    update
++    wm transient .t3 .t2
++    wm deiconify .t2
++    wm deiconify .t3
++    update
++    set result [expr {[testwrapper .t2] - [testprop [testwrapper .t3] WM_TRANSIENT_FOR]}]
++    destroy .t2 .t3
++    set result
++} 0
+ 
+ test unixWm-38.1 {Tk_WmCmd procedure, "withdraw" option} unix {
+     list [catch {wm withdraw .t 1} msg]  $msg
+ } {1 {wrong # args: should be "wm withdraw window"}}
+ test unixWm-38.2 {Tk_WmCmd procedure, "withdraw" option} unix {
+
+Index: unix/tkUnixWm.c
+==================================================================
+--- unix/tkUnixWm.c
++++ unix/tkUnixWm.c
+@@ -3678,27 +3678,32 @@
+ 
+ 	    wmPtr->containerPtr = containerPtr;
+ 	}
+     }
+     if (!(wmPtr->flags & WM_NEVER_MAPPED)) {
++	/*
++	 * Set the transient-for property even if the window is withdrawn
++	 * because the container is not mapped, it is not set when the window
++	 * is mapped again.
++	 */
++
++	if (wmPtr->containerPtr != NULL) {
++	    XSetTransientForHint(winPtr->display,
++		    wmPtr->wrapperPtr->window,
++		    wmPtr->containerPtr->wmInfoPtr->wrapperPtr->window);
++	} else {
++	    XDeleteProperty(winPtr->display, wmPtr->wrapperPtr->window,
++		    Tk_InternAtom((Tk_Window) winPtr,"WM_TRANSIENT_FOR"));
++	}
+ 	if (wmPtr->containerPtr != NULL && !Tk_IsMapped(wmPtr->containerPtr)) {
+ 	    if (TkpWmSetState(winPtr, WithdrawnState) == 0) {
+ 		Tcl_SetObjResult(interp, Tcl_NewStringObj(
+ 			"couldn't send withdraw message to window manager",
+ 			-1));
+ 		Tcl_SetErrorCode(interp, "TK", "WM", "COMMUNICATION", (char *)NULL);
+ 		return TCL_ERROR;
+ 	    }
+-	} else {
+-	    if (wmPtr->containerPtr != NULL) {
+-		XSetTransientForHint(winPtr->display,
+-			wmPtr->wrapperPtr->window,
+-			wmPtr->containerPtr->wmInfoPtr->wrapperPtr->window);
+-	    } else {
+-		XDeleteProperty(winPtr->display, wmPtr->wrapperPtr->window,
+-			Tk_InternAtom((Tk_Window) winPtr,"WM_TRANSIENT_FOR"));
+-	    }
+ 	}
+     }
+     return TCL_OK;
+ }
+ 
+
+Index: tests/wm.test
+==================================================================
+--- tests/wm.test
++++ tests/wm.test
+@@ -2184,6 +2184,35 @@
+ } -cleanup {
+     deleteWindows
+ } -result {0 0 1 1 {.t1 .t2}}
++test wm-transient-8.2 {withdrawn transient to withdrawn window, Bug 1158738} -constraints {failsOnCILinux failsOnXQuartz} -setup {
++    deleteWindows
++    set result {}
++} -body {
++    toplevel .t1; wm withdraw .t1; update
++    toplevel .t2; wm withdraw .t2; wm transient .t2 .t1; update
++    wm deiconify .t1; update
++    wm deiconify .t2; update
++    lappend result [winfo ismapped .t1] [winfo ismapped .t2]
++    raise .t1; raiseDelay; update
++    lappend result [lsearch -all -inline -glob [wm stackorder .] ".t?"]
++} -cleanup {
++    deleteWindows
++} -result {1 1 {.t1 .t2}}
++test wm-transient-8.3 {transient set on withdrawn window, Bug 1158738} -constraints {failsOnCILinux failsOnXQuartz} -setup {
++    deleteWindows
++    set result {}
++} -body {
++    toplevel .t1; wm withdraw .t1; update
++    toplevel .t2; wm withdraw .t2; update
++    wm transient .t2 .t1; update
++    wm deiconify .t1; update
++    wm deiconify .t2; update
++    lappend result [winfo ismapped .t1] [winfo ismapped .t2]
++    raise .t1; raiseDelay; update
++    lappend result [lsearch -all -inline -glob [wm stackorder .] ".t?"]
++} -cleanup {
++    deleteWindows
++} -result {1 1 {.t1 .t2}}
+ 
+ 
+ ### wm state ###
+Index: win/tkWinWm.c
+==================================================================
+--- win/tkWinWm.c
++++ win/tkWinWm.c
+@@ -2318,7 +2318,6 @@
+ 
+ 	if (wmPtr->containerPtr != NULL && !Tk_IsMapped(wmPtr->containerPtr)) {
+ 	    wmPtr->hints.initial_state = WithdrawnState;
+-	    return;
+ 	}
+     } else {
+ 	if (wmPtr->hints.initial_state == WithdrawnState) {
+@@ -5799,10 +5798,15 @@
+ 	    && !(winPtr->flags & TK_EMBEDDED))) {
+ 	if (wmPtr->containerPtr != NULL
+ 		&& !Tk_IsMapped(wmPtr->containerPtr)) {
++	    /*
++	     * Withdraw the window, but still update the wrapper so that it
++	     * gets its new owner.
++	     */
++
+ 	    TkpWmSetState(winPtr, WithdrawnState);
+-	} else {
+-	    UpdateWrapper(winPtr);
++	    wmPtr->hints.initial_state = WithdrawnState;
+ 	}
++	UpdateWrapper(winPtr);
+     }
+     return TCL_OK;
+ }

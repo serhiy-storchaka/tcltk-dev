@@ -1,0 +1,22 @@
+--- a/macosx/tkMacOSXWindowEvent.c
++++ b/macosx/tkMacOSXWindowEvent.c
+@@ -990,8 +990,17 @@
+ 	self.layer = [CALayer layer];
+ 	self.wantsLayer = YES;
+ 	self.layerContentsRedrawPolicy = NSViewLayerContentsRedrawOnSetNeedsDisplay;
+-	self.layer.contentsGravity = self.layer.contentsAreFlipped ?
+-	    kCAGravityTopLeft : kCAGravityBottomLeft;
++
++	/*
++	 * Not a ?: expression: gcc 4.2 on OS X 10.6 rejects a property
++	 * access inside a conditional assigned to a property. [c789692418]
++	 */
++
++	if (self.layer.contentsAreFlipped) {
++	    self.layer.contentsGravity = kCAGravityTopLeft;
++	} else {
++	    self.layer.contentsGravity = kCAGravityBottomLeft;
++	}
+ 
+ 	/*
+ 	 * Nothing gets drawn at all if the layer does not have a delegate.

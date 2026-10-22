@@ -1,0 +1,33 @@
+Index: doc/photo.n
+==================================================================
+--- doc/photo.n
++++ doc/photo.n
+@@ -282,10 +282,14 @@
+ The format of the string depends on the format handler. By default, a
+ human readable format as a list of lists of pixel data is used, other
+ formats can be chosen with the \fB\-format\fR option.
+ See \fBIMAGE FORMATS\fR below for details.
+ .VE 9.0
++The built-in PNG, GIF and PPM handlers return binary data (a byte
++string), not base64-encoded data; use \fBbinary encode base64\fR if a
++textual representation is needed. Handlers provided by extensions may
++return other forms of data.
+ The following options may be specified:
+ .RS
+ .\" OPTION: -background
+ .TP
+ \fB\-background\fI color\fR
+@@ -361,10 +365,12 @@
+ This command searches the list of image file format handlers for
+ a handler that can interpret the data in \fIdata\fR, and then reads
+ the image encoded within into \fIimageName\fR (the destination image).
+ See \fBIMAGE FORMATS\fR below for details on formats for image data.
+ .VE 9.0
++As for the \fB\-data\fR option, \fIdata\fR may be binary data or, for
++some formats (currently PNG and GIF), base64-encoded data.
+ The following options may be specified:
+ .RS
+ .\" OPTION: -format
+ .TP
+ \fB\-format\fR {\fIformat-name\fR ?\fIoption value ..\fR?}
+

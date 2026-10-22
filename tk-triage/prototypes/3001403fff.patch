@@ -1,0 +1,37 @@
+Index: win/tkWinColor.c
+==================================================================
+--- win/tkWinColor.c
++++ win/tkWinColor.c
+@@ -426,11 +426,17 @@
+ 	 */
+ 
+ 	for (i = 0; i < npixels; i++) {
+ 	    entryPtr = Tcl_FindHashEntry(&cmap->refCounts, INT2PTR(pixels[i]));
+ 	    if (!entryPtr) {
+-		Tcl_Panic("Tried to free a color that isn't allocated");
++		/*
++		 * The color was allocated while the display was not a
++		 * palette device (the display mode can change at runtime,
++		 * e.g. when a full-screen game starts). Nothing to free.
++		 */
++
++		continue;
+ 	    }
+ 	    refCount = (size_t)Tcl_GetHashValue(entryPtr) - 1;
+ 	    if (refCount == 0) {
+ 		cref = pixels[i] & 0x00ffffff;
+ 		index = GetNearestPaletteIndex(cmap->palette, cref);
+@@ -440,12 +446,10 @@
+ 		    entries = (PALETTEENTRY *)Tcl_Alloc(sizeof(PALETTEENTRY) * count);
+ 		    GetPaletteEntries(cmap->palette, index+1, count, entries);
+ 		    SetPaletteEntries(cmap->palette, index, count, entries);
+ 		    Tcl_Free(entries);
+ 		    cmap->size--;
+-		} else {
+-		    Tcl_Panic("Tried to free a color that isn't allocated");
+ 		}
+ 		Tcl_DeleteHashEntry(entryPtr);
+ 	    } else {
+ 		Tcl_SetHashValue(entryPtr, INT2PTR(refCount));
+ 	    }
+

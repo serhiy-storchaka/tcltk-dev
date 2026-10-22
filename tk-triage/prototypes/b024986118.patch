@@ -1,0 +1,31 @@
+Index: generic/tkConfig.c
+==================================================================
+--- generic/tkConfig.c
++++ generic/tkConfig.c
+@@ -1109,11 +1109,11 @@
+  */
+ 
+ #if defined(USE_TCL_STUBS)
+ # undef Tcl_IsEmpty
+ # define Tcl_IsEmpty \
+-    ((bool (*)(Tcl_Obj *))(void *)((&(tclStubsPtr->tcl_PkgProvideEx))[690]))
++    ((int (*)(Tcl_Obj *))(void *)((&(tclStubsPtr->tcl_PkgProvideEx))[690]))
+ #endif
+ 
+ bool
+ TkObjIsEmpty(
+     Tcl_Obj *objPtr)		/* Object to test. May be NULL. */
+@@ -1122,11 +1122,11 @@
+ 	return true;
+     }
+     if (objPtr->bytes == NULL) {
+ #if defined(USE_TCL_STUBS)
+ 	if (Tcl_IsEmpty) {
+-	    return Tcl_IsEmpty(objPtr);
++	    return Tcl_IsEmpty(objPtr) != 0;
+ 	}
+ #endif
+ 	Tcl_GetString(objPtr);
+     }
+     return (objPtr->length == 0);
+

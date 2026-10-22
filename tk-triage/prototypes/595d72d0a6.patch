@@ -1,0 +1,142 @@
+--- library/accessibility.tcl
++++ library/accessibility.tcl
+@@ -662,8 +662,11 @@
+ 		    return
+ 		}
+ 	    }
+-	    if {[tk windowingsystem] ne "aqua"} {
+-		# This is necessary to ensure correct accessible keyboard navigation
++	    if {[tk windowingsystem] ne "aqua" && $role ne "Label"} {
++		# This is necessary to ensure correct accessible keyboard navigation.
++		# Static text is not a Tab stop: screen readers read it with their
++		# review commands, and the Tab order must not depend on whether a
++		# screen reader is running.
+ 		if [winfo exists $w] {
+ 		    $w configure -takefocus 1
+ 		}
+--- unix/tkUnixAccessibility.c
++++ unix/tkUnixAccessibility.c
+@@ -893,12 +893,46 @@
+  * text widgets. All accessibility in text data is managed at the script level.
+  */
+ 
++/*
++ * Static text: the text of a label, so that a screen reader can read it
++ * without the label taking the focus (Orca's flat review, "read window").
++ * Returns NULL for other widgets. The result must be freed with g_free().
++ */
++static gchar *GetStaticText(AtkText *text)
++{
++    TkAtkAccessible *acc = (TkAtkAccessible *)text;
++
++    if (!acc || !acc->tkwin || GetAtkRoleForWidget(acc->tkwin) != ATK_ROLE_LABEL) {
++	return NULL;
++    }
++    return GetAtkValueForWidget(acc->tkwin);
++}
++
+ static gchar *tk_text_get_text(
+-    TCL_UNUSED(AtkText *),
+-    TCL_UNUSED(gint),
+-    TCL_UNUSED(gint))
++    AtkText *text,
++    gint start_offset,
++    gint end_offset)
+ {
+-    return NULL;
++    gchar *value = GetStaticText(text);
++    gchar *result;
++    glong len;
++
++    if (!value) {
++	return NULL;
++    }
++    len = g_utf8_strlen(value, -1);
++    if (end_offset < 0 || end_offset > len) {
++	end_offset = len;
++    }
++    if (start_offset < 0) {
++	start_offset = 0;
++    }
++    if (start_offset > end_offset) {
++	start_offset = end_offset;
++    }
++    result = g_utf8_substring(value, start_offset, end_offset);
++    g_free(value);
++    return result;
+ }
+ 
+ static gint tk_text_get_caret_offset(
+@@ -907,10 +941,50 @@
+     return -1;
+ }
+ 
++/* Static text is one line: every unit is the whole text. */
++static gchar *tk_text_get_string_at_offset(
++    AtkText *text,
++    TCL_UNUSED(gint),		/* offset */
++    TCL_UNUSED(AtkTextGranularity),
++    gint *start_offset,
++    gint *end_offset)
++{
++    gchar *value = GetStaticText(text);
++
++    *start_offset = 0;
++    *end_offset = value ? (gint)g_utf8_strlen(value, -1) : 0;
++    return value;
++}
++
++/* Without per-character geometry, report the box of the whole widget. */
++static void tk_text_get_character_extents(
++    AtkText *text,
++    TCL_UNUSED(gint),		/* offset */
++    gint *x, gint *y, gint *width, gint *height,
++    AtkCoordType coords)
++{
++    tk_get_extents((AtkComponent *)text, x, y, width, height, coords);
++}
++
++static void tk_text_get_range_extents(
++    AtkText *text,
++    TCL_UNUSED(gint),		/* start_offset */
++    TCL_UNUSED(gint),		/* end_offset */
++    AtkCoordType coord_type,
++    AtkTextRectangle *rect)
++{
++    tk_get_extents((AtkComponent *)text, &rect->x, &rect->y,
++	    &rect->width, &rect->height, coord_type);
++}
++
+ static gint tk_text_get_character_count(
+-    TCL_UNUSED(AtkText *))
++    AtkText *text)
+ {
+-    return 0;
++    gchar *value = GetStaticText(text);
++    gint count = value ? (gint)g_utf8_strlen(value, -1) : 0;
++
++    g_free(value);
++    return count;
+ }
+ 
+ 
+@@ -921,16 +995,17 @@
+     iface->get_character_count = tk_text_get_character_count;
+     iface->get_selection = NULL;
+     iface->get_text_at_offset = NULL;
++    iface->get_string_at_offset = tk_text_get_string_at_offset;
+     iface->get_text_after_offset = NULL;
+     iface->get_text_before_offset = NULL;
+     iface->get_run_attributes = NULL;
+     iface->get_default_attributes = NULL;
+-    iface->get_character_extents = NULL;
++    iface->get_character_extents = tk_text_get_character_extents;
+     iface->get_offset_at_point = NULL;
+     iface->set_caret_offset = NULL;
+     iface->set_selection = NULL;
+     iface->get_n_selections = NULL;
+-    iface->get_range_extents = NULL;
++    iface->get_range_extents = tk_text_get_range_extents;
+     iface->get_bounded_ranges = NULL;
+ }
+ 

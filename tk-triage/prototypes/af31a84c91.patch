@@ -1,0 +1,164 @@
+Index: generic/tkSelect.c
+==================================================================
+--- generic/tkSelect.c
++++ generic/tkSelect.c
+@@ -129,10 +129,11 @@
+ 				 * listed in the ICCCM will be tolerated
+ 				 * (blech). */
+ {
+     TkSelHandler *selPtr;
+     TkWindow *winPtr = (TkWindow *) tkwin;
++    Tk_SelectionProc *oldProc = NULL;
+ 
+     if (winPtr->dispPtr->multipleAtom == None) {
+ 	TkSelInit(tkwin);
+     }
+ 
+@@ -153,10 +154,11 @@
+ 	     * Special case: when replacing handler created by "selection
+ 	     * handle", free up memory. Should there be a callback to allow
+ 	     * other clients to do this too?
+ 	     */
+ 
++	    oldProc = selPtr->proc;
+ 	    if (selPtr->proc == HandleTclCommand) {
+ 		Tcl_Free(selPtr->clientData);
+ 	    }
+ 	    break;
+ 	}
+@@ -177,47 +179,58 @@
+ 	 * If the user asked for a STRING handler and we understand
+ 	 * UTF8_STRING, we implicitly create a UTF8_STRING handler for them.
+ 	 */
+ 
+ 	target = winPtr->dispPtr->utf8Atom;
+-	for (selPtr = winPtr->selHandlerList; ; selPtr = selPtr->nextPtr) {
+-	    if (selPtr == NULL) {
+-		selPtr = (TkSelHandler *)Tcl_Alloc(sizeof(TkSelHandler));
+-		selPtr->nextPtr = winPtr->selHandlerList;
+-		winPtr->selHandlerList = selPtr;
+-		selPtr->selection = selection;
+-		selPtr->target = target;
+-		selPtr->format = target; /* We want UTF8_STRING format */
+-		selPtr->proc = proc;
+-		if (selPtr->proc == HandleTclCommand) {
+-		    /*
+-		     * The clientData is selection controlled memory, so we
+-		     * should make a copy for this selPtr.
+-		     */
+-
+-		    size_t cmdInfoLen = offsetof(CommandInfo, command) + 1 +
+-			    ((CommandInfo *)clientData)->cmdLength;
+-
+-		    selPtr->clientData = Tcl_Alloc(cmdInfoLen);
+-		    memcpy(selPtr->clientData, clientData, cmdInfoLen);
+-		} else {
+-		    selPtr->clientData = clientData;
+-		}
+-		selPtr->size = 8;
+-		break;
+-	    }
++	for (selPtr = winPtr->selHandlerList; selPtr != NULL;
++		selPtr = selPtr->nextPtr) {
+ 	    if (selPtr->selection==selection && selPtr->target==target) {
+-		/*
+-		 * Looks like we had a utf-8 target already. Leave it alone.
+-		 */
+-
+ 		break;
+ 	    }
+ 	}
++	if (selPtr == NULL) {
++	    selPtr = (TkSelHandler *)Tcl_Alloc(sizeof(TkSelHandler));
++	    selPtr->nextPtr = winPtr->selHandlerList;
++	    winPtr->selHandlerList = selPtr;
++	    selPtr->selection = selection;
++	    selPtr->target = target;
++	    selPtr->format = target; /* We want UTF8_STRING format */
++	    selPtr->size = 8;
++	} else if (selPtr->format == target && selPtr->proc == oldProc) {
++	    /*
++	     * Looks like we had a utf-8 target implicitly created together
++	     * with the STRING handler being replaced. Replace it too.
++	     */
++
++	    if (selPtr->proc == HandleTclCommand) {
++		Tcl_Free(selPtr->clientData);
++	    }
++	} else {
++	    /*
++	     * Looks like we had a utf-8 target already. Leave it alone.
++	     */
++
++	    return;
++	}
++	selPtr->proc = proc;
++	if (proc == HandleTclCommand) {
++	    /*
++	     * The clientData is selection controlled memory, so we
++	     * should make a copy for this selPtr.
++	     */
++
++	    size_t cmdInfoLen = offsetof(CommandInfo, command) + 1 +
++		    ((CommandInfo *)clientData)->cmdLength;
++
++	    selPtr->clientData = Tcl_Alloc(cmdInfoLen);
++	    memcpy(selPtr->clientData, clientData, cmdInfoLen);
++	} else {
++	    selPtr->clientData = clientData;
++	}
+     }
+ }
+-
++
+ /*
+  *----------------------------------------------------------------------
+  *
+  * Tk_DeleteSelHandler --
+  *
+
+Index: tests/select.test
+==================================================================
+--- tests/select.test
++++ tests/select.test
+@@ -1113,10 +1113,39 @@
+     selection get -selection CLIPBOARD_MANAGER -type SAVE_TARGETS
+     clipboard get
+ } -cleanup {
+     rename get_clip {}
+ } -result {abcd}
++
++test select-14.2 {Bug [af31a84c91]: Replacing selection handler also replaces implicit UTF8_STRING handler} -setup {
++    proc strhandler {str offset count} {
++	return [string range $str $offset [expr {$offset + $count - 1}]]
++    }
++} -body {
++    selection own .
++    selection handle . {strhandler "Original"}
++    selection handle . {strhandler "Replaced"}
++    list [selection get -type STRING] [selection get -type UTF8_STRING]
++} -cleanup {
++    selection handle . {}
++    rename strhandler {}
++} -result {Replaced Replaced}
++test select-14.3 {Bug [af31a84c91]: Replacing STRING handler keeps explicit UTF8_STRING handler} -setup {
++    proc strhandler {str offset count} {
++	return [string range $str $offset [expr {$offset + $count - 1}]]
++    }
++} -body {
++    selection own .
++    selection handle -type UTF8_STRING . {strhandler "Explicit"}
++    selection handle . {strhandler "Original"}
++    selection handle . {strhandler "Replaced"}
++    list [selection get -type STRING] [selection get -type UTF8_STRING]
++} -cleanup {
++    selection handle -type UTF8_STRING . {}
++    selection handle . {}
++    rename strhandler {}
++} -result {Replaced Explicit}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

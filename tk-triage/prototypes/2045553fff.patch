@@ -1,0 +1,26 @@
+Index: doc/getOpenFile.n
+==================================================================
+--- doc/getOpenFile.n
++++ doc/getOpenFile.n
+@@ -56,12 +56,15 @@
+ \fB\-defaultextension\fI extension\fR
+ .
+ Specifies a string that will be appended to the filename if the user
+-enters a filename without an extension. The default value is the empty
+-string, which means no extension will be appended to the filename in
+-any case. This option is ignored on macOS, which
+-does not require extensions to filenames,
+-and the UNIX implementation guesses reasonable values for this from
+-the \fB\-filetypes\fR option when this is not supplied.
++enters a filename without an extension.
++If this option is not specified, no extension is appended on Windows.
++If it is the empty string on Windows, or if it is empty or not specified
++on UNIX, the extension of the currently selected file type from the
++\fB\-filetypes\fR option (if any) is appended.
++On Windows, if the currently selected file type has an extension, that
++extension is appended instead of the one given by this option.
++This option is ignored on macOS, which
++does not require extensions to filenames.
+ .\" OPTION: -filetypes
+ .TP
+ \fB\-filetypes\fI filePatternList\fR

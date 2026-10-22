@@ -1,0 +1,124 @@
+Index: library/choosedir.tcl
+==================================================================
+--- library/choosedir.tcl
++++ library/choosedir.tcl
+@@ -83,10 +83,11 @@
+     $data(dirMenuBtn) configure \
+ 	    -textvariable ::tk::dialog::file::${dataName}(selectPath)
+ 
+     set data(filter) "*"
+     set data(previousEntryText) ""
++    set data(browsedPath) ""
+     ::tk::dialog::file::UpdateWhenIdle $w
+ 
+     # Withdraw the window, then update all the geometry information
+     # so we know how big it wants to be, then center the window in the
+     # display (Motif style) and de-iconify it.
+@@ -234,13 +235,14 @@
+ 	    } else {
+ 		set data(previousEntryText) $text
+ 	    }
+ 	} else {
+ 	    # Entry contains a valid directory.  If it is the same as the
+-	    # current directory, end the dialog.  Otherwise, change to that
+-	    # directory.
+-	    if {$text eq $data(selectPath)} {
++	    # current directory or the directory selected in the icon list
++	    # (the selection is cleared when the OK button takes the focus),
++	    # end the dialog.  Otherwise, change to that directory.
++	    if {$text eq $data(selectPath) || $text eq $data(browsedPath)} {
+ 		Done $w $text
+ 	    } else {
+ 		set data(selectPath) $text
+ 	    }
+ 	}
+@@ -284,10 +286,11 @@
+     }
+ 
+     set file [::tk::dialog::file::JoinFile $data(selectPath) $text]
+     $data(ent) delete 0 end
+     $data(ent) insert 0 $file
++    set data(browsedPath) $file
+ }
+ 
+ # ::tk::dialog::file::chooseDir::Done --
+ #
+ #	Gets called when user has input a valid filename.  Pops up a
+
+Index: library/tkfbox.tcl
+==================================================================
+--- library/tkfbox.tcl
++++ library/tkfbox.tcl
+@@ -1057,10 +1057,12 @@
+ 		::tk::SetAmpText $data(okBtn) [mc "&Save"]
+ 	    }
+ 	}
+     } elseif {[winfo class $w] eq "TkFDialog"} {
+ 	::tk::SetAmpText $data(okBtn) [mc "&Open"]
++    } elseif {[winfo class $w] eq "TkChooseDir"} {
++	::tk::dialog::file::chooseDir::ListBrowse $w $text
+     }
+ }
+ 
+ # Gets called when user invokes the IconList widget (double-click, Return key,
+ # etc)
+
+Index: tests/choosedir.test
+==================================================================
+--- tests/choosedir.test
++++ tests/choosedir.test
+@@ -47,10 +47,26 @@
+ 
+ proc ToEnterDirsByKey {parent dirs} {
+     after 100 [list EnterDirsByKey $parent $dirs]
+ }
+ 
++proc SelectDirAndPressOk {parent dir} {
++    upvar ::tk::dialog::file::__tk_choosedir data
++    update
++    set canvas $data(icons).cHull.canvas
++    focus -force $canvas
++    for {set i 0} {[$data(icons) get $i] ne $dir} {incr i} {}
++    $data(icons) selection set $i
++    event generate $data(icons) <<ListboxSelect>>
++    update
++    # The OK button takes the focus on press, the icon list loses it
++    event generate $data(okBtn) <Enter>
++    event generate $data(okBtn) <Button-1> -x 5 -y 5
++    update
++    event generate $data(okBtn) <ButtonRelease-1> -x 5 -y 5
++}
++
+ #
+ # COMMON TEST SETUP
+ #
+ set parent .
+ 
+@@ -142,14 +158,26 @@
+ } -body {
+     ToEnterDirsByKey $parent [list "" $real $real]
+     tk_chooseDirectory -title "Clear entry, Press OK; Enter $real, press OK" \
+ 	    -parent $parent
+ } -result $real
++
++test choosedir-7.1 {tk_chooseDirectory, select a subdirectory and press OK} -constraints {
++	unix notAqua
++} -setup {
++    file mkdir [file join $real sub]
++} -body {
++    after 100 [list SelectDirAndPressOk $parent sub]
++    tk_chooseDirectory -title "Select \"sub\" and press OK" \
++	    -parent $parent -initialdir $real
++} -cleanup {
++    file delete [file join $real sub]
++} -result [file join $real sub]
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+ unset fake parent real
+ removeDirectory choosedirTest
+ testutils forget dialog
+ cleanupTests
+

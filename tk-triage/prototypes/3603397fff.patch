@@ -1,0 +1,23 @@
+Index: library/ttk/sizegrip.tcl
+==================================================================
+--- library/ttk/sizegrip.tcl
++++ library/ttk/sizegrip.tcl
+@@ -46,10 +46,17 @@
+     # If the toplevel is not resizable then bail
+     foreach {State(resizeX) State(resizeY)} [wm resizable $top] break
+     if {!$State(resizeX) && !$State(resizeY)} {
+ 	return
+     }
++
++    # If the toplevel is maximized then bail, otherwise the size
++    # of the window when restored would be changed.
++    if {[wm state $top] eq "zoomed" || ([tk windowingsystem] eq "x11"
++	    && [wm attributes $top -zoomed])} {
++	return
++    }
+ 
+     # Sanity-checks:
+     #	If a negative X or Y position was specified for [wm geometry],
+     #   just bail out -- there's no way to handle this cleanly.
+     #
+

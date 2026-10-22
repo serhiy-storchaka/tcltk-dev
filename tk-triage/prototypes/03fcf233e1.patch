@@ -1,0 +1,183 @@
+Index: generic/tkImgPhoto.c
+==================================================================
+--- generic/tkImgPhoto.c
++++ generic/tkImgPhoto.c
+@@ -646,31 +646,31 @@
+ 	if (!(options.options & OPT_FROM) || (options.fromX2 < 0)) {
+ 	    options.fromX2 = block.width;
+ 	    options.fromY2 = block.height;
+ 	}
+ 	if (!(options.options & OPT_TO) || (options.toX2 < 0)) {
+-	    width = options.fromX2 - options.fromX;
++	    width = (options.fromX2 - options.fromX) * options.zoomX;
+ 	    if (options.subsampleX > 0) {
+ 		width = (width + options.subsampleX - 1) / options.subsampleX;
+ 	    } else if (options.subsampleX == 0) {
+ 		width = 0;
+ 	    } else {
+ 		width = (width - options.subsampleX - 1) / -options.subsampleX;
+ 	    }
+-	    options.toX2 = options.toX + width * options.zoomX;
++	    options.toX2 = options.toX + width;
+ 
+-	    height = options.fromY2 - options.fromY;
++	    height = (options.fromY2 - options.fromY) * options.zoomY;
+ 	    if (options.subsampleY > 0) {
+ 		height = (height + options.subsampleY - 1)
+ 			/ options.subsampleY;
+ 	    } else if (options.subsampleY == 0) {
+ 		height = 0;
+ 	    } else {
+ 		height = (height - options.subsampleY - 1)
+ 			/ -options.subsampleY;
+ 	    }
+-	    options.toY2 = options.toY + height * options.zoomY;
++	    options.toY2 = options.toY + height;
+ 	}
+ 
+ 	/*
+ 	 * Copy the image data over using Tk_PhotoPutZoomedBlock.
+ 	 */
+@@ -3459,11 +3459,11 @@
+     Tk_PhotoImageBlock sourceBlock;
+     unsigned char *memToFree;
+     int xEnd, yEnd, greenOffset, blueOffset, alphaOffset;
+     int wLeft, hLeft, wCopy, hCopy, blockWid, blockHt;
+     unsigned char *srcPtr, *srcLinePtr, *srcOrigPtr, *destPtr, *destLinePtr;
+-    int pitch, xRepeat, yRepeat, blockXSkip, blockYSkip, sourceIsSimplePhoto;
++    int pitch, blockXSkip, blockYSkip, sourceIsSimplePhoto;
+     XRectangle rect;
+ 
+     /*
+      * Zero-sized blocks never cause any changes. [Bug 3078902]
+      */
+@@ -3583,25 +3583,25 @@
+     /*
+      * Work out what area the pixel data in the block expands to after
+      * subsampling and zooming.
+      */
+ 
+-    blockXSkip = subsampleX * sourceBlock.pixelSize;
+-    blockYSkip = subsampleY * sourceBlock.pitch;
++    blockXSkip = sourceBlock.pixelSize;
++    blockYSkip = sourceBlock.pitch;
+     if (subsampleX > 0) {
+-	blockWid = ((sourceBlock.width + subsampleX - 1) / subsampleX) * zoomX;
++	blockWid = (sourceBlock.width * zoomX + subsampleX - 1) / subsampleX;
+     } else if (subsampleX == 0) {
+ 	blockWid = width;
+     } else {
+-	blockWid = ((sourceBlock.width - subsampleX - 1) / -subsampleX) * zoomX;
++	blockWid = (sourceBlock.width * zoomX - subsampleX - 1) / -subsampleX;
+     }
+     if (subsampleY > 0) {
+-	blockHt = ((sourceBlock.height + subsampleY - 1) / subsampleY) * zoomY;
++	blockHt = (sourceBlock.height * zoomY + subsampleY - 1) / subsampleY;
+     } else if (subsampleY == 0) {
+ 	blockHt = height;
+     } else {
+-	blockHt = ((sourceBlock.height - subsampleY - 1) / -subsampleY) * zoomY;
++	blockHt = (sourceBlock.height * zoomY - subsampleY - 1) / -subsampleY;
+     }
+ 
+     /*
+      * Copy the data into our local 32-bit/pixel array.
+      */
+@@ -3617,20 +3617,20 @@
+ 
+     pitch = modelPtr->width * 4;
+     for (hLeft = height; hLeft > 0; ) {
+ 	hCopy = MIN(hLeft, blockHt);
+ 	hLeft -= hCopy;
+-	yRepeat = zoomY;
++	int yProgress = 0;
+ 	srcLinePtr = srcOrigPtr;
+ 	for (; hCopy > 0; --hCopy) {
+ 	    destPtr = destLinePtr;
+ 	    for (wLeft = width; wLeft > 0;) {
+ 		wCopy = MIN(wLeft, blockWid);
+ 		wLeft -= wCopy;
+ 		srcPtr = srcLinePtr;
+-		for (; wCopy > 0; wCopy -= zoomX) {
+-		    for (xRepeat = MIN(wCopy, zoomX); xRepeat > 0; xRepeat--) {
++		int xProgress = 0;
++		for (; wCopy > 0; wCopy--) {
+ 			int alpha = srcPtr[alphaOffset];/* Source alpha. */
+ 
+ 			/*
+ 			 * Common case (solid pixels) first
+ 			 */
+@@ -3638,14 +3638,11 @@
+ 			if (!alphaOffset || (alpha == 255)) {
+ 			    *destPtr++ = srcPtr[0];
+ 			    *destPtr++ = srcPtr[greenOffset];
+ 			    *destPtr++ = srcPtr[blueOffset];
+ 			    *destPtr++ = 255;
+-			    continue;
+-			}
+-
+-			if (compRule==TK_PHOTO_COMPOSITE_SET || !destPtr[3]) {
++			} else if (compRule==TK_PHOTO_COMPOSITE_SET || !destPtr[3]) {
+ 			    /*
+ 			     * Either this is the SET rule (we overwrite
+ 			     * whatever is there) or the destination is
+ 			     * entirely blank. In both cases, we just set the
+ 			     * destination to the source.
+@@ -3669,20 +3666,15 @@
+ 
+ 			    destPtr += 4;
+ 			} else {
+ 			    destPtr += 4;
+ 			}
+-		    }
+-		    srcPtr += blockXSkip;
++			srcPtr = srcLinePtr + (((++xProgress)*subsampleX)/zoomX)*blockXSkip;
+ 		}
+ 	    }
+ 	    destLinePtr += pitch;
+-	    yRepeat--;
+-	    if (yRepeat <= 0) {
+-		srcLinePtr += blockYSkip;
+-		yRepeat = zoomY;
+-	    }
++	    srcLinePtr = srcOrigPtr + (((++yProgress)*subsampleY)/zoomY)*blockYSkip;
+ 	}
+     }
+ 
+     /*
+      * Recompute the region of data for which we have valid pixels to plot.
+
+Index: tests/imgPhoto.test
+==================================================================
+--- tests/imgPhoto.test
++++ tests/imgPhoto.test
+@@ -1335,10 +1335,28 @@
+     unset imgData
+     unset result
+     imageCleanup
+ } -result {}
+ 
++test imgPhoto-4.119 {ImgPhotoCmd procedure: copy with -zoom and -subsample} -setup {
++    image create photo photo1 -width 8 -height 1
++    photo1 put {{#000000 #111111 #222222 #333333 #444444 #555555 #666666 #777777}}
++    image create photo photo2
++} -body {
++    set result {}
++    foreach {zoom subsample} {2 3 2 -3 3 2} {
++	photo2 blank
++	photo2 copy photo1 -zoom $zoom 1 -subsample $subsample 1 -shrink
++	lappend result [photo2 data]
++    }
++    set result
++} -cleanup {
++    imageCleanup
++} -result {{{#000000 #111111 #333333 #444444 #666666 #777777}}\
++{{#777777 #666666 #444444 #333333 #111111 #000000}}\
++{{#000000 #000000 #111111 #222222 #222222 #333333 #444444 #444444 #555555 #666666 #666666 #777777}}}
++
+ test imgPhoto-5.1 {ImgPhotoGet/Free procedures, shared instances} -setup {
+     destroy .c
+     pack [canvas .c]
+     imageCleanup
+ } -body {
+

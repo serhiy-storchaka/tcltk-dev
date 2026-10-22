@@ -1,0 +1,98 @@
+Index: generic/tkTextDisp.c
+==================================================================
+--- generic/tkTextDisp.c
++++ generic/tkTextDisp.c
+@@ -9039,24 +9039,45 @@
+     int *widthPtr,		/* Gets filled with width of character. */
+     int *heightPtr)		/* Gets filled with height of character. */
+ {
+     CharInfo *ciPtr = (CharInfo *)chunkPtr->clientData;
+     int maxX = chunkPtr->x + chunkPtr->width;
++    Tcl_Size nextIndex;
+ 
+     if (ciPtr == NULL || byteIndex < 0) {
+ 	byteIndex = 0;
+     } else if (byteIndex > ciPtr->numBytes) {
+ 	byteIndex = ciPtr->numBytes;
+     }
+ 
+     *yPtr = y + baseline - chunkPtr->minAscent;
+     *heightPtr = chunkPtr->minAscent + chunkPtr->minDescent;
++
++    /*
++     * Byte offset of the next character: the character at byteIndex can
++     * be longer than one byte.
++     */
++
++    nextIndex = byteIndex;
++    if (byteIndex < ciPtr->numBytes) {
++#ifdef TK_LAYOUT_WITH_BASE_CHUNKS
++	const char *chars = Tcl_DStringValue(&((BaseCharInfo *)
++		ciPtr->baseChunkPtr->clientData)->baseChars) + ciPtr->baseOffset;
++#else
++	const char *chars = ciPtr->chars;
++#endif
++
++	nextIndex = Tcl_UtfNext(chars + byteIndex) - chars;
++	if (nextIndex > ciPtr->numBytes) {
++	    nextIndex = ciPtr->numBytes;
++	}
++    }
+ 
+     if (ciPtr->isRtl) {
+ 	/* RTL: mirror the measurement. */
+ 	int xEnd, xStart;
+-	CharChunkMeasureChars(chunkPtr, NULL, 0, 0, byteIndex + 1,
++	CharChunkMeasureChars(chunkPtr, NULL, 0, 0, nextIndex,
+ 		chunkPtr->x, -1, 0, &xEnd);
+ 	CharChunkMeasureChars(chunkPtr, NULL, 0, 0, byteIndex,
+ 		chunkPtr->x, -1, 0, &xStart);
+ 
+ 	*xPtr = chunkPtr->x + (chunkPtr->width - (xEnd - chunkPtr->x));
+@@ -9071,11 +9092,11 @@
+ 
+ 	if (byteIndex >= ciPtr->numBytes) {
+ 	    *widthPtr = maxX - *xPtr;
+ 	} else {
+ 	    int x2;
+-	    CharChunkMeasureChars(chunkPtr, NULL, 0, byteIndex, byteIndex + 1,
++	    CharChunkMeasureChars(chunkPtr, NULL, 0, byteIndex, nextIndex,
+ 		    *xPtr, -1, 0, &x2);
+ 	    *widthPtr = (x2 > maxX) ? maxX - *xPtr : x2 - *xPtr;
+ 	}
+     }
+ 
+
+Index: tests/textDisp.test
+==================================================================
+--- tests/textDisp.test
++++ tests/textDisp.test
+@@ -4187,10 +4187,27 @@
+ 	.t insert 1.0 abc\td\tfgh
+ 	list [.t bbox 1.3] [.t bbox 1.5] [.t bbox 1.6]
+     } \
+     -match glob \
+     -result *
++test textDisp-25.2 {CharBboxProc procedure, multi-byte characters} -setup {
++    .t tag configure prop -font {Helvetica 14}
++} -body {
++    .t delete 1.0 end
++    .t insert 1.0 "\u03b1\u03b2\u03b3\u03b4\u03b5 \u03b6\u03b7\u03b8\u03b9\u03ba" prop
++    update
++    set result {}
++    for {set i 0} {$i < 11} {incr i} {
++	if {[lindex [.t bbox 1.$i] 2] !=
++		[font measure {Helvetica 14} [.t get 1.$i]]} {
++	    lappend result 1.$i
++	}
++    }
++    set result
++} -cleanup {
++    .t tag delete prop
++} -result {}
+ #
+ # COMMON TEST SETUP
+ #
+ 
+ .t configure -width 40 -bd 0 -relief flat -highlightthickness 0 -padx 0 -pady 0 \
+

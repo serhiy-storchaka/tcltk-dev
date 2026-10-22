@@ -1,0 +1,19 @@
+Index: generic/tkImgPhoto.c
+==================================================================
+--- generic/tkImgPhoto.c
++++ generic/tkImgPhoto.c
+@@ -1287,10 +1287,13 @@
+ 	    pixelPtr = modelPtr->pix32 + (y * modelPtr->width + x) * 4;
+ 	    if (boolMode) {
+ 		pixelPtr[3] = newVal ? 0 : 255;
+ 	    } else {
+ 		pixelPtr[3] = newVal;
++		if (newVal > 0 && newVal < 255) {
++		    modelPtr->flags |= COMPLEX_ALPHA;
++		}
+ 	    }
+ 
+ 	    /*
+ 	     * Update the validRegion of the image
+ 	     */
+

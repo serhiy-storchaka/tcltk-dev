@@ -1,0 +1,64 @@
+Index: library/text.tcl
+==================================================================
+--- library/text.tcl
++++ library/text.tcl
+@@ -535,11 +535,15 @@
+     if {$x > [lindex $bbox 0]} {
+ 	$w mark gravity $anchorname right
+     } else {
+ 	$w mark gravity $anchorname left
+     }
+-    focus $w
++    # A disabled text widget takes the focus too, so that <<Copy>> works,
++    # unless it was explicitly excluded from focus with -takefocus 0.
++    if {[$w cget -state] eq "normal" || [$w cget -takefocus] ne "0"} {
++	focus $w
++    }
+     if {[$w cget -autoseparators]} {
+ 	$w edit separator
+     }
+ }
+ 
+
+Index: tests/text.test
+==================================================================
+--- tests/text.test
++++ tests/text.test
+@@ -7840,10 +7840,36 @@
+     event generate .t <B1-Motion> -x 50 -y -50
+     .t index sel.first
+ } -cleanup {
+     destroy .t
+ } -result {1.0}
++
++test text-39.1 {Clicking a disabled text widget takes the focus unless -takefocus 0 - Bug 1f1273f739} -setup {
++    pack [text .t] [entry .e]
++    .t insert end "Some text"
++    .t configure -state disabled
++    update
++    focus -force .e
++    update
++} -body {
++    set res {}
++    event generate .t <Button-1> -x 5 -y 5 -time 1000
++    event generate .t <ButtonRelease-1> -x 5 -y 5 -time 2000
++    lappend res [focus]
++    focus -force .e
++    .t configure -takefocus 0
++    event generate .t <Button-1> -x 5 -y 5 -time 3000
++    event generate .t <ButtonRelease-1> -x 5 -y 5 -time 4000
++    lappend res [focus]
++    .t configure -state normal
++    event generate .t <Button-1> -x 5 -y 5 -time 5000
++    event generate .t <ButtonRelease-1> -x 5 -y 5 -time 6000
++    lappend res [focus]
++} -cleanup {
++    destroy .t .e
++    unset -nocomplain res
++} -result {.t .e .t}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

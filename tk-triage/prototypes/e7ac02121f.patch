@@ -1,0 +1,83 @@
+Index: generic/ttk/ttkFrame.c
+==================================================================
+--- generic/ttk/ttkFrame.c
++++ generic/ttk/ttkFrame.c
+@@ -33,11 +33,11 @@
+     {TK_OPTION_STRING, "-padding", "padding", "Pad", NULL,
+ 	offsetof(Frame,frame.paddingObj), TCL_INDEX_NONE,
+ 	TK_OPTION_NULL_OK,0,GEOMETRY_CHANGED },
+     {TK_OPTION_RELIEF, "-relief", "relief", "Relief", NULL,
+ 	offsetof(Frame,frame.reliefObj), TCL_INDEX_NONE,
+-	TK_OPTION_NULL_OK,0,0 },
++	TK_OPTION_NULL_OK,0,GEOMETRY_CHANGED },
+     {TK_OPTION_PIXELS, "-width", "width", "Width", "0",
+ 	offsetof(Frame,frame.widthObj), TCL_INDEX_NONE,
+ 	0,0,GEOMETRY_CHANGED },
+     {TK_OPTION_PIXELS, "-height", "height", "Height", "0",
+ 	offsetof(Frame,frame.heightObj), TCL_INDEX_NONE,
+@@ -63,21 +63,34 @@
+  *	This includes the -borderWidth, plus any additional -padding.
+  */
+ static Ttk_Padding FrameMargins(Frame *framePtr)
+ {
+     Ttk_Padding margins = Ttk_UniformPadding(0);
++    Ttk_Element borderNode;
++    Tcl_Obj *objPtr;
++    int relief = TK_RELIEF_FLAT;
+ 
+     /* Check -padding:
+      */
+     if (framePtr->frame.paddingObj) {
+ 	Ttk_GetPaddingFromObj(NULL,
+ 	    framePtr->core.tkwin, framePtr->frame.paddingObj, &margins);
+     }
+ 
+-    /* Add padding for border:
++    /* Add padding for border.  If a visible relief is drawn, take it
++     * from the border element, since it may be drawn using the style's
++     * or the theme's default -borderwidth when the widget option is not set.
+      */
+-    if (framePtr->frame.borderWidthObj) {
++    objPtr = Ttk_QueryOption(framePtr->core.layout, "-relief", 0);
++    if (objPtr) {
++	Tk_GetReliefFromObj(NULL, objPtr, &relief);
++    }
++    borderNode = Ttk_FindElement(framePtr->core.layout, "border");
++    if (borderNode && relief != TK_RELIEF_FLAT) {
++	margins = Ttk_AddPadding(margins,
++	    Ttk_LayoutNodeInternalPadding(framePtr->core.layout, borderNode));
++    } else if (framePtr->frame.borderWidthObj) {
+ 	int border = 0;
+ 	Tk_GetPixelsFromObj(NULL,
+ 	    framePtr->core.tkwin, framePtr->frame.borderWidthObj, &border);
+ 	margins = Ttk_AddPadding(margins, Ttk_UniformPadding((short)border));
+     }
+
+Index: tests/ttk/ttk.test
+==================================================================
+--- tests/ttk/ttk.test
++++ tests/ttk/ttk.test
+@@ -522,10 +522,22 @@
+ } -returnCodes error -match glob -result "*read-only option*"
+ 
+ test ttk-10.5 "Check class resource again" -body {
+     .f cget -class
+ } -result Foo
++
++test ttk-10.6 "Frame margins include style -borderwidth" -setup {
++    ttk::style configure Bw3.TFrame -borderwidth 3
++    ttk::frame .bf -style Bw3.TFrame -relief groove
++    ttk::frame .bf.c -width 10 -height 10
++    pack .bf.c
++} -body {
++    update idletasks
++    list [winfo reqwidth .bf] [winfo reqheight .bf]
++} -cleanup {
++    destroy .bf
++} -result {16 16}
+ 
+ test ttk-11.1 "-state test, setup" -body {
+     ttk::button .b
+     .b instate disabled
+ } -result 0
+

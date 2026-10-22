@@ -1,0 +1,73 @@
+Index: unix/tkUnixAccessibility.c
+==================================================================
+--- unix/tkUnixAccessibility.c
++++ unix/tkUnixAccessibility.c
+@@ -74,10 +74,20 @@
+ static GList *toplevel_accessible_objects = NULL;
+ static GHashTable *tk_to_atk_map = NULL;
+ extern Tcl_HashTable *TkAccessibilityObject;
+ static GMainContext *acc_context = NULL;
+ 
++/*
++ * The variables above are shared by all threads, so ATK is only activated
++ * in the first thread that initializes Tk. Other threads get commands
++ * which do nothing. [Bug 97a7ddac25]
++ */
++
++TCL_DECLARE_MUTEX(atkThreadMutex)
++static Tcl_ThreadId atkThread;
++static bool atkThreadSet = false;
++
+ /* GLib-Tcl event loop integration. */
+ static void Atk_Event_Setup (void *clientData, int flags);
+ static void Atk_Event_Check(void *clientData, int flags);
+ static int Atk_Event_Run(Tcl_Event *event, int flags);
+ static void ignore_atk_critical(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
+@@ -1925,12 +1935,46 @@
+  *
+  *----------------------------------------------------------------------
+  */
+ 
+ #ifdef HAVE_ATK
++/* Command which does nothing, used in threads without ATK support. */
++
++static int
++TkAccessibleNoopObjCmd(
++    TCL_UNUSED(void *), /* clientData */
++    TCL_UNUSED(Tcl_Interp *),
++    TCL_UNUSED(Tcl_Size), /* objc */
++    TCL_UNUSED(Tcl_Obj *const *)) /* objv */
++{
++    return TCL_OK;
++}
++
+ int TkAtkAccessibility_Init(Tcl_Interp *interp)
+ {
++    bool isAtkThread;
++
++    Tcl_MutexLock(&atkThreadMutex);
++    if (!atkThreadSet) {
++	atkThread = Tcl_GetCurrentThread();
++	atkThreadSet = true;
++    }
++    isAtkThread = (atkThread == Tcl_GetCurrentThread());
++    Tcl_MutexUnlock(&atkThreadMutex);
++
++    if (!isAtkThread) {
++	Tcl_CreateObjCommand2(interp, "::tk::accessible::add_acc_object",
++		TkAccessibleNoopObjCmd, NULL, NULL);
++	Tcl_CreateObjCommand2(interp, "::tk::accessible::emit_selection_change",
++		TkAccessibleNoopObjCmd, NULL, NULL);
++	Tcl_CreateObjCommand2(interp, "::tk::accessible::emit_focus_change",
++		TkAccessibleNoopObjCmd, NULL, NULL);
++	Tcl_CreateObjCommand2(interp, "::tk::accessible::check_screenreader",
++		TkAccessibleNoopObjCmd, NULL, NULL);
++	return TCL_OK;
++    }
++
+     /* Initialize AT-SPI bridge. */
+     if (atk_bridge_adaptor_init(NULL, NULL) != 0) {
+ 	Tcl_SetResult(interp, "Failed to initialize AT-SPI bridge", TCL_STATIC);
+ 	return TCL_ERROR;
+     }
+

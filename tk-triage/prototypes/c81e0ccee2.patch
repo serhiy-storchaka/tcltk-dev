@@ -1,0 +1,139 @@
+Index: generic/tkFont.c
+==================================================================
+--- generic/tkFont.c
++++ generic/tkFont.c
+@@ -343,11 +343,12 @@
+ 			    Tcl_Obj *objPtr, TkFontAttributes *faPtr);
+ static void		RecomputeWidgets(TkWindow *winPtr);
+ static int		SetFontFromAny(Tcl_Interp *interp, Tcl_Obj *objPtr);
+ static void		TheWorldHasChanged(void *clientData);
+ static void		UpdateDependentFonts(TkFontInfo *fiPtr,
+-			    Tk_Window tkwin, Tcl_HashEntry *namedHashPtr);
++			    Tk_Window tkwin, Tcl_HashEntry *namedHashPtr,
++			    bool isNew);
+ 
+ /*
+  * The following structure defines the implementation of the "font" Tcl
+  * object, used for drawing. The internalRep.twoPtrValue.ptr1 field of each
+  * font object points to the TkFont structure for the font, or NULL.
+@@ -642,11 +643,11 @@
+ 	} else if (objc == 4) {
+ 	    objPtr = objv[3];
+ 	} else {
+ 	    result = ConfigAttributesObj(interp, tkwin, objc - 3, objv + 3,
+ 		    &nfPtr->fa);
+-	    UpdateDependentFonts(fiPtr, tkwin, namedHashPtr);
++	    UpdateDependentFonts(fiPtr, tkwin, namedHashPtr, false);
+ 	    return result;
+ 	}
+ 	return GetAttributeInfoObj(interp, &nfPtr->fa, objPtr);
+     }
+     case FONT_CREATE: {
+@@ -849,18 +850,21 @@
+ 
+ static void
+ UpdateDependentFonts(
+     TkFontInfo *fiPtr,		/* Info about application's fonts. */
+     Tk_Window tkwin,		/* A window in the application. */
+-    Tcl_HashEntry *namedHashPtr)/* The named font that is changing. */
++    Tcl_HashEntry *namedHashPtr,/* The named font that is changing. */
++    bool isNew)			/* The named font was just created. */
+ {
+     Tcl_HashEntry *cacheHashPtr;
+     Tcl_HashSearch search;
+     TkFont *fontPtr;
+     NamedFont *nfPtr = (NamedFont *)Tcl_GetHashValue(namedHashPtr);
++    const char *name = (const char *)
++	    Tcl_GetHashKey(&fiPtr->namedTable, namedHashPtr);
+ 
+-    if (nfPtr->refCount == 0) {
++    if (!isNew && nfPtr->refCount == 0) {
+ 	/*
+ 	 * Well nobody's using this named font, so don't have to tell any
+ 	 * widgets to recompute themselves.
+ 	 */
+ 
+@@ -869,10 +873,20 @@
+ 
+     cacheHashPtr = Tcl_FirstHashEntry(&fiPtr->fontCache, &search);
+     while (cacheHashPtr != NULL) {
+ 	for (fontPtr = (TkFont *)Tcl_GetHashValue(cacheHashPtr);
+ 		fontPtr != NULL; fontPtr = fontPtr->nextPtr) {
++	    if (isNew && fontPtr->namedHashPtr == NULL && !strcmp(name,
++		    (const char *)Tcl_GetHashKey(&fiPtr->fontCache, cacheHashPtr))) {
++		/*
++		 * The font name was used before the named font was created.
++		 * Make the font a dependent of the new named font.
++		 */
++
++		fontPtr->namedHashPtr = namedHashPtr;
++		nfPtr->refCount++;
++	    }
+ 	    if (fontPtr->namedHashPtr == namedHashPtr) {
+ 		TkpGetFontFromAttributes(fontPtr, tkwin, &nfPtr->fa);
+ 		if (!fiPtr->updatePending) {
+ 		    fiPtr->updatePending = 1;
+ 		    Tcl_DoWhenIdle(TheWorldHasChanged, fiPtr);
+@@ -990,20 +1004,26 @@
+ 	 * to get redisplayed.
+ 	 */
+ 
+ 	nfPtr->fa = *faPtr;
+ 	nfPtr->deletePending = 0;
+-	UpdateDependentFonts(fiPtr, tkwin, namedHashPtr);
++	UpdateDependentFonts(fiPtr, tkwin, namedHashPtr, false);
+ 	return TCL_OK;
+     }
+ 
+     nfPtr = (NamedFont *)Tcl_Alloc(sizeof(NamedFont));
+-    nfPtr->deletePending = 0;
+     Tcl_SetHashValue(namedHashPtr, nfPtr);
+     nfPtr->fa = *faPtr;
+     nfPtr->refCount = 0;
+     nfPtr->deletePending = 0;
++
++    /*
++     * Widgets may already use the name of the new named font (it was
++     * interpreted as a font description), they need to get redisplayed.
++     */
++
++    UpdateDependentFonts(fiPtr, tkwin, namedHashPtr, true);
+     return TCL_OK;
+ }
+ 
+ /*
+  *---------------------------------------------------------------------------
+
+Index: tests/font.test
+==================================================================
+--- tests/font.test
++++ tests/font.test
+@@ -2650,10 +2650,27 @@
+     set results
+ } -cleanup {
+     destroy $l
+     unset -nocomplain ::results
+ } -result {{1 1} {1 1} {1 1} {1 1}}
++
++test font-47.4 {Bug c81e0ccee2 - named font created after its name was used} -setup {
++    catch {font delete LateFont}
++    font create EarlyFont -family Helvetica -size 40
++    label .t.l1 -font EarlyFont -text LARGE
++} -body {
++    label .t.l2 -font LateFont -text LARGE
++    pack .t.l1 .t.l2
++    update
++    set before [expr {[winfo reqheight .t.l2] == [winfo reqheight .t.l1]}]
++    font create LateFont -family Helvetica -size 40
++    update
++    list $before [expr {[winfo reqheight .t.l2] == [winfo reqheight .t.l1]}]
++} -cleanup {
++    destroy .t.l1 .t.l2
++    font delete EarlyFont LateFont
++} -result {0 1}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

@@ -1,0 +1,72 @@
+Index: generic/tkGrab.c
+==================================================================
+--- generic/tkGrab.c
++++ generic/tkGrab.c
+@@ -744,13 +744,19 @@
+ 	 * 1. Detect these events and ignore them except for windows above the
+ 	 *    grab window.
+ 	 * 2. Allow Enter and Leave events to pass through the windows above
+ 	 *    the grab window, but never let them end up with the pointer *in*
+ 	 *    one of those windows.
++	 *
++	 * Events that we generate ourselves already describe the transition
++	 * caused by a grab change, and must be delivered even if the new grab
++	 * window has become current before they are processed (for example
++	 * when events are serviced while waiting for a toplevel to be mapped).
+ 	 */
+ 
+-	if (dispPtr->grabWinPtr != NULL) {
++	if ((dispPtr->grabWinPtr != NULL)
++		&& (eventPtr->xcrossing.send_event != GENERATED_GRAB_EVENT_MAGIC)) {
+ 	    if (outsideGrabTree && appGrabbed) {
+ 		if (!ancestorOfGrab) {
+ 		    return false;
+ 		}
+ 		switch (eventPtr->xcrossing.detail) {
+
+Index: tests/menu.test
+==================================================================
+--- tests/menu.test
++++ tests/menu.test
+@@ -4313,10 +4313,40 @@
+     .m add command -label 3
+     .m index last
+ } -cleanup {
+     destroy .m
+ } -result {2}
++
++test menu-42.1 {tk_popup followed by postcascade generates Leave - bug 873655ffff} -setup {
++    destroy .top .m
++    set log {}
++} -constraints {x11} -body {
++    toplevel .top
++    wm geometry .top +100+100
++    button .top.b -text Button
++    pack .top.b -padx 50 -pady 50
++    menu .m -tearoff 0
++    menu .m.c -tearoff 0
++    .m add cascade -menu .m.c -label cascade
++    .m.c add command -label Hi
++    update
++    event generate .top.b <Motion> -warp 1 -x 5 -y 5
++    controlPointerWarpTiming
++    update
++    bind .top.b <Leave> {lappend log %m}
++    tk_popup .m [winfo rootx .top.b] \
++	    [expr {[winfo rooty .top.b] + [winfo height .top.b]}]
++    .m activate 0
++    .m postcascade 0
++    update
++    set log
++} -cleanup {
++    .m unpost
++    grab release .m
++    destroy .top .m
++    unset log
++} -result {NotifyGrab}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

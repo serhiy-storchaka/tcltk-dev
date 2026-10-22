@@ -1,0 +1,132 @@
+Index: library/button.tcl
+==================================================================
+--- library/button.tcl
++++ library/button.tcl
+@@ -249,17 +249,28 @@
+     variable ::tk::Priv
+     if {$Priv(buttonWindow) eq $w} {
+ 	set Priv(buttonWindow) ""
+ 
+ 	# Restore the button's relief if it was cached.
++
++	# If the mouse is still over the button, switch back to the
++	# -overrelief value, if any.
+ 
+ 	if {[info exists Priv($w,relief)]} {
+ 	    if {[info exists Priv($w,prelief)] && \
+ 		    $Priv($w,prelief) eq [$w cget -relief]} {
+-		$w configure -relief $Priv($w,relief)
++		if {$Priv(window) eq $w && \
++			[set over [$w cget -overrelief]] ne ""} {
++		    $w configure -relief $over
++		    set Priv($w,prelief) $over
++		} else {
++		    $w configure -relief $Priv($w,relief)
++		    unset Priv($w,relief) Priv($w,prelief)
++		}
++	    } else {
++		unset -nocomplain Priv($w,relief) Priv($w,prelief)
+ 	    }
+-	    unset -nocomplain Priv($w,relief) Priv($w,prelief)
+ 	}
+ 
+ 	# Clean up the after event from the auto-repeater
+ 	after cancel $Priv(afterId)
+ 
+@@ -432,17 +443,28 @@
+     variable ::tk::Priv
+     if {$w eq $Priv(buttonWindow)} {
+ 	set Priv(buttonWindow) ""
+ 
+ 	# Restore the button's relief if it was cached.
++
++	# If the mouse is still over the button, switch back to the
++	# -overrelief value, if any.
+ 
+ 	if {[info exists Priv($w,relief)]} {
+ 	    if {[info exists Priv($w,prelief)] && \
+ 		    $Priv($w,prelief) eq [$w cget -relief]} {
+-		$w configure -relief $Priv($w,relief)
++		if {$Priv(window) eq $w && \
++			[set over [$w cget -overrelief]] ne ""} {
++		    $w configure -relief $over
++		    set Priv($w,prelief) $over
++		} else {
++		    $w configure -relief $Priv($w,relief)
++		    unset Priv($w,relief) Priv($w,prelief)
++		}
++	    } else {
++		unset -nocomplain Priv($w,relief) Priv($w,prelief)
+ 	    }
+-	    unset -nocomplain Priv($w,relief) Priv($w,prelief)
+ 	}
+ 
+ 	# Clean up the after event from the auto-repeater
+ 	after cancel $Priv(afterId)
+ 
+@@ -559,17 +581,28 @@
+     if {$Priv(buttonWindow) eq $w} {
+ 	set Priv(buttonWindow) ""
+ 	$w configure -state normal
+ 
+ 	# Restore the button's relief if it was cached.
++
++	# If the mouse is still over the button, switch back to the
++	# -overrelief value, if any.
+ 
+ 	if {[info exists Priv($w,relief)]} {
+ 	    if {[info exists Priv($w,prelief)] && \
+ 		    $Priv($w,prelief) eq [$w cget -relief]} {
+-		$w configure -relief $Priv($w,relief)
++		if {$Priv(window) eq $w && \
++			[set over [$w cget -overrelief]] ne ""} {
++		    $w configure -relief $over
++		    set Priv($w,prelief) $over
++		} else {
++		    $w configure -relief $Priv($w,relief)
++		    unset Priv($w,relief) Priv($w,prelief)
++		}
++	    } else {
++		unset -nocomplain Priv($w,relief) Priv($w,prelief)
+ 	    }
+-	    unset -nocomplain Priv($w,relief) Priv($w,prelief)
+ 	}
+ 
+ 	# Clean up the after event from the auto-repeater
+ 	after cancel $Priv(afterId)
+ 
+
+Index: tests/button.test
+==================================================================
+--- tests/button.test
++++ tests/button.test
+@@ -4109,10 +4109,28 @@
+     pack .b
+     bind .b <Configure> {unset var}
+     update
+     destroy .b
+ } {}
++
++test button-16.1 {-overrelief is restored after click, bug [1100518fff]} -setup {
++    button .b -text B -relief flat -overrelief raised
++    pack .b
++    update
++} -body {
++    set res {}
++    event generate .b <Enter> -x 5 -y 5
++    lappend res [.b cget -relief]
++    event generate .b <ButtonPress-1> -x 5 -y 5
++    lappend res [.b cget -relief]
++    event generate .b <ButtonRelease-1> -x 5 -y 5
++    lappend res [.b cget -relief]
++    event generate .b <Leave>
++    lappend res [.b cget -relief]
++} -cleanup {
++    destroy .b
++} -result {raised sunken raised flat}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

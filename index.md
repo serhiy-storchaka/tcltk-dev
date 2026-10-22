@@ -7,3 +7,4 @@ Practical notes for working on the Tcl and Tk core: building, testing, version c
 - [Fossil cheat sheet](docs/fossil-cheatsheet.md): everyday Fossil commands for core work, with a Git translation table
 - [Building old releases](docs/old-versions.md): flags and source fixes that build Tcl/Tk 8.5.0–8.6.18 with current compilers
 - [Tcl bug triage](tcl-triage/): reproduction and status of the open Tcl bug tickets, 2026-10
+- [Tk bug triage](tk-triage/): reproduction and status of the open Tk bug tickets, 2026-09/10

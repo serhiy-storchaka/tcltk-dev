@@ -1,0 +1,90 @@
+Index: library/ttk/scrollbar.tcl
+==================================================================
+--- library/ttk/scrollbar.tcl
++++ library/ttk/scrollbar.tcl
+@@ -64,27 +64,46 @@
+ 	}
+ 	*trough {
+ 	    set f [$w fraction $x $y]
+ 	    if {$f < [lindex [$w get] 0]} {
+ 		# Clicked in upper/left trough
+-		ttk::Repeatedly Scroll $w -1 pages
++		ttk::Repeatedly ScrollPages $w -1
+ 	    } elseif {$f > [lindex [$w get] 1]} {
+ 		# Clicked in lower/right trough
+-		ttk::Repeatedly Scroll $w 1 pages
++		ttk::Repeatedly ScrollPages $w 1
+ 	    } else {
+ 		# Clicked on thumb (???)
+ 		set State(first) [lindex [$w get] 0]
+ 	    }
+ 	}
+     }
+ }
++
++## ScrollPages --
++#	Auto-repeat callback for clicks in the trough: scroll by pages
++#	until the thumb reaches the pointer.
++#
++proc ttk::scrollbar::ScrollPages {w n} {
++    variable State
++    if {![winfo exists $w] || ![info exists State(xPress)]} {
++	return
++    }
++    set f [$w fraction $State(xPress) $State(yPress)]
++    lassign [$w get] first last
++    if {($n < 0 && $f < $first) || ($n > 0 && $f > $last)} {
++	Scroll $w $n pages
++    }
++}
+ 
+ proc ttk::scrollbar::Drag {w x y} {
+     variable State
+     if {![info exists State(first)]} {
+ 	# Initial buttonpress was not on the thumb,
+-	# or something screwy has happened.  In either case, ignore:
++	# or something screwy has happened.  In either case, just
++	# track the pointer for ScrollPages:
++	set State(xPress) $x
++	set State(yPress) $y
+ 	return;
+     }
+     set xDelta [expr {$x - $State(xPress)}]
+     set yDelta [expr {$y - $State(yPress)}]
+     Moveto $w [expr {$State(first) + [$w delta $xDelta $yDelta]}]
+
+Index: tests/ttk/scrollbar.test
+==================================================================
+--- tests/ttk/scrollbar.test
++++ tests/ttk/scrollbar.test
+@@ -148,10 +148,29 @@
+     after 200 {set eventprocessed 1} ; vwait eventprocessed
+     .t index @0,0
+ } -cleanup {
+     destroy .t .s
+ } -result {1.3}
++
++test scrollbar-10.3 {Holding Button-1 in the trough stops at the pointer} -setup {
++    destroy .l .s
++} -body {
++    pack [listbox .l -height 5 -yscrollcommand {.s set}] -side left
++    for {set i 0} {$i < 100} {incr i} {.l insert end "Line $i"}
++    pack [ttk::scrollbar .s -command {.l yview}] -side left -fill y
++    update
++    set x [expr {[winfo width .s] / 2}]
++    set y [expr {[winfo height .s] * 2 / 5}]
++    set f [.s fraction $x $y]
++    event generate .s <Button-1> -x $x -y $y
++    after 3000 {set done 1} ; vwait done
++    event generate .s <ButtonRelease-1> -x $x -y $y
++    lassign [.s get] first last
++    list [expr {$first > 0.1}] [expr {$last < 0.6}]
++} -cleanup {
++    destroy .l .s
++} -result {1 1}
+ 
+ test scrollbar-11.1 "style command" -body {
+     ttk::scrollbar .wv  ; # default is  -orient vertical
+     ttk::scrollbar .wh -orient horizontal
+     list [.wv cget -style] [.wv style] [winfo class .wv] \
+

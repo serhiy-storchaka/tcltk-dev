@@ -1,0 +1,24 @@
+Index: doc/bind.n
+==================================================================
+--- doc/bind.n
++++ doc/bind.n
+@@ -523,11 +523,17 @@
+ for \fBCirculate\fR and \fBCirculateRequest\fR events.
+ .IP \fB%s\fR 5
+ The \fIstate\fR field from the event.  For \fBButton\fR,
+ \fBButtonRelease\fR, \fBEnter\fR, \fBKey\fR, \fBKeyRelease\fR,
+ \fBLeave\fR, and \fBMotion\fR events, a decimal string
+-is substituted.  For \fBVisibility\fR, one of the strings
++is substituted.  It is a bit mask in which \fBShift\fR is 1,
++\fBLock\fR is 2, \fBControl\fR is 4, \fBMod1\fR through \fBMod5\fR
++are 8 through 128, and \fBButton1\fR through \fBButton5\fR are
++256 through 4096.  The bit used for the \fBAlt\fR key is platform
++dependent: on X11 it is the modifier to which \fBAlt_L\fR is mapped
++(usually \fBMod1\fR, 8), on macOS it is \fBMod2\fR (16), and on
++Windows it is 131072.  For \fBVisibility\fR, one of the strings
+ \fBVisibilityUnobscured\fR, \fBVisibilityPartiallyObscured\fR,
+ and \fBVisibilityFullyObscured\fR is substituted.
+ For \fBProperty\fR events, substituted with
+ either the string \fBNewValue\fR (indicating that the property
+ has been created or modified) or \fBDelete\fR (indicating that
+

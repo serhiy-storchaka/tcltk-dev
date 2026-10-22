@@ -1,0 +1,59 @@
+Index: library/dialog.tcl
+==================================================================
+--- library/dialog.tcl
++++ library/dialog.tcl
+@@ -139,14 +139,14 @@
+     # that destroys the window, such as its parent window being destroyed.
+ 
+     bind $w <Destroy> {set ::tk::Priv(button) -1}
+ 
+     # 6. Withdraw the window, then update all the geometry information
+-    # so we know how big it wants to be, then center the window in the
+-    # display (Motif style) and de-iconify it.
++    # so we know how big it wants to be, then center the window over its
++    # parent (or in the display if the parent is not mapped) and de-iconify it.
+ 
+-    ::tk::PlaceWindow $w
++    ::tk::PlaceWindow $w widget [winfo parent $w]
+     tkwait visibility $w
+ 
+     # 7. Set a grab and claim the focus too.
+ 
+     if {$default >= 0} {
+
+Index: tests/dialog.test
+==================================================================
+--- tests/dialog.test
++++ tests/dialog.test
+@@ -78,10 +78,30 @@
+     after cancel $x
+     return $res
+ } -cleanup {
+     destroy .b
+ } -result -1
++test dialog-2.4 {tk_dialog is centered over its parent} -setup {
++    toplevel .t
++    wm geometry .t 300x200+[expr {[winfo screenwidth .t] - 350}]+50
++    update
++} -body {
++    set x [after 5000 [list set tk::Priv(button) "no response"]]
++    after 100 {
++	set res [expr {abs(([winfo rootx .t.d] + [winfo width .t.d]/2) -
++		([winfo rootx .t] + [winfo width .t]/2)) < 5 &&
++		abs(([winfo rooty .t.d] + [winfo height .t.d]/2) -
++		([winfo rooty .t] + [winfo height .t]/2)) < 5}]
++	destroy .t.d
++    }
++    tk_dialog .t.d foo foo info 0 click
++    after cancel $x
++    return $res
++} -cleanup {
++    destroy .t
++    unset -nocomplain res x
++} -result 1
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

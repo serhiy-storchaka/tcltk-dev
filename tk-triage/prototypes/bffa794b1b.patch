@@ -1,0 +1,74 @@
+Index: tests/unixButton.test
+==================================================================
+--- tests/unixButton.test
++++ tests/unixButton.test
+@@ -285,10 +285,26 @@
+     after 400
+     set on
+ } -cleanup {
+     deleteWindows
+ } -result 1
++
++test unixbutton-3.1 {TkpDisplayButton: huge widget, bug bffa794b1b} -constraints {
++    unix
++} -setup {
++    deleteWindows
++} -body {
++    label .l -text Huge -padx 20000 -pady 20000
++    grid .l
++    update
++    button .b -text Huge -padx 40000 -pady 40000
++    grid .b
++    update
++    list [expr {[winfo width .l] > 40000}] [expr {[winfo width .b] > 65536}]
++} -cleanup {
++    deleteWindows
++} -result {1 1}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+
+Index: unix/tkUnixXId.c
+==================================================================
+--- unix/tkUnixXId.c
++++ unix/tkUnixXId.c
+@@ -15,11 +15,12 @@
+  *----------------------------------------------------------------------
+  *
+  * Tk_GetPixmap --
+  *
+  *	Same as the XCreatePixmap function except that it manages resource
+- *	identifiers better.
++ *	identifiers better and clips the dimensions to the range supported
++ *	by the X protocol.
+  *
+  * Results:
+  *	Returns a new pixmap.
+  *
+  * Side effects:
+@@ -33,10 +34,22 @@
+     Display *display,		/* Display for new pixmap. */
+     Drawable d,			/* Drawable where pixmap will be used. */
+     int width, int height,	/* Dimensions of pixmap. */
+     int depth)			/* Bits per pixel for pixmap. */
+ {
++    /*
++     * X servers refuse pixmaps with dimensions larger than 32767 (BadAlloc),
++     * and larger values are truncated to 16 bits by the protocol. Drawing
++     * outside of the clipped area is lost, but this is better than a crash.
++     */
++
++    if (width > 32767) {
++	width = 32767;
++    }
++    if (height > 32767) {
++	height = 32767;
++    }
+     return XCreatePixmap(display, d, (unsigned) width, (unsigned) height,
+ 	    (unsigned) depth);
+ }
+ 
+ /*
+

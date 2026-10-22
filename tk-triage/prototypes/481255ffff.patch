@@ -1,0 +1,39 @@
+Index: generic/tkImgUtil.c
+==================================================================
+--- generic/tkImgUtil.c
++++ generic/tkImgUtil.c
+@@ -49,10 +49,12 @@
+     }
+ 
+     /*
+-     * Compute line width for output data buffer.
++     * Compute line width for output data buffer. It must not depend on the
++     * padding of the source lines: the consumer (e.g. CreateBitmap) expects
++     * lines of the minimal width padded to the given alignment.
+      */
+ 
+-    dataWidth = image->bytes_per_line;
++    dataWidth = (image->width + 7) / 8;
+     if (dataWidth % alignment) {
+ 	dataWidth += (alignment - (dataWidth % alignment));
+     }
+Index: win/tkWinDraw.c
+==================================================================
+--- win/tkWinDraw.c
++++ win/tkWinDraw.c
+@@ -541,8 +541,13 @@
+ 	    bitmap = CreateBitmap(image->width, image->height, 1, 1,
+ 		    image->data);
+ 	}
+-	SetTextColor(dc, gc->foreground);
+-	SetBkColor(dc, gc->background);
++	/*
++	 * When a monochrome bitmap is blitted to a color DC, 0 bits get the
++	 * text color and 1 bits the background color, the opposite of X.
++	 */
++
++	SetTextColor(dc, gc->background);
++	SetBkColor(dc, gc->foreground);
+     } else {
+ 	int i, usePalette;
+ 

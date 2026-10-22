@@ -1,0 +1,19 @@
+Index: doc/ttk_widget.n
+==================================================================
+--- doc/ttk_widget.n
++++ doc/ttk_widget.n
+@@ -33,10 +33,13 @@
+ Determines whether the window accepts the focus during keyboard traversal.
+ Either \fB0\fR, \fB1\fR, a command prefix (to which the widget path
+ is appended, and which should return \fB0\fR or \fB1\fR),
+ or the empty string.
+ See \fIoptions(n)\fR in the Tk reference manual for the full description.
++In addition, the default bindings of some widgets (e.g.\& \fBttk::button\fR,
++\fBttk::checkbutton\fR and \fBttk::radiobutton\fR) use this option to
++decide whether a mouse click also sets the keyboard focus to the widget.
+ .OP \-style style Style
+ May be used to specify a custom widget style.
+ .SH "SCROLLABLE WIDGET OPTIONS"
+ The following options are supported by widgets that
+ are controllable by a scrollbar.
+

@@ -1,0 +1,137 @@
+Index: doc/wm.n
+==================================================================
+--- doc/wm.n
++++ doc/wm.n
+@@ -568,11 +568,11 @@
+ .TP
+ \fBwm iconphoto \fIwindow\fR ?\fB\-default\fR? \fIimage1\fR ?\fIimage2 ...\fR?
+ .
+ Sets the titlebar icon for \fIwindow\fR based on the named photo images.
+ If \fB\-default\fR is specified, this is applied to all future created
+-toplevels as well.  The data in the images is taken as a snapshot at the
++toplevels of the application (interpreter) as well.  The data in the images is taken as a snapshot at the
+ time of invocation.  If the images are later changed, this is not
+ reflected to the titlebar icons.  Multiple images are accepted to allow
+ different images sizes (e.g., 16x16 and 32x32) to be provided. The window
+ manager may scale provided icons to an appropriate size.
+ .RS
+
+Index: generic/tkInt.h
+==================================================================
+--- generic/tkInt.h
++++ generic/tkInt.h
+@@ -563,12 +563,10 @@
+     unsigned int flags;		/* Various flag values: these are all defined
+ 				 * in below. */
+     TkCaret caret;		/* Information about the caret for this
+ 				 * display. This is not a pointer. */
+ 
+-    int iconDataSize;		/* Size of default iconphoto image data. */
+-    unsigned char *iconDataPtr;	/* Default iconphoto image data, if set. */
+     int ximGeneration;          /* Used to invalidate XIC */
+ } TkDisplay;
+ 
+ /*
+  * Flag values for TkDisplay flags.
+@@ -693,10 +691,13 @@
+ 				 * down. For Tcl 9.1+ */
+     unsigned int nbTabPosition, nbTabPlacement;
+ 				/* Information used by ttk::notebook. */
+     int troughInnerX, troughInnerY, troughInnerWidth, troughInnerHeight;
+ 				/* Information used by ttk::scale. */
++    unsigned char *iconDataPtr;	/* Default iconphoto image data, if set
++				 * (X11 only). */
++    int iconDataSize;		/* Size of default iconphoto image data. */
+ } TkMainInfo;
+ 
+ /*
+  * Tk keeps the following data structure for each of it's builtin bitmaps.
+  * This structure is only used by tkBitmap.c and other platform specific
+
+Index: generic/tkWindow.c
+==================================================================
+--- generic/tkWindow.c
++++ generic/tkWindow.c
+@@ -896,10 +896,12 @@
+     Tcl_InitHashTable(&mainPtr->imageTable, TCL_STRING_KEYS);
+     mainPtr->strictMotif = 0;
+     mainPtr->alwaysShowSelection = 0;
+     mainPtr->tclUpdateObjProc = NULL;
+     mainPtr->tclUpdateObjProc2 = NULL;
++    mainPtr->iconDataPtr = NULL;
++    mainPtr->iconDataSize = 0;
+     if (Tcl_LinkVar(interp, "tk_strictMotif", &mainPtr->strictMotif,
+ 	    TCL_LINK_BOOLEAN) != TCL_OK) {
+ 	Tcl_ResetResult(interp);
+     }
+     if (Tcl_CreateNamespace(interp, "::tk", NULL, NULL) == NULL) {
+@@ -1700,10 +1702,13 @@
+ 	     * in an X error
+ 	     */
+ 
+ 	    if (winPtr->flags & TK_EMBEDDED) {
+ 		XSync(winPtr->display, False);
++	    }
++	    if (winPtr->mainPtr->iconDataPtr != NULL) {
++		Tcl_Free(winPtr->mainPtr->iconDataPtr);
+ 	    }
+ 	    Tcl_Free(winPtr->mainPtr);
+ 
+ 	    /*
+ 	     * If no other applications are using the display, close the
+
+Index: unix/tkUnixWm.c
+==================================================================
+--- unix/tkUnixWm.c
++++ unix/tkUnixWm.c
+@@ -538,14 +538,10 @@
+ 	if (wmPtr->clientMachine != NULL) {
+ 	    Tcl_Free(wmPtr->clientMachine);
+ 	}
+ 	Tcl_Free(wmPtr);
+     }
+-    if (dispPtr->iconDataPtr != NULL) {
+-	Tcl_Free(dispPtr->iconDataPtr);
+-	dispPtr->iconDataPtr = NULL;
+-    }
+ }
+ 
+ /*
+  *--------------------------------------------------------------
+  *
+@@ -2542,15 +2538,15 @@
+     if (wmPtr->iconDataPtr != NULL) {
+ 	Tcl_Free(wmPtr->iconDataPtr);
+ 	wmPtr->iconDataPtr = NULL;
+     }
+     if (isDefault) {
+-	if (winPtr->dispPtr->iconDataPtr != NULL) {
+-	    Tcl_Free(winPtr->dispPtr->iconDataPtr);
++	if (winPtr->mainPtr->iconDataPtr != NULL) {
++	    Tcl_Free(winPtr->mainPtr->iconDataPtr);
+ 	}
+-	winPtr->dispPtr->iconDataPtr = (unsigned char *) iconPropertyData;
+-	winPtr->dispPtr->iconDataSize = size;
++	winPtr->mainPtr->iconDataPtr = (unsigned char *) iconPropertyData;
++	winPtr->mainPtr->iconDataSize = size;
+     } else {
+ 	wmPtr->iconDataPtr = (unsigned char *) iconPropertyData;
+ 	wmPtr->iconDataSize = size;
+     }
+     if (!(wmPtr->flags & WM_NEVER_MAPPED)) {
+@@ -5028,12 +5024,12 @@
+     WmInfo *wmPtr = winPtr->wmInfoPtr;
+     unsigned char *data = wmPtr->iconDataPtr;
+     int size = wmPtr->iconDataSize;
+ 
+     if (data == NULL) {
+-	data = winPtr->dispPtr->iconDataPtr;
+-	size = winPtr->dispPtr->iconDataSize;
++	data = winPtr->mainPtr->iconDataPtr;
++	size = winPtr->mainPtr->iconDataSize;
+     }
+     if (data != NULL) {
+ 	SetWindowProperty(wmPtr->wrapperPtr, "_NET_WM_ICON", XA_CARDINAL, 32,
+ 		data, size);
+     }
+

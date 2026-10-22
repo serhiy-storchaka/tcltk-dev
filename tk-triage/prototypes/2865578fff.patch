@@ -1,0 +1,104 @@
+Index: unix/tkUnixWm.c
+==================================================================
+--- unix/tkUnixWm.c
++++ unix/tkUnixWm.c
+@@ -339,10 +339,11 @@
+  */
+ 
+ static bool		ComputeReparentGeometry(WmInfo *wmPtr);
+ static void		ConfigureEvent(WmInfo *wmPtr,
+ 			    XConfigureEvent *eventPtr);
++static void		LayoutWrapper(WmInfo *wmPtr);
+ static void		CreateWrapper(WmInfo *wmPtr);
+ static void		GetMaxSize(WmInfo *wmPtr, int *maxWidthPtr,
+ 			    int *maxHeightPtr);
+ static void		MenubarDestroyProc(void *clientData,
+ 			    XEvent *eventPtr);
+@@ -4001,11 +4002,10 @@
+ 				 * wmPtr->wrapperPtr. */
+ {
+     TkWindow *wrapperPtr = wmPtr->wrapperPtr;
+     TkWindow *winPtr = wmPtr->winPtr;
+     TkDisplay *dispPtr = wmPtr->winPtr->dispPtr;
+-    Tk_ErrorHandler handler;
+ 
+     /*
+      * Update size information from the event. There are a couple of tricky
+      * points here:
+      *
+@@ -4018,11 +4018,12 @@
+      *    stop tracking geometry manager requests).
+      */
+ 
+     if (((wrapperPtr->changes.width != configEventPtr->width)
+ 	    || (wrapperPtr->changes.height != configEventPtr->height))
+-	    && !(wmPtr->flags & WM_SYNC_PENDING)) {
++	    && !(wmPtr->flags & WM_SYNC_PENDING)
++	    && !wmPtr->reqState.fullscreen && !wmPtr->attributes.fullscreen) {
+ 	if (dispPtr->flags & TK_DISPLAY_WM_TRACING) {
+ 	    printf("TopLevelEventProc: user changed %s size to %dx%d\n",
+ 		    winPtr->pathName, configEventPtr->width,
+ 		    configEventPtr->height);
+ 	}
+@@ -4132,10 +4133,39 @@
+ 	if (wmPtr->flags & WM_NEGATIVE_Y) {
+ 	    wmPtr->y = wmPtr->vRootHeight - (wmPtr->y + wmPtr->parentHeight);
+ 	}
+     }
+ 
++    LayoutWrapper(wmPtr);
++}
++
++/*
++ *----------------------------------------------------------------------
++ *
++ * LayoutWrapper --
++ *
++ *	Positions the toplevel and its menubar within the current size of the
++ *	wrapper window.
++ *
++ * Results:
++ *	None.
++ *
++ * Side effects:
++ *	The toplevel and menubar are moved/resized, and a ConfigureNotify
++ *	event is synthesized for the toplevel.
++ *
++ *----------------------------------------------------------------------
++ */
++
++static void
++LayoutWrapper(
++    WmInfo *wmPtr)		/* Information about toplevel window. */
++{
++    TkWindow *wrapperPtr = wmPtr->wrapperPtr;
++    TkWindow *winPtr = wmPtr->winPtr;
++    Tk_ErrorHandler handler;
++
+     /*
+      * Make sure that the toplevel and menubar are properly positioned within
+      * the wrapper. If the menuHeight happens to be zero, we'll get a BadValue
+      * X error that we want to ignore [Bug: 3377]
+      */
+@@ -4777,10 +4807,20 @@
+ 	if (childPtr != NULL) {
+ 	    Tk_GeometryRequest(childPtr, width, height);
+ 	}
+ 	return;
+     }
++
++    /*
++     * The window manager controls the size of a fullscreen window. Don't
++     * resize the wrapper, just lay out the menubar and toplevel within it.
++     */
++
++    if (wmPtr->attributes.fullscreen) {
++	LayoutWrapper(wmPtr);
++	return;
++    }
+     serial = NextRequest(winPtr->display);
+     height += wmPtr->menuHeight;
+     if (wmPtr->flags & WM_MOVE_PENDING) {
+ 	if ((x + wmPtr->xInParent == winPtr->changes.x) &&
+ 		(y+wmPtr->yInParent+wmPtr->menuHeight == winPtr->changes.y)
+

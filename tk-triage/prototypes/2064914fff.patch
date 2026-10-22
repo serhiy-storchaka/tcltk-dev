@@ -1,0 +1,122 @@
+Index: generic/ttk/ttkButton.c
+==================================================================
+--- generic/ttk/ttkButton.c
++++ generic/ttk/ttkButton.c
+@@ -872,11 +872,11 @@
+ TTK_BEGIN_LAYOUT(MenubuttonLayout)
+     TTK_GROUP("Menubutton.border", TTK_FILL_BOTH,
+ 	TTK_GROUP("Menubutton.focus", TTK_FILL_BOTH,
+ 	    TTK_NODE("Menubutton.indicator", TTK_PACK_RIGHT)
+ 	    TTK_GROUP("Menubutton.padding", TTK_FILL_X,
+-		TTK_NODE("Menubutton.label", TTK_PACK_LEFT))))
++		TTK_NODE("Menubutton.label", TTK_FILL_BOTH))))
+ TTK_END_LAYOUT
+ 
+ /*------------------------------------------------------------------------
+  * +++ Initialization.
+  */
+
+Index: generic/ttk/ttkClassicTheme.c
+==================================================================
+--- generic/ttk/ttkClassicTheme.c
++++ generic/ttk/ttkClassicTheme.c
+@@ -1143,11 +1143,11 @@
+ TTK_LAYOUT("TMenubutton",
+     TTK_GROUP("Menubutton.highlight", TTK_FILL_BOTH,
+ 	TTK_GROUP("Menubutton.border", TTK_FILL_BOTH,
+ 	    TTK_NODE("Menubutton.indicator", TTK_PACK_RIGHT)
+ 	    TTK_GROUP("Menubutton.padding", TTK_FILL_X,
+-		TTK_NODE("Menubutton.label", 0)))))
++		TTK_NODE("Menubutton.label", TTK_FILL_BOTH)))))
+ 
+ /* "classic" entry, includes highlight border */
+ TTK_LAYOUT("TEntry",
+     TTK_GROUP("Entry.highlight", TTK_FILL_BOTH,
+ 	TTK_GROUP("Entry.field", TTK_FILL_BOTH|TTK_BORDER,
+
+Index: library/ttk/classicTheme.tcl
+==================================================================
+--- library/ttk/classicTheme.tcl
++++ library/ttk/classicTheme.tcl
+@@ -66,11 +66,11 @@
+ 		    pressed $colors(-frame) \
+ 		    alternate $colors(-altindicator) \
+ 		    selected $colors(-indicator)] \
+ 	    -indicatorrelief {alternate raised  selected sunken  pressed sunken}
+ 
+-	ttk::style configure TMenubutton -relief raised \
++	ttk::style configure TMenubutton -relief raised -anchor center \
+ 	    -indicatormargin {3.75p 0} -padding {3m 1m}
+ 
+ 	ttk::style configure TEntry -padding 0.75p -font TkTextFont
+ 	ttk::style map TEntry -fieldbackground \
+ 		[list readonly $colors(-frame) disabled $colors(-frame)]
+
+Index: library/ttk/vistaTheme.tcl
+==================================================================
+--- library/ttk/vistaTheme.tcl
++++ library/ttk/vistaTheme.tcl
+@@ -17,11 +17,11 @@
+ 	ttk::style map "." -foreground {disabled SystemGrayText}
+ 
+ 	ttk::style configure TButton -anchor center -padding 0.75p -width -11
+ 	ttk::style configure TRadiobutton -padding 1.5p
+ 	ttk::style configure TCheckbutton -padding 1.5p
+-	ttk::style configure TMenubutton -padding {6p 3p}
++	ttk::style configure TMenubutton -anchor center -padding {6p 3p}
+ 
+ 	ttk::style element create Menubutton.dropdown vsapi \
+ 	    TOOLBAR 4 {{selected active} 6 {selected !active} 5
+ 		disabled 4 pressed 3 active 2 {} 1} \
+ 	    -syssize {SM_CXVSCROLL SM_CYVSCROLL}
+
+Index: tests/ttk/layout.test
+==================================================================
+--- tests/ttk/layout.test
++++ tests/ttk/layout.test
+@@ -43,10 +43,26 @@
+ } -cleanup { destroy .b } -result [list 24 24]
+ 
+ test layout-2 "Empty -children not allowed" -body {
+     ttk::style layout Test.Tentry {Entry.field -children {}}
+ } -returnCodes error -result {Invalid -children value}
++
++test layout-3.1 "Menubutton label fills the available width" -setup {
++    ttk::style theme use default
++} -body {
++    ttk::menubutton .mb -text somestring -width 1
++    pack .mb -fill x
++    wm geometry . 300x100
++    update
++    # the label must not be clipped to the width requested by -width 1
++    set y [expr {[winfo height .mb] / 2}]
++    set x [expr {[winfo width .mb] / 2}]
++    .mb identify element $x $y
++} -cleanup {
++    destroy .mb
++    wm geometry . {}
++} -result label
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+
+Index: win/ttkWinVistaTheme.c
+==================================================================
+--- win/ttkWinVistaTheme.c
++++ win/ttkWinVistaTheme.c
+@@ -1138,11 +1138,11 @@
+ 
+ TTK_LAYOUT("TMenubutton",
+     TTK_NODE("Menubutton.dropdown", TTK_PACK_RIGHT|TTK_FILL_Y)
+     TTK_GROUP("Menubutton.button", TTK_FILL_BOTH,
+ 	    TTK_GROUP("Menubutton.padding", TTK_FILL_X,
+-		TTK_NODE("Menubutton.label", 0))))
++		TTK_NODE("Menubutton.label", TTK_FILL_BOTH))))
+ 
+ TTK_LAYOUT("Horizontal.TScrollbar",
+     TTK_GROUP("Horizontal.Scrollbar.trough", TTK_FILL_X,
+ 	TTK_NODE("Horizontal.Scrollbar.leftarrow", TTK_PACK_LEFT)
+ 	TTK_NODE("Horizontal.Scrollbar.rightarrow", TTK_PACK_RIGHT)
+

@@ -1,0 +1,93 @@
+Index: unix/tkUnixWm.c
+==================================================================
+--- unix/tkUnixWm.c
++++ unix/tkUnixWm.c
+@@ -354,10 +354,11 @@
+ 			    Display *display, Tcl_HashTable *reparentTable);
+ static void		TopLevelReqProc(void *dummy, Tk_Window tkwin);
+ static void		RemapWindows(TkWindow *winPtr, TkWindow *parentPtr);
+ static void		UpdateCommand(TkWindow *winPtr);
+ static void		UpdateGeometryInfo(void *clientData);
++static void		UpdateWrapperContents(WmInfo *wmPtr);
+ static void		UpdateHints(TkWindow *winPtr);
+ static void		UpdateSizeHints(TkWindow *winPtr,
+ 			    int newWidth, int newHeight);
+ static void		UpdateTitle(TkWindow *winPtr);
+ static void		UpdatePhotoIcon(TkWindow *winPtr);
+@@ -4001,11 +4002,10 @@
+ 				 * wmPtr->wrapperPtr. */
+ {
+     TkWindow *wrapperPtr = wmPtr->wrapperPtr;
+     TkWindow *winPtr = wmPtr->winPtr;
+     TkDisplay *dispPtr = wmPtr->winPtr->dispPtr;
+-    Tk_ErrorHandler handler;
+ 
+     /*
+      * Update size information from the event. There are a couple of tricky
+      * points here:
+      *
+@@ -4132,13 +4132,41 @@
+ 	if (wmPtr->flags & WM_NEGATIVE_Y) {
+ 	    wmPtr->y = wmPtr->vRootHeight - (wmPtr->y + wmPtr->parentHeight);
+ 	}
+     }
+ 
++    UpdateWrapperContents(wmPtr);
++}
++
++/*
++ *----------------------------------------------------------------------
++ *
++ * UpdateWrapperContents --
++ *
++ *	Make sure that the toplevel and menubar are properly positioned within
++ *	the wrapper, and notify the application about the toplevel geometry.
++ *
++ * Results:
++ *	None.
++ *
++ * Side effects:
++ *	The toplevel and menubar windows may be moved or resized, and a
++ *	ConfigureNotify event is generated for the toplevel.
++ *
++ *----------------------------------------------------------------------
++ */
++
++static void
++UpdateWrapperContents(
++    WmInfo *wmPtr)
++{
++    TkWindow *winPtr = wmPtr->winPtr;
++    TkWindow *wrapperPtr = wmPtr->wrapperPtr;
++    Tk_ErrorHandler handler;
++
+     /*
+-     * Make sure that the toplevel and menubar are properly positioned within
+-     * the wrapper. If the menuHeight happens to be zero, we'll get a BadValue
++     * If the menuHeight happens to be zero, we'll get a BadValue
+      * X error that we want to ignore [Bug: 3377]
+      */
+ 
+     handler = Tk_CreateErrorHandler(winPtr->display, -1, -1, -1, NULL, NULL);
+     XMoveResizeWindow(winPtr->display, winPtr->window, 0,
+@@ -4811,12 +4839,19 @@
+ 	    /*
+ 	     * The window is already just the size we want, so don't bother to
+ 	     * configure it; the X server appears to ignore these requests, so
+ 	     * we won't get back a ConfigureNotify and the
+ 	     * WaitForConfigureNotify call below will hang for a while.
++	     * But the menubar height may have changed (e.g. the menubar was
++	     * replaced in a maximized window), so the menubar and the toplevel
++	     * may need to be rearranged within the wrapper.
+ 	     */
+ 
++	    if ((wmPtr->menubar != NULL)
++		    && (Tk_Height(wmPtr->menubar) != wmPtr->menuHeight)) {
++		UpdateWrapperContents(wmPtr);
++	    }
+ 	    return;
+ 	}
+ 	wmPtr->configWidth = width;
+ 	wmPtr->configHeight = height;
+ 	if (winPtr->dispPtr->flags & TK_DISPLAY_WM_TRACING) {
+

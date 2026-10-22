@@ -1,0 +1,74 @@
+Index: generic/tkFont.c
+==================================================================
+--- generic/tkFont.c
++++ generic/tkFont.c
+@@ -342,10 +342,11 @@
+ static int		ParseFontNameObj(Tcl_Interp *interp, Tk_Window tkwin,
+ 			    Tcl_Obj *objPtr, TkFontAttributes *faPtr);
+ static void		RecomputeWidgets(TkWindow *winPtr);
+ static int		SetFontFromAny(Tcl_Interp *interp, Tcl_Obj *objPtr);
+ static void		TheWorldHasChanged(void *clientData);
++static Tk_Window	FindWindowOnScreen(TkWindow *winPtr, Screen *screen);
+ static void		UpdateDependentFonts(TkFontInfo *fiPtr,
+ 			    Tk_Window tkwin, Tcl_HashEntry *namedHashPtr);
+ 
+ /*
+  * The following structure defines the implementation of the "font" Tcl
+@@ -870,20 +871,55 @@
+     cacheHashPtr = Tcl_FirstHashEntry(&fiPtr->fontCache, &search);
+     while (cacheHashPtr != NULL) {
+ 	for (fontPtr = (TkFont *)Tcl_GetHashValue(cacheHashPtr);
+ 		fontPtr != NULL; fontPtr = fontPtr->nextPtr) {
+ 	    if (fontPtr->namedHashPtr == namedHashPtr) {
+-		TkpGetFontFromAttributes(fontPtr, tkwin, &nfPtr->fa);
++		/*
++		 * Reload the font for the screen it was allocated for, which
++		 * may be on another display than tkwin.
++		 */
++
++		Tk_Window fontWin = tkwin;
++
++		if (Tk_Screen(tkwin) != fontPtr->screen) {
++		    fontWin = FindWindowOnScreen(fiPtr->mainPtr->winPtr,
++			    fontPtr->screen);
++		    if (fontWin == NULL) {
++			fontWin = tkwin;
++		    }
++		}
++		TkpGetFontFromAttributes(fontPtr, fontWin, &nfPtr->fa);
+ 		if (!fiPtr->updatePending) {
+ 		    fiPtr->updatePending = 1;
+ 		    Tcl_DoWhenIdle(TheWorldHasChanged, fiPtr);
+ 		}
+ 	    }
+ 	}
+ 	cacheHashPtr = Tcl_NextHashEntry(&search);
+     }
+ }
++
++static Tk_Window
++FindWindowOnScreen(
++    TkWindow *winPtr,		/* Root of the window tree to search. */
++    Screen *screen)		/* The screen to look for. */
++{
++    TkWindow *childPtr;
++    Tk_Window result;
++
++    if (Tk_Screen((Tk_Window) winPtr) == screen) {
++	return (Tk_Window) winPtr;
++    }
++    for (childPtr = winPtr->childList; childPtr != NULL;
++	    childPtr = childPtr->nextPtr) {
++	result = FindWindowOnScreen(childPtr, screen);
++	if (result != NULL) {
++	    return result;
++	}
++    }
++    return NULL;
++}
+ 
+ static void
+ TheWorldHasChanged(
+     void *clientData)	/* Info about application's fonts. */
+ {
+

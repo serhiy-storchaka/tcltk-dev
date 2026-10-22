@@ -1,0 +1,45 @@
+Index: generic/tkCanvText.c
+==================================================================
+--- generic/tkCanvText.c
++++ generic/tkCanvText.c
+@@ -1325,12 +1325,12 @@
+ 	state = Canvas(canvas)->canvas_state;
+     }
+ 
+     textPtr = (TextItem *) itemPtr;
+     return TkIntersectAngledTextLayout(textPtr->textLayout,
+-	    (int) ((rectPtr[0] + 0.5) - textPtr->drawOrigin[0]),
+-	    (int) ((rectPtr[1] + 0.5) - textPtr->drawOrigin[1]),
++	    ROUND(rectPtr[0] - textPtr->drawOrigin[0]),
++	    ROUND(rectPtr[1] - textPtr->drawOrigin[1]),
+ 	    (int) (rectPtr[2] - rectPtr[0] + 0.5),
+ 	    (int) (rectPtr[3] - rectPtr[1] + 0.5),
+ 	    textPtr->angle);
+ }
+ 
+
+Index: tests/canvText.test
+==================================================================
+--- tests/canvText.test
++++ tests/canvText.test
+@@ -748,10 +748,19 @@
+     .c itemconfig test -text 0 -anchor center
+     .c find overlapping 1000 1000 1001 1001
+ } -cleanup {
+ 	.c delete test
+ } -result {}
++test canvText-11.3 {TextToArea procedure: area left of or above the text} -setup {
++    .c create text 100 100 -tag test -text abc -anchor nw
++} -body {
++    lmap r {{0 0 99 300} {0 0 300 99} {0 0 100 300} {0 0 300 100}} {
++	llength [.c find overlapping {*}$r]
++    }
++} -cleanup {
++    .c delete test
++} -result {0 0 1 1}
+ 
+ 
+ test canvText-12.1 {ScaleText procedure} -body {
+     .c create text 100 100 -tag test
+     .c scale all 50 50 2 2
+

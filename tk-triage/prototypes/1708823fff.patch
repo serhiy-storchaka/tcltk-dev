@@ -1,0 +1,89 @@
+Index: win/tkWinColor.c
+==================================================================
+--- win/tkWinColor.c
++++ win/tkWinColor.c
+@@ -412,48 +412,45 @@
+     UINT count, index;
+     size_t refCount;
+     int i;
+     PALETTEENTRY entry, *entries;
+     Tcl_HashEntry *entryPtr;
+-    HDC dc = GetDC(NULL);
+-
+-    /*
+-     * We don't have to do anything for non-palette devices.
+-     */
+-
+-    if (GetDeviceCaps(dc, RASTERCAPS) & RC_PALETTE) {
+-	/*
+-	 * This is really slow for large values of npixels.
+-	 */
+-
+-	for (i = 0; i < npixels; i++) {
+-	    entryPtr = Tcl_FindHashEntry(&cmap->refCounts, INT2PTR(pixels[i]));
+-	    if (!entryPtr) {
+-		Tcl_Panic("Tried to free a color that isn't allocated");
+-	    }
+-	    refCount = (size_t)Tcl_GetHashValue(entryPtr) - 1;
+-	    if (refCount == 0) {
+-		cref = pixels[i] & 0x00ffffff;
+-		index = GetNearestPaletteIndex(cmap->palette, cref);
+-		GetPaletteEntries(cmap->palette, index, 1, &entry);
+-		if (cref == RGB(entry.peRed, entry.peGreen, entry.peBlue)) {
+-		    count = cmap->size - index;
+-		    entries = (PALETTEENTRY *)Tcl_Alloc(sizeof(PALETTEENTRY) * count);
+-		    GetPaletteEntries(cmap->palette, index+1, count, entries);
+-		    SetPaletteEntries(cmap->palette, index, count, entries);
+-		    Tcl_Free(entries);
+-		    cmap->size--;
+-		} else {
+-		    Tcl_Panic("Tried to free a color that isn't allocated");
+-		}
+-		Tcl_DeleteHashEntry(entryPtr);
+-	    } else {
+-		Tcl_SetHashValue(entryPtr, INT2PTR(refCount));
+-	    }
+-	}
+-    }
+-    ReleaseDC(NULL, dc);
++
++    /*
++     * Do not check whether the device currently uses a palette: the display
++     * mode can change between XAllocColor and XFreeColors. Only colors that
++     * were allocated in the palette have entries in the refCounts table,
++     * nothing needs to be done for other colors.
++     *
++     * This is really slow for large values of npixels.
++     */
++
++    for (i = 0; i < npixels; i++) {
++	entryPtr = Tcl_FindHashEntry(&cmap->refCounts, INT2PTR(pixels[i]));
++	if (!entryPtr) {
++	    continue;
++	}
++	refCount = (size_t)Tcl_GetHashValue(entryPtr) - 1;
++	if (refCount == 0) {
++	    cref = pixels[i] & 0x00ffffff;
++	    index = GetNearestPaletteIndex(cmap->palette, cref);
++	    GetPaletteEntries(cmap->palette, index, 1, &entry);
++	    if (cref == RGB(entry.peRed, entry.peGreen, entry.peBlue)) {
++		count = cmap->size - index;
++		entries = (PALETTEENTRY *)Tcl_Alloc(sizeof(PALETTEENTRY) * count);
++		GetPaletteEntries(cmap->palette, index+1, count, entries);
++		SetPaletteEntries(cmap->palette, index, count, entries);
++		Tcl_Free(entries);
++		cmap->size--;
++	    } else {
++		Tcl_Panic("Tried to free a color that isn't allocated");
++	    }
++	    Tcl_DeleteHashEntry(entryPtr);
++	} else {
++	    Tcl_SetHashValue(entryPtr, INT2PTR(refCount));
++	}
++    }
+     return Success;
+ }
+ 
+ /*
+  *----------------------------------------------------------------------
+

@@ -1,0 +1,65 @@
+Index: tests/wm.test
+==================================================================
+--- tests/wm.test
++++ tests/wm.test
+@@ -2519,10 +2519,30 @@
+     lappend result [winfo manage .t.t]
+     lappend result [winfo toplevel .t.t.b]
+ } -cleanup {
+     deleteWindows
+ } -result {wm .t.t pack .t wm .t.t}
++test wm-manage-1.9 {managed frame is not mapped before idle} -constraints {
++    x11
++} -setup {
++    set result [list]
++} -body {
++    toplevel .t
++    frame .t.f -width 100 -height 100
++    pack .t.f
++    update
++    bind .t.f <Map> {lappend result map}
++    wm manage .t.f
++    wm withdraw .t.f
++    update
++    lappend result [winfo ismapped .t.f]
++    wm deiconify .t.f
++    update
++    lappend result [winfo ismapped .t.f]
++} -cleanup {
++    deleteWindows
++} -result {0 map 1}
+ 
+ test wm-forget-1.1 "bug #2009788: forget toplevel can cause crash" -body {
+     toplevel .parent
+     toplevel .parent.child
+     wm forget .parent.child
+
+Index: unix/tkUnixWm.c
+==================================================================
+--- unix/tkUnixWm.c
++++ unix/tkUnixWm.c
+@@ -2776,14 +2776,21 @@
+ 	Tk_UnmapWindow(frameWin);
+ 	winPtr->flags |=
+ 		TK_TOP_HIERARCHY|TK_TOP_LEVEL|TK_HAS_WRAPPER|TK_WIN_MANAGED;
+ 	if (wmPtr == NULL) {
+ 	    TkWmNewWindow(winPtr);
+-	    TkWmMapWindow(winPtr);
+-	    Tk_UnmapWindow(frameWin);
+ 	}
+ 	wmPtr = winPtr->wmInfoPtr;
++	if (wmPtr->wrapperPtr == NULL) {
++	    /*
++	     * Create the wrapper but do not map it yet: the frame is mapped
++	     * at idle time by TkMapTopFrame, so that "wm withdraw",
++	     * "wm geometry", "wm overrideredirect" etc. can be applied first.
++	     */
++
++	    CreateWrapper(wmPtr);
++	}
+ 	winPtr->flags &= ~TK_MAPPED;
+ 	RemapWindows(winPtr, wmPtr->wrapperPtr);
+ 
+ 	/*
+ 	 * Flags (above) must be set before calling TkMapTopFrame (below).
+

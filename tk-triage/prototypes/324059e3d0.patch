@@ -1,0 +1,30 @@
+--- unix/tkUnixAccessibility.c
++++ unix/tkUnixAccessibility.c
+@@ -44,7 +44,9 @@
+ } roleMap[] = {
+     {"Button", ATK_ROLE_PUSH_BUTTON},
+     {"Checkbox", ATK_ROLE_CHECK_BOX},
++    {"Checkbutton", ATK_ROLE_CHECK_BOX},	/* The role accessibility.tcl sets. */
+     {"Combobox", ATK_ROLE_COMBO_BOX},
++    {"Dialog", ATK_ROLE_DIALOG},	/* Set by the Dialog <Map> binding. */
+     {"Entry", ATK_ROLE_ENTRY},
+     {"Label", ATK_ROLE_LABEL},
+     {"Listbox", ATK_ROLE_LIST_BOX},
+@@ -633,10 +635,15 @@
+ 	    const char *value = GetAtkValueForWidget(acc->tkwin);
+ 	    /* Check for proper state values. */
+ 	    if (value) {
+-		/* For checkboxes/radiobuttons, check if value equals "selected" or "1" or onvalue. */
++		/*
++		 * For checkboxes/radiobuttons, check if value equals "selected"
++		 * or "1" or onvalue. accessibility.tcl sets "not selected" when
++		 * the button is turned off.
++		 */
+ 		if (strcmp(value, "selected") == 0 ||
+ 		    strcmp(value, "1") == 0 ||
+-		    (value[0] != '0' && value[0] != '\0')) {
++		    (value[0] != '0' && value[0] != '\0' &&
++		    strcmp(value, "not selected") != 0)) {
+ 		    atk_state_set_add_state(state_set, ATK_STATE_CHECKED);
+ 		}
+ 	    }

@@ -1,0 +1,25 @@
+Index: unix/tkUnixWm.c
+==================================================================
+--- unix/tkUnixWm.c
++++ unix/tkUnixWm.c
+@@ -5928,10 +5928,19 @@
+ 		wmPtr = wmPtr->nextPtr) {
+ 	    if (wmPtr->winPtr->mainPtr == NULL) {
+ 		continue;
+ 	    }
+ 	    if (child == wmPtr->reparent) {
++		if (!Tk_IsMapped(wmPtr->winPtr)) {
++		    /*
++		     * The toplevel has been withdrawn or iconified, but the
++		     * window manager has not yet unmapped its decoration
++		     * frame. [Bug 58418fbd37]
++		     */
++
++		    continue;
++		}
+ 		if (PointInWindow(x, y, wmPtr)) {
+ 		    goto gotToplevel;
+ 		} else {
+ 
+ 		    /*
+

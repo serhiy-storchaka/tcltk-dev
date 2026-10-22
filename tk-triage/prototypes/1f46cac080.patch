@@ -1,0 +1,63 @@
+--- library/fontchooser.tcl
++++ library/fontchooser.tcl
+@@ -13,12 +13,6 @@
+ 
+     set S(W) .__tk__fontchooser
+     set S(fonts) [lsort -dictionary -unique [font families]]
+-    set S(styles) [list \
+-	    [::msgcat::mc Regular] \
+-	    [::msgcat::mc Italic] \
+-	    [::msgcat::mc Bold] \
+-	    [::msgcat::mc {Bold Italic}] \
+-    ]
+     set S(sizes) {8 9 10 11 12 14 16 18 20 22 24 26 28 36 48 72}
+     set S(strike) 0
+     set S(under) 0
+@@ -33,9 +27,14 @@
+ proc ::tk::fontchooser::Canonical {} {
+     variable S
+ 
+-    foreach style $S(styles) {
+-	lappend S(styles,lcase) [string tolower $style]
+-    }
++    # Translate the styles here rather than when this file is sourced,
++    # so that a later change of the locale is taken into account.
++    set S(styles) [list \
++	    [::msgcat::mc Regular] \
++	    [::msgcat::mc Italic] \
++	    [::msgcat::mc Bold] \
++	    [::msgcat::mc {Bold Italic}] \
++    ]
+     set S(sizes,lcase) $S(sizes)
+     set S(sampletext) [::msgcat::mc "AaBbYyZz01"]
+ 
+--- tests/fontchooser.test
++++ tests/fontchooser.test
+@@ -185,6 +185,27 @@
+     tk fontchooser configure -title
+ } -result {TestTitle}
+ 
++test fontchooser-6.1 {styles follow a locale change after loading, bug [1f46cac080]} -constraints {
++    scriptImpl
++} -setup {
++    set oldLocale [msgcat::mclocale]
++    msgcat::mcset xx Bold Xbold
++} -body {
++    msgcat::mclocale xx
++    testDialog launch {
++	tk::fontchooser::Configure -command $applyFontCmd -font {times 14 bold}
++	tk::fontchooser::Show
++    }
++    testDialog onDisplay {
++	set ::res [list [$::tk::test::dialog::testDialog.lstyles.list get 2] $::tk::fontchooser::S(style)]
++	Click ok
++    }
++    lappend res [lindex $testDialogFont end]
++} -cleanup {
++    msgcat::mclocale $oldLocale
++    unset -nocomplain oldLocale res
++} -result {Xbold Xbold bold}
++
+ #
+ # TESTFILE CLEANUP
+ #

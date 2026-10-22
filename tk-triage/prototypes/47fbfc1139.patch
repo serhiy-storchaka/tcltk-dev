@@ -1,0 +1,95 @@
+Index: generic/tkTextDisp.c
+==================================================================
+--- generic/tkTextDisp.c
++++ generic/tkTextDisp.c
+@@ -2550,11 +2550,11 @@
+ 				 * line. */
+ {
+     TkTextDispChunk *chunkPtr, tmpChunk, *otherChunkPtr = NULL;
+     TextDInfo *dInfoPtr = textPtr->dInfoPtr;
+     Display *display;
+-    int height, y_off;
++    int height, y_off, leftX;
+     struct TextStyle tmpStyle;
+     TkBorder *borderPtr;
+     bool blockCursor = textPtr->insertCursorType;
+     bool haveFocus = (textPtr->flags & GOT_FOCUS) != 0;
+     bool showInsertCursor = (textPtr->flags & INSERT_ON) != 0;
+@@ -2570,10 +2570,26 @@
+ #else
+     CharInfo ci;
+ #endif /* TK_LAYOUT_WITH_BASE_CHUNKS */
+ 
+     if (dlPtr->chunkPtr == NULL) return;
++
++    /*
++     * If the line is not scrolled horizontally, the insertion cursor in the
++     * first column may extend into the left padding area. Include that area
++     * in the drawing, so that the cursor is not clipped.
++     */
++
++    leftX = dInfoPtr->x;
++    if (dInfoPtr->curXPixelOffset == 0) {
++	int padX;
++
++	Tk_GetPixelsFromObj(NULL, textPtr->tkwin, textPtr->padXObj, &padX);
++	if (padX > 0) {
++	    leftX -= padX;
++	}
++    }
+ 
+     display = Tk_Display(textPtr->tkwin);
+ 
+     height = dlPtr->height;
+     if ((height + dlPtr->y) > dInfoPtr->maxY) {
+@@ -2585,12 +2601,12 @@
+     } else {
+ 	y_off = 0;
+     }
+ 
+ #ifdef TK_NO_DOUBLE_BUFFERING
+-    Tk_ClipDrawableToRect(display, pixmap, dInfoPtr->x, y + y_off,
+-	    dInfoPtr->maxX - dInfoPtr->x, height);
++    Tk_ClipDrawableToRect(display, pixmap, leftX, y + y_off,
++	    dInfoPtr->maxX - leftX, height);
+ #endif /* TK_NO_DOUBLE_BUFFERING */
+ 
+     /*
+      * First, clear the area of the line to the background color for the text
+      * widget.
+@@ -2616,10 +2632,19 @@
+     if (dlPtr->rMarginColor != NULL) {
+ 	Tk_Fill3DRectangle(textPtr->tkwin, pixmap, dlPtr->rMarginColor,
+ 		dInfoPtr->maxX - dlPtr->rMarginWidth + dInfoPtr->curXPixelOffset,
+ 		y, dlPtr->rMarginWidth, dlPtr->height, 0, TK_RELIEF_FLAT);
+     }
++
++    /*
++     * The left padding area must keep the background color of the widget.
++     */
++
++    if (leftX < dInfoPtr->x) {
++	Tk_Fill3DRectangle(textPtr->tkwin, pixmap, textPtr->border, leftX, y,
++		dInfoPtr->x - leftX, dlPtr->height, 0, TK_RELIEF_FLAT);
++    }
+ 
+     /*
+      * Make another pass through all of the chunks to redraw the insertion
+      * cursor, if it is visible on this line. Must do it here rather than in
+      * the foreground pass below because otherwise a wide insertion cursor
+@@ -2804,12 +2829,12 @@
+      * overflows onto that area and we want to get as much of the cursor as
+      * possible.
+      */
+ 
+     XCopyArea(display, pixmap, Tk_WindowId(textPtr->tkwin), dInfoPtr->copyGC,
+-	    dInfoPtr->x, y + y_off, (unsigned) (dInfoPtr->maxX - dInfoPtr->x),
+-	    (unsigned) height, dInfoPtr->x, dlPtr->y + y_off);
++	    leftX, y + y_off, (unsigned) (dInfoPtr->maxX - leftX),
++	    (unsigned) height, leftX, dlPtr->y + y_off);
+ #else
+     Tk_ClipDrawableToRect(display, pixmap, 0, 0, -1, -1);
+ #endif /* TK_NO_DOUBLE_BUFFERING */
+     linesRedrawn++;
+ }
+

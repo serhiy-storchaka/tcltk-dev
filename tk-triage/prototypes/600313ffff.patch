@@ -1,0 +1,81 @@
+Index: library/iconlist.tcl
+==================================================================
+--- library/iconlist.tcl
++++ library/iconlist.tcl
+@@ -585,11 +585,16 @@
+ 	    my DrawSelection
+ 	}
+     }
+     method FocusOut {} {
+ 	$w state !focus
+-	$w selection clear 0 end
++	# Keep the selection if the focus leaves the dialog, e.g. with
++	# a focus-follows-mouse window manager.
++	set f [focus -displayof $w]
++	if {$f ne "" && [winfo toplevel $f] eq [winfo toplevel $w]} {
++	    $w selection clear 0 end
++	}
+     }
+ 
+     #	Moves the active element up or down by one element
+     #
+     # Arguments:
+
+Index: tests/filebox.test
+==================================================================
+--- tests/filebox.test
++++ tests/filebox.test
+@@ -446,10 +446,52 @@
+     # The rest of the tests need to be executed on Unix only.
+     # They test whether the dialog box widgets were implemented correctly.
+     # These tests are not
+     # needed on the other platforms because they use native file dialogs.
+ }
++
++test fileDialog-3.1 {icon list keeps selection when focus leaves the dialog} -constraints {
++    x11
++} -setup {
++    set dir [makeDirectory filebox3.1]
++    foreach f {a b c} {
++	close [open [file join $dir $f.txt] w]
++    }
++    set oldMotif $tk_strictMotif
++    set tk_strictMotif 0
++    toplevel .other
++    update
++    set res {}
++} -body {
++    after 500 {
++	upvar #0 ::tk::dialog::file::__tk_filedialog data
++	set il $data(icons)
++	set c $il.cHull.canvas
++	focus -force $c
++	update
++	$il selection set 0 1
++	::tk::dialog::file::ListBrowse .__tk_filedialog
++	lappend res [$il selection get]
++	focus -force .other
++	update
++	lappend res [$il selection get]
++	focus -force $c
++	update
++	focus $data(ent)
++	update
++	lappend res [$il selection get]
++    }
++    after 1000 {
++	$::tk::dialog::file::__tk_filedialog(cancelBtn) invoke
++    }
++    tk_getOpenFile -multiple 1 -initialdir $dir -parent .
++    set res
++} -cleanup {
++    set tk_strictMotif $oldMotif
++    destroy .other
++    removeDirectory filebox3.1
++} -result {{0 1} {0 1} {}}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

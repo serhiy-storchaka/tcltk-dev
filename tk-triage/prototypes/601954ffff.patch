@@ -1,0 +1,65 @@
+Index: library/menu.tcl
+==================================================================
+--- library/menu.tcl
++++ library/menu.tcl
+@@ -99,10 +99,19 @@
+ bind Menubutton <B1-Motion> {
+     tk::MbMotion %W down %X %Y
+ }
+ bind Menubutton <ButtonRelease-1> {
+     tk::MbButtonUp %W
++}
++bind Menubutton <Destroy> {
++    if {$tk::Priv(postedMb) eq "%W"} {
++	# The menu cannot be unposted normally since the menubutton is gone,
++	# but forget it so that a new menubutton with the same name can post.
++	set tk::Priv(postedMb) {}
++	catch {focus $tk::Priv(focus)}
++	set tk::Priv(focus) {}
++    }
+ }
+ bind Menubutton <space> {
+     tk::MbPost %W
+     tk::MenuFirstEntry [%W cget -menu]
+ }
+
+Index: tests/menubut.test
+==================================================================
+--- tests/menubut.test
++++ tests/menubut.test
+@@ -808,10 +808,34 @@
+     bind .b <Configure> {unset -nocomplain var}
+     update
+     destroy .b
+     unset new
+ } {}
++test menubutton-12.1 {destroying a posted menubutton does not prevent posting a new one} -setup {
++    deleteWindows
++    proc create {} {
++	menubutton .mb -text Sample -menu .mb.menu
++	menu .mb.menu -tearoff 0
++	.mb.menu add command -label One
++	pack .mb
++	update
++    }
++} -body {
++    create
++    tk::MbPost .mb
++    update
++    set res [winfo ismapped .mb.menu]
++    destroy .mb
++    create
++    tk::MbPost .mb
++    update
++    lappend res [winfo ismapped .mb.menu]
++} -cleanup {
++    tk::MenuUnpost {}
++    deleteWindows
++    rename create {}
++} -result {1 1}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

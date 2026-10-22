@@ -1,0 +1,73 @@
+Index: generic/tkPointer.c
+==================================================================
+--- generic/tkPointer.c	
++++ generic/tkPointer.c	
+@@ -30,10 +30,12 @@
+     TkWindow *lastWinPtr;	/* Last reported mouse window. */
+     TkWindow *restrictWinPtr;	/* Window to which all mouse events will be
+ 				 * reported. */
+     TkWindow *cursorWinPtr;	/* Window that is currently controlling the
+ 				 * global cursor. */
++    bool restrictWinDead;	/* The restrict window was destroyed while
++				 * buttons were pressed. */
+ } ThreadSpecificData;
+ static Tcl_ThreadDataKey dataKey;
+ 
+ /*
+  * Forward declarations of procedures used in this file.
+@@ -255,10 +257,27 @@
+      */
+ 
+     for (b = Button1; b <= Button9; b++) {
+ 	mask = Tk_GetButtonMask(b);
+ 	if (changes & mask) {
++	    if (tsdPtr->restrictWinDead) {
++		/*
++		 * As with the implicit grab on X11, discard button events
++		 * until all buttons are released, rather than delivering
++		 * them to the window that is now below the pointer.
++		 */
++
++		if ((state & mask) || (tsdPtr->lastState & ALL_BUTTONS) != mask) {
++		    tsdPtr->lastState ^= mask;
++		} else {
++		    tsdPtr->lastState &= ~mask;
++		    tsdPtr->restrictWinDead = false;
++		    TkpSetCapture(tsdPtr->grabWinPtr);
++		}
++		tsdPtr->lastPos = pos;
++		continue;
++	    }
+ 	    if (state & mask) {
+ 		type = ButtonPress;
+ 
+ 		/*
+ 		 * ButtonPress - Set restrict window if we aren't grabbed, or
+@@ -382,11 +401,11 @@
+ 	    targetWinPtr = tsdPtr->restrictWinPtr;
+ 	} else if (tsdPtr->grabWinPtr && !winPtr) {
+ 	    targetWinPtr = tsdPtr->grabWinPtr;
+ 	}
+ 
+-	if (targetWinPtr != NULL) {
++	if (targetWinPtr != NULL && !tsdPtr->restrictWinDead) {
+ 	    InitializeEvent(&event, targetWinPtr, MotionNotify, x, y,
+ 		    tsdPtr->lastState, NotifyAncestor);
+ 	    Tk_QueueWindowEvent(&event, TCL_QUEUE_TAIL);
+ 	}
+ 	tsdPtr->lastPos = pos;
+@@ -499,10 +518,13 @@
+     if (winPtr == tsdPtr->grabWinPtr) {
+ 	tsdPtr->grabWinPtr = NULL;
+     }
+     if (winPtr == tsdPtr->restrictWinPtr) {
+ 	tsdPtr->restrictWinPtr = NULL;
++	if (tsdPtr->lastState & ALL_BUTTONS) {
++	    tsdPtr->restrictWinDead = true;
++	}
+     }
+     if (!(tsdPtr->restrictWinPtr || tsdPtr->grabWinPtr)) {
+ 
+ 	/*
+ 	 * Release mouse capture only if the dead window is the capturing
+

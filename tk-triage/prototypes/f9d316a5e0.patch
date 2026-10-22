@@ -1,0 +1,143 @@
+Index: generic/tkMenuDraw.c
+==================================================================
+--- generic/tkMenuDraw.c
++++ generic/tkMenuDraw.c
+@@ -990,12 +990,35 @@
+     TkMenuEntry *mePtr,
+     int *xPtr,
+     int *yPtr)
+ {
+     if (menuPtr->menuType == MENUBAR) {
++	TkMenu *childPtr = (mePtr->childMenuRefPtr != NULL)
++		? mePtr->childMenuRefPtr->menuPtr : NULL;
++
+ 	*xPtr += mePtr->x;
+ 	*yPtr += mePtr->y + mePtr->height;
++
++	/*
++	 * If the submenu does not fit below the menubar, but fits above it,
++	 * post it above. Otherwise it would be moved up to overlap the
++	 * menubar entry, and releasing the mouse button would invoke the
++	 * menu item under the pointer.
++	 */
++
++	if ((childPtr != NULL) && (childPtr->tkwin != NULL)) {
++	    int vRootX, vRootY, vRootWidth, vRootHeight, height;
++
++	    TkRecomputeMenu(childPtr);
++	    height = Tk_ReqHeight(childPtr->tkwin);
++	    Tk_GetVRootGeometry(menuPtr->tkwin, &vRootX, &vRootY,
++		    &vRootWidth, &vRootHeight);
++	    if ((*yPtr + height > vRootY + vRootHeight)
++		    && (*yPtr - mePtr->height - height >= vRootY)) {
++		*yPtr -= mePtr->height + height;
++	    }
++	}
+     } else {
+ 	int borderWidth, activeBorderWidth;
+ 	double scalingLevel = TkScalingLevel(menuPtr->tkwin);
+ 	int scaled2 = (int)round(2*scalingLevel);
+ 
+
+Index: library/menu.tcl
+==================================================================
+--- library/menu.tcl
++++ library/menu.tcl
+@@ -1188,13 +1188,13 @@
+ 	    }
+ 	    below {
+ 		incr y [winfo height $button]
+ 		# if we go offscreen to the bottom, show as 'above'
+ 		set mh [winfo reqheight $menu]
+-		if {($y + $mh) > ([winfo vrooty $button] + [winfo vrootheight $button])} {
+-		    set y [expr {[winfo vrooty $button] + [winfo vrootheight $button] \
+-			   + [winfo rooty $button] - $mh}]
++		if {($y + $mh) > ([winfo vrooty $button] + [winfo vrootheight $button])
++			&& [winfo rooty $button] - $mh >= [winfo vrooty $button]} {
++		    set y [expr {[winfo rooty $button] - $mh}]
+ 		}
+ 		set entry {}
+ 	    }
+ 	    left {
+ 		incr x [expr {- [winfo reqwidth $menu]}]
+
+Index: tests/menuDraw.test
+==================================================================
+--- tests/menuDraw.test
++++ tests/menuDraw.test
+@@ -743,10 +743,38 @@
+     set tearoff [tk::TearOffMenu .m1 40 40]
+     $tearoff postcascade 0
+ } -cleanup {
+     deleteWindows
+ } -result {}
++test menuDraw-17.3 {AdjustMenuCoords - menubar near bottom of screen} -constraints {
++    x11
++} -setup {
++    deleteWindows
++} -body {
++    menu .m1 -tearoff 0
++    .m1 add cascade -label test -menu .m1.m2
++    menu .m1.m2 -tearoff 0
++    for {set i 0} {$i < 20} {incr i} {
++	.m1.m2 add command -label "Item $i"
++    }
++    toplevel .t -menu .m1
++    wm geometry .t 200x60+0+[expr {[winfo screenheight .t] - 100}]
++    update
++    foreach w [winfo children .t] {
++	if {[winfo class $w] eq "Menu" && [$w cget -type] eq "menubar"} {
++	    break
++	}
++    }
++    $w postcascade 0
++    update
++    set submenu [$w entrycget 0 -menu]
++    expr {[winfo rooty $submenu] + [winfo reqheight $submenu]
++	    < [winfo rooty $w] + [winfo height $w]}
++} -cleanup {
++    catch {$w unpost}
++    deleteWindows
++} -result 1
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+
+Index: tests/menubut.test
+==================================================================
+--- tests/menubut.test
++++ tests/menubut.test
+@@ -808,10 +808,30 @@
+     bind .b <Configure> {unset -nocomplain var}
+     update
+     destroy .b
+     unset new
+ } {}
++test menubutton-10.1 {-direction below near bottom of screen} -constraints {
++    x11
++} -setup {
++    toplevel .t
++    menubutton .t.b -text File -menu .t.b.m -direction below
++    menu .t.b.m -tearoff 0
++    for {set i 0} {$i < 20} {incr i} {
++	.t.b.m add command -label "Item $i"
++    }
++    pack .t.b
++} -body {
++    wm geometry .t +0+[expr {[winfo screenheight .t] - 60}]
++    update
++    tk::PostMenubuttonMenu .t.b .t.b.m 0 0
++    update
++    expr {[winfo rooty .t.b.m] + [winfo reqheight .t.b.m] <= [winfo rooty .t.b]}
++} -cleanup {
++    .t.b.m unpost
++    destroy .t
++} -result 1
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

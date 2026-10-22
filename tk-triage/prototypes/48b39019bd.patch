@@ -1,0 +1,38 @@
+--- library/accessibility.tcl
++++ library/accessibility.tcl
+@@ -101,13 +101,15 @@
+ 	    # must use this as a fallback.
+ 	    proc speak {text} {
+ 		if {[::tk::accessible::check_screenreader] eq "1"} {
+-		    # Escape quotes in the text.
+-		    set safe_text [string map {"\"" "\\\""} $text]
+-
++		    # Run in the background: waiting for the speech to finish
++		    # would block the event loop (and the accessibility bus,
++		    # which is served from it). exec passes the text as one
++		    # argument, no quoting is needed; "--" keeps a text that
++		    # starts with "-" from being taken as an option.
+ 		    # Try spd-say first.
+-		    if {[catch {exec spd-say $safe_text} result]} {
+-			# fallback to espeak if spd-say fails
+-			catch {exec espeak $safe_text} result
++		    if {[catch {exec spd-say -- $text >/dev/null 2>/dev/null &}]} {
++			# fallback to espeak if spd-say is not available
++			catch {exec espeak -- $text >/dev/null 2>/dev/null &}
+ 		    }
+ 		}
+ 	    }
+@@ -240,10 +242,9 @@
+ 
+ 	    # Otherwise emit single-character updates.
+ 	    ::tk::accessible::set_acc_value $w $key
+-	    if {[tk windowingsystem] eq "x11"} {
+-		::tk::accessible::speak $key
+-		# Windows speaks the individual keypress by default
+-	    } elseif {[tk windowingsystem] eq "aqua"}  {
++	    # Orca (key echo is on by default) and Windows screen readers speak
++	    # the typed key themselves.
++	    if {[tk windowingsystem] eq "aqua"}  {
+ 		::tk::accessible::emit_selection_change $w
+ 	    }
+ 	}

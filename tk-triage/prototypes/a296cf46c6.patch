@@ -1,0 +1,46 @@
+Index: doc/grid.n
+==================================================================
+--- doc/grid.n
++++ doc/grid.n
+@@ -430,10 +430,15 @@
+ turn off propagation for one or more containers.
+ If propagation is disabled then grid will not set
+ the requested width and height of the container window.
+ This may be useful if, for example, you wish for a container
+ window to have a fixed size that you specify.
++Disabling propagation does not restore the requested size that the
++container had before grid changed it: the size last computed by grid
++is kept (even if all content is removed) until it is changed again,
++for example by reconfiguring the \fB\-width\fR and \fB\-height\fR
++options of the container.
+ .SH "RESTRICTIONS ON CONTAINER WINDOWS"
+ .PP
+ The container for each content must either be the content's parent
+ (the default) or a descendant of the content's parent.
+ This restriction is necessary to guarantee that the
+
+Index: doc/pack.n
+==================================================================
+--- doc/pack.n
++++ doc/pack.n
+@@ -276,13 +276,18 @@
+ window hierarchy to a top-level window so that the entire
+ sub-tree sizes itself to fit the needs of the leaf windows.
+ However, the \fBpack propagate\fR command may be used to
+ turn off propagation for one or more containers.
+ If propagation is disabled then the packer will not set
+-the requested width and height of the packer.
++the requested width and height of the container.
+ This may be useful if, for example, you wish for a container
+ window to have a fixed size that you specify.
++Disabling propagation does not restore the requested size that the
++container had before the packer changed it: the size last computed by the packer
++is kept (even if all content is removed) until it is changed again,
++for example by reconfiguring the \fB\-width\fR and \fB\-height\fR
++options of the container.
+ .SH "RESTRICTIONS ON CONTAINER WINDOWS"
+ .PP
+ The container for each content must either be the content's parent
+ (the default) or a descendant of the content's parent.
+ This restriction is necessary to guarantee that the
+

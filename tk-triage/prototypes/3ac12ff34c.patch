@@ -1,0 +1,36 @@
+Index: unix/configure
+==================================================================
+--- unix/configure
++++ unix/configure
+@@ -9031,11 +9031,11 @@
+ 	found_cups=`cups-config 2>/dev/null`
+ 	if test "$found_cups" = ""; then
+ 	    found_cups=no
+ 	else
+ 	    found_cups=yes
+-	    CUPS_CFLAGS="-DHAVE_CUPS"
++	    CUPS_CFLAGS="-DHAVE_CUPS `cups-config --cflags`"
+ 	    CUPS_LIBS=`cups-config --libs`
+ 	fi
+ 	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $found_cups" >&5
+ printf '%s\n' "$found_cups" >&6; }
+ 	if test "$found_cups" = "yes" ; then
+
+Index: unix/configure.ac
+==================================================================
+--- unix/configure.ac
++++ unix/configure.ac
+@@ -621,11 +621,11 @@
+ 	found_cups=`cups-config 2>/dev/null`
+ 	if test "$found_cups" = ""; then
+ 	    found_cups=no
+ 	else
+ 	    found_cups=yes
+-	    CUPS_CFLAGS="-DHAVE_CUPS"
++	    CUPS_CFLAGS="-DHAVE_CUPS `cups-config --cflags`"
+ 	    CUPS_LIBS=`cups-config --libs`
+ 	fi
+ 	AC_MSG_RESULT([$found_cups])
+ 	if test "$found_cups" = "yes" ; then
+ 	    tk_oldCFlags=$CFLAGS
+

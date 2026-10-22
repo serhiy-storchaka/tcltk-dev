@@ -1,0 +1,71 @@
+Index: win/tkWinDialog.c
+==================================================================
+--- win/tkWinDialog.c
++++ win/tkWinDialog.c
+@@ -554,6 +554,7 @@
+ {
+     Tcl_Size i;
+     Tcl_DString ds;
++    Tcl_Obj *initFileObj = NULL;
+     enum options {
+ 	FILE_DEFAULT, FILE_TYPES, FILE_INITDIR, FILE_INITFILE, FILE_PARENT,
+ 	FILE_TITLE, FILE_TYPEVARIABLE, FILE_MULTIPLE, FILE_CONFIRMOW,
+@@ -638,12 +639,7 @@
+ 		goto error_return;
+ 	    break;
+ 	case FILE_INITFILE:
+-	    if (Tcl_TranslateFileName(interp, string, &ds) == NULL)
+-		goto error_return;
+-	    Tcl_UtfToExternalDStringEx(interp, TkWinGetUnicodeEncoding(),
+-		Tcl_DStringValue(&ds), Tcl_DStringLength(&ds),
+-		TCL_ENCODING_PROFILE_REPLACE, &optsPtr->utf16FileName, NULL);
+-	    Tcl_DStringFree(&ds);
++	    initFileObj = valuePtr;
+ 	    break;
+ 	case FILE_PARENT:
+ 	    optsPtr->tkwin = Tk_NameToWindow(interp, string, (Tk_Window)clientData);
+@@ -676,6 +672,44 @@
+ 	}
+     }
+ 
++    if (initFileObj != NULL) {
++	Tcl_Obj **names = &initFileObj;
++	Tcl_Size j, numNames = 1;
++	Tcl_DString utf;
++
++	/*
++	 * With -multiple, -initialfile is a list of file names. The dialog
++	 * takes several names in the form "name1" "name2" (TIP 141).
++	 */
++
++	if (optsPtr->multi && Tcl_ListObjGetElements(NULL, initFileObj,
++		&numNames, &names) != TCL_OK) {
++	    names = &initFileObj;
++	    numNames = 1;
++	}
++	Tcl_DStringInit(&utf);
++	for (j = 0; j < numNames; j++) {
++	    if (Tcl_TranslateFileName(interp, Tcl_GetString(names[j]),
++		    &ds) == NULL) {
++		Tcl_DStringFree(&utf);
++		goto error_return;
++	    }
++	    if (numNames > 1) {
++		Tcl_DStringAppend(&utf, j ? " \"" : "\"", TCL_INDEX_NONE);
++	    }
++	    Tcl_DStringAppend(&utf, Tcl_DStringValue(&ds),
++		    Tcl_DStringLength(&ds));
++	    if (numNames > 1) {
++		Tcl_DStringAppend(&utf, "\"", 1);
++	    }
++	    Tcl_DStringFree(&ds);
++	}
++	Tcl_UtfToExternalDStringEx(interp, TkWinGetUnicodeEncoding(),
++		Tcl_DStringValue(&utf), Tcl_DStringLength(&utf),
++		TCL_ENCODING_PROFILE_REPLACE, &optsPtr->utf16FileName, NULL);
++	Tcl_DStringFree(&utf);
++    }
++
+     return TCL_OK;
+ 
+ error_return:                   /* interp should already hold error */

@@ -1,0 +1,19 @@
+Index: doc/grab.n
+==================================================================
+--- doc/grab.n
++++ doc/grab.n
+@@ -72,6 +72,14 @@
+ same process but created by different interpreters continue to receive
+ key and mouse events normally.
+ .PP
++On Windows a global grab does not lock out other applications: they
++continue to receive key and mouse events normally.
++During a grab, top-level windows of the application outside the grab tree
++cannot be activated, and their minimize, maximize and close commands are
++ignored. During a local grab they can still be moved, resized and restored;
++during a global grab they cannot be moved or restored either.
++Top-level windows in the grab tree other than \fB.\fR cannot be minimized.
++.PP
+ Grabs apply to particular displays.  If an application has windows
+ on multiple displays then it can establish a separate grab on each
+ display.

@@ -1,0 +1,63 @@
+Index: tests/winFont.test
+==================================================================
+--- tests/winFont.test	
++++ tests/winFont.test	
+@@ -105,11 +105,11 @@
+     set x {}
+ } -body {
+     lappend x [font actual {-family "Courier"} -family]
+     lappend x [font actual {-family "Monaco"} -family]
+     lappend x [font actual {-family "Courier New"} -family]
+-} -match regexp -result {Courier (Courier|Monaco) {Courier New}}
++} -match regexp -result {^({Courier New}|Courier) ({Courier New}|Courier|Monaco) {Courier New}$}
+ test winfont-2.9 {TkpGetFontFromAttributes procedure: Helvetica fonts} -constraints {
+     win
+ } -setup {
+     set x {}
+ } -body {
+
+Index: win/tkWinFont.c
+==================================================================
+--- win/tkWinFont.c	
++++ win/tkWinFont.c	
+@@ -3331,14 +3331,19 @@
+     /*
+      * If the family exists, WinFontExistProc() will be called and
+      * EnumFontFamilies() will return whatever WinFontExistProc() returns. If
+      * the family doesn't exist, EnumFontFamilies() will just return a
+      * non-zero value.
++     *
++     * Raster fonts cannot be scaled or rotated, so ignore them for families
++     * that have aliases (e.g. "Courier"); then a TrueType alias (e.g.
++     * "Courier New") is used instead.
+      */
+ 
+     result = EnumFontFamiliesW(hdc, (WCHAR *)Tcl_DStringValue(&faceString),
+-	    (FONTENUMPROCW) WinFontExistProc, 0);
++	    (FONTENUMPROCW) WinFontExistProc,
++	    TkFontGetAliasList(faceName) != NULL);
+     Tcl_DStringFree(&faceString);
+     return (result == 0);
+ }
+ 
+ static const char *
+@@ -3365,13 +3370,16 @@
+ 
+ static int CALLBACK
+ WinFontExistProc(
+     TCL_UNUSED(ENUMLOGFONTW *),		/* Logical-font data. */
+     TCL_UNUSED(NEWTEXTMETRIC *),	/* Physical-font data (not used). */
+-    TCL_UNUSED(int),		/* Type of font (not used). */
+-    TCL_UNUSED(LPARAM))		/* EnumFontData to hold result. */
++    int fontType,		/* Type of font. */
++    LPARAM lParam)		/* Non-zero to ignore raster fonts. */
+ {
++    if (lParam && (fontType & RASTER_FONTTYPE)) {
++	return 1;
++    }
+     return 0;
+ }
+ 
+ /*
+  * The following data structures are used when querying a TrueType font file
+

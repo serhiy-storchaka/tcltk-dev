@@ -1,0 +1,89 @@
+Index: win/tkWinWm.c
+==================================================================
+--- win/tkWinWm.c
++++ win/tkWinWm.c
+@@ -3905,11 +3905,11 @@
+     Tcl_Size objc,			/* Number of arguments. */
+     Tcl_Obj *const objv[])	/* Argument objects. */
+ {
+     WmInfo *wmPtr = winPtr->wmInfoPtr;
+     char xSign, ySign;
+-    int width, height;
++    int x, y, width, height;
+     const char *argv3;
+ 
+     if ((objc != 3) && (objc != 4)) {
+ 	Tcl_WrongNumArgs(interp, 2, objv, "window ?newGeometry?");
+ 	return TCL_ERROR;
+@@ -3916,10 +3916,12 @@
+     }
+ 
+     if (objc == 3) {
+ 	xSign = (wmPtr->flags & WM_NEGATIVE_X) ? '-' : '+';
+ 	ySign = (wmPtr->flags & WM_NEGATIVE_Y) ? '-' : '+';
++	x = wmPtr->x;
++	y = wmPtr->y;
+ 	if (wmPtr->gridWin != NULL) {
+ 	    width = wmPtr->reqGridWidth + (winPtr->changes.width
+ 		    - winPtr->reqWidth)/wmPtr->widthInc;
+ 	    height = wmPtr->reqGridHeight + (winPtr->changes.height
+ 		    - winPtr->reqHeight)/wmPtr->heightInc;
+@@ -3928,15 +3930,24 @@
+ 	    height = winPtr->changes.height;
+ 	}
+ 	if (winPtr->flags & TK_EMBEDDED) {
+ 	    LRESULT result = SendMessageW(wmPtr->wrapper, TK_MOVEWINDOW, -1, -1);
+ 
+-	    wmPtr->x = (short)(result >> 16);
+-	    wmPtr->y = (short)(result & 0x0000ffff);
++	    x = wmPtr->x = (short)(result >> 16);
++	    y = wmPtr->y = (short)(result & 0x0000ffff);
++	} else if (wmPtr->hints.initial_state == ZoomState) {
++	    /*
++	     * wmPtr->x and wmPtr->y keep the position of the restored window,
++	     * report the actual position of the zoomed one.
++	     */
++
++	    xSign = ySign = '+';
++	    x = winPtr->changes.x;
++	    y = winPtr->changes.y;
+ 	}
+ 	Tcl_SetObjResult(interp, Tcl_ObjPrintf("%dx%d%c%d%c%d",
+-		width, height, xSign, wmPtr->x, ySign, wmPtr->y));
++		width, height, xSign, x, ySign, y));
+ 	return TCL_OK;
+     }
+ 
+     argv3 = Tcl_GetString(objv[3]);
+     if (*argv3 == '\0') {
+
+
+Index: tests/winWm.test
+==================================================================
+--- tests/winWm.test
++++ tests/winWm.test
+@@ -610,6 +610,24 @@
+     destroy .t
+ } -result 0
+ 
++test winWm-11.1 {wm geometry reports the position of a zoomed toplevel} -constraints win -setup {
++    destroy .t
++    toplevel .t
++    wm geometry .t 200x200+303+175
++    update
++} -body {
++    wm state .t zoomed
++    update
++    regexp {[+-](-?\d+)[+-](-?\d+)$} [wm geometry .t] -> x y
++    set res [list [expr {abs($x - [winfo rootx .t]) < 20}] \
++	    [expr {abs($y - [winfo rooty .t]) < 50}]]
++    wm state .t normal
++    update
++    lappend res [wm geometry .t]
++} -cleanup {
++    destroy .t
++} -result {1 1 200x200+303+175}
++
+ #
+ # TESTFILE CLEANUP
+ #

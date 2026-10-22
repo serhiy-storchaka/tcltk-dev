@@ -1,0 +1,124 @@
+Index: library/ttk/altTheme.tcl
+==================================================================
+--- library/ttk/altTheme.tcl
++++ library/ttk/altTheme.tcl
+@@ -83,11 +83,11 @@
+ 	    -insertwidth 0.75p -focuswidth 0.75p -focuscolor $colors(-selectbg)
+ 	ttk::style map TSpinbox -fieldbackground \
+ 	    [list readonly $colors(-frame) disabled $colors(-frame)] \
+ 	    -arrowcolor [list disabled $colors(-disabledfg)]
+ 
+-	ttk::style configure Toolbutton -relief flat -padding 1.5p
++	ttk::style configure Toolbutton -anchor center -relief flat -padding 1.5p
+ 	ttk::style map Toolbutton -relief \
+ 	    {disabled flat selected sunken pressed sunken active raised}
+ 	ttk::style map Toolbutton -background \
+ 	    [list pressed $colors(-darker)  active $colors(-activebg)]
+ 
+
+Index: library/ttk/classicTheme.tcl
+==================================================================
+--- library/ttk/classicTheme.tcl
++++ library/ttk/classicTheme.tcl
+@@ -150,11 +150,11 @@
+ 			Toolbutton.label
+ 		    }
+ 		}
+ 	    }
+ 	}
+-	ttk::style configure Toolbutton -padding 1.5p -relief flat \
++	ttk::style configure Toolbutton -anchor center -padding 1.5p -relief flat \
+ 	    -shiftrelief 2 -focussolid 1
+ 	ttk::style map Toolbutton -relief \
+ 	    {disabled flat selected sunken pressed sunken active raised}
+ 	ttk::style map Toolbutton -background \
+ 	    [list pressed $colors(-troughbg)  active $colors(-activebg)]
+
+Index: library/ttk/defaults.tcl
+==================================================================
+--- library/ttk/defaults.tcl
++++ library/ttk/defaults.tcl
+@@ -240,11 +240,11 @@
+ 		    }
+ 		}
+ 	    }
+ 	}
+ 	ttk::style configure Toolbutton \
+-	    -padding 1.5p -relief flat
++	    -anchor center -padding 1.5p -relief flat
+ 	ttk::style map Toolbutton -relief \
+ 	    [list disabled flat selected sunken pressed sunken active raised]
+ 	ttk::style map Toolbutton -background \
+ 	    [list pressed $colors(-darker)  active $colors(-activebg)]
+     }
+
+Index: library/ttk/vistaTheme.tcl
+==================================================================
+--- library/ttk/vistaTheme.tcl
++++ library/ttk/vistaTheme.tcl
+@@ -27,11 +27,11 @@
+ 	    -syssize {SM_CXVSCROLL SM_CYVSCROLL}
+ 
+ 	# Label and Toolbutton
+ 	ttk::style configure TLabelframe.Label -foreground SystemButtonText
+ 
+-	ttk::style configure Toolbutton -padding 3p
++	ttk::style configure Toolbutton -anchor center -padding 3p
+ 
+ 	# Combobox
+ 	ttk::style configure TCombobox -padding 1.5p
+ 	ttk::style element create Combobox.border vsapi \
+ 	    COMBOBOX 4 {disabled 4 focus 3 active 2 hover 2 {} 1}
+
+Index: library/ttk/winTheme.tcl
+==================================================================
+--- library/ttk/winTheme.tcl
++++ library/ttk/winTheme.tcl
+@@ -57,11 +57,11 @@
+ 	ttk::style configure TSpinbox -padding {1.5p 0.75p 12p 0.75p} \
+ 	    -insertwidth 0.75p
+ 
+ 	ttk::style configure TLabelframe -borderwidth 2 -relief groove
+ 
+-	ttk::style configure Toolbutton -relief flat -padding {6p 3p}
++	ttk::style configure Toolbutton -anchor center -relief flat -padding {6p 3p}
+ 	ttk::style map Toolbutton -relief \
+ 	    {disabled flat  selected sunken  pressed sunken  active raised}
+ 
+ 	ttk::style configure TScale -groovewidth 3p
+ 
+
+Index: tests/ttk/ttk.test
+==================================================================
+--- tests/ttk/ttk.test
++++ tests/ttk/ttk.test
+@@ -715,10 +715,28 @@
+     # simply check this produces a list with some style names,
+     # without checking exact content (not needed, and may vary
+     # depending on platform, versions, improvements...)
+     expr {[llength [ttk::style theme styles alt]] > 0}
+ } -result 1
++test ttk-16.3 {Toolbutton text is centered in all themes} -setup {
++    set currentTheme [ttk::style theme use]
++    set result {}
++} -body {
++    foreach theme [ttk::style theme names] {
++	if {$theme ni {default alt clam classic winnative vista aqua}} {
++	    continue
++	}
++	ttk::style theme use $theme
++	if {[ttk::style lookup Toolbutton -anchor] ne "center"} {
++	    lappend result $theme
++	}
++    }
++    set result
++} -cleanup {
++    ttk::style theme use $currentTheme
++    unset currentTheme result theme
++} -result {}
+ 
+ # test for ttk::label
+ # test for "-textangle" option for ttk::labels
+ test ttk::label-1.1 {configuration option: "textangle" for ttk::label} -setup {
+     ttk::label .l -borderwidth 2 -font {Helvetica -12 bold}
+

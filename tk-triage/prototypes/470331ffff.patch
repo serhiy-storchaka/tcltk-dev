@@ -1,0 +1,76 @@
+Index: library/menu.tcl
+==================================================================
+--- library/menu.tcl
++++ library/menu.tcl
+@@ -88,10 +88,11 @@
+ bind Menubutton <Leave> {
+     tk::MbLeave %W
+ }
+ bind Menubutton <Button-1> {
+     if {$tk::Priv(inMenubutton) ne ""} {
++	set tk::Priv(pressed) [list %W %X %Y]
+ 	tk::MbPost $tk::Priv(inMenubutton) %X %Y
+     }
+ }
+ bind Menubutton <Motion> {
+     tk::MbMotion %W up %X %Y
+@@ -140,11 +141,11 @@
+ }
+ bind Menu <Button> {
+     tk::MenuButtonDown %W
+ }
+ bind Menu <ButtonRelease> {
+-   tk::MenuInvoke %W 1
++   tk::MenuButtonUp %W %X %Y
+ }
+ bind Menu <space> {
+     tk::MenuInvoke %W 0
+ }
+ bind Menu <<Invoke>> {
+@@ -524,10 +525,11 @@
+ # menu -		The menu window.
+ 
+ proc ::tk::MenuButtonDown menu {
+     variable ::tk::Priv
+ 
++    set Priv(pressed) [list $menu {*}[winfo pointerxy $menu]]
+     if {![winfo viewable $menu]} {
+ 	return
+     }
+     if {[$menu index active] < 0} {
+ 	if {[$menu cget -type] ne "menubar" } {
+@@ -596,10 +598,33 @@
+ 	return
+     }
+     $menu activate {}
+     GenerateMenuSelect $menu
+ }
++
++# ::tk::MenuButtonUp --
++# This procedure is invoked when a mouse button is released over a menu.
++# The release of a click which posted the menu under the pointer (e.g.
++# the menu was shifted to fit on the screen) is ignored and the menu
++# stays posted.  Otherwise the active entry is invoked.
++#
++# Arguments:
++# menu -		The menu window.
++# rootx, rooty -	Root coordinates of mouse.
++
++proc ::tk::MenuButtonUp {menu rootx rooty} {
++    variable ::tk::Priv
++
++    if {[info exists Priv(pressed)]} {
++	lassign $Priv(pressed) w x y
++	unset Priv(pressed)
++	if {$w ne $menu && abs($rootx - $x) < 3 && abs($rooty - $y) < 3} {
++	    return
++	}
++    }
++    MenuInvoke $menu 1
++}
+ 
+ # ::tk::MenuInvoke --
+ # This procedure is invoked when button 1 is released over a menu.
+ # It invokes the appropriate menu action and unposts the menu if
+ # it came from a menubutton.
+

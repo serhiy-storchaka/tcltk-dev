@@ -1,0 +1,75 @@
+Index: doc/selection.n
+==================================================================
+--- doc/selection.n
++++ doc/selection.n
+@@ -101,11 +101,12 @@
+ If \fIcommand\fR returns an error then the selection retrieval is rejected
+ just as if the selection did not exist at all.
+ .PP
+ The \fIformat\fR argument specifies the representation that should be
+ used to transmit the selection to the requester (the second column of
+-Table 2 of the ICCCM), and defaults to \fBSTRING\fR.  If \fIformat\fR is
++Table 2 of the ICCCM), and defaults to \fBUTF8_STRING\fR if \fItype\fR
++is \fBUTF8_STRING\fR and to \fBSTRING\fR otherwise.  If \fIformat\fR is
+ \fBSTRING\fR, the selection is transmitted as 8-bit ASCII characters (i.e.
+ just in the form returned by \fIcommand\fR, in the system \fBencoding\fR;
+ the \fBUTF8_STRING\fR format always uses UTF-8 as its encoding).
+ If \fIformat\fR is
+ \fBATOM\fR, then the return value from \fIcommand\fR is divided into fields
+
+Index: generic/tkSelect.c
+==================================================================
+--- generic/tkSelect.c
++++ generic/tkSelect.c
+@@ -900,10 +900,16 @@
+ 	}
+ 	if (count > 3) {
+ 	    format = Tk_InternAtom(tkwin, Tcl_GetString(objs[3]));
+ 	} else if (formatName != NULL) {
+ 	    format = Tk_InternAtom(tkwin, formatName);
++	} else if (target == Tk_InternAtom(tkwin, "UTF8_STRING")) {
++	    /*
++	     * A UTF8_STRING handler must not transmit Latin-1.
++	     */
++
++	    format = target;
+ 	} else {
+ 	    format = XA_STRING;
+ 	}
+ 	string = Tcl_GetStringFromObj(objs[1], &cmdLength);
+ 	if (cmdLength == 0) {
+
+Index: tests/select.test
+==================================================================
+--- tests/select.test
++++ tests/select.test
+@@ -1113,10 +1113,28 @@
+     selection get -selection CLIPBOARD_MANAGER -type SAVE_TARGETS
+     clipboard get
+ } -cleanup {
+     rename get_clip {}
+ } -result {abcd}
++
++test select-14.4 {Bug [1571737fff]: UTF8_STRING handler defaults to UTF8_STRING format} -constraints {
++    x11
++} -setup {
++    selectionSetup
++    childTkProcess create
++    proc utf8handler {offset count} {
++	string range "\u0442\u0435\u0441\u0442" $offset [expr {$offset + $count - 1}]
++    }
++} -body {
++    selection handle -type UTF8_STRING .f1 utf8handler
++    childTkProcess eval {
++	lmap c [split [selection get -type UTF8_STRING] ""] {scan $c %c}
++    }
++} -cleanup {
++    childTkProcess exit
++    rename utf8handler {}
++} -result {1090 1077 1089 1090}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

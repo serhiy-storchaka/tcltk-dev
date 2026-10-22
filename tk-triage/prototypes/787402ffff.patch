@@ -1,0 +1,72 @@
+Index: tests/bind.test
+==================================================================
+--- tests/bind.test
++++ tests/bind.test
+@@ -7160,10 +7160,25 @@
+     event generate .c <ButtonRelease-1>
+     event generate .c <B1-Motion>
+ } -cleanup {
+     destroy .c
+ } -returnCodes ok -result {}  ; # shall not crash (assertion failed)
++
++test bind-38.1 {Return and KP_Enter are distinct keysyms, bug [787402ffff]} -setup {
++    frame .f -width 150 -height 100
++    pack .f
++    focus -force .f
++    update
++    set x {}
++} -body {
++    bind .f <Key> {lappend x %K}
++    event generate .f <Key-Return>
++    event generate .f <Key-KP_Enter>
++    set x
++} -cleanup {
++    destroy .f
++} -result {Return KP_Enter}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+
+Index: win/tkWinKey.c
+==================================================================
+--- win/tkWinKey.c
++++ win/tkWinKey.c
+@@ -485,10 +485,19 @@
+ 	break;
+     case VK_MENU:
+ 	if (state & EXTENDED_MASK) {
+ 	    return XK_Alt_R;
+ 	}
++	break;
++    case VK_RETURN:
++	/*
++	 * The keypad Enter key is the extended version of VK_RETURN.
++	 */
++
++	if (state & EXTENDED_MASK) {
++	    return XK_KP_Enter;
++	}
+ 	break;
+     }
+     return keymap[keycode];
+ }
+ 
+@@ -713,10 +722,15 @@
+     int shift;
+ 
+     eventPtr->xkey.keycode = 0;
+     if (keySym == NoSymbol) {
+ 	return;
++    }
++    if (keySym == XK_KP_Enter) {
++	eventPtr->xkey.keycode = VK_RETURN;
++	eventPtr->xkey.state |= EXTENDED_MASK;
++	return;
+     }
+ 
+     /*
+      * We check our private map first for a virtual keycode, as VkKeyScan will
+      * return values that don't map to X for the "extended" Syms. This may be
+

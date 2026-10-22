@@ -1,0 +1,21 @@
+Index: unix/installManPage
+==================================================================
+--- unix/installManPage
++++ unix/installManPage
+@@ -68,13 +68,13 @@
+ 	s/,//g
+ #                               ... and backslash-escaped spaces.
+ 	s/\\\ //g
+ #                               Delete from \- to the end of line
+ 	s/ \\\-.*//
+-#                               Convert all non-space non-alphanum sequences
++#                               Convert all non-space non-alphanum non-colon sequences
+ #                               to single underscores.
+-	s/[^ A-Za-z0-9][^ A-Za-z0-9]*/_/g
++	s/[^ A-Za-z0-9:][^ A-Za-z0-9:]*/_/g
+ #                               print the result and exit
+ 	p;q
+     }' $ManPage`
+ 
+ if test -z "$Names" ; then
+

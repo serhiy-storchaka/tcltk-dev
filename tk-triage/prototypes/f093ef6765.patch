@@ -1,0 +1,44 @@
+Index: win/tkWinPointer.c
+==================================================================
+--- win/tkWinPointer.c
++++ win/tkWinPointer.c
+@@ -432,25 +432,32 @@
+ void
+ TkpWarpPointer(
+     TkDisplay *dispPtr)
+ {
+     int rootx, rooty;
+-    unsigned int modifierState;
+ 
+     if (dispPtr->warpWindow) {
+ 	RECT r;
+ 	GetWindowRect(Tk_GetHWND(Tk_WindowId(dispPtr->warpWindow)), &r);
+-	TkSetCursorPos(r.left + dispPtr->warpX, r.top + dispPtr->warpY);
++	rootx = r.left + dispPtr->warpX;
++	rooty = r.top + dispPtr->warpY;
+     } else {
+-	TkSetCursorPos(dispPtr->warpX, dispPtr->warpY);
++	rootx = dispPtr->warpX;
++	rooty = dispPtr->warpY;
+     }
++    TkSetCursorPos(rootx, rooty);
+ 
+-    XQueryPointer(dispPtr->display, None, NULL, NULL, &rootx, &rooty,
+-	    NULL, NULL, &modifierState);
++    /*
++     * The input injected by SendInput() in TkSetCursorPos() is processed
++     * asynchronously, so GetCursorPos() may still return the old position.
++     * Use the target position, otherwise the crossing events are lost when
++     * the pointer is warped out and back quickly.
++     */
++
+     Tk_Window newPointerWin = Tk_CoordsToWindow(rootx, rooty,
+ 	    dispPtr->warpMainwin);
+-    Tk_UpdatePointer(newPointerWin, rootx, rooty, modifierState);
++    Tk_UpdatePointer(newPointerWin, rootx, rooty, TkWinGetModifierState());
+ }
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
+

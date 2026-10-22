@@ -1,0 +1,118 @@
+Index: generic/tkGrid.c
+==================================================================
+--- generic/tkGrid.c
++++ generic/tkGrid.c
+@@ -3265,14 +3265,14 @@
+ 		    Tcl_SetObjResult(interp, Tcl_NewStringObj(
+ 			    "window can't be managed in itself", TCL_INDEX_NONE));
+ 		    Tcl_SetErrorCode(interp, "TK", "GEOMETRY", "SELF", (char *)NULL);
+ 		    return TCL_ERROR;
+ 		}
+-		positionGiven = 1;
+ 		if (!(containerPtr = GetGrid(other))) {
+ 		    continue;
+ 		}
++		positionGiven = 1;
+ 		InitContainerData(containerPtr);
+ 		break;
+ 	    case CONF_STICKY: {
+ 		int sticky = StringToSticky(Tcl_GetString(objv[i+1]));
+ 
+
+Index: generic/tkPlace.c
+==================================================================
+--- generic/tkPlace.c
++++ generic/tkPlace.c
+@@ -627,10 +627,19 @@
+ 		"can't use placer on top-level window \"%s\"; use "
+ 		"wm command instead", Tk_PathName(tkwin)));
+ 	Tcl_SetErrorCode(interp, "TK", "GEOMETRY", "TOPLEVEL", (char *)NULL);
+ 	return TCL_ERROR;
+     }
++
++    /*
++     * Ignore half-dead windows (e.g. in a <Destroy> binding), otherwise
++     * a stale entry would be left in the hash table.
++     */
++
++    if (((TkWindow *) tkwin)->flags & TK_ALREADY_DEAD) {
++	return TCL_OK;
++    }
+ 
+     contentPtr = CreateContent(tkwin, table);
+ 
+     if (Tk_SetOptions(interp, contentPtr, table, objc, objv,
+ 	    contentPtr->tkwin, &savedOptions, &mask) != TCL_OK) {
+@@ -649,10 +658,14 @@
+ 	/* -in changed */
+ 	Tk_Window win;
+ 	Tk_Window ancestor;
+ 
+ 	win = contentPtr->inTkwin;
++	if (((TkWindow *) win)->flags & TK_ALREADY_DEAD) {
++	    Tk_RestoreSavedOptions(&savedOptions);
++	    return TCL_OK;
++	}
+ 
+ 	/*
+ 	 * Make sure that the new container is either the logical parent of the
+ 	 * content window or a descendant of that window, and that the container and content
+ 	 * aren't the same.
+
+Index: tests/grid.test
+==================================================================
+--- tests/grid.test
++++ tests/grid.test
+@@ -2201,10 +2201,22 @@
+     info exists A
+ } -cleanup {
+     bind . <<NoManagedChild>> {}
+     grid_reset 24.8
+ } -result 0
++
++test grid-25.1 {grid -in half-dead window in <Destroy> binding - bug 3020550} -setup {
++    frame .f
++    frame .x
++} -body {
++    bind .f <Destroy> {grid .x -in .f}
++    destroy .f
++    update
++    winfo exists .f
++} -cleanup {
++    grid_reset 25.1
++} -result 0
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+
+Index: tests/place.test
+==================================================================
+--- tests/place.test
++++ tests/place.test
+@@ -506,10 +506,23 @@
+     lappend res [winfo geometry .pack.lf.f]
+ } -cleanup {
+     destroy .pack
+ } -result {196x188+2+10 177x186+5+7}
+ 
++test place-13.2 {place half-dead window in <Destroy> binding - bug 3020550} -setup {
++    destroy .p .x
++    frame .p
++    frame .p.f
++    frame .x
++} -body {
++    bind .p.f <Destroy> {place .p.f -x 0 -y 0; place .x -in .p.f}
++    destroy .p.f
++    update
++    list [place content .p] [winfo manager .x]
++} -cleanup {
++    destroy .p .x
++} -result {{} {}}
+ 
+ test place-14.1 {memory leak testing} -constraints memory -setup {
+     destroy .f
+     proc getbytes {} {
+ 	set lines [split [memory info] "\n"]
+

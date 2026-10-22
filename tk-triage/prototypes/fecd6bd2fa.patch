@@ -1,0 +1,44 @@
+Index: unix/tkUnixWm.c
+==================================================================
+--- unix/tkUnixWm.c
++++ unix/tkUnixWm.c
+@@ -5092,12 +5092,12 @@
+ /*
+  *----------------------------------------------------------------------
+  *
+  * CheckNetWmState --
+  *
+- *	Updates the window attributes whenever the _NET_WM_STATE property
+- *	changes.
++ *	Updates the window attributes and the requested state whenever the
++ *	_NET_WM_STATE property changes.
+  *
+  * Notes:
+  *
+  *	Tk uses a single -zoomed state, while the EWMH spec supports separate
+  *	vertical and horizontal maximization. We consider the window to be
+@@ -5139,11 +5139,22 @@
+ 	}
+     }
+ 
+     wmPtr->attributes.zoomed = (wmPtr->attributes.zoomed == 3);
+ 
+-    return;
++    /*
++     * The state can be changed by the user through the window manager.
++     * Remember it so that it is restored rather than the previously
++     * requested state when the window is mapped again. Window managers
++     * remove the property when the window is withdrawn, ignore that.
++     */
++
++    if (wmPtr->hints.initial_state != WithdrawnState) {
++	wmPtr->reqState.topmost = wmPtr->attributes.topmost;
++	wmPtr->reqState.zoomed = wmPtr->attributes.zoomed;
++	wmPtr->reqState.fullscreen = wmPtr->attributes.fullscreen;
++    }
+ }
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
+

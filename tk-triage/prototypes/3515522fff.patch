@@ -1,0 +1,85 @@
+Index: generic/tkFrame.c
+==================================================================
+--- generic/tkFrame.c
++++ generic/tkFrame.c
+@@ -2032,10 +2032,19 @@
+ 	    Tk_SetWindowMenubar(framePtr->interp, framePtr->tkwin, NULL,
+ 		    Tcl_GetString(framePtr->menuNameObj));
+ 	}
+     } else if (!Tk_IsTopLevel(tkwin) && framePtr->type == TYPE_TOPLEVEL) {
+ 	framePtr->type = TYPE_FRAME;
++	if (framePtr->menuNameObj != NULL) {
++	    /*
++	     * The window is no longer a toplevel (wm forget): release its
++	     * menubar, so that no stale references to it remain.
++	     */
++
++	    Tk_SetWindowMenubar(framePtr->interp, framePtr->tkwin,
++		    Tcl_GetString(framePtr->menuNameObj), NULL);
++	}
+     } else {
+ 	/*
+ 	 * Not a frame or toplevel, skip it.
+ 	 */
+ 
+
+Index: tests/wm.test
+==================================================================
+--- tests/wm.test
++++ tests/wm.test
+@@ -2638,10 +2638,31 @@
+     lappend res [winfo ismapped .m]
+ } -cleanup {
+     destroy .m
+     unset res
+ } -result {1 1}
++test wm-forget-2.2 {bug [3515522fff] - crash with menubar + [wm forget]} -setup {
++    catch {destroy .t .m}
++} -body {
++    menu .m
++    menu .m.system
++    .m.system add command -label test
++    .m add cascade -label System -menu .m.system
++    toplevel .t -menu .m
++    update
++    wm forget .t
++    update
++    wm manage .t
++    update
++    wm forget .t
++    update
++    destroy .t
++    update
++    destroy .m
++    update
++    winfo exists .m
++} -result 0
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+
+Index: win/tkWinWm.c
+==================================================================
+--- win/tkWinWm.c
++++ win/tkWinWm.c
+@@ -8470,10 +8470,17 @@
+ TkWinGetWrapperWindow(
+     Tk_Window tkwin)		/* The window we need the wrapper from */
+ {
+     TkWindow *winPtr = (TkWindow *) tkwin;
+ 
++    /*
++     * Could be a Frame (i.e. not a Toplevel), e.g. after [wm forget].
++     */
++
++    if (winPtr->wmInfoPtr == NULL) {
++	return NULL;
++    }
+     return winPtr->wmInfoPtr->wrapper;
+ }
+ 
+ /*
+  *----------------------------------------------------------------------
+

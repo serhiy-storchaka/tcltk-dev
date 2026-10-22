@@ -1,0 +1,58 @@
+Index: library/ttk/sizegrip.tcl
+==================================================================
+--- library/ttk/sizegrip.tcl
++++ library/ttk/sizegrip.tcl
+@@ -88,12 +88,11 @@
+     if {$State(resizeY)} {
+ 	set h [expr {$h + ($Y - $State(pressY))/$State(heightInc)}]
+     }
+     if {$w <= 0} { set w 1 }
+     if {$h <= 0} { set h 1 }
+-    set x $State(x) ; set y $State(y)
+-    wm geometry $State(toplevel) ${w}x${h}+${x}+${y}
++    wm geometry $State(toplevel) ${w}x${h}
+ }
+ 
+ proc ttk::sizegrip::Release {W X Y} {
+     variable State
+     set State(pressed) 0
+
+Index: unix/tkUnixWm.c
+==================================================================
+--- unix/tkUnixWm.c
++++ unix/tkUnixWm.c
+@@ -5700,10 +5700,21 @@
+ 	if (!(wmPtr->sizeHintsFlags & (USPosition|PPosition))) {
+ 	    wmPtr->sizeHintsFlags |= USPosition;
+ 	    flags |= WM_UPDATE_SIZE_HINTS;
+ 	}
+     }
++
++    /*
++     * Only move the window if a position was given or if it is relative to
++     * the right or bottom edge of the screen. Re-sending the position
++     * recorded from the window manager's frame can move the window with
++     * some window managers [Bug 2995339].
++     */
++
++    if ((*p != '\0') || (flags & (WM_NEGATIVE_X|WM_NEGATIVE_Y))) {
++	flags |= WM_MOVE_PENDING;
++    }
+ 
+     /*
+      * Everything was parsed OK. Update the fields of *wmPtr and arrange for
+      * the appropriate information to be percolated out to the window manager
+      * at the next idle moment.
+@@ -5711,11 +5722,10 @@
+ 
+     wmPtr->width = width;
+     wmPtr->height = height;
+     wmPtr->x = x;
+     wmPtr->y = y;
+-    flags |= WM_MOVE_PENDING;
+     wmPtr->flags = flags;
+ 
+     if (!(wmPtr->flags & (WM_UPDATE_PENDING|WM_NEVER_MAPPED))) {
+ 	Tcl_DoWhenIdle(UpdateGeometryInfo, winPtr);
+ 	wmPtr->flags |= WM_UPDATE_PENDING;
+

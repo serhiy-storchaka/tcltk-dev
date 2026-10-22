@@ -1,0 +1,184 @@
+Index: generic/tkBitmap.c
+==================================================================
+--- generic/tkBitmap.c	
++++ generic/tkBitmap.c	
+@@ -411,10 +411,19 @@
+ 		}
+ 	    } else {
+ 		bitmap = XCreateBitmapFromData(Tk_Display(tkwin),
+ 			RootWindowOfScreen(Tk_Screen(tkwin)),
+ 			(const char *)predefPtr->source, (unsigned)width, (unsigned)height);
++	    }
++	    if (bitmap == None) {
++		if (interp != NULL) {
++		    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
++			    "cannot create bitmap \"%s\"", string));
++		    Tcl_SetErrorCode(interp, "TK", "BITMAP", "CREATE",
++			    (char *)NULL);
++		}
++		goto error;
+ 	    }
+ 	}
+     }
+ 
+     /*
+
+Index: generic/tkImgPhInstance.c
+==================================================================
+--- generic/tkImgPhInstance.c	
++++ generic/tkImgPhInstance.c	
+@@ -905,12 +905,22 @@
+ 		RootWindow(instancePtr->display,
+ 			instancePtr->visualInfo.screen),
+ 		(modelPtr->width > 0) ? modelPtr->width: 1,
+ 		(modelPtr->height > 0) ? modelPtr->height: 1,
+ 		instancePtr->visualInfo.depth);
+-	if (!newPixmap) {
+-	    Tcl_Panic("Fail to create pixmap with Tk_GetPixmap in TkImgPhotoInstanceSetSize");
++	if (newPixmap == None) {
++	    /*
++	     * Out of resources (e.g. the GDI object quota on Windows). Leave
++	     * the instance without a pixmap: it is not displayed, and another
++	     * attempt is made the next time the instance is used.
++	     */
++
++	    if (instancePtr->pixels != None) {
++		Tk_FreePixmap(instancePtr->display, instancePtr->pixels);
++		instancePtr->pixels = None;
++	    }
++	    return;
+ 	}
+ 
+ 	/*
+ 	 * The following is a gross hack needed to properly support colormaps
+ 	 * under Windows. Before the pixels can be copied to the pixmap, the
+@@ -1764,10 +1774,14 @@
+     bool doDithering = true;
+     int bitsPerPixel, bytesPerLine, lineLength;
+     unsigned char *srcLinePtr;
+     schar *errLinePtr;
+     unsigned firstBit, word, mask;
++
++    if (instancePtr->pixels == None) {
++	return;
++    }
+ 
+     /*
+      * Turn dithering off in certain cases where it is not needed (TrueColor,
+      * DirectColor with many colors).
+      */
+
+Index: win/tkWinDraw.c
+==================================================================
+--- win/tkWinDraw.c	
++++ win/tkWinDraw.c	
+@@ -130,11 +130,13 @@
+  *
+  *	Retrieve the DC from a drawable.
+  *
+  * Results:
+  *	Returns the window DC for windows. Returns a new memory DC for
+- *	pixmaps.
++ *	pixmaps. Returns NULL for None (e.g. a pixmap which could not be
++ *	created because the GDI resources are exhausted), so that drawing
++ *	into it does nothing.
+  *
+  * Side effects:
+  *	Sets up the palette for the device context, and saves the old device
+  *	context state in the passed in TkWinDCState structure.
+  *
+@@ -149,10 +151,15 @@
+ {
+     HDC dc;
+     TkWinDrawable *twdPtr = (TkWinDrawable *)d;
+     Colormap cmap;
+ 
++    if (twdPtr == NULL) {
++	state->palette = NULL;
++	state->bkmode = 0;
++	return NULL;
++    }
+     if (twdPtr->type == TWD_WINDOW) {
+ 	TkWindow *winPtr = twdPtr->window.winPtr;
+ 
+ 	dc = GetDC(twdPtr->window.handle);
+ 	if (winPtr == NULL) {
+@@ -195,10 +202,13 @@
+     HDC dc,
+     TkWinDCState *state)
+ {
+     TkWinDrawable *twdPtr = (TkWinDrawable *)d;
+ 
++    if (twdPtr == NULL) {
++	return;
++    }
+     SetBkMode(dc, state->bkmode);
+     SelectPalette(dc, state->palette, TRUE);
+     RealizePalette(dc);
+     if (twdPtr->type == TWD_WINDOW) {
+ 	ReleaseDC(TkWinGetHWND(d), dc);
+
+Index: win/tkWinX.c
+==================================================================
+--- win/tkWinX.c	
++++ win/tkWinX.c	
+@@ -397,10 +397,17 @@
+ 	return;
+     }
+     screen = (((_XPrivDisplay)(display))->screens);
+ 
+     dc = GetDC(NULL);
++    if (dc == NULL) {
++	/*
++	 * Out of GDI resources. Keep the old screen information, if any.
++	 */
++
++	return;
++    }
+     WidthOfScreen(screen) = GetDeviceCaps(dc, HORZRES);
+     HeightOfScreen(screen) = GetDeviceCaps(dc, VERTRES);
+     WidthMMOfScreen(screen) = MulDiv(WidthOfScreen(screen), 254,
+ 	    GetDeviceCaps(dc, LOGPIXELSX) * 10);
+     HeightMMOfScreen(screen) = MulDiv(HeightOfScreen(screen), 254,
+@@ -497,10 +504,21 @@
+ 	}
+     }
+ 
+     display = XkbOpenDisplay(display_name, NULL, NULL, NULL, NULL, NULL);
+     TkWinDisplayChanged(display);
++    if (DefaultVisualOfScreen(ScreenOfDisplay(display, 0)) == NULL) {
++	/*
++	 * Could not get the screen DC (e.g. out of GDI resources).
++	 */
++
++	Tcl_Free(display->display_name);
++	Tcl_Free((void *)RootWindowOfScreen(ScreenOfDisplay(display, 0)));
++	Tcl_Free(ScreenOfDisplay(display, 0));
++	Tcl_Free(display);
++	return NULL;
++    }
+ 
+     tsdPtr->winDisplay =(TkDisplay *)Tcl_Alloc(sizeof(TkDisplay));
+     memset(tsdPtr->winDisplay, 0, sizeof(TkDisplay));
+     tsdPtr->winDisplay->display = display;
+     tsdPtr->updatingClipboard = FALSE;
+
+Index: xlib/ximage.c
+==================================================================
+--- xlib/ximage.c	
++++ xlib/ximage.c	
+@@ -43,10 +43,13 @@
+     XImage *ximage;
+     GC gc;
+     Pixmap pix;
+ 
+     pix = Tk_GetPixmap(display, d, (int) width, (int) height, 1);
++    if (pix == None) {
++	return None;
++    }
+     gc = XCreateGC(display, pix, 0, NULL);
+     if (gc == NULL) {
+ 	Tk_FreePixmap(display, pix);
+ 	return None;
+     }
+

@@ -1,0 +1,61 @@
+Index: library/ttk/combobox.tcl
+==================================================================
+--- library/ttk/combobox.tcl
++++ library/ttk/combobox.tcl
+@@ -65,10 +65,21 @@
+     if {$tk::Priv(deltaY) != 0 && %# %% 15 == 0} {
+ 	ttk::combobox::Scroll %W [expr {$tk::Priv(deltaY) > 0 ? -1 : 1}]
+     }
+ }
+ bind TCombobox <<TraverseIn>>		{ ttk::combobox::TraverseIn %W }
++
++# The popdown is an override-redirect window that stays above other
++# windows, so unpost it if the combobox gets obscured by another window.
++if {[tk windowingsystem] eq "x11"} {
++    bind TCombobox <Visibility> {
++	if {"%s" ne "VisibilityUnobscured"
++		&& [winfo exists %W.popdown] && [winfo ismapped %W.popdown]} {
++	    ttk::combobox::Unpost %W
++	}
++    }
++}
+ 
+ ### Combobox listbox bindings.
+ #
+ bind ComboboxListbox <ButtonRelease-1>	{ ttk::combobox::LBSelected %W }
+ bind ComboboxListbox <Return>		{ ttk::combobox::LBSelected %W }
+
+Index: tests/ttk/combobox.test
+==================================================================
+--- tests/ttk/combobox.test
++++ tests/ttk/combobox.test
+@@ -132,10 +132,28 @@
+     update
+     set result
+ } -result [list Start 0 {} Post 1 {} Select 0 b Event 0 b] -cleanup {
+     destroy .cb
+ }
++
++test combobox-1600dc73a9 "Popdown unposted when combobox gets obscured" \
++    -constraints {x11} -setup {
++    pack [ttk::combobox .cb -values [list a b c]]
++    update
++} -body {
++    ttk::combobox::Post .cb
++    update
++    set result [winfo ismapped .cb.popdown]
++    toplevel .t
++    wm geometry .t [winfo width .]x[winfo height .]+[winfo rootx .]+[winfo rooty .]
++    update
++    after 200 {set done 1}; vwait done
++    lappend result [winfo ismapped .cb.popdown]
++} -cleanup {
++    destroy .t .cb
++    unset -nocomplain result done
++} -result {1 0}
+ 
+ test combobox-4.1 "style command" -body {
+     ttk::combobox .w
+     list [.w cget -style] [.w style] [winfo class .w]
+ } -cleanup {
+

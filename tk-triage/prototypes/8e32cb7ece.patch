@@ -1,0 +1,52 @@
+Index: macosx/tkMacOSXInit.c
+==================================================================
+--- macosx/tkMacOSXInit.c
++++ macosx/tkMacOSXInit.c
+@@ -482,19 +482,25 @@
+  * loading Tk.
+  */
+ 
+ static void showRootWindow(void *clientData) {
+     NSWindow *root = (NSWindow *) clientData;
+-    if ([NSApp tkWillExit]) {
+-	return;
+-    }
+-    TkWindow *winPtr = TkMacOSXGetTkWindow(root);
+-    WmInfo *wmPtr = winPtr->wmInfoPtr;
+-    if (wmPtr->hints.initial_state == NormalState) {
+-	[root makeKeyAndOrderFront:NSApp];
+-    }
+-    [NSApp activateIgnoringOtherApps: YES];
++    TkWindow *winPtr;
++
++    /*
++     * The root window may have been destroyed before this idle handler runs,
++     * e.g. by [after 0 {destroy .}].
++     */
++
++    if (![NSApp tkWillExit] && (winPtr = TkMacOSXGetTkWindow(root))) {
++	WmInfo *wmPtr = winPtr->wmInfoPtr;
++	if (wmPtr->hints.initial_state == NormalState) {
++	    [root makeKeyAndOrderFront:NSApp];
++	}
++	[NSApp activateIgnoringOtherApps: YES];
++    }
++    [root release];
+ }
+ 
+ int
+ TkpInit(
+     Tcl_Interp *interp)
+@@ -680,10 +686,11 @@
+ 		 * Ordering the root window front in an idle task allows
+ 		 * checking whether it was immediately withdrawn, and
+ 		 * therefore does not need to be placed on the screen.
+ 		 */
+ 
++		[window retain];
+ 		Tcl_DoWhenIdle(showRootWindow, window);
+ 		break;
+ 	    }
+ 	}
+ 
+

@@ -1,0 +1,45 @@
+Index: doc/ttk_spinbox.n
+==================================================================
+--- doc/ttk_spinbox.n
++++ doc/ttk_spinbox.n
+@@ -83,10 +83,39 @@
+ .SH "VIRTUAL EVENTS"
+ .PP
+ The spinbox widget generates a \fB<<Increment>>\fR virtual event when
+ the user presses <Up>, and a \fB<<Decrement>>\fR virtual event when the
+ user presses <Down>.
++.SH "DEFAULT BINDINGS"
++.PP
++The spinbox widget has the same default bindings as the
++\fBttk::entry\fR widget, with the following differences:
++.IP \0\(bu 4
++Pressing mouse button 1 over the up or down arrow generates a
++\fB<<Increment>>\fR or \fB<<Decrement>>\fR virtual event
++respectively, and repeats it while the button is held down.
++.IP \0\(bu 4
++Double-clicking with mouse button 1 over the text area selects all of
++the text in the spinbox and positions the insert cursor at the end.
++Triple-clicking has no additional effect.
++.IP \0\(bu 4
++The Up and Down keys generate \fB<<Increment>>\fR and
++\fB<<Decrement>>\fR virtual events respectively.
++.IP \0\(bu 4
++Rotating the mouse wheel (or scrolling vertically on a touchpad)
++over the spinbox increments or decrements its value, even if the
++spinbox does not have the input focus.  Horizontal scrolling
++(\fB<Shift-MouseWheel>\fR) is ignored.
++To disable changing the value with the mouse wheel for a spinbox
++\fI.sb\fR, use for example:
++.CS
++bind .sb <MouseWheel> break
++bind .sb <Option-MouseWheel> break
++bind .sb <TouchpadScroll> break
++.CE
++.PP
++If the widget is disabled, none of the above actions occur.
+ .SH "STYLING OPTIONS"
+ .PP
+ The class name for a \fBttk::spinbox\fP is \fBTSpinbox\fP.
+ .PP
+ Dynamic states: \fBactive\fP, \fBdisabled\fP, \fBfocus\fP, \fBreadonly\fP.
+

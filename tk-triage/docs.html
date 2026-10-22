@@ -1,0 +1,268 @@
+<title>Tk Bug Triage: Docs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Untouched open Tk bug tickets: Docs</h1>
+  <p class="sub">Triage of 480 open Bug tickets: those with no comment or check-in from me on 2026-09-24, plus 38 added on 2026-10-04 (filed since then, Pending then, or reopened; 16 of them filed by me). Reproduced on Linux/X11 under Xvfb (main 9.1 tip, 9.0, 8.7, 8.6 tip, 8.5, 8.4) and on a Windows 11 VM (9.1, 8.6, 8.5, 8.4). Rows marked <span class="patch">patch</span> link to a prototype patch (135 in all, in <a href="https://github.com/serhiy-storchaka/tcltk-dev/tree/main/tk-triage/prototypes">tk-triage/prototypes</a>). Updated 2026-10-22 with what happened since: the emoji before each ticket id shows its progress.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">167</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">61</span> Already fixed</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">54</span> Not a bug / RFE</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">49</span> Not reproduced</a><a class="navchip c-docs cur" href="docs.html" aria-current="page"><span class="n">11</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">138</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="branch" aria-pressed="false"><span aria-hidden="true">🔧</span> <span class="n">2</span> Fix in a branch</button><button class="pchip" data-p="commented" aria-pressed="false"><span aria-hidden="true">💬</span> <span class="n">1</span> Commented</button><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">8</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, subsystem, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="docs"><h2><span class="dot c-docs"></span>Docs <span class="cnt">11</span></h2><details class="t" id="1a15f7cc4d" data-s="1a15f7cc4d unclear docs on mactypes in tk_getopenfile (patch included) 37. [tk_get*file] docs (still unchanged in main doc/getopenfile.n)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1a15f7cc4d</span><span class="yr">2025</span><span class="ti">Unclear docs on MacTypes in tk_getOpenFile (patch included)</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tk-triage/prototypes/1a15f7cc4d.patch">patch</a><span class="vd">DOCS (still unchanged in main doc/getOpenFile.n)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1a15f7cc4d">Open ticket 1a15f7cc4d</a> · 37. [tk_get*File] · filed 2025-04-22</p><div class="lab">Full verdict</div><p>DOCS (still unchanged in main doc/getOpenFile.n)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> source check. macosx/tkMacOSXDialog.c uses only clausePtr-&gt;patterns (extensions) and never reads macTypes, so macTypes are ignored on every platform.
+</li>
+<li><span class="k">Cause</span> the doc still describes classic Mac OS AND/OR matching by macType.
+</li>
+<li><span class="k">Prototype</span> prototypes/1a15f7cc4d.patch (30 lines, docs only). It says macType is accepted but ignored on all platforms, drops the Macintosh AND/OR paragraphs, and removes TEXT/GIFF from the example.
+</li>
+<li><span class="k">Suggested ticket comment</span> Current macOS Tk ignores macTypes: the dialog code filters by extension only. A doc update is prepared saying so and cleaning up the example.
+</li></ul></div></details><details class="t" id="2903b4c9ab" data-s="2903b4c9ab undocumented constraints on menubars 10. generic menus docs; the macos breakage is cannot-test (macos). not-reproduced on x11." data-p="branch"><summary><span class="id"><span class="pe" title="Fix in a branch" aria-label="Fix in a branch">🔧</span>2903b4c9ab</span><span class="yr">2025</span><span class="ti">Undocumented constraints on menubars</span><span class="vd">DOCS; the macOS breakage is CANNOT-TEST (macOS). NOT-REPRODUCED on X11.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2903b4c9ab">Open ticket 2903b4c9ab</a> · 10. Generic Menus · filed 2025-03-21</p><div class="since"><div class="lab">🔧 Since triage (updated 2026-10-22)</div><p>Status now: <strong>Open</strong></p><ul><li>🔧 2026-10-11 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/7d68f657d9">7d68f657d9</a> on <code>menubar-clone-recreate</code>, not merged: Fix <a class="h" href="https://core.tcl-lang.org/tk/info/2903b4c9ab">2903b4c9ab</a>: a toplevel lost its menubar when the menubar clone was destroyed, e.g. together with the other children of the toplevel, and setting -menu to </li><li>💬 2026-10-11 <strong>serhiy.storchaka</strong>: The menubar breaks because the script destroys all children of the toplevel, including the menubar clone .tl.#menuBar, and setting -menu to the same value did not create the clone again. This happens on X11 too, and the menubar does not need to be a child of the toplevel. Proposed fix in branch menubar-clone-recreate, test menu-25.17.</li></ul></div><div class="lab">Full verdict</div><p>DOCS; the macOS breakage is CANNOT-TEST (macOS). NOT-REPRODUCED on X11.</p><ul>
+<li><span class="k">Platform</span> docs (the failure itself is macOS)
+</li>
+<li><span class="k">Tested</span> X11 main and 8.6. A menubar <code>.mb</code> (child of <code>.</code>) attached to two toplevels <code>.t</code> and <code>.u</code> works: clones <code>.t.#mb</code>/<code>.u.#mb</code> are mapped and cascades post. doc/menu.n already documents the cascade-must-be-child rule (lines 189, 685). The "menubar must be a child of its toplevel" rule is not documented; the generic/tkMenu.c header comment says clones handle it.
+</li>
+<li><span class="k">Cause</span> on X11 (Windows presumably the same, untested) the menubar clone mechanism makes the constraint unnecessary. The macOS failure needs investigation there (it is probably in how macosx/tkMacOSXMenu.c finds the menubar clone).
+</li>
+<li><span class="k">Prototype</span> none (whether to document a macOS-only restriction or fix Aqua needs a Mac)
+</li>
+<li><span class="k">Suggested ticket comment</span> On X11 a menubar that is not a child of its toplevel works, even when shared between toplevels, thanks to clones. So the restriction is Aqua-specific: either fix the Aqua menubar code or add a note to the MENUBARS section of menu.n.
+</li></ul></div></details><details class="t" id="2e07480f5f" data-s="2e07480f5f ttk::spinbox needs  to document &lt;mousewheel&gt; binding 88. themed tk docs (still missing on main: ttk_spinbox.n has no default bindings section)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2e07480f5f</span><span class="yr">2020</span><span class="ti">ttk::spinbox needs  to document &lt;MouseWheel&gt; binding</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tk-triage/prototypes/2e07480f5f.patch">patch</a><span class="vd">DOCS (still missing on main: ttk_spinbox.n has no DEFAULT BINDINGS section)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2e07480f5f">Open ticket 2e07480f5f</a> · 88. Themed Tk · filed 2020-05-28</p><div class="lab">Full verdict</div><p>DOCS (still missing on main: ttk_spinbox.n has no DEFAULT BINDINGS section)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main (read library/ttk/spinbox.tcl; checked <code>bind .sb &lt;MouseWheel&gt; break</code> disables wheel spinning on X11, main)
+</li>
+<li><span class="k">Cause</span> doc/ttk_spinbox.n only documents &lt;&lt;Increment&gt;&gt;/&lt;&lt;Decrement&gt;&gt;. Differences from TEntry: arrow press/repeat, Double-1 selects all, Triple-1 disabled, Up/Down, MouseWheel/Option-MouseWheel/TouchpadScroll spin the value, Shift-MouseWheel ignored.
+</li>
+<li><span class="k">Prototype</span> prototypes/2e07480f5f.patch (45 lines, doc only: new "DEFAULT BINDINGS" section listing the differences from ttk::entry plus how to disable the wheel)
+</li>
+<li><span class="k">Suggested ticket comment</span> Added a DEFAULT BINDINGS section to ttk_spinbox.n that lists the differences from ttk::entry (arrows, double/triple click, Up/Down, mouse wheel) and shows how to disable wheel spinning with <code>bind .sb &lt;MouseWheel&gt; break</code>.
+</li></ul></div></details><details class="t" id="835e5e17ec" data-s="835e5e17ec missing manual page for ttk::cursor 88. themed tk docs (still undocumented on main. ttk::cursor is defined in library/ttk/cursors.tcl and is used internally by several ttk widgets)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>835e5e17ec</span><span class="yr">2019</span><span class="ti">missing manual page for ttk::cursor</span><span class="vd">DOCS (still undocumented on main. ttk::cursor is defined in library/ttk/cursors.tcl and is used internally by several ttk widgets)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/835e5e17ec">Open ticket 835e5e17ec</a> · 88. Themed Tk · filed 2019-12-01</p><div class="lab">Full verdict</div><p>DOCS (still undocumented on main. ttk::cursor is defined in library/ttk/cursors.tcl and is used internally by several ttk widgets)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main (grep doc/)
+</li>
+<li><span class="k">Cause</span> n/a. This is effectively an RFE to make ttk::cursor a public API. See the analysis in <a class="h" href="https://core.tcl-lang.org/tk/info/b3b56ae8dc">b3b56ae8dc</a>.
+</li>
+<li><span class="k">Prototype</span> none (making the command public is an API decision; a man page would list the symbolic names from the cursors.tcl table and the per-platform mapping)
+</li>
+<li><span class="k">Suggested ticket comment</span> ttk::cursor is still internal and undocumented. Documenting it would make it public API (it needs a decision, maybe a TIP), so this is an RFE rather than a bug.
+</li></ul></div></details><details class="t" id="e02aac5cab" data-s="e02aac5cab grab documentation does not have caveats for windows &amp; mac 56. [grab] docs. the proposed paragraph was partly wrong and has been revised." data-p="branch"><summary><span class="id"><span class="pe" title="Fix in a branch" aria-label="Fix in a branch">🔧</span>e02aac5cab</span><span class="yr">2017</span><span class="ti">Grab documentation does not have caveats for windows &amp; mac</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tk-triage/prototypes/e02aac5cab.patch">patch</a><span class="vd">DOCS. The proposed paragraph was partly wrong and has been revised.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/e02aac5cab">Open ticket e02aac5cab</a> · 56. [grab] · filed 2017-02-20</p><div class="since"><div class="lab">🔧 Since triage (updated 2026-10-22)</div><p>Status now: <strong>Open</strong></p><ul><li>🔧 2026-10-08 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/e2d44be67a">e2d44be67a</a> on <code>grab-doc-windows</code>, not merged: Fix <a class="h" href="https://core.tcl-lang.org/tk/info/e02aac5cab">e02aac5cab</a>: document the behaviour of grabs on Windows: a global grab does not lock out other applications, and a toplevel window outside the grab cannot </li><li>🔧 2026-10-08 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/01ff9af74e">01ff9af74e</a> on <code>grab-doc-windows</code>, not merged: Correct the Windows grab paragraph: an outside toplevel can be raised but not activated, and cannot be moved during a global grab (checked on Windows 11).</li><li>💬 2026-10-08 <strong>serhiy.storchaka</strong>: The macOS behaviour has been documented since <a class="h" href="https://core.tcl-lang.org/tk/info/1edd8b7a">1edd8b7a</a>. Proposed documentation of the Windows behaviour in branch grab-doc-windows: a global grab does not lock out other applications, and a toplevel outside the grab cannot be activated or raised, its activation gives the focus to the grab window.</li><li>💬 2026-10-08 <strong>serhiy.storchaka</strong>: Checked on Windows 11 and corrected the paragraph in grab-doc-windows: a toplevel outside the grab can be raised, but not activated, and during a global grab it cannot be moved either.</li></ul></div><div class="lab">Full verdict</div><p>DOCS. The proposed paragraph was partly wrong and has been revised.</p><ul>
+<li><span class="k">Platform</span> docs (Windows)
+</li>
+<li><span class="k">Tested</span> read doc/grab.n on main, win/tkWinPointer.c (XGrabPointer/XGrabKeyboard are simulated inside the process, TkpSetCapture uses SetCapture) and win/tkWinWm.c WmProc (WM_ACTIVATE, WM_NCHITTEST, WM_SYSCOMMAND grab handling).
+</li>
+<li><span class="k">Cause</span> missing documentation
+</li>
+<li><span class="k">Prototype</span> prototypes/e02aac5cab.patch (doc/grab.n, +7 lines). New Windows paragraph after the macOS one: a global grab does not lock out other applications; during any grab, toplevels outside the grab tree cannot be activated, and window manager commands on them other than move, size and restore are ignored; toplevels in the grab tree other than "." cannot be minimized. The wording comes from reading the code, so check it on Windows with win/e02aac5cab.tcl (interactive, prints a VERDICT line).
+</li>
+<li><span class="k">Suggested ticket comment</span> The macOS caveats are documented since <a class="h" href="https://core.tcl-lang.org/tk/info/1edd8b7a16">1edd8b7a16</a>. A Windows paragraph for grab.n is prototyped (a global grab does not lock out other applications; restrictions on toplevels outside the grab tree) and needs checking on Windows.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 3</div><ul>
+<li><span class="k">Platform</span> docs (Windows)
+</li>
+<li><span class="k">Verdict</span> DOCS. The proposed paragraph was partly wrong and has been revised.
+</li>
+<li><span class="k">Tested</span> work-win/e02_auto.tcl on ref91 with real clicks, drags and posted WM_SYSCOMMANDs, plus a control run without a grab (where every action works, except the corner resize drag, which my automation could not do even without a grab, so resizing is not verified):
+<ul>
+<li>Global grab: another process still receives clicks and keys (confirmed). Outside toplevel: a click does not activate it (the grab window stays foreground); a title-bar drag does NOT move it; the minimize/maximize/close buttons are ignored; SC_MINIMIZE/SC_MAXIMIZE/SC_CLOSE are ignored; SC_RESTORE of an iconified outside toplevel is ALSO ignored. A grab-tree toplevel other than <code>.</code>: minimize is ignored, and SC_MAXIMIZE is ignored too. <code>.</code> outside the grab tree: minimize is ignored.
+</li>
+<li>Local grab: the same, except that a title-bar drag moves the outside window, SC_RESTORE restores it, and SC_MAXIMIZE on the grab window works.
+</li>
+<li>Grab on <code>.</code>: <code>.</code> can be minimized.
+</li></ul>
+</li>
+<li><span class="k">Cause</span> missing docs. Behaviour comes from tkWinWm.c WM_SYSCOMMAND/WM_NCHITTEST/WM_MOUSEACTIVATE; with a global grab, the capture on the grab window also blocks mouse moves of other windows.
+</li>
+<li><span class="k">Prototype</span> prototypes/e02aac5cab.patch (doc/grab.n, +9 lines, revised): other apps are not locked out by a global grab; outside toplevels cannot be activated and their minimize/maximize/close are ignored; during a local grab they can still be moved, resized and restored, but during a global grab they cannot be moved or restored either; grab-tree toplevels other than <code>.</code> cannot be minimized.
+</li>
+<li><span class="k">Suggested ticket comment</span> Windows behaviour was checked on Windows 11. A grab.n paragraph documenting it is prepared: other applications are not blocked, windows outside the grab cannot be activated, minimized, maximized or closed, and during a global grab they cannot even be moved or restored.
+</li></ul></div></div></details><details class="t" id="27961a0f8b" data-s="27961a0f8b 8.5 doc missing info on &quot;.window&quot; menu on os x 11. aqua menus docs. still missing on core-8-5-branch; 8.6 and main document it." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>27961a0f8b</span><span class="yr">2015</span><span class="ti">8.5 doc missing info on ".window" menu on OS X</span><span class="vd">DOCS. Still missing on core-8-5-branch; 8.6 and main document it.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/27961a0f8b">Open ticket 27961a0f8b</a> · 11. Aqua Menus · filed 2015-06-22</p><div class="lab">Full verdict</div><p>DOCS. Still missing on core-8-5-branch; 8.6 and main document it.</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> doc/menu.n on 8.5, 8.6, main. core-8-5-branch macosx/tkMacOSXMenu.c does support .window (ENTRY_WINDOWS_MENU).
+</li>
+<li><span class="k">Cause</span> the 8.6 menu.n paragraph on .menubar.window was never backported to 8.5.
+</li>
+<li><span class="k">Prototype</span> none. The fix would be to copy the ".menubar.window" sentence and paragraph from the 8.6 menu.n into the 8.5 one, but 8.5 is EOL.
+</li>
+<li><span class="k">Suggested ticket comment</span> Documented in 8.6 and later. 8.5 is end-of-life and will not get further doc releases, so closing as Out of Date.
+</li></ul></div></details><details class="t" id="9daafa27a9" data-s="9daafa27a9 doc improvement for tk &quot;image photo&quot; support 41. photo images docs (the premise is wrong for core tk)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>9daafa27a9</span><span class="yr">2015</span><span class="ti">Doc improvement for Tk "image photo" support</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tk-triage/prototypes/9daafa27a9.patch">patch</a><span class="vd">DOCS (the premise is wrong for core Tk)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/9daafa27a9">Open ticket 9daafa27a9</a> · 41. Photo Images · filed 2015-04-23</p><div class="lab">Full verdict</div><p>DOCS (the premise is wrong for core Tk)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main, 8.6 tip, 8.6.8, 8.6.9, 8.6.13, 8.5. Built-in <code>data -format png|gif|ppm</code> returns <strong>binary</strong> data, not base64, in all of them (8.5 has no string writer for png/gif). <code>put</code>/<code>-data</code> take binary for all three, and also base64 for PNG and GIF only. The double encoding the reporter saw comes from extension handlers (Img), not from the core.
+</li>
+<li><span class="k">Cause</span> doc/photo.n says what <code>-data</code> accepts (binary, or base64 for some formats), but it doesn't say what <code>data</code> returns or what <code>put</code> accepts.
+</li>
+<li><span class="k">Prototype</span> prototypes/9daafa27a9.patch (6 changed lines in doc/photo.n). It says the built-in handlers return binary data, points to <code>binary encode base64</code>, and says <code>put</code> accepts binary data or base64 (PNG/GIF), as <code>-data</code> does.
+</li>
+<li><span class="k">Suggested ticket comment</span> In current Tk (8.6, 9.x) the built-in PNG/GIF/PPM handlers return binary data from ''data -format'', and ''put''/''-data'' accept either binary or (PNG/GIF) base64 data. So there is no double encoding in the core; Img handlers may behave differently. photo.n could state this more explicitly (small doc patch prepared).
+</li></ul></div></details><details class="t" id="2930718fff" data-s="2930718fff undocumented api: tk_outline 04. canvas basics docs (still undocumented on main: no doc/*.3 mentions tk_createoutline etc.)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2930718fff</span><span class="yr">2010</span><span class="ti">Undocumented API: Tk_Outline</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tk-triage/prototypes/2930718fff.patch">patch</a><span class="vd">DOCS (still undocumented on main: no doc/*.3 mentions Tk_CreateOutline etc.)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2930718fff">Open ticket 2930718fff</a> · 04. Canvas Basics · filed 2010-01-12</p><div class="lab">Full verdict</div><p>DOCS (still undocumented on main: no doc/*.3 mentions Tk_CreateOutline etc.)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> grep of doc/ on main and 8.6
+</li>
+<li><span class="k">Cause</span> public stubs 221-226 (Tk_CreateOutline, Tk_DeleteOutline, Tk_ConfigOutlineGC, Tk_ChangeOutlineGC, Tk_ResetOutlineGC, Tk_CanvasPsOutline) never got a man page.
+</li>
+<li><span class="k">Prototype</span> prototypes/2930718fff.patch (new doc/CanvOutline.3, ~100 lines, written from tkCanvUtil.c and tkRectOval.c usage; plus Tk_CreateOutline added to SEE ALSO of CrtItemType.3; renders cleanly with groff -ww)
+</li>
+<li><span class="k">Suggested ticket comment</span> Draft man page CanvOutline.3 documenting the six Tk_Outline functions and their use in item create/configure/display/delete/postscript procedures.
+</li></ul></div></details><details class="t" id="940220ffff" data-s="940220ffff wm geometry contradictions (and inadequately documented 62. geometry functions docs. behaviour is now consistent. on x11 (fvwm, openbox) `wm geometry . 200x100+50+60` gives a 200x100 interior, excluding the menubar and decorations, with the decorated frame at 50,60. this matches the windows semantics described in the ticket. without a wm only the menubar offset applies." data-p="commented"><summary><span class="id"><span class="pe" title="Commented" aria-label="Commented">💬</span>940220ffff</span><span class="yr">2004</span><span class="ti">wm geometry contradictions (and inadequately documented</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tk-triage/prototypes/940220ffff.patch">patch</a><span class="vd">DOCS. Behaviour is now consistent. On X11 (fvwm, openbox) <code>wm geometry . 200x100+50+60</code> gives a 200x100 interior, excluding the menubar and decorat…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/940220ffff">Open ticket 940220ffff</a> · 62. Geometry Functions · filed 2004-04-22</p><div class="since"><div class="lab">💬 Since triage (updated 2026-10-22)</div><p>Status now: <strong>Open</strong></p><ul><li>💬 2026-09-30 <strong>serhiy.storchaka</strong>: See [220791] and <a class="h" href="https://core.tcl-lang.org/tk/info/d1a711b500">d1a711b500</a>. The proposed fix for <a class="h" href="https://core.tcl-lang.org/tk/info/d1a711b500">d1a711b500</a> makes wm geometry report the position of the decorated window also under KWin on Wayland (Xwayland), which decorates windows without reparenting them. The offsets under metacity and mutter after wm withdraw and wm deiconify, caused by invisible borders of their frames, are not addressed.</li></ul></div><div class="lab">Full verdict</div><p>DOCS. Behaviour is now consistent. On X11 (fvwm, openbox) <code>wm geometry . 200x100+50+60</code> gives a 200x100 interior, excluding the menubar and decorations, with the decorated frame at 50,60. This matches the Windows semantics described in the ticket. Without a WM only the menubar offset applies.</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> main, 8.6 tip × no WM, fvwm, openbox (twm failed to start). Menubar configured in all runs.
+</li>
+<li><span class="k">Cause</span> wm.n never says that width/height exclude the WM frame and the menubar, or what "window's border" means for x/y. A paragraph comparing it with <code>winfo geometry</code> has been added since, but it stays vague.
+</li>
+<li><span class="k">Prototype</span> prototypes/940220ffff.patch (doc only, wm.n, adds 10 lines)
+</li>
+<li><span class="k">Suggested ticket comment</span> The behaviour is now the same on X11 (for common WMs) and Windows: the size is the interior without decorations or the menubar, and the position is the outer frame. A doc clarification for wm.n is prepared.
+</li></ul></div></details><details class="t" id="220807ffff" data-s="220807ffff docs missing for tk_mainex api 74. application embedding docs (still missing in main, 9.0, 8.7, 8.6, 8.5, 8.4: no man page mentions tk_mainex; tk_main is only a macro around tk_mainex since 8.4, and tk_mainexw exists on windows since 8.7)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>220807ffff</span><span class="yr">2000</span><span class="ti">Docs missing for Tk_MainEx API</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tk-triage/prototypes/220807ffff.patch">patch</a><span class="vd">DOCS (still missing in main, 9.0, 8.7, 8.6, 8.5, 8.4: no man page mentions Tk_MainEx; Tk_Main is only a macro around Tk_MainEx since 8.4, and Tk_Ma…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/220807ffff">Open ticket 220807ffff</a> · 74. Application Embedding · filed 2000-11-01</p><div class="lab">Full verdict</div><p>DOCS (still missing in main, 9.0, 8.7, 8.6, 8.5, 8.4: no man page mentions Tk_MainEx; Tk_Main is only a macro around Tk_MainEx since 8.4, and Tk_MainExW exists on Windows since 8.7)</p><ul>
+<li><span class="k">Platform</span> docs
+</li>
+<li><span class="k">Tested</span> grep of doc/ in all source trees; nroff rendering of the patched page
+</li>
+<li><span class="k">Cause</span> doc/Tk_Main.3 documents only Tk_Main
+</li>
+<li><span class="k">Prototype</span> prototypes/220807ffff.patch (67-line diff, ~28 changed lines; doc only): adds Tk_MainEx/Tk_MainExW to NAME/SYNOPSIS/ARGUMENTS (charargv, wideargv, interp) modelled on Tcl_Main.3, explains that Tk_Main is a macro calling Tcl_FindExecutable + Tcl_CreateInterp + Tk_MainEx, that Tk_MainExW is Windows-only, adds Tcl_Main(3) to SEE ALSO; also fixes argv type (char <strong> / wchar_t </strong>) and -DUNICODE markup. For 8.6, drop Tk_MainExW and use int argc.
+</li>
+<li><span class="k">Suggested ticket comment</span> Tk_MainEx (and Tk_MainExW on Windows) is still undocumented. A doc patch adding them to Tk_Main.3, modelled on Tcl_Main.3, is prepared.
+</li></ul></div></details><details class="t" id="220812ffff" data-s="220812ffff docs missing for tk_updatepointer api 65. generic window operations docs (main, 9.0, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>220812ffff</span><span class="yr">2000</span><span class="ti">Docs missing for Tk_UpdatePointer API</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tk-triage/prototypes/220812ffff.patch">patch</a><span class="vd">DOCS (main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/220812ffff">Open ticket 220812ffff</a> · 65. Generic Window Operations · filed 2000-11-01</p><div class="lab">Full verdict</div><p>DOCS (main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> generic (implementation used on Windows/Aqua; no-op on X11)
+</li>
+<li><span class="k">Tested</span> read the trunk code. Tk_UpdatePointer is public stub 184 in generic/tk.decls on all branches, and no doc/*.3 mentions it. Implementations: generic/tkPointer.c (pointer emulation: Enter/Leave via TkInOutEvents, ButtonPress/Release, implicit grab, TkpSetCapture) and unix/tkUnix.c (empty).
+</li>
+<li><span class="k">Cause</span> doc/ never got a page for this public stub.
+</li>
+<li><span class="k">Prototype</span> prototypes/220812ffff.patch (58 lines, new doc/UpdatePointer.3, renders cleanly with groff -man). It describes the arguments, the events generated, the grab handling, and the no-op on X11.
+</li>
+<li><span class="k">Suggested ticket comment</span> Tk_UpdatePointer is still public (stub 184) and in use by the Windows/macOS ports, so it should be documented rather than hidden. A short man page is drafted.
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch and of the Windows VM runs.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

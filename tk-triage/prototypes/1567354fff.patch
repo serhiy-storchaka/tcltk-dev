@@ -1,0 +1,152 @@
+Index: tests/winWm.test
+==================================================================
+--- tests/winWm.test
++++ tests/winWm.test
+@@ -610,6 +610,21 @@
+     destroy .t
+ } -result 0
+ 
++test winWm-11.1 {WM_DISPLAYCHANGE keeps tk scaling, Bug 1567354} -constraints {
++    win testwinevent
++} -setup {
++    set oldScaling [tk scaling]
++} -body {
++    tk scaling 2.0
++    set scaling [tk scaling]
++    testwinevent [wm frame .] 0 WM_DISPLAYCHANGE [winfo depth .] \
++	    [expr {([winfo screenheight .] << 16) | [winfo screenwidth .]}]
++    expr {abs([tk scaling] - $scaling) < 0.01}
++} -cleanup {
++    tk scaling $oldScaling
++    unset oldScaling scaling
++} -result 1
++
+ #
+ # TESTFILE CLEANUP
+ #
+Index: win/tkWinInt.h
+==================================================================
+--- win/tkWinInt.h
++++ win/tkWinInt.h
+@@ -173,6 +173,8 @@
+  */
+ 
+ MODULE_SCOPE void TkWinDisplayChanged(Display *display);
++MODULE_SCOPE void TkWinScreenSizeChanged(Screen *screen, int width,
++			    int height, HDC dc);
+ MODULE_SCOPE void TkWinCleanupContainerList(void);
+ MODULE_SCOPE LRESULT TkWinEmbeddedEventProc(HWND, UINT, WPARAM, LPARAM);
+ MODULE_SCOPE unsigned int TkWinGetModifierState(void);
+Index: win/tkWinTest.c
+==================================================================
+--- win/tkWinTest.c
++++ win/tkWinTest.c
+@@ -297,6 +297,7 @@
+ 	{WM_GETTEXT,		"WM_GETTEXT"},
+ 	{WM_SETTEXT,		"WM_SETTEXT"},
+ 	{WM_COMMAND,            "WM_COMMAND"},
++	{WM_DISPLAYCHANGE,      "WM_DISPLAYCHANGE"},
+ 	{-1,			NULL}
+     };
+ 
+@@ -406,6 +407,14 @@
+ 	Tcl_SetObjResult(interp, Tcl_NewStringObj(buf, TCL_INDEX_NONE));
+ 	break;
+     }
++    case WM_DISPLAYCHANGE: {
++	char buf[TCL_INTEGER_SPACE];
++
++	snprintf(buf, sizeof(buf), "%d",
++		(int) SendMessageA(hwnd, message, wParam, lParam));
++	Tcl_SetObjResult(interp, Tcl_NewStringObj(buf, TCL_INDEX_NONE));
++	break;
++    }
+     default: {
+ 	char buf[TCL_INTEGER_SPACE];
+ 
+Index: win/tkWinWm.c
+==================================================================
+--- win/tkWinWm.c
++++ win/tkWinWm.c
+@@ -8206,12 +8206,8 @@
+ 	    } else {
+ 		HDC dc = GetDC(NULL);
+ 
+-		WidthOfScreen(screen) = LOWORD(lParam);		/* horizontal res */
+-		HeightOfScreen(screen) = HIWORD(lParam);	/* vertical res */
+-		WidthMMOfScreen(screen) = MulDiv(WidthOfScreen(screen), 254,
+-			GetDeviceCaps(dc, LOGPIXELSX) * 10);
+-		HeightMMOfScreen(screen) = MulDiv(HeightOfScreen(screen), 254,
+-			GetDeviceCaps(dc, LOGPIXELSY) * 10);
++		TkWinScreenSizeChanged(screen, LOWORD(lParam),
++			HIWORD(lParam), dc);
+ 		ReleaseDC(NULL, dc);
+ 	    }
+ 	    if (Tk_Depth(winPtr) != (int) wParam) {
+Index: win/tkWinX.c
+==================================================================
+--- win/tkWinX.c
++++ win/tkWinX.c
+@@ -372,6 +372,47 @@
+ /*
+  *----------------------------------------------------------------------
+  *
++ * TkWinScreenSizeChanged --
++ *
++ *	Update the size of the screen in pixels and millimeters. If the size
++ *	in millimeters is already known, the number of pixels per millimeter
++ *	is kept, so that a scaling factor set by [tk scaling] is preserved.
++ *
++ * Results:
++ *	None.
++ *
++ * Side effects:
++ *	The screen dimensions are updated.
++ *
++ *----------------------------------------------------------------------
++ */
++
++void
++TkWinScreenSizeChanged(
++    Screen *screen,
++    int width,
++    int height,
++    HDC dc)
++{
++    if (WidthOfScreen(screen) > 0 && WidthMMOfScreen(screen) > 0
++	    && HeightOfScreen(screen) > 0 && HeightMMOfScreen(screen) > 0) {
++	WidthMMOfScreen(screen) = MulDiv(width, WidthMMOfScreen(screen),
++		WidthOfScreen(screen));
++	HeightMMOfScreen(screen) = MulDiv(height, HeightMMOfScreen(screen),
++		HeightOfScreen(screen));
++    } else {
++	WidthMMOfScreen(screen) = MulDiv(width, 254,
++		GetDeviceCaps(dc, LOGPIXELSX) * 10);
++	HeightMMOfScreen(screen) = MulDiv(height, 254,
++		GetDeviceCaps(dc, LOGPIXELSY) * 10);
++    }
++    WidthOfScreen(screen) = width;
++    HeightOfScreen(screen) = height;
++}
++
++/*
++ *----------------------------------------------------------------------
++ *
+  * TkWinDisplayChanged --
+  *
+  *	Called to set up initial screen info or when an event indicated
+@@ -399,12 +440,8 @@
+     screen = (((_XPrivDisplay)(display))->screens);
+ 
+     dc = GetDC(NULL);
+-    WidthOfScreen(screen) = GetDeviceCaps(dc, HORZRES);
+-    HeightOfScreen(screen) = GetDeviceCaps(dc, VERTRES);
+-    WidthMMOfScreen(screen) = MulDiv(WidthOfScreen(screen), 254,
+-	    GetDeviceCaps(dc, LOGPIXELSX) * 10);
+-    HeightMMOfScreen(screen) = MulDiv(HeightOfScreen(screen), 254,
+-	    GetDeviceCaps(dc, LOGPIXELSY) * 10);
++    TkWinScreenSizeChanged(screen, GetDeviceCaps(dc, HORZRES),
++	    GetDeviceCaps(dc, VERTRES), dc);
+ 
+     /*
+      * On windows, when creating a color bitmap, need two pieces of

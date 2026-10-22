@@ -1,0 +1,64 @@
+Index: tests/send.test
+==================================================================
+--- tests/send.test
++++ tests/send.test
+@@ -743,10 +743,27 @@
+     lappend result [send $app {set a 25}]
+     lappend result [set a]
+     childTkProcess exit
+     set result
+ } {{can't read "a": no such variable} 25 a}
++test send-17.2 {Tk_SetAppName procedure, name just taken in another process} {unix notAqua} {
++    set fd [open "|[list [::tcltest::interpreter] -name t_s_child]" r+]
++    puts $fd [loadTkCommand]
++    puts $fd {puts ready; flush stdout}
++    flush $fd
++    gets $fd
++    # No event processing between setting the name here and in the child.
++    tk appname t_s_dup
++    puts $fd {puts [tk appname t_s_dup]; flush stdout}
++    flush $fd
++    set result [list [gets $fd] [lsort [lsearch -all -inline [winfo interps] t_s_dup*]]]
++    puts $fd exit
++    close $fd
++    lappend result [lsearch -all -inline [winfo interps] t_s_dup*]
++    tk appname tktest
++    set result
++} {{t_s_dup #2} {t_s_dup {t_s_dup #2}} t_s_dup}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+
+Index: unix/tkUnixSend.c
+==================================================================
+--- unix/tkUnixSend.c
++++ unix/tkUnixSend.c
+@@ -908,21 +908,23 @@
+     }
+ 
+     /*
+      * We've now got a name to use. Store it in the name registry and in the
+      * local entry for this application, plus put it in a property on the
+-     * commWindow.
++     * commWindow. The property must be updated before the registry is
++     * closed (which flushes the output), otherwise another application could
++     * consider the name stale in ValidateName and take it over.
+      */
+ 
+     RegAddName(regPtr, actualName, Tk_WindowId(dispPtr->commTkwin));
+-    RegClose(regPtr);
+     riPtr->name = (char *)Tcl_Alloc(strlen(actualName) + 1);
+     strcpy(riPtr->name, actualName);
+     if (actualName != name) {
+ 	Tcl_DStringFree(&dString);
+     }
+     UpdateCommWindow(dispPtr);
++    RegClose(regPtr);
+ 
+     return riPtr->name;
+ }
+ 
+ /*
+

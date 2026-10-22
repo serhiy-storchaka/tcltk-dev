@@ -1,0 +1,58 @@
+--- /dev/null
++++ doc/UpdatePointer.3
+@@ -0,0 +1,55 @@
++'\"
++'\" Copyright (c) 2026 Tcl Core Team
++'\"
++'\" See the file "license.terms" for information on usage and redistribution
++'\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
++'\"
++.TH Tk_UpdatePointer 3 8.1 Tk "Tk Library Procedures"
++.so man.macros
++.BS
++.SH NAME
++Tk_UpdatePointer \- feed native pointer state into Tk's pointer emulation
++.SH SYNOPSIS
++.nf
++\fB#include <tk.h>\fR
++.sp
++\fBTk_UpdatePointer\fR(\fItkwin, x, y, state\fR)
++.fi
++.SH ARGUMENTS
++.AS Tk_Window tkwin
++.AP Tk_Window tkwin in
++Window that currently contains the pointer, or NULL if the pointer is
++not over any window managed by Tk.
++.AP int x in
++X coordinate of the pointer, in root window coordinates.
++.AP int y in
++Y coordinate of the pointer, in root window coordinates.
++.AP int state in
++Current state of the mouse buttons and keyboard modifiers, as a mask of
++X11 state bits such as \fBButton1Mask\fR, \fBShiftMask\fR or
++\fBControlMask\fR.
++.BE
++.SH DESCRIPTION
++.PP
++On platforms where Tk is not running on top of an X server (Windows
++and macOS), Tk emulates the X11 pointer model in software.
++\fBTk_UpdatePointer\fR is the entry point to that emulation: it is
++called with the current pointer window, position and button/modifier
++state, compares them with the state from the previous call, and queues
++the corresponding \fBEnterNotify\fR, \fBLeaveNotify\fR,
++\fBMotionNotify\fR, \fBButtonPress\fR and \fBButtonRelease\fR events
++with \fBTk_QueueWindowEvent\fR. It also maintains the implicit button
++grab and honors a global grab set with \fBgrab\fR.
++.PP
++Tk calls this function itself from its native event handlers; an
++extension only needs it if it receives native mouse events that Tk does
++not see (for example in an embedded foreign window) and wants Tk
++widgets to behave as if the pointer had moved or a button had changed
++state.
++.PP
++On X11 the X server provides these events directly, and
++\fBTk_UpdatePointer\fR does nothing.
++.SH "SEE ALSO"
++Tk_QueueWindowEvent(3), grab(n)
++.SH KEYWORDS
++pointer, mouse, button, enter, leave, motion, grab, event

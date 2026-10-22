@@ -1,0 +1,118 @@
+ADDED    doc/CanvOutline.3
+Index: doc/CanvOutline.3
+==================================================================
+--- /dev/null
++++ doc/CanvOutline.3
+@@ -0,0 +1,96 @@
++'\"
++'\" Copyright (c) 1998-2000 Jan Nijtmans.
++'\"
++'\" See the file "license.terms" for information on usage and redistribution
++'\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
++'\"
++.TH Tk_CreateOutline 3 8.3 Tk "Tk Library Procedures"
++.so man.macros
++.BS
++.SH NAME
++Tk_CreateOutline, Tk_DeleteOutline, Tk_ConfigOutlineGC, Tk_ChangeOutlineGC, Tk_ResetOutlineGC, Tk_CanvasPsOutline \- manage the outline of canvas items
++.SH SYNOPSIS
++.nf
++\fB#include <tk.h>\fR
++.sp
++void
++\fBTk_CreateOutline\fR(\fIoutline\fR)
++.sp
++void
++\fBTk_DeleteOutline\fR(\fIdisplay, outline\fR)
++.sp
++int
++\fBTk_ConfigOutlineGC\fR(\fIgcValues, canvas, item, outline\fR)
++.sp
++int
++\fBTk_ChangeOutlineGC\fR(\fIcanvas, item, outline\fR)
++.sp
++int
++\fBTk_ResetOutlineGC\fR(\fIcanvas, item, outline\fR)
++.sp
++int
++\fBTk_CanvasPsOutline\fR(\fIcanvas, item, outline\fR)
++.fi
++.SH ARGUMENTS
++.AS Tk_Outline *gcValues in/out
++.AP Tk_Outline *outline in/out
++Pointer to the outline description, usually embedded in the item record.
++.AP Display *display in
++Display on which the resources of \fIoutline\fR were allocated.
++.AP XGCValues *gcValues in/out
++Graphics context values to be updated from \fIoutline\fR.
++.AP Tk_Canvas canvas in
++Token that identifies the canvas containing \fIitem\fR.
++.AP Tk_Item *item in
++The canvas item that the outline belongs to.
++.BE
++.SH DESCRIPTION
++.PP
++These procedures help implementors of canvas item types (see
++\fBTk_CreateItemType\fR) to support the standard outline options:
++\fB\-width\fR, \fB\-dash\fR, \fB\-dashoffset\fR, \fB\-outline\fR,
++\fB\-outlinestipple\fR, \fB\-outlineoffset\fR and their
++\fB\-active\fR and \fB\-disabled\fR variants.
++The option values are kept in a \fBTk_Outline\fR structure,
++defined in \fBtk.h\fR, whose fields are normally set through
++configuration specifications that refer to them.
++For each of the width, dash pattern, color and stipple, the active
++value is used when the item is the current item of the canvas and
++the disabled value is used when the item is disabled (or its state is
++empty and the canvas is disabled).
++.PP
++\fBTk_CreateOutline\fR initializes all fields of \fIoutline\fR with
++default values: a width of 1, no dash pattern, no color and no
++stipple. It should be called from the item's create procedure before
++the item is configured.
++.PP
++\fBTk_DeleteOutline\fR frees all resources referenced by \fIoutline\fR
++(graphics context, colors, stipple bitmaps and dash patterns). It
++should be called from the item's delete procedure.
++.PP
++\fBTk_ConfigOutlineGC\fR should be called from the item's configure
++procedure. It fills in the line width, foreground, stipple, fill
++style and dash fields of \fIgcValues\fR according to the current
++state of \fIitem\fR, and returns a mask of the \fBGC\fR* bits for the
++fields it has set. The result is 0 if the item is hidden or has no
++outline color; in that case no outline should be drawn. The caller
++then typically allocates \fIoutline\->gc\fR with \fBTk_GetGC\fR.
++.PP
++\fBTk_ChangeOutlineGC\fR must be called just before drawing the outline
++of \fIitem\fR. It applies the parts of the outline that cannot be
++expressed through \fBTk_GetGC\fR: the full dash pattern and the stipple
++offset. \fBTk_ResetOutlineGC\fR must be called just after drawing to
++restore \fIoutline\->gc\fR, since graphics contexts obtained from
++\fBTk_GetGC\fR are shared and must not be permanently modified.
++Both procedures return 1 if a stipple pattern is used, and 0 otherwise.
++.PP
++\fBTk_CanvasPsOutline\fR generates Postscript for the outline of
++\fIitem\fR, using the path that has already been set up (for example
++with \fBTk_CanvasPsPath\fR). It sets the line width, dash pattern and
++color, then strokes the path (or fills it with the stipple). The
++Postscript is appended to the result of the canvas interpreter.
++It returns \fBTCL_OK\fR.
++.SH "SEE ALSO"
++Tk_CreateItemType(3), Tk_CanvasPsY(3), Tk_GetDash(3), Tk_GetGC(3), canvas(n)
++.SH KEYWORDS
++canvas, dash, graphics context, outline, Postscript, stipple
+
+Index: doc/CrtItemType.3
+==================================================================
+--- doc/CrtItemType.3
++++ doc/CrtItemType.3
+@@ -711,8 +711,8 @@
+ \fIfirst\fR and \fIlast\fR give the indices of the first and last bytes
+ to be deleted, as returned by previous calls to \fItypePtr\->indexProc\fR.
+ The type manager should delete the specified characters and update
+ the bounding box in the item's header.
+ .SH "SEE ALSO"
+-Tk_CanvasPsY, Tk_CanvasTextInfo, Tk_CanvasTkwin
++Tk_CanvasPsY, Tk_CanvasTextInfo, Tk_CanvasTkwin, Tk_CreateOutline
+ .SH KEYWORDS
+ canvas, focus, item type, selection, type manager
+

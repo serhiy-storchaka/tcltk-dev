@@ -1,0 +1,28 @@
+Index: win/tkWinX.c
+==================================================================
+--- win/tkWinX.c
++++ win/tkWinX.c
+@@ -416,14 +416,19 @@
+      */
+ 
+     screen->ext_data = (XExtData *)INT2PTR(GetDeviceCaps(dc, PLANES));
+     screen->root_depth = (int)(GetDeviceCaps(dc, BITSPIXEL) * PTR2INT(screen->ext_data));
+ 
+-    if (screen->root_visual != NULL) {
+-	Tcl_Free(screen->root_visual);
++    /*
++     * Update the visual in place: existing windows keep pointers to it, so
++     * it must not be reallocated when the display depth changes.
++     * [Bug 2100553]
++     */
++
++    if (screen->root_visual == NULL) {
++	screen->root_visual = (Visual *)Tcl_Alloc(sizeof(Visual));
+     }
+-    screen->root_visual = (Visual *)Tcl_Alloc(sizeof(Visual));
+     screen->root_visual->visualid = 0;
+     if (GetDeviceCaps(dc, RASTERCAPS) & RC_PALETTE) {
+ 	DefaultVisualOfScreen(screen)->map_entries = GetDeviceCaps(dc, SIZEPALETTE);
+ 	DefaultVisualOfScreen(screen)->c_class = PseudoColor;
+ 	DefaultVisualOfScreen(screen)->red_mask = 0x0;
+

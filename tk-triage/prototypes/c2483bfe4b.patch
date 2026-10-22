@@ -1,0 +1,30 @@
+--- a/macosx/tkMacOSXDialog.c
++++ b/macosx/tkMacOSXDialog.c
+@@ -1780,7 +1780,10 @@
+ 		    Tcl_Free(tmpv);
+ 		}
+ 	    }
+-	    Tk_SendVirtualEvent(fcdPtr->parent, "TkFontchooserFontChanged", NULL);
++	    if (fcdPtr->parent != NULL) {
++		Tk_SendVirtualEvent(fcdPtr->parent,
++			"TkFontchooserFontChanged", NULL);
++	    }
+ 	}
+ 	break;
+     }
+@@ -1990,7 +1993,14 @@
+ 	    [fm setSelectedFont:fontPanelFont isMultiple:NO];
+ 	    [fm setSelectedAttributes:fontPanelFontAttributes
+ 		    isMultiple:NO];
+-	    if ([fp isVisible]) {
++	    /*
++	     * The shared font panel can be visible without having been shown
++	     * by this interpreter (another interpreter showed it, or macOS
++	     * restored it from the saved application state), in which case
++	     * there is no parent to send the event to.  [c2483bfe4b]
++	     */
++
++	    if ([fp isVisible] && fcdPtr->parent != NULL) {
+ 		Tk_SendVirtualEvent(fcdPtr->parent,
+ 			"TkFontchooserFontChanged", NULL);
+ 	    }

@@ -1,0 +1,35 @@
+Index: generic/tkWindow.c
+==================================================================
+--- generic/tkWindow.c
++++ generic/tkWindow.c
+@@ -3467,10 +3467,29 @@
+ 	Tcl_DecrRefCount(cmd);
+ 	geometryObj = NULL;
+ 	if (code != TCL_OK) {
+ 	    goto done;
+ 	}
++    } else {
++	/*
++	 * Otherwise honour the "geometry" resource of the main window, as
++	 * Xt applications do. Ignore invalid values.
++	 */
++
++	Tk_Uid geomValue = Tk_GetOption(Tk_MainWindow(interp), "geometry",
++		"Geometry");
++
++	if (geomValue != NULL) {
++	    cmd = Tcl_NewStringObj("wm geometry .", TCL_INDEX_NONE);
++	    Tcl_ListObjAppendElement(NULL, cmd,
++		    Tcl_NewStringObj(geomValue, TCL_INDEX_NONE));
++	    Tcl_IncrRefCount(cmd);
++	    if (Tcl_EvalObjEx(interp, cmd, 0) != TCL_OK) {
++		Tcl_ResetResult(interp);
++	    }
++	    Tcl_DecrRefCount(cmd);
++	}
+     }
+ 
+     /*
+      * Provide "tk" and its stub table.
+      */
+

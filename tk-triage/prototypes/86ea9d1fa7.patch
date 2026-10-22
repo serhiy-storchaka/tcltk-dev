@@ -1,0 +1,10 @@
+--- a/macosx/tkMacOSXPrivate.h	2026-09-24 02:08:53.504189091 +0300
++++ b/macosx/tkMacOSXPrivate.h	2026-09-24 02:08:53.506276169 +0300
+@@ -315,7 +315,6 @@
+     NSArray *_defaultApplicationMenuItems, *_defaultWindowsMenuItems;
+     NSArray *_defaultHelpMenuItems, *_defaultFileMenuItems;
+     NSAutoreleasePool *_mainPool;
+-    NSThread *_backgoundLoop;
+ 
+ #ifdef __i386__
+     /* The Objective C runtime used on i386 requires this. */

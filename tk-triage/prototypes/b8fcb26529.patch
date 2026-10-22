@@ -1,0 +1,137 @@
+Index: doc/entry.n
+==================================================================
+--- doc/entry.n
++++ doc/entry.n
+@@ -493,10 +493,12 @@
+ Clicking mouse button 1 with the Control key down will position the
+ insertion cursor in the entry without affecting the selection.
+ .IP [6]
+ If any normal printing characters are typed in an entry, they are
+ inserted at the point of the insertion cursor.
++If the insertion cursor is inside or adjacent to the selection, the typed
++characters replace the selection.
+ .IP [7]
+ The view in the entry can be adjusted by dragging with the middle
+ mouse button (button 2, or button 3 in TkAqua). If the middle mouse
+ button is clicked without moving the mouse, the selection is copied
+ into the entry at the position of the mouse cursor.
+
+Index: doc/text.n
+==================================================================
+--- doc/text.n
++++ doc/text.n
+@@ -2165,10 +2165,12 @@
+ Clicking mouse button 1 with the Control key down will reposition the
+ insertion cursor without affecting the selection.
+ .IP [6]
+ If any normal printing characters are typed, they are inserted at the point of
+ the insertion cursor.
++If the insertion cursor is inside or adjacent to the selection, the typed
++characters replace the selection.
+ .IP [7]
+ The view in the widget can be adjusted by dragging with the middle mouse
+ button (button 2, or button 3 in TkAqua). If the middle mouse button is
+ clicked without moving the mouse, the selection is copied into the text at the
+ position of the mouse cursor. The Insert key also inserts the selection,
+@@ -2247,13 +2249,13 @@
+ .IP [23]
+ The Delete key deletes the selection, if there is one in the widget. If there
+ is no selection, it deletes the character to the right of the insertion
+ cursor.
+ .IP [24]
+-Backspace and Control-h delete the selection, if there is one in the widget.
+-If there is no selection, they delete the character to the left of the
+-insertion cursor.
++Backspace and Control-h delete the selection, if the insertion cursor is
++inside or adjacent to it.
++Otherwise, they delete the character to the left of the insertion cursor.
+ .IP [25]
+ Control-d deletes the character to the right of the insertion cursor.
+ .IP [26]
+ Meta-d deletes the word to the right of the insertion cursor.
+ .IP [27]
+
+Index: doc/ttk_entry.n
+==================================================================
+--- doc/ttk_entry.n
++++ doc/ttk_entry.n
+@@ -349,12 +349,13 @@
+ will be adjusted in units of whole words.
+ .IP \0\(bu 4
+ Clicking mouse button 1 with the Control key down will position the
+ insert cursor in the entry without affecting the selection.
+ .IP \0\(bu 4
+-If any normal printing characters are typed in an entry, they are
+-inserted at the point of the insert cursor.
++If any normal printing characters are typed in an entry, they
++replace the selection, if there is one,
++or are inserted at the point of the insert cursor otherwise.
+ .IP \0\(bu 4
+ The view in the entry can be adjusted by dragging with the middle
+ mouse button (button 2, or button 3 in TkAqua). If the middle mouse
+ button is clicked without moving the mouse, the selection is copied
+ into the entry at the position of the mouse cursor.
+
+Index: library/text.tcl
+==================================================================
+--- library/text.tcl
++++ library/text.tcl
+@@ -443,13 +443,20 @@
+ }
+ 
+ # A few additional bindings of my own.
+ 
+ bind Text <Control-h> {
+-    if {!$tk_strictMotif && [%W compare insert != 1.0]} {
+-	%W delete insert-1c
+-	%W see insert
++    if {!$tk_strictMotif} {
++	if {[tk::TextCursorInSelection %W]} {
++	    %W delete sel.first sel.last
++	} else {
++	    if {[%W compare insert != 1.0]} {
++		%W delete [tk::TextPrevPos %W insert tk::startOfCluster] \
++			[tk::TextNextPos %W insert-1c tk::endOfCluster]
++	    }
++	    %W see insert
++	}
+     }
+ }
+ bind Text <Button-2> {
+     if {!$tk_strictMotif} {
+ 	tk::TextScanMark %W %x %y
+
+Index: tests/text.test
+==================================================================
+--- tests/text.test
++++ tests/text.test
+@@ -7840,10 +7840,28 @@
+     event generate .t <B1-Motion> -x 50 -y -50
+     .t index sel.first
+ } -cleanup {
+     destroy .t
+ } -result {1.0}
++
++test text-39.1 {Control-h deletes the selection like BackSpace - bug b8fcb26529} -setup {
++    text .t
++    pack .t
++    update
++} -body {
++    .t insert 1.0 "abc def ghi"
++    .t tag add sel 1.0 1.3
++    .t mark set insert 1.3
++    focus -force .t
++    event generate .t <Control-h>
++    set res [list [.t get 1.0 end-1c]]
++    .t mark set insert end
++    event generate .t <Control-h>
++    lappend res [.t get 1.0 end-1c]
++} -cleanup {
++    destroy .t
++} -result {{ def ghi} { def gh}}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

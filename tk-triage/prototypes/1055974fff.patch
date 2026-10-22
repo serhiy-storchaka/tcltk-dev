@@ -1,0 +1,135 @@
+Index: doc/GetDash.3
+==================================================================
+--- doc/GetDash.3
++++ doc/GetDash.3
+@@ -71,11 +71,10 @@
+ .QW -
+ always as a dash regardless of the line width.
+ .PP
+-On systems where only a limited set of dash patterns, the dash
+-pattern will be displayed as the most close dash pattern that
+-is available. For example, on Windows only the first 4 of the
+-above examples are available; the last 2 examples will be
+-displayed identically to the first one.
++On systems where only a limited set of dash patterns is available, the
++dash pattern will be displayed as the closest available dash pattern.
++On Windows, this only applies to dash lists with an odd number of more
++than 7 elements.
+ .SH "SEE ALSO"
+ canvas(n), Tk_CreateItemType(3)
+ .SH KEYWORDS
+Index: doc/canvas.n
+==================================================================
+--- doc/canvas.n
++++ doc/canvas.n
+@@ -326,9 +326,8 @@
+ .PP
+ On systems which support only a limited set of dash patterns, the dash
+ pattern will be displayed as the closest dash pattern that is available.
+-For example, on Windows only the first 4 of the above examples are
+-available. The last 2 examples will be displayed identically to the first
+-one.
++On Windows, this only applies to dash lists with an odd number of more
++than 7 elements.
+ .SH "WIDGET COMMAND"
+ .PP
+ The \fBcanvas\fR command creates a new Tcl command whose
+Index: win/tkWinDraw.c
+==================================================================
+--- win/tkWinDraw.c
++++ win/tkWinDraw.c
+@@ -1339,10 +1339,60 @@
+     GC gc)
+ {
+     DWORD style;
++    DWORD dashes[16];		/* PS_USERSTYLE array, at most 16 entries */
++    DWORD numDashes = 0;
++    LOGBRUSH lb;
++
++    lb.lbStyle = BS_SOLID;
++    lb.lbColor = gc->foreground;
++    lb.lbHatch = 0;
+ 
+     if (gc->line_style == LineOnOffDash) {
+ 	unsigned char *p = (unsigned char *) &(gc->dashes);
+ 				/* pointer to the dash-list */
++	DWORD seg[20], period = 0, offset;
++	int n = 0, i, k;
++
++	/*
++	 * Build a user-defined pen style from the real dash list, rotated by
++	 * the dash offset. An odd-length list is repeated so that on and off
++	 * segments alternate, as in X11.
++	 */
++
++	while (p[n]) {
++	    seg[n] = p[n];
++	    period += p[n];
++	    n++;
++	}
++	if (n & 1) {
++	    for (i = 0; i < n; i++) {
++		seg[n + i] = seg[i];
++	    }
++	    n *= 2;
++	    period *= 2;
++	}
++	if (n > 0 && n <= 14) {
++	    offset = gc->dash_offset >= 0 ? (DWORD) gc->dash_offset % period
++		    : period - (DWORD) (-gc->dash_offset) % period;
++	    for (k = 0; offset >= seg[k]; k++) {
++		offset -= seg[k];
++	    }
++	    if (k & 1) {
++		dashes[numDashes++] = 0;	/* Start inside an off segment. */
++	    }
++	    dashes[numDashes++] = seg[k] - offset;
++	    for (i = 1; i < n; i++) {
++		dashes[numDashes++] = seg[(k + i) % n];
++	    }
++	    if (offset) {
++		dashes[numDashes++] = offset;
++	    }
++	    if (numDashes & 1) {
++		dashes[numDashes++] = 0;
++	    }
++	    style = PS_USERSTYLE;
++	    goto makePen;
++	}
+ 
+ 	/*
+ 	 * Below is a simple translation of serveral dash patterns to valid
+@@ -1366,15 +1416,10 @@
+     } else {
+ 	style = PS_SOLID;
+     }
+-    if (gc->line_width < 2) {
++  makePen:
++    if (gc->line_width < 2 && !numDashes) {
+ 	return CreatePen((int) style, gc->line_width, gc->foreground);
+     } else {
+-	LOGBRUSH lb;
+-
+-	lb.lbStyle = BS_SOLID;
+-	lb.lbColor = gc->foreground;
+-	lb.lbHatch = 0;
+-
+ 	style |= PS_GEOMETRIC;
+ 	switch (gc->cap_style) {
+ 	case CapNotLast:
+@@ -1399,7 +1444,14 @@
+ 	    style |= PS_JOIN_BEVEL;
+ 	    break;
+ 	}
+-	return ExtCreatePen(style, (DWORD) gc->line_width, &lb, 0, NULL);
++	/*
++	 * Cosmetic pens measure user styles in device style units, not
++	 * pixels, so dashed lines always use a geometric pen.
++	 */
++
++	return ExtCreatePen(style,
++		(DWORD) (gc->line_width < 1 ? 1 : gc->line_width), &lb,
++		numDashes, numDashes ? dashes : NULL);
+     }
+ }
+ 

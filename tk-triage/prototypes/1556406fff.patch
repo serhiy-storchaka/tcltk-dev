@@ -1,0 +1,76 @@
+Index: generic/tkWindow.c
+==================================================================
+--- generic/tkWindow.c
++++ generic/tkWindow.c
+@@ -1639,10 +1639,11 @@
+ 
+ 	    winPtr->mainPtr->deletionEpoch++;
+ 	}
+ 	if (winPtr->mainPtr->refCount-- <= 1) {
+ 	    const TkCmd *cmdPtr;
++	    Tcl_CmdInfo cmdInfo;
+ 
+ 	    /*
+ 	     * We just deleted the last window in the application. Delete the
+ 	     * TkMainInfo structure too and replace all of Tk's commands with
+ 	     * dummy commands that return errors. Also delete the "send"
+@@ -1669,10 +1670,20 @@
+ 				    cmdPtr->name,
+ 				    (Tcl_ObjCmdProc *)winPtr->mainPtr->tclUpdateObjProc,
+ 				    NULL, NULL);
+ #endif /* TCL_NO_DEPRECATED */
+ 			}
++		    } else if (!(cmdPtr->flags & USEINITPROC)
++			    && Tcl_GetCommandInfo(winPtr->mainPtr->interp,
++				    cmdPtr->name, &cmdInfo)
++			    && (cmdInfo.isNativeObjectProc != 2
++				    || cmdInfo.objProc2 != cmdPtr->objProc)) {
++			/*
++			 * The command was replaced by the user. Leave it alone.
++			 */
++
++			continue;
+ 		    } else {
+ 			Tcl_CreateObjCommand2(winPtr->mainPtr->interp,
+ 					     cmdPtr->name, TkDeadAppObjCmd,
+ 					     NULL, NULL);
+ 		    }
+
+Index: tests/window.test
+==================================================================
+--- tests/window.test
++++ tests/window.test
+@@ -314,10 +314,32 @@
+ } -result {0 {waiting
+ ringing the bell -> cannot invoke "bell" command: application has been destroyed
+ done waiting
+ bell -> cannot invoke "bell" command: application has been destroyed
+ update -> }}
++test window-2.13 {Bug [1556406fff]: destroying the app keeps user-defined commands} -constraints {
++    unixOrWin
++} -body {
++    set code [loadTkCommand]
++    append code {
++	rename scale tk_scale
++	proc scale args {return "user scale"}
++	destroy .
++	catch {bell} msg
++	puts "bell -> $msg"
++	puts "scale -> [scale]"
++    }
++    set script [makeFile $code script]
++    if {[catch {exec [interpreter] $script -geometry 10x10+0+0} msg]} {
++	set error 1
++    } else {
++	set error 0
++    }
++    removeFile script
++    list $error $msg
++} -result {0 {bell -> cannot invoke "bell" command: application has been destroyed
++scale -> user scale}}
+ 
+ 
+ test window-3.1 {Tk_MakeWindowExist procedure, stacking order and menubars} -constraints {
+     unix testmenubar
+ } -setup {
+

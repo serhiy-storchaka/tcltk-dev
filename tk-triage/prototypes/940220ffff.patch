@@ -1,0 +1,37 @@
+Index: doc/wm.n
+==================================================================
+--- doc/wm.n
++++ doc/wm.n
+@@ -387,10 +387,13 @@
+ may be omitted.  \fIWidth\fR and \fIheight\fR are positive integers
+ specifying the desired dimensions of \fIwindow\fR.  If \fIwindow\fR
+ is gridded (see \fBGRIDDED GEOMETRY MANAGEMENT\fR below) then the dimensions
+ are specified in grid units;  otherwise they are specified in pixel
+ units.
++The dimensions refer to the interior of \fIwindow\fR only; they do not
++include the decorative frame added by the window manager (title bar and
++borders), nor the menubar set with the \fB\-menu\fR option of the toplevel.
+ .RS
+ .PP
+ \fIX\fR and \fIy\fR specify the desired location of
+ \fIwindow\fR on the screen, in pixels.
+ If \fIx\fR is preceded by \fB+\fR, it specifies
+@@ -402,10 +405,17 @@
+ number of pixels between the top of the screen and the top
+ of \fIwindow\fR's border;  if \fIy\fR is preceded by \fB\-\fR then
+ it specifies the number of pixels between the bottom of \fIwindow\fR's
+ border and the bottom of the screen.
+ .PP
++Here \fIwindow\fR's border means the outer edge of the decorative frame
++added by the window manager, so the position of the interior of
++\fIwindow\fR (as reported by \fBwinfo rootx\fR and \fBwinfo rooty\fR)
++is offset from \fIx\fR and \fIy\fR by the size of the frame and the menubar.
++On X11 the size of the frame depends on the window manager, and some window
++managers may place the interior rather than the frame at the given position.
++.PP
+ If \fInewGeometry\fR is specified as an empty string then any
+ existing user-specified geometry for \fIwindow\fR is cancelled, and
+ the window will revert to the size requested internally by its
+ widgets.
+ .PP
+

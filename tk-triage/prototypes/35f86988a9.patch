@@ -1,0 +1,225 @@
+Index: generic/tkFrame.c
+==================================================================
+--- generic/tkFrame.c
++++ generic/tkFrame.c
+@@ -151,10 +151,17 @@
+  */
+ 
+ #define REDRAW_PENDING		1
+ #define GOT_FOCUS		4
+ 
++/*
++ * Bit used in the typeMask of the -width and -height options, so that
++ * ConfigureFrame can tell whether they were specified.
++ */
++
++#define GEOMETRY_MASK		1
++
+ /*
+  * The following enum is used to define a type for the -labelanchor option of
+  * the Labelframe widget. These values are used as indices into the string
+  * table below.
+  */
+@@ -193,11 +200,12 @@
+ 	DEF_FRAME_CONTAINER, TCL_INDEX_NONE, offsetof(Frame, isContainer), TK_OPTION_VAR(bool), 0, 0},
+     {TK_OPTION_CURSOR, "-cursor", "cursor", "Cursor",
+ 	DEF_FRAME_CURSOR, TCL_INDEX_NONE, offsetof(Frame, cursor),
+ 	TK_OPTION_NULL_OK, 0, 0},
+     {TK_OPTION_PIXELS, "-height", "height", "Height",
+-	DEF_FRAME_HEIGHT, offsetof(Frame, heightObj), TCL_INDEX_NONE, 0, 0, 0},
++	DEF_FRAME_HEIGHT, offsetof(Frame, heightObj), TCL_INDEX_NONE, 0, 0,
++	GEOMETRY_MASK},
+     {TK_OPTION_COLOR, "-highlightbackground", "highlightBackground",
+ 	"HighlightBackground", DEF_FRAME_HIGHLIGHT_BG, TCL_INDEX_NONE,
+ 	offsetof(Frame, highlightBgColorPtr), 0, 0, 0},
+     {TK_OPTION_COLOR, "-highlightcolor", "highlightColor", "HighlightColor",
+ 	DEF_FRAME_HIGHLIGHT, TCL_INDEX_NONE, offsetof(Frame, highlightColorPtr),
+@@ -214,11 +222,12 @@
+ 	TK_OPTION_NULL_OK, 0, 0},
+     {TK_OPTION_STRING, "-visual", "visual", "Visual",
+ 	DEF_FRAME_VISUAL, offsetof(Frame, visualNameObj), TCL_INDEX_NONE,
+ 	TK_OPTION_NULL_OK, 0, 0},
+     {TK_OPTION_PIXELS, "-width", "width", "Width",
+-	DEF_FRAME_WIDTH, offsetof(Frame, widthObj), TCL_INDEX_NONE, 0, 0, 0},
++	DEF_FRAME_WIDTH, offsetof(Frame, widthObj), TCL_INDEX_NONE, 0, 0,
++	GEOMETRY_MASK},
+     {TK_OPTION_END, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 0}
+ };
+ 
+ static const Tk_OptionSpec frameOptSpec[] = {
+     {TK_OPTION_STRING, "-backgroundimage", "backgroundImage", "BackgroundImage",
+@@ -339,10 +348,11 @@
+ 			    Tk_Window tkwin);
+ static void		FrameStructureProc(void *clientData,
+ 			    XEvent *eventPtr);
+ static Tcl_ObjCmdProc2 FrameWidgetObjCmd;
+ static void		FrameWorldChanged(void *instanceData);
++static void		FrameGeometryRequest(Frame *framePtr);
+ static void		MapFrame(void *clientData);
+ 
+ /*
+  * The structure below defines frame class behavior by means of functions that
+  * can be invoked from generic window code.
+@@ -650,10 +660,11 @@
+     if ((Tk_InitOptions(interp, framePtr, optionTable, newWin)
+ 	    != TCL_OK) ||
+ 	    (ConfigureFrame(interp, framePtr, objc-2, objv+2) != TCL_OK)) {
+ 	goto error;
+     }
++    FrameGeometryRequest(framePtr);
+     if (framePtr->isContainer) {
+ 	if (framePtr->useThisObj != NULL) {
+ 	    Tcl_SetObjResult(interp, Tcl_NewStringObj(
+ 		    "windows cannot have both the -use and the -container"
+ 		    " option set", TCL_INDEX_NONE));
+@@ -918,10 +929,11 @@
+     Tk_SavedOptions savedOptions;
+     Tcl_Obj *oldMenuNameObj;
+     Tk_Window oldWindow = NULL;
+     Labelframe *labelframePtr = (Labelframe *) framePtr;
+     Tk_Image image = NULL;
++    int mask = 0;
+ 
+     /*
+      * Need the old menubar name for the menu code to delete it.
+      */
+ 
+@@ -933,11 +945,11 @@
+     if (framePtr->type == TYPE_LABELFRAME) {
+ 	oldWindow = labelframePtr->labelWin;
+     }
+     if (Tk_SetOptions(interp, framePtr,
+ 	    framePtr->optionTable, objc, objv,
+-	    framePtr->tkwin, &savedOptions, NULL) != TCL_OK) {
++	    framePtr->tkwin, &savedOptions, &mask) != TCL_OK) {
+ 	if (oldMenuNameObj != NULL) {
+ 	    Tcl_DecrRefCount(oldMenuNameObj);
+ 	}
+ 	return TCL_ERROR;
+     }
+@@ -1036,10 +1048,20 @@
+ 	    }
+ 	}
+     }
+ 
+     FrameWorldChanged(framePtr);
++
++    /*
++     * Only request the -width/-height size if they were specified, otherwise
++     * reconfiguring e.g. the background would override the size set by a
++     * geometry manager propagating the size of the content. [Bug 35f86988a9]
++     */
++
++    if (mask & GEOMETRY_MASK) {
++	FrameGeometryRequest(framePtr);
++    }
+     return TCL_OK;
+ 
+   badLabelWindow:
+     Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 	    "can't use %s as label in this frame",
+@@ -1077,11 +1099,11 @@
+     XGCValues gcValues;
+     GC gc;
+     int anyTextLabel, anyWindowLabel;
+     int bWidthLeft, bWidthRight, bWidthTop, bWidthBottom;
+     const char *labelText;
+-    int padX, padY, width, height;
++    int padX, padY;
+     int borderWidth, highlightWidth;
+ 
+     anyTextLabel = (framePtr->type == TYPE_LABELFRAME) &&
+ 	    (labelframePtr->textPtr != NULL) &&
+ 	    (labelframePtr->labelWin == NULL);
+@@ -1219,24 +1241,47 @@
+ 	    minwidth += borderWidth + highlightWidth;
+ 	}
+ 	Tk_SetMinimumRequestSize(tkwin, minwidth, minheight);
+     }
+ 
+-    Tk_GetPixelsFromObj(NULL, framePtr->tkwin, framePtr->widthObj, &width);
+-    Tk_GetPixelsFromObj(NULL, framePtr->tkwin, framePtr->heightObj, &height);
+-    if ((width > 0) || (height > 0)) {
+-	Tk_GeometryRequest(tkwin, width, height);
+-    }
+-
+     if (Tk_IsMapped(tkwin)) {
+ 	if (!(framePtr->flags & REDRAW_PENDING)) {
+ 	    Tcl_DoWhenIdle(DisplayFrame, framePtr);
+ 	}
+ 	framePtr->flags |= REDRAW_PENDING;
+     }
+ }
+ 
++/*
++ *----------------------------------------------------------------------
++ *
++ * FrameGeometryRequest --
++ *
++ *	Request the size given by the -width and -height options, if any.
++ *
++ * Results:
++ *	None.
++ *
++ * Side effects:
++ *	The geometry manager of the frame may be notified.
++ *
++ *----------------------------------------------------------------------
++ */
++
++static void
++FrameGeometryRequest(
++    Frame *framePtr)		/* Information about widget. */
++{
++    int width, height;
++
++    Tk_GetPixelsFromObj(NULL, framePtr->tkwin, framePtr->widthObj, &width);
++    Tk_GetPixelsFromObj(NULL, framePtr->tkwin, framePtr->heightObj, &height);
++    if ((width > 0) || (height > 0)) {
++	Tk_GeometryRequest(framePtr->tkwin, width, height);
++    }
++}
++
+ /*
+  *----------------------------------------------------------------------
+  *
+  * ComputeFrameGeometry --
+  *
+
+Index: tests/frame.test
+==================================================================
+--- tests/frame.test
++++ tests/frame.test
+@@ -966,10 +966,31 @@
+     .f configure -width 0 -height 0
+     lappend result [winfo reqwidth .f] [winfo reqheight .f]
+ } -cleanup {
+     deleteWindows
+ } -result {1 1 100 180 100 180}
++test frame-6.4 {ConfigureFrame procedure, keep propagated size} -setup {
++    deleteWindows
++} -body {
++    foreach w {.f .l} {
++	[expr {$w eq ".f" ? "frame" : "labelframe"}] $w -width 150 -height 150
++	pack [frame $w.c -width 20 -height 20]
++	pack $w
++    }
++    update
++    set result {}
++    foreach w {.f .l} {
++	set size [list [winfo reqwidth $w] [winfo reqheight $w]]
++	$w configure -background green
++	lappend result [expr {$size eq [list [winfo reqwidth $w] [winfo reqheight $w]]}]
++	$w configure -width 150
++	lappend result [winfo reqwidth $w]
++    }
++    set result
++} -cleanup {
++    deleteWindows
++} -result {1 150 1 150}
+ 
+ test frame-7.1 {FrameEventProc procedure} -setup {
+     deleteWindows
+ } -body {
+     frame .frame2
+

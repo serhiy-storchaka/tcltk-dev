@@ -1,0 +1,135 @@
+--- generic/tkTextTag.c
++++ generic/tkTextTag.c
+@@ -16,6 +16,65 @@
+ #include "tkText.h"
+ #include "default.h"
+ 
++/*
++ * The -tabs option is parsed when it is set, so that an invalid value is
++ * rejected before it is stored in the tag (see [026e2bb685]).
++ */
++
++static int
++SetTabArray(
++    TCL_UNUSED(void *),
++    Tcl_Interp *interp,
++    Tk_Window tkwin,
++    Tcl_Obj **valuePtr,
++    char *recordPtr,
++    Tcl_Size internalOffset,
++    char *saveInternalPtr,
++    TCL_UNUSED(int))
++{
++    TkTextTabArray **internalPtr =
++	    (TkTextTabArray **)(recordPtr + internalOffset);
++    TkTextTabArray *tabArrayPtr = NULL;
++
++    if (TkObjIsEmpty(*valuePtr)) {
++	*valuePtr = NULL;
++    } else {
++	tabArrayPtr = TkTextGetTabs(interp, tkwin, *valuePtr);
++	if (tabArrayPtr == NULL) {
++	    return TCL_ERROR;
++	}
++    }
++    *(TkTextTabArray **)saveInternalPtr = *internalPtr;
++    *internalPtr = tabArrayPtr;
++    return TCL_OK;
++}
++
++static void
++RestoreTabArray(
++    TCL_UNUSED(void *),
++    TCL_UNUSED(Tk_Window),
++    char *internalPtr,
++    char *saveInternalPtr)
++{
++    *(TkTextTabArray **)internalPtr = *(TkTextTabArray **)saveInternalPtr;
++}
++
++static void
++FreeTabArray(
++    TCL_UNUSED(void *),
++    TCL_UNUSED(Tk_Window),
++    char *internalPtr)
++{
++    if (*(TkTextTabArray **)internalPtr != NULL) {
++	Tcl_Free(*(TkTextTabArray **)internalPtr);
++	*(TkTextTabArray **)internalPtr = NULL;
++    }
++}
++
++static const Tk_ObjCustomOption tabArrayOption = {
++    "tabs", SetTabArray, NULL, RestoreTabArray, FreeTabArray, NULL
++};
++
+ static const Tk_OptionSpec tagOptionSpecs[] = {
+     {TK_OPTION_BORDER, "-background", NULL, NULL,
+ 	NULL, TCL_INDEX_NONE, offsetof(TkTextTag, border), TK_OPTION_NULL_OK, 0, 0},
+@@ -67,8 +126,9 @@
+ 	NULL, offsetof(TkTextTag, spacing2Obj), TCL_INDEX_NONE, TK_OPTION_NULL_OK,0,0},
+     {TK_OPTION_PIXELS, "-spacing3", NULL, NULL,
+ 	NULL, offsetof(TkTextTag, spacing3Obj), TCL_INDEX_NONE, TK_OPTION_NULL_OK,0,0},
+-    {TK_OPTION_STRING, "-tabs", NULL, NULL,
+-	NULL, offsetof(TkTextTag, tabStringPtr), TCL_INDEX_NONE, TK_OPTION_NULL_OK, 0, 0},
++    {TK_OPTION_CUSTOM, "-tabs", NULL, NULL,
++	NULL, offsetof(TkTextTag, tabStringPtr), offsetof(TkTextTag, tabArrayPtr),
++	TK_OPTION_NULL_OK, &tabArrayOption, 0},
+     {TK_OPTION_STRING_TABLE, "-tabstyle", NULL, NULL,
+ 	NULL, TCL_INDEX_NONE, offsetof(TkTextTag, tabStyle),
+ 	TK_OPTION_NULL_OK|TK_OPTION_ENUM_VAR, tkTextTabStyleStrings, 0},
+@@ -359,17 +419,6 @@
+ 	     * from "unspecified").
+ 	     */
+ 
+-	    if (tagPtr->tabArrayPtr != NULL) {
+-		Tcl_Free(tagPtr->tabArrayPtr);
+-		tagPtr->tabArrayPtr = NULL;
+-	    }
+-	    if (tagPtr->tabStringPtr != NULL) {
+-		tagPtr->tabArrayPtr =
+-			TkTextGetTabs(interp, textPtr->tkwin, tagPtr->tabStringPtr);
+-		if (tagPtr->tabArrayPtr == NULL) {
+-		    return TCL_ERROR;
+-		}
+-	    }
+ 	    if (tagPtr->elide >= 0) {
+ 		/*
+ 		 * Indices are potentially obsolete after changing -elide,
+@@ -1112,14 +1161,6 @@
+ 	    textPtr->tkwin);
+ 
+     /*
+-     * This associated information is managed by us.
+-     */
+-
+-    if (tagPtr->tabArrayPtr != NULL) {
+-	Tcl_Free(tagPtr->tabArrayPtr);
+-    }
+-
+-    /*
+      * Make sure this tag isn't referenced from the 'current' tag array.
+      */
+ 
+--- tests/textTag.test
++++ tests/textTag.test
+@@ -346,6 +346,19 @@
+ } -cleanup {
+     .t tag configure x -locale tcl8
+ } -result {nl_NL nl_NL tcl8}
++test textTag-1.40 {invalid -tabs value is not stored, bug [026e2bb685]} -body {
++    .t tag configure x -tabs {1c 2c}
++    catch {.t tag configure x -tabs {1c fork}}
++    .t tag configure x -foreground blue
++    list [.t tag cget x -tabs] [.t tag cget x -foreground]
++} -cleanup {
++    .t tag configure x -tabs {} -foreground {}
++} -result {{1c 2c} blue}
++test textTag-1.41 {-tabs reset to empty} -body {
++    .t tag configure x -tabs {1c 2c}
++    .t tag configure x -tabs {}
++    .t tag configure x -tabs
++} -result {-tabs {} {} {} {}}
+ 
+ 
+ test textTag-2.1 {TkTextTagCmd - "add" option} -body {

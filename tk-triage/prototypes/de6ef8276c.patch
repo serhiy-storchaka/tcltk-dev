@@ -1,0 +1,179 @@
+Index: generic/tkImgPhInstance.c
+==================================================================
+--- generic/tkImgPhInstance.c
++++ generic/tkImgPhInstance.c
+@@ -42,11 +42,12 @@
+  * Forward declarations
+  */
+ 
+ #ifndef TK_CAN_RENDER_RGBA
+ static void		BlendComplexAlpha(XImage *bgImg, PhotoInstance *iPtr,
+-			    int xOffset, int yOffset, int width, int height);
++			    int xOffset, int yOffset, int width, int height,
++			    unsigned char *alphaAr);
+ #endif
+ static int		IsValidPalette(PhotoInstance *instancePtr,
+ 			    const char *palette);
+ static int		CountBits(unsigned mask);
+ static void		GetColorTable(PhotoInstance *instancePtr);
+@@ -464,16 +465,16 @@
+ BlendComplexAlpha(
+     XImage *bgImg,		/* Background image to draw on. */
+     PhotoInstance *iPtr,	/* Image instance to draw. */
+     int xOffset, int yOffset,	/* X & Y offset into image instance to
+ 				 * draw. */
+-    int width, int height)	/* Width & height of image to draw. */
++    int width, int height,	/* Width & height of image to draw. */
++    unsigned char *alphaAr)	/* RGBA data of the image. */
+ {
+     int x, y, line;
+     unsigned long pixel;
+     unsigned char r, g, b, alpha, unalpha, *modelPtr;
+-    unsigned char *alphaAr = iPtr->modelPtr->pix32;
+ 
+     /*
+      * This blending is an integer version of the Source-Over compositing rule
+      * (see Porter&Duff, "Compositing Digital Images", proceedings of SIGGRAPH
+      * 1984) that has been hard-coded (for speed) to work with targetting a
+@@ -663,10 +664,54 @@
+ }
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
++ * GetGammaPixels --
++ *
++ *	Returns the 32-bit RGBA data of the model of a photo instance for
++ *	direct rendering. If the instance's gamma is not 1.0, returns instead
++ *	a newly allocated copy with the gamma correction applied, as is done
++ *	when allocating the colors for the instance's pixmap.
++ *
++ * Results:
++ *	Pointer to RGBA data. If it differs from the model's pix32 data, the
++ *	caller must free it with Tcl_Free.
++ *
++ * Side effects:
++ *	None.
++ *
++ *----------------------------------------------------------------------
++ */
++
++static unsigned char *
++GetGammaPixels(
++    PhotoInstance *iPtr)
++{
++    unsigned char *src = iPtr->modelPtr->pix32, *dst, table[256];
++    size_t i, n;
++
++    if (iPtr->gamma == 1.0) {
++	return src;
++    }
++    for (i = 0; i < 256; i++) {
++	table[i] = (unsigned char)(255.99 * pow(i / 255.0, 1.0 / iPtr->gamma));
++    }
++    n = (size_t)iPtr->modelPtr->width * iPtr->modelPtr->height * 4;
++    dst = (unsigned char *)Tcl_Alloc(n);
++    for (i = 0; i < n; i += 4) {
++	dst[i] = table[src[i]];
++	dst[i + 1] = table[src[i + 1]];
++	dst[i + 2] = table[src[i + 2]];
++	dst[i + 3] = src[i + 3];
++    }
++    return dst;
++}
++
++/*
++ *----------------------------------------------------------------------
++ *
+  * TkImgPhotoDisplay --
+  *
+  *	This function is invoked to draw a photo image.
+  *
+  * Results:
+@@ -710,28 +755,32 @@
+     /*
+      * We can use TkpPutRGBAImage to render RGBA Ximages directly so there is
+      * no need to call XGetImage or to do the Porter-Duff compositing by hand.
+      */
+ 
+-    unsigned char *rgbaPixels = instancePtr->modelPtr->pix32;
++    unsigned char *rgbaPixels = GetGammaPixels(instancePtr);
+     XImage *photo = XCreateImage(display, NULL, 32, ZPixmap, 0, (char*)rgbaPixels,
+ 				 (unsigned int)instancePtr->width,
+ 				 (unsigned int)instancePtr->height,
+ 				 0, (unsigned int)(4 * instancePtr->width));
+     TkpPutRGBAImage(display, drawable, instancePtr->gc,
+ 	       photo, imageX, imageY, drawableX, drawableY,
+ 	       (unsigned int) width, (unsigned int) height);
+     photo->data = NULL;
+     XDestroyImage(photo);
++    if (rgbaPixels != instancePtr->modelPtr->pix32) {
++	Tcl_Free(rgbaPixels);
++    }
+ 
+ #else
+ 
+     if ((instancePtr->modelPtr->flags & COMPLEX_ALPHA)
+ 	    && visInfo.depth >= 15
+ 	    && (visInfo.c_class == DirectColor || visInfo.c_class == TrueColor)) {
+ 	Tk_ErrorHandler handler;
+ 	XImage *bgImg = NULL;
++	unsigned char *rgbaPixels = GetGammaPixels(instancePtr);
+ 
+ #ifdef HAVE_XRENDER
+ 	/*
+ 	 * Try the server-side XRender composite first (TkpPutRGBAImage); it
+ 	 * avoids the XGetImage read-back and the per-pixel CPU blend below.
+@@ -743,11 +792,10 @@
+ 	 * Note: bitmap_pad must be 8, 16 or 32 -- Xlib's XCreateImage
+ 	 * returns NULL otherwise (the macOS TK_CAN_RENDER_RGBA branch
+ 	 * passes 0, but only its Xlib emulation accepts that).
+ 	 */
+ 
+-	unsigned char *rgbaPixels = instancePtr->modelPtr->pix32;
+ 	XImage *photo = XCreateImage(display, NULL, 32, ZPixmap, 0,
+ 		(char *) rgbaPixels, (unsigned int) instancePtr->width,
+ 		(unsigned int) instancePtr->height, 32,
+ 		(unsigned int) (4 * instancePtr->width));
+ 
+@@ -757,10 +805,13 @@
+ 		    (unsigned int) width, (unsigned int) height);
+ 
+ 	    photo->data = NULL;
+ 	    XDestroyImage(photo);
+ 	    if (result == Success) {
++		if (rgbaPixels != instancePtr->modelPtr->pix32) {
++		    Tcl_Free(rgbaPixels);
++		}
+ 		(void) XFlush(display);
+ 		return;
+ 	    }
+ 	}
+ #endif /* HAVE_XRENDER */
+@@ -778,17 +829,24 @@
+ 
+ 	bgImg = XGetImage(display, drawable, drawableX, drawableY,
+ 		(unsigned int)width, (unsigned int)height, AllPlanes, ZPixmap);
+ 	if (bgImg == NULL) {
+ 	    Tk_DeleteErrorHandler(handler);
++	    if (rgbaPixels != instancePtr->modelPtr->pix32) {
++		Tcl_Free(rgbaPixels);
++	    }
+ 	    /* We failed to get the image, so draw without blending alpha.
+ 	     * It's the best we can do.
+ 	     */
+ 	    goto fallBack;
+ 	}
+ 
+-	BlendComplexAlpha(bgImg, instancePtr, imageX, imageY, width, height);
++	BlendComplexAlpha(bgImg, instancePtr, imageX, imageY, width, height,
++		rgbaPixels);
++	if (rgbaPixels != instancePtr->modelPtr->pix32) {
++	    Tcl_Free(rgbaPixels);
++	}
+ 
+ 	/*
+ 	 * Color info is unimportant as we only do this operation for depth >=
+ 	 * 15.
+ 	 */
+

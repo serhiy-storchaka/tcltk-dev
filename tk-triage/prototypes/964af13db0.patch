@@ -1,0 +1,95 @@
+Index: library/choosedir.tcl
+==================================================================
+--- library/choosedir.tcl
++++ library/choosedir.tcl
+@@ -96,11 +96,15 @@
+ 
+     # Set a grab and claim the focus too.
+ 
+     ::tk::SetFocusGrab $w $data(ent)
+     $data(ent) delete 0 end
+-    $data(ent) insert 0 $data(selectPath)
++    if {[info exists data(initialEntry)]} {
++	$data(ent) insert 0 $data(initialEntry)
++    } else {
++	$data(ent) insert 0 $data(selectPath)
++    }
+     $data(ent) selection range 0 end
+     $data(ent) icursor end
+ 
+     # Wait for the user to respond, then restore the focus and
+     # return the index of the selected button.  Restore the focus
+@@ -173,17 +177,31 @@
+     set data(-multiple) 0
+ 
+     # 4: set the default directory and selection according to the -initial
+     #    settings
+     #
++    unset -nocomplain data(initialEntry)
+     if {$data(-initialdir) ne ""} {
+ 	# Ensure that initialdir is an absolute path name.
+ 	if {[file isdirectory $data(-initialdir)]} {
+ 	    set old [pwd]
+ 	    cd $data(-initialdir)
+ 	    set data(selectPath) [pwd]
+ 	    cd $old
++	} elseif {!$data(-mustexist)} {
++	    # Start in the nearest existing ancestor and propose the
++	    # non-existent directory in the entry.
++	    set dir [file normalize $data(-initialdir)]
++	    set data(initialEntry) $dir
++	    while {![file isdirectory $dir] && [file dirname $dir] ne $dir} {
++		set dir [file dirname $dir]
++	    }
++	    if {[file isdirectory $dir]} {
++		set data(selectPath) $dir
++	    } else {
++		set data(selectPath) [pwd]
++	    }
+ 	} else {
+ 	    set data(selectPath) [pwd]
+ 	}
+     }
+ 
+
+Index: tests/choosedir.test
+==================================================================
+--- tests/choosedir.test
++++ tests/choosedir.test
+@@ -133,10 +133,35 @@
+     ToPressButton $parent ok
+     tk_chooseDirectory \
+ 	    -title "Press OK" \
+ 	    -parent $parent -initialdir ""
+ } -result [pwd]
++test choosedir-4.4 {tk_chooseDirectory, nonexistent initialdir, -mustexist 0} -constraints {
++	unix notAqua
++} -body {
++    after 100 {
++	upvar #0 ::tk::dialog::file::__tk_choosedir data
++	lappend result $data(selectPath) [$data(ent) get]
++	SendButtonPress . ok mouse
++	after 50 {SendButtonPress . ok mouse}
++    }
++    set result {}
++    lappend result [tk_chooseDirectory -title "Press Ok twice" \
++	    -parent $parent -initialdir [file join $fake sub] -mustexist 0]
++} -result [list [file dirname $fake] [file join $fake sub] [file join $fake sub]]
++test choosedir-4.5 {tk_chooseDirectory, nonexistent initialdir, -mustexist 1} -constraints {
++	unix notAqua
++} -body {
++    after 100 {
++	upvar #0 ::tk::dialog::file::__tk_choosedir data
++	lappend result $data(selectPath) [$data(ent) get]
++	SendButtonPress . cancel mouse
++    }
++    set result {}
++    lappend result [tk_chooseDirectory -title "Press Cancel" \
++	    -parent $parent -initialdir [file join $fake sub] -mustexist 1]
++} -result [list [pwd] [pwd] {}]
+ 
+ 
+ test choosedir-5.1 {tk_chooseDirectory, handles {} entry text} -constraints {
+ 	unix notAqua
+ } -body {
+

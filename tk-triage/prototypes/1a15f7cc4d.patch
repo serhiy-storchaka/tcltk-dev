@@ -1,0 +1,64 @@
+Index: doc/getOpenFile.n
+==================================================================
+--- doc/getOpenFile.n
++++ doc/getOpenFile.n
+@@ -140,36 +140,23 @@
+ \fItypeName\fR {\fIextension\fR ?\fIextension ...\fR?} ?{\fImacType\fR ?\fImacType ...\fR?}?
+ .CE
+ \fItypeName\fR is the name of the file type described by this
+ file pattern and is the text string that appears in the \fBFile types\fR
+ listbox. \fIextension\fR is a file extension for this file pattern.
+-\fImacType\fR is a four-character Macintosh file type. The list of
+-\fImacType\fRs is optional and may be omitted for applications that do
+-not need to execute on the Macintosh platform.
++\fImacType\fR is a four-character file type code of the classic Mac OS.
++The list of \fImacType\fRs is optional; it is accepted for compatibility
++but ignored on all supported platforms, including macOS.
+ .PP
+ Several file patterns may have the same \fItypeName,\fR in which case
+ they refer to the same file type and share the same entry in the
+ listbox. When the user selects an entry in the listbox, all the files
+ that match at least one of the file patterns corresponding
+ to that entry are listed. Usually, each file pattern corresponds to a
+-distinct type of file. The use of more than one file pattern for one
+-type of file is only necessary on the Macintosh platform.
+-.PP
+-On the Macintosh platform, a file matches a file pattern if its
+-name matches at least one of the \fIextension\fR(s) AND it
+-belongs to at least one of the \fImacType\fR(s) of the
+-file pattern. For example, the \fBC Source Files\fR file pattern in the
+-sample code matches with files that have a \fB\.c\fR extension AND
+-belong to the \fImacType\fR \fBTEXT\fR. To use the OR rule instead,
+-you can use two file patterns, one with the \fIextensions\fR only and
+-the other with the \fImacType\fR only. The \fBGIF Files\fR file type
+-in the sample code matches files that \fIeither\fR have a \fB\.gif\fR
+-extension OR belong to the \fImacType\fR \fBGIFF\fR.
+-.PP
+-On the Unix and Windows platforms, a file matches a file pattern
+-if its name matches at least one of the \fIextension\fR(s) of
+-the file pattern. The \fImacType\fRs are ignored.
++distinct type of file.
++.PP
++A file matches a file pattern if its name matches at least one of the
++\fIextension\fR(s) of the file pattern.
+ .SH "SPECIFYING EXTENSIONS"
+ .PP
+ On the Unix and Macintosh platforms, extensions are matched using
+ glob-style pattern matching. On the Windows platform, extensions are
+ matched by the underlying operating system. The types of possible
+@@ -198,13 +185,12 @@
+ .PP
+ .CS
+ set types {
+     {{Text Files}       {.txt}        }
+     {{TCL Scripts}      {.tcl}        }
+-    {{C Source Files}   {.c}      TEXT}
++    {{C Source Files}   {.c}          }
+     {{GIF Files}        {.gif}        }
+-    {{GIF Files}        {}        GIFF}
+     {{All Files}        *             }
+ }
+ set filename [\fBtk_getOpenFile\fR -filetypes $types]
+ 
+ if {$filename ne ""} {
+

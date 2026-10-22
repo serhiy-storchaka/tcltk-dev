@@ -1,0 +1,45 @@
+Index: generic/ttk/ttkEntry.c
+==================================================================
+--- generic/ttk/ttkEntry.c
++++ generic/ttk/ttkEntry.c
+@@ -2184,11 +2184,11 @@
+ 	TTK_GROUP("Combobox.padding", TTK_FILL_BOTH,
+ 	    TTK_NODE("Combobox.textarea", TTK_FILL_BOTH)))
+ TTK_END_LAYOUT
+ 
+ TTK_BEGIN_LAYOUT(SpinboxLayout)
+-    TTK_GROUP("Spinbox.field", TTK_PACK_TOP|TTK_FILL_X,
++    TTK_GROUP("Spinbox.field", TTK_FILL_BOTH,
+ 	TTK_GROUP("null", TTK_PACK_RIGHT,
+ 	    TTK_NODE("Spinbox.uparrow", TTK_PACK_TOP|TTK_STICK_E)
+ 	    TTK_NODE("Spinbox.downarrow", TTK_PACK_BOTTOM|TTK_STICK_E))
+ 	TTK_GROUP("Spinbox.padding", TTK_FILL_BOTH,
+ 	    TTK_NODE("Spinbox.textarea", TTK_FILL_BOTH)))
+
+Index: tests/ttk/spinbox.test
+==================================================================
+--- tests/ttk/spinbox.test
++++ tests/ttk/spinbox.test
+@@ -425,10 +425,21 @@
+     ttk::spinbox .w -style customStyle.TSpinbox
+     list [.w cget -style] [.w style] [winfo class .w]
+ } -cleanup {
+     destroy .w
+ } -result {customStyle.TSpinbox customStyle.TSpinbox TSpinbox}
++
++test spinbox-6.1 "field fills the allocated height" -body {
++    ttk::spinbox .sb
++    pack .sb -fill both -expand 1
++    wm geometry . 200x200
++    update
++    .sb identify element 20 [expr {[winfo height .sb] / 2}]
++} -cleanup {
++    destroy .sb
++    wm geometry . {}
++} -result textarea
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

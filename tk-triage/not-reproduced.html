@@ -1,0 +1,818 @@
+<title>Tk Bug Triage: Not reproduced</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Untouched open Tk bug tickets: Not reproduced</h1>
+  <p class="sub">Triage of 480 open Bug tickets: those with no comment or check-in from me on 2026-09-24, plus 38 added on 2026-10-04 (filed since then, Pending then, or reopened; 16 of them filed by me). Reproduced on Linux/X11 under Xvfb (main 9.1 tip, 9.0, 8.7, 8.6 tip, 8.5, 8.4) and on a Windows 11 VM (9.1, 8.6, 8.5, 8.4). Rows marked <span class="patch">patch</span> link to a prototype patch (135 in all, in <a href="https://github.com/serhiy-storchaka/tcltk-dev/tree/main/tk-triage/prototypes">tk-triage/prototypes</a>). Updated 2026-10-22 with what happened since: the emoji before each ticket id shows its progress.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">167</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">61</span> Already fixed</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">54</span> Not a bug / RFE</a><a class="navchip c-notrep cur" href="not-reproduced.html" aria-current="page"><span class="n">49</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">11</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">138</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="closed" aria-pressed="false"><span aria-hidden="true">✅</span> <span class="n">9</span> Closed</button><button class="pchip" data-p="pending" aria-pressed="false"><span aria-hidden="true">⏳</span> <span class="n">7</span> Pending</button><button class="pchip" data-p="merged" aria-pressed="false"><span aria-hidden="true">🟢</span> <span class="n">2</span> Fix merged</button><button class="pchip" data-p="branch" aria-pressed="false"><span aria-hidden="true">🔧</span> <span class="n">4</span> Fix in a branch</button><button class="pchip" data-p="commented" aria-pressed="false"><span aria-hidden="true">💬</span> <span class="n">2</span> Commented</button><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">25</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, subsystem, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="notrep"><h2><span class="dot c-notrep"></span>Not reproduced <span class="cnt">49</span></h2><details class="t" id="b174f151bb" data-s="b174f151bb test failures for ttk/treeview.test under ms windows 88. themed tk not-reproduced (9.1 main, 8.6 tip; msvc, win11, 100% scaling)" data-p="commented"><summary><span class="id"><span class="pe" title="Commented" aria-label="Commented">💬</span>b174f151bb</span><span class="yr">2026</span><span class="ti">Test failures for ttk/treeview.test under MS Windows</span><span class="vd">NOT-REPRODUCED (9.1 main, 8.6 tip; MSVC, Win11, 100% scaling)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/b174f151bb">Open ticket b174f151bb</a> · 88. Themed Tk · filed 2026-08-28</p><div class="since"><div class="lab">💬 Since triage (updated 2026-10-22)</div><p>Status now: <strong>Open</strong></p><ul><li>💬 2026-09-29 <strong>serhiy.storchaka</strong>: The failures depend on the display scaling. The tests use fonts in points but fixed pixel sizes (row height, window geometry, expected coordinates), so they only pass at 96 DPI (100%). With 125% scaling I get 14 failures on Windows 11, nearly the same as in the attached output. On Linux I get the same with Xvfb -dpi 120. Setting tk scaling [expr {96 / 72.0}] at the start of treeview.test, and restoring it at the e…</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1 main, 8.6 tip; MSVC, Win11, 100% scaling)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> main on Linux/Xvfb: ttk suite passes (treeview.test 0 failures)
+</li>
+<li><span class="k">Cause</span> unknown. <code>make test</code> runs tests/all.tcl and tests/ttk/all.tcl in separate processes on both win/Makefile.in and makefile.vc, so the classic suite cannot leave in-process state behind. Only system state could carry over (pointer position, focus, leftover windows). The failing tests (heading and row height, keyboard events) depend on metrics, and nemethi reports a clean run at 100% display scaling, so a scaling ≠ 100% is the more likely factor.
+</li>
+<li><span class="k">Prototype</span> none. Repro: win/b174f151bb.tcl (runs treeview.test alone and after the classic suite, prints tk scaling and a verdict)
+</li>
+<li><span class="k">Suggested ticket comment</span> The classic and ttk suites run in separate processes, so the classic suite cannot leave in-process state behind. Please report the display scaling (<code>tk scaling</code>) for the failing runs; nemethi sees no failures at 100%.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (9.1 main, 8.6 tip; MSVC, Win11, 100% scaling)
+</li>
+<li><span class="k">Tested</span> win/b174f151bb.tcl on 9.1 (tktest91) and 8.6 (tktest86t). In both, treeview.test had 0 failures run on its own and 0 failures after the full classic suite. tk scaling 1.3317 (96 dpi, 100%).
+</li>
+<li><span class="k">Cause</span> unknown. I could not test scaling ≠ 100%, because changing the VM's DPI needs a re-login. The reporter also used a gcc cross-build.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> No failures on Windows 11 at 100% scaling (MSVC build, 9.1 and 8.6), neither on its own nor after the classic suite. Please report <code>tk scaling</code> and whether the failures persist with an MSVC build or at 100% scaling.
+</li></ul></div></div></details><details class="t" id="dfda3ef8f8" data-s="dfda3ef8f8 canvas-8.1 failure on ubuntu 26.4 04. canvas basics not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>dfda3ef8f8</span><span class="yr">2026</span><span class="ti">canvas-8.1 failure on Ubuntu 26.4</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/dfda3ef8f8">Open ticket dfda3ef8f8</a> · 04. Canvas Basics · filed 2026-08-25</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> generic (CI Linux)
+</li>
+<li><span class="k">Tested</span> main, 9.1b1, 9.0 on Ubuntu 26.04.1, gcc 15.2, Xvfb: <code>-O2</code> build and <code>--enable-symbols</code> build, test alone and after the a*/b*/canv* test files with the failsOnCILinux constraint enabled. All give <code>98 171 302 202</code>, and valgrind is clean.
+</li>
+<li><span class="k">Cause</span> unknown. In ComputeArcParametersFromHeight (generic/tkCanvArc.c) the arc centre x is always the chord midpoint (200) for a horizontal chord, so a bbox at x≈39800 means the start and end points were already wrong. The height math cannot produce it; the coordinates themselves must have been parsed wrong (Tk_GetDoublePixelsFromObj) on that CI host. No clang was available here to try the CI's clang config.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce on Ubuntu 26.04 with gcc 15.2 under Xvfb (normal and --enable-symbols builds; valgrind clean). For a horizontal chord the centre x is always 200, so the chord end points must already have been wrong. Does it fail in all CI matrix configs, or only with clang?
+</li></ul></div></details><details class="t" id="f093ef6765" data-s="f093ef6765 intermittent failures of test event-86299fe7ce on windows 10 69. events not-reproduced (win11 vm, 9.1 main ref); prototype builds and passes tests" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>f093ef6765</span><span class="yr">2026</span><span class="ti">Intermittent failures of test event-86299fe7ce on Windows 10</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tk-triage/prototypes/f093ef6765.patch">patch</a><span class="vd">NOT-REPRODUCED (Win11 VM, 9.1 main ref); prototype builds and passes tests</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/f093ef6765">Open ticket f093ef6765</a> · 69. Events · filed 2026-07-08</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (Win11 VM, 9.1 main ref); prototype builds and passes tests</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> X11 main: the repro script gives 0 missed crossings in 10 runs (this is the Windows code path, so X11 says little)
+</li>
+<li><span class="k">Cause</span> likely win/tkWinPointer.c:TkpWarpPointer. It moves the pointer with TkSetCursorPos() (SendInput, which is asynchronous), then reads the position back with XQueryPointer/GetCursorPos. If the injected input has not been processed yet, it gets the old position, Tk_UpdatePointer sees no change, and the crossing events are lost ("|||"). This is a race in the fix itself, not only in the test.
+</li>
+<li><span class="k">Prototype</span> prototypes/f093ef6765.patch (44 lines of diff): TkpWarpPointer passes the target position to Tk_UpdatePointer instead of the value read back, and gets the modifier state from TkWinGetModifierState(). Not compiled or tested (no Windows or mingw here). Repro: win/f093ef6765.tcl (warps out and back 100 times, counts missed crossings, prints a verdict)
+</li>
+<li><span class="k">Suggested ticket comment</span> TkpWarpPointer uses SendInput(), which is asynchronous, then immediately reads the pointer position back with GetCursorPos(), which can still return the old position. Passing the warp target to Tk_UpdatePointer should make crossing events deterministic, instead of making the test wait longer.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (Win11 VM, 9.1 main ref); prototype builds and passes tests
+</li>
+<li><span class="k">Tested</span> 9.1 main ref and patched tk-wt91 (MSVC 2022). win/f093ef6765.tcl gave 0/100 missed crossings on both, idle and with 8 busy tclsh loads. A stress variant with no delays (work-win/f093stress.tcl) gave 0/500 anomalies on both, idle and loaded. With the patch, event.test passes 39/0 failures (1 skipped) and event-86299fe7ce passes.
+</li>
+<li><span class="k">Cause</span> unconfirmed here. The race is still plausible: TkpWarpPointer calls SendInput (asynchronous) and then reads the position back with GetCursorPos. This VM just never loses it.
+</li>
+<li><span class="k">Prototype</span> prototypes/f093ef6765.patch (unchanged, 44 lines of diff). It compiles cleanly with MSVC and introduces no regressions or duplicate crossings in the stress run. Because the bug does not reproduce here, I cannot show that the patch reduces the missed crossings.
+</li>
+<li><span class="k">Suggested ticket comment</span> TkpWarpPointer moves the pointer with SendInput() and then reads it back with GetCursorPos(), which can return the old position. A patch that passes the warp target to Tk_UpdatePointer is ready. I can't reproduce the failure on Windows 11. Does it still fail for you with current main, and on which machine (VM, RDP, bare metal)?
+</li></ul></div></div></details><details class="t" id="0f8e851c6e" data-s="0f8e851c6e print.tcl: _print_canvas.text on windows — negative font size from _make_gdi_cfont causes text not to render 04. canvas basics not-reproduced (9.1 main, microsoft print to pdf)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>0f8e851c6e</span><span class="yr">2026</span><span class="ti">print.tcl: _print_canvas.text on Windows — negative font size from _make_gdi_cfont causes text not to render</span><span class="vd">NOT-REPRODUCED (9.1 main, Microsoft Print to PDF)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/0f8e851c6e">Open ticket 0f8e851c6e</a> · 04. Canvas Basics · filed 2026-06-24</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1 main, Microsoft Print to PDF)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> code review only (win/tkWinGDI.c GdiMakeLogFont, library/print.tcl _make_gdi_cfont). Repro script: win/0f8e851c6e.tcl. It prints the GDI font specs, runs <code>tk print .c</code>, and asks you to check the PDF from "Microsoft Print to PDF" for the 3 texts.
+</li>
+<li><span class="k">Cause</span> unconfirmed. The ticket says a negative size makes GdiMakeLogFont skip GdiParseFontWords. That is not true: for <code>count &gt;= 3</code> GdiParseFontWords always runs, so weight and slant are applied. A negative size becomes <code>lfHeight = siz</code> in logical units. After <code>_gdi map</code> those logical units are canvas pixels, which is why _make_gdi_cfont converts points to negative pixels on purpose. If text really is missing, the cause is somewhere else, for example the <code>_gdi text</code> path or the map/extent.
+</li>
+<li><span class="k">Prototype</span> none (needs Windows to confirm first)
+</li>
+<li><span class="k">Suggested ticket comment</span> The negative size is intentional: it gives the size in canvas pixels, which are the logical units after <code>_gdi map</code>. GdiMakeLogFont still parses weight/slant for any size. Can you attach a minimal script and say which printer or driver you used, and whether the text is missing with "Microsoft Print to PDF" too?
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (9.1 main, Microsoft Print to PDF)
+</li>
+<li><span class="k">Tested</span> 9.1 main, win/0f8e851c6e.tcl printed to PDF. All 3 texts are present (pdftotext finds them), at the correct sizes, with bold and italic applied. The GDI fonts were <code>{Helvetica -32 bold roman}</code>, <code>{Courier -16 normal roman}</code> and <code>{Arial -16 normal italic}</code>. 8.6 has no <code>tk print</code>.
+</li></ul>
+<p>Side finding: "Courier 12" printed in a sans-serif substitute, because <code>font actual</code> returns the raster "Courier" (see <a class="h" href="reproduced.html#3249f7d4c6">3249f7d4c6</a>), which the printer DC doesn't have. The <a class="h" href="reproduced.html#3249f7d4c6">3249f7d4c6</a> prototype would make it "Courier New".</p>
+<ul>
+<li><span class="k">Cause</span> none. A negative size is intended to give pixels in logical units.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Text with the negative sizes from _make_gdi_cfont prints correctly (bold/italic included) with "Microsoft Print to PDF" on 9.1. Please attach a script and name the printer driver that loses the text.
+</li></ul></div></div></details><details class="t" id="5d950fd28a" data-s="5d950fd28a revised_text: wrap mode vs. tabs 99. other not-reproduced (revised_text tip 8b6e012e5d, x11)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>5d950fd28a</span><span class="yr">2026</span><span class="ti">revised_text: wrap mode vs. tabs</span><span class="vd">NOT-REPRODUCED (revised_text tip 8b6e012e5d, X11)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/5d950fd28a">Open ticket 5d950fd28a</a> · 99. Other · filed 2026-03-27</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (revised_text tip 8b6e012e5d, X11)</p><ul>
+<li><span class="k">Platform</span> generic (revised_text branch only)
+</li>
+<li><span class="k">Tested</span> revised_text built in wt-a3, and main 9.1 for comparison. Fonts: Courier 12, TkFixedFont, TkDefaultFont, Helvetica 10. -wrap char/word/none, set at creation and switched afterwards. -tabstyle tabular and wordprocessor. Short lines, and long lines past the widget width. Default tabs were always 8 × charWidth, the same as main.
+</li>
+<li><span class="k">Cause</span> unknown. One suspect in generic/tkTextDisp.c: around line 3853 (re-layout of a continuation display line), <code>data-&gt;maxX = MAX(data-&gt;width, data-&gt;x)</code> is set without checking <code>TEXT_WRAPMODE_NONE</code>. By contrast, line 3263 sets maxX = -1 for wrap none. With a positive maxX, the tab code applies <code>desired %= data-&gt;maxX</code>. I could not trigger this path.
+</li>
+<li><span class="k">Prototype</span> none (not reproduced)
+</li>
+<li><span class="k">Suggested ticket comment</span> I can't reproduce this with revised_text tip <a class="h" href="https://core.tcl-lang.org/tk/info/8b6e012e5d">8b6e012e5d</a> on X11. Default tabs stay 8 chars wide for -wrap none with several fonts and both tab styles. Could you attach a script, and say which platform, font and text content you used? Possibly this only happens in the undroidwish copy of the widget.
+</li></ul></div></details><details class="t" id="8972b57276" data-s="8972b57276 ms-vc6 with core-8-6-branch: stacking order tests fail 68. win window operations not-reproduced (9.1 main, 8.6 tip; msvc 2022, win11)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>8972b57276</span><span class="yr">2026</span><span class="ti">MS-VC6 with core-8-6-branch: stacking order tests fail</span><span class="vd">NOT-REPRODUCED (9.1 main, 8.6 tip; MSVC 2022, Win11)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/8972b57276">Open ticket 8972b57276</a> · 68. Win Window Operations · filed 2026-03-12</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1 main, 8.6 tip; MSVC 2022, Win11)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> every failing test has the <code>win</code> constraint. The repro script win/8972b57276.tcl runs the bodies of winWm-7.3 and wm-attributes-1.5.1/1.5.2/1.5.4 and prints PASS/FAIL plus a verdict. I sanity-ran it on X11 8.6, where it passes.
+</li>
+<li><span class="k">Cause</span> unknown. All four failures are the same symptom: the Z order is lost when the wrapper is recreated (UpdateWrapper, win/tkWinWm.c ~2198). UpdateWrapper restores the order via <code>GetNextWindow(oldWrapper, GW_HWNDPREV)</code>. That fails if the window above is not a Tk wrapper, e.g. a console or IME window. This is probably environment-dependent rather than VC6-specific, but that needs checking against a modern MSVC build on the same machine.
+</li>
+<li><span class="k">Prototype</span> none (Windows-only)
+</li>
+<li><span class="k">Suggested ticket comment</span> Do these four tests also fail with a modern MSVC or mingw build on the same machine? All of them go through UpdateWrapper's GW_HWNDPREV Z-order restore, so this may depend on the environment rather than the compiler.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (9.1 main, 8.6 tip; MSVC 2022, Win11)
+</li>
+<li><span class="k">Tested</span> with tktest91 and tktest86t I ran winWm.test and wm.test, both on their own (-match winWm-7.*, wm-attributes-1.5.*) and as full files, plus win/8972b57276.tcl. winWm-7.3 and wm-attributes-1.5.1/1.5.2/1.5.4 pass everywhere. Full wm.test: 0 failures on 9.1 and 8.6.
+</li></ul>
+<p>One unrelated failure: winWm-7.4 ("UpdateWrapper must maintain focus", result <code>.t .</code>) fails on 8.6 in both runs, and on 9.1 only when run on its own. It passes in the full 9.1 file. This is probably focus-stealing rules, because the tests ran from a scheduled task.</p>
+<ul>
+<li><span class="k">Cause</span> likely specific to VC6 or that environment (see the Linux notes about GW_HWNDPREV).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> winWm-7.3 and wm-attributes-1.5.x pass on 8.6 tip and 9.1 main built with MSVC 2022 on Windows 11. Do they still fail for you with a current compiler? Otherwise I'd close this as VC6/environment-specific.
+</li></ul></div></div></details><details class="t" id="047b2297a7" data-s="047b2297a7 ttk.treeview .selection() giving incorrect result 53. [selection] not-reproduced (main, 9.0, 8.6 tip, 8.6.14)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>047b2297a7</span><span class="yr">2026</span><span class="ti">ttk.Treeview .selection() giving incorrect result</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6 tip, 8.6.14)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/047b2297a7">Open ticket 047b2297a7</a> · 53. [selection] · filed 2026-02-04</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6 tip, 8.6.14)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> Xvfb, no WM. The script makes a treeview with 3 items plus an entry, clicks item 2, Ctrl+clicks it (the clicks use distinct -time values, so they are not a double-click), presses Tab twice and logs from &lt;&lt;TraverseIn&gt;&gt;. Every version gives <code>selection</code> = {} in &lt;&lt;TraverseIn&gt;&gt; and afterwards. <code>.tv focus</code> stays I002, which is expected: the focus item is not the selection.
+</li>
+<li><span class="k">Cause</span> none found. The reporter probably confused the focus item with the selection, or the Ctrl+click was taken as a double-click or a plain click. Side note: on main a click about 6px from the left edge of a row, in the indent area, does not select the item, while 8.6 and 9.0 select it. That is a separate, minor difference.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> I can't reproduce this on 8.6.14, 8.6 tip, 9.0 or main. After Ctrl+click deselects the item and focus is tabbed away and back, <code>selection</code> is empty. <code>focus</code> still returns the item, which is expected. Please attach a self-contained Tcl or tkinter script if it still happens.
+</li></ul></div></details><details class="t" id="dd35d8b1e2" data-s="dd35d8b1e2 assertion failed when resizing the text widget 18. [text] not-reproduced (revised_text tip 8b6e012e5d and d6295a4f0d from before the -lang to -locale change), but only with a synthetic example; the original scidb example could not be fetched (offline)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>dd35d8b1e2</span><span class="yr">2024</span><span class="ti">Assertion failed when resizing the text widget</span><span class="vd">NOT-REPRODUCED (revised_text tip 8b6e012e5d and d6295a4f0d from before the -lang to -locale change), but only with a synthetic example; the origina…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/dd35d8b1e2">Open ticket dd35d8b1e2</a> · 18. [text] · filed 2024-01-16</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (revised_text tip 8b6e012e5d and d6295a4f0d from before the -lang to -locale change), but only with a synthetic example; the original scidb example could not be fetched (offline)</p><ul>
+<li><span class="k">Platform</span> generic (branch revised_text)
+</li>
+<li><span class="k">Tested</span> revised_text with --enable-symbols (asserts active), no WM, -hyphens 1 -wrap word, tk_textInsert with <code>\+</code> soft hyphens for trema (nl), doubledigraph (hu), repeathyphen (pl) and doublevowel (nl) words, window resized 1 px at a time from 500 down to 30 px. No assertion fired.
+</li>
+<li><span class="k">Cause</span> the assert is still in the code (tkTextDisp.c LayoutChars: <code>segPtr == endOfLineSegPtr || segPtr == endOfTextSegPtr</code> for segments with no sectionPtr that are not hyphen segments). It probably fires on a temporary segment made for the spelling-change hyphen rules.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Could not reproduce on current revised_text with a synthetic Dutch/Hungarian/Polish hyphenation example (asserts enabled, resizing 1 px at a time). Can you attach the exact script from the scidb page and check whether it still fails on current revised_text?
+</li></ul></div></details><details class="t" id="970a3c8f46" data-s="970a3c8f46 textdisp-21.4 fails 18. [text] not-reproduced (x11); cannot-test (macos)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>970a3c8f46</span><span class="yr">2022</span><span class="ti">textDisp-21.4 fails</span><span class="vd">NOT-REPRODUCED (X11); CANNOT-TEST (macOS)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/970a3c8f46">Open ticket 970a3c8f46</a> · 18. [text] · filed 2022-09-07</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (X11); CANNOT-TEST (macOS)</p><ul>
+<li><span class="k">Platform</span> Aqua (test)
+</li>
+<li><span class="k">Tested</span> textDisp.test 3x on main (Xvfb, no WM): passes; test body 10x in a loop on main, 9.0.5, 8.7b1, 8.6.18 (no WM) and main, 8.6.18 (twm): always -1. The test has not been changed since the report.
+</li>
+<li><span class="k">Cause</span> unknown; intermittent on macOS per fvogel (probably line metrics/layout not settled after tkwait visibility).
+</li>
+<li><span class="k">Prototype</span> none (can't verify on macOS; adding <code>.tt.u sync</code> or <code>count -update</code> before counting would be the obvious hardening).
+</li>
+<li><span class="k">Suggested ticket comment</span> Does not fail on Linux. Does it still fail on macOS with current 9.0/8.6? If it does, adding <code>.tt.u sync</code> before the count might fix it.
+</li></ul></div></details><details class="t" id="b164efb546" data-s="b164efb546 mouse event to wrong window (macos and linux) 01. bindings not-reproduced (x11: main, 8.6). the aqua button-2/3 part is cannot-test (macos)." data-p="merged"><summary><span class="id"><span class="pe" title="Fix merged" aria-label="Fix merged">🟢</span>b164efb546</span><span class="yr">2021</span><span class="ti">Mouse event to wrong window (MacOS and Linux)</span><span class="vd">NOT-REPRODUCED (X11: main, 8.6). The Aqua Button-2/3 part is CANNOT-TEST (macOS).</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/b164efb546">Open ticket b164efb546</a> · 01. Bindings · filed 2021-12-02</p><div class="since"><div class="lab">🟢 Since triage (updated 2026-10-22)</div><p>Status now: <strong>Open</strong></p><ul><li>🔧 2026-09-29 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/db5c579a55">db5c579a55</a> on <code>aqua-right-click-target</code>, in main: Fix <a class="h" href="https://core.tcl-lang.org/tk/info/061f633f43">061f633f43</a>: MacOS aqua: &lt;&lt;ContextMenu&gt;&gt; binding sometimes triggers for incorrect toplevel. Clicking with the right or middle button does not make the wind</li><li>💬 2026-09-29 <strong>serhiy.storchaka</strong>: The right-click case is also reported in <a class="h" href="https://core.tcl-lang.org/tk/info/061f633f43">061f633f43</a>. A right or middle click does not make the window the key window, so the event was sent to the toplevel which has the focus, with the coordinates of the clicked window. Left clicks were fixed here in 2021, but right and middle clicks were not. Proposed fix in branch aqua-right-click-target (not tested, I have no macOS). If the Linux case is still reproducible, …</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (X11: main, 8.6). The Aqua Button-2/3 part is CANNOT-TEST (macOS).</p><ul>
+<li><span class="k">Platform</span> Aqua (the original report, fixed in 2021) + X11 (the 2022 reopen for Button-3)
+</li>
+<li><span class="k">Tested</span> two toplevels, XTest clicks on Xvfb (right click in <code>.</code>, then in <code>.b</code> twice, then B1 in each). Tested with main and 8.6 under no WM, icewm, openbox and fvwm. Each ButtonPress always went to the clicked toplevel with correct %x/%y. (icewm does not move focus on B3, but the event still goes to the right window.)
+</li>
+<li><span class="k">Cause</span> n/a on X11. The reporter's Linux behaviour is probably specific to their WM (click-to-focus passive grab that swallows/redirects the first click).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> The Button-3 case could not be reproduced on Linux/X11 (main, 8.6; icewm, openbox, fvwm, no WM): the event always goes to the window that was clicked. Which window manager/desktop showed it? The macOS right-click part remains to be checked on Aqua.
+</li></ul></div></details><details class="t" id="447bd3e4ab" data-s="447bd3e4ab tk.tcl not installed to correct directory 84. unix build not-reproduced (all tested)" data-p="pending"><summary><span class="id"><span class="pe" title="Pending" aria-label="Pending">⏳</span>447bd3e4ab</span><span class="yr">2021</span><span class="ti">tk.tcl not installed to correct directory</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/447bd3e4ab">Open ticket 447bd3e4ab</a> · 84. Unix Build · filed 2021-05-21</p><div class="since"><div class="lab">⏳ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Pending</strong></p><ul><li>💬 2026-10-20 <strong>serhiy.storchaka</strong>: The likely cause: configure takes the installation directory of the library scripts from the TK_LIBRARY environment variable, if it is set (Tcl does the same with TCL_LIBRARY): test -z "$TK_LIBRARY" &amp;&amp; TK_LIBRARY='$(prefix)/lib/tk$(VERSION)' So with TK_LIBRARY=&lt;prefix&gt;/lib in the environment, make install puts tk.tcl into &lt;prefix&gt;/lib, with TK_LIBRARY pointing to another installation it puts it there, and without …</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> build
+</li>
+<li><span class="k">Tested</span> main unix <code>make -j8 install-libraries INSTALL_ROOT=...</code> three times. tk.tcl always went to <code>&lt;prefix&gt;/lib/tk9.1/tk.tcl</code>. unix/Makefile.in installs it only to <code>$(SCRIPT_INSTALL_DIR)=$(TK_LIBRARY)=&lt;libdir&gt;/tkX.Y</code>, which is fixed.
+</li>
+<li><span class="k">Cause</span> none in Tk. The reporter's problem was in the Spack recipe and the environment (TCLLIBPATH / separate Tcl and Tk prefixes), and Jan explained the layout in the ticket.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> The unix Makefile installs tk.tcl only to <code>$(libdir)/tk8.6</code> (TK_LIBRARY), and repeated parallel installs are deterministic here. The remaining problems were in the Spack environment (TCLLIBPATH). Closing.
+</li></ul></div></details><details class="t" id="c5edb0c24e" data-s="c5edb0c24e motion within wm decorative border generates &lt;enter&gt; and &lt;leave&gt; events 69. events not-reproduced (9.1 main, 8.6 tip, windows 11)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>c5edb0c24e</span><span class="yr">2020</span><span class="ti">Motion within wm decorative border generates &lt;Enter&gt; and &lt;Leave&gt; events</span><span class="vd">NOT-REPRODUCED (9.1 main, 8.6 tip, Windows 11)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/c5edb0c24e">Open ticket c5edb0c24e</a> · 69. Events · filed 2020-10-04</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1 main, 8.6 tip, Windows 11)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> X11 main with fvwm (5 px border): no Enter/Leave inside the border, one Enter on entering the window; no-WM/twm give no border. Others couldn't reproduce it on Windows either: it only showed on Win7 Basic with "Border Padding" 4.
+</li>
+<li><span class="k">Cause</span> unknown; probably Windows sending WM_MOUSEMOVE/non-client hit-test changes inside the padded border area of a non-resizable window (win/tkWinPointer.c / tkWinWm.c)
+</li>
+<li><span class="k">Prototype</span> none. Repro: win/c5edb0c24e.tcl (warps the pointer through the left border of a non-resizable window and prints VERDICT)
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on X11. Win7 Basic theme only; needs retesting on Windows 10/11 with a wide border, otherwise close as obsolete (Win7 is out of support).
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 3</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (9.1 main, 8.6 tip, Windows 11)
+</li>
+<li><span class="k">Tested</span> win/c5edb0c24e.tcl (warps through the 8 px left border of a non-resizable toplevel). No events while in the border, and one Enter on entering the window, on both versions.
+</li>
+<li><span class="k">Cause</span> Win7 Basic theme only
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Windows 11 (8 px border) with 9.1 and 8.6. It was specific to the Windows 7 Basic theme, which is no longer supported. Closing.
+</li></ul></div></div></details><details class="t" id="ac7f771957" data-s="ac7f771957 tk panedwindow: cursor changing code does not work well 21. [panedwindow] not-reproduced (main, 9.0, 8.6 on x11); aqua cannot-test" data-p="merged"><summary><span class="id"><span class="pe" title="Fix merged" aria-label="Fix merged">🟢</span>ac7f771957</span><span class="yr">2020</span><span class="ti">tk panedwindow: cursor changing code does not work well</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6 on X11); Aqua CANNOT-TEST</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/ac7f771957">Open ticket ac7f771957</a> · 21. [panedwindow] · filed 2020-09-15</p><div class="since"><div class="lab">🟢 Since triage (updated 2026-10-22)</div><p>Status now: <strong>Open</strong></p><ul><li>🔧 2026-10-04 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/33a24bdf73">33a24bdf73</a> on <code>panedwindow-identify-bounds</code>, in main: panedwindow identify: report the sash only for its own pixels. The far bounds of the sash and the handle were inclusive, and a handle wider than the sash was co</li><li>🔧 2026-10-09 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/23aa8b82e3">23aa8b82e3</a> on <code>trunk</code>, in main: See: <a class="h" href="https://core.tcl-lang.org/tk/info/ac7f771957">ac7f771957</a>: panedwindow identify: report the sash only for its own pixels</li><li>🔧 2026-10-09 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/07861e3abc">07861e3abc</a> on <code>panedwindow-sash-cursor</code>, not merged: See <a class="h" href="https://core.tcl-lang.org/tk/info/ac7f771957">ac7f771957</a>: panedwindow sash cursor: set it also when the pointer enters on the sash, keep it while the sash is dragged, and forget the cursor state of a </li><li>🔧 2026-10-15 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/f60bb15187">f60bb15187</a> on <code>panedwindow-sash-cursor</code>, not merged: Rebase to main</li><li>💬 2026-10-04 <strong>serhiy.storchaka</strong>: On X11 (8.6.10, 8.6.18, 9.0.5, 9.1) the sash cursor is reset as soon as the pointer enters a pane. But identify reported the sash for the first pixel of the next pane, and with a handle wider than the sash for several more pixels, depending on -handlesize. On such pixels the cursor and the result of a click disagree. Fixed in branch panedwindow-identify-bounds. Can the problem still be reproduced on macOS with it?…</li><li>💬 2026-10-09 <strong>jan.nijtmans</strong>: The branch "panedwindow-identify-bounds looks good to me. Now merged to trunk. Does this fix everything described in this ticket?</li><li>💬 2026-10-09 <strong>jan.nijtmans</strong>: &gt; Does this fix everything described in this ticket? My guess is, the answer is "no". I rebase the bug-ac7f7719 branch to trunk, so it's possible to continue development with it. Anyone?</li><li>💬 2026-10-09 <strong>serhiy.storchaka</strong>: On Windows, two problems remained after panedwindow-identify-bounds: * The sash cursor was set only by motion inside the panedwindow, not when the pointer entered on the sash, so on its first pixel the normal cursor was shown although a click started a drag. * While dragging, the cursor was restored to the normal one as soon as the pointer got ahead of the sash. They are not reproducible on X11. The delay when lea…</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6 on X11); Aqua CANNOT-TEST</p><ul>
+<li><span class="k">Platform</span> Aqua (and the Windows pointer emulation in theory); fine on X11
+</li>
+<li><span class="k">Tested</span> B-work/pw.tcl under Xvfb, warping the real pointer with <code>event generate -warp</code> (XWarpPointer, not XTEST). Moving from the sash into a pane sends <code>&lt;Leave&gt; .pw NotifyInferior</code>, and the sash cursor is reset at once (cget -cursor is "" after 30 ms); the 150 ms timer never matters. <code>.pw identify</code> and <code>winfo containing</code> agree on every sash pixel, so a press under the sash cursor always reaches the panedwindow. The generic emulation (generic/tkPointer.c GenerateEnterLeave → TkInOutEvents) also queues NotifyInferior crossings, so Windows should behave like X11 (untested). Marc's 2020 analysis points to macOS sub-pixel pointer rounding. bll's branch bug-ac7f7719 (one commit, 2020) is unmerged. It uses a single global Priv(panedwindowname), which breaks with several or nested panedwindows, and it rewrites the children's bindtags.
+</li>
+<li><span class="k">Cause</span> library/panedwindow.tcl Motion/Cursor/Leave. The cursor is chosen by <code>identify</code> while Button delivery follows the stacking order. They agree on X11; per <a class="h" href="https://core.tcl-lang.org/tk/info/6b51f22bff">6b51f22bff</a> they can disagree on Aqua.
+</li>
+<li><span class="k">Prototype</span> none (not reproducible on X11; macOS not available)
+</li>
+<li><span class="k">Suggested ticket comment</span> On X11 (8.6.18, 9.0.5, 9.1) the cursor resets immediately when entering a pane (&lt;Leave&gt; NotifyInferior), and identify/winfo containing agree across the sash, so nothing is wrong there. The 2020 branch is stale and not mergeable as is (global Priv(panedwindowname)). Unless someone can still reproduce on current macOS, this can be closed.
+</li></ul></div></details><details class="t" id="8ced540e06" data-s="8ced540e06 ttk::combobox artifacts win 10 88. themed tk not-reproduced (9.1 main, 8.6 tip, windows 11, vista theme)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>8ced540e06</span><span class="yr">2020</span><span class="ti">ttk::combobox artifacts Win 10</span><span class="vd">NOT-REPRODUCED (9.1 main, 8.6 tip, Windows 11, vista theme)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/8ced540e06">Open ticket 8ced540e06</a> · 88. Themed Tk · filed 2020-05-28</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Works For Me)</strong></p><ul><li>💬 2026-09-30 <strong>serhiy.storchaka</strong>: There is no script to reproduce this. A ttk::combobox packed with -side left -anchor e -fill both -padx 10 into a taller frame, as described above, is painted completely on Windows 11 with 8.6.18 and 9.1, in the vista and winnative themes, after resizing and after minimizing and restoring the window: its field fills the whole height. The screenshots show a combobox which is not stretched to the height of its windo…</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1 main, 8.6 tip, Windows 11, vista theme)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> X11 main with the default theme: a combobox packed with <code>-fill both</code> into a taller parent paints fully after resizing. The issue does not exist on X11.
+</li>
+<li><span class="k">Cause</span> probably the vista theme. The <code>Combobox.border</code>/<code>Combobox.background</code> vsapi parts may not paint the whole parcel when the widget is taller than the native combobox, so the unpainted area keeps stale pixels.
+</li>
+<li><span class="k">Prototype</span> none. Repro: win/8ced540e06.tcl (resizes, iconifies and restores the window, then asks yes/no and prints the VERDICT).
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on X11. Windows repro script: pack a combobox with <code>-fill both</code> in a taller frame, then resize or minimize and restore.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 3</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (9.1 main, 8.6 tip, Windows 11, vista theme)
+</li>
+<li><span class="k">Tested</span> work-win/8ced_auto.tcl, the ticket's layout (combobox <code>-fill both</code> in a 160–220 px tall frame). It captures the combobox area after the initial draw, after enlarging, after shrinking, and after iconify plus deiconify. All captures show a clean white field with the arrow, and no black pixels apart from the text. Win10 was not tested.
+</li>
+<li><span class="k">Cause</span> none found
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Windows 11 with 9.1 and 8.6.18: the combobox area is fully repainted after resizing and after minimize/restore. Please retest; otherwise this can be closed.
+</li></ul></div></div></details><details class="t" id="800ca72a1c" data-s="800ca72a1c tcltk 8.5 deiconify doesn none not-reproduced (all wms available here); cannot-test on gnome/mutter (the installed mutter 50 is wayland-only and cannot run as an x11 wm)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>800ca72a1c</span><span class="yr">2019</span><span class="ti">tcltk 8.5 deiconify doesn</span><span class="vd">NOT-REPRODUCED (all WMs available here); CANNOT-TEST on GNOME/mutter (the installed mutter 50 is Wayland-only and cannot run as an X11 WM)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/800ca72a1c">Open ticket 800ca72a1c</a> · None · filed 2019-03-08</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all WMs available here); CANNOT-TEST on GNOME/mutter (the installed mutter 50 is Wayland-only and cannot run as an X11 WM)</p><ul>
+<li><span class="k">Platform</span> X11
+</li>
+<li><span class="k">Tested</span> main, 8.6 tip, 8.5 × no WM, ctwm, fvwm, icewm, openbox, metacity, xfwm4 (the reporter's script, plus iconify/deiconify from an event handler). Every run ends in <code>normal</code> and mapped.
+</li>
+<li><span class="k">Cause</span> probably mutter (focus-stealing prevention or unminimize on MapRequest). The reporter says Perl/Tk behaves the same, which points at the WM, not Tk. TkpWmSetState(NormalState) does a plain XMapWindow of the wrapper, which ICCCM allows.
+</li>
+<li><span class="k">Prototype</span> none (not reproducible here)
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce with 8.5, 8.6 or 9.1 under metacity, xfwm4, openbox, fvwm, icewm or ctwm. The reporter found Perl/Tk behaves the same, so this looks like a mutter/GNOME issue. Proposing to close unless it shows up with a current GNOME on X11.
+</li></ul></div></details><details class="t" id="c365d17390" data-s="c365d17390 unixwm : failure tracking bug 67. unix window operations not-reproduced for 44.7, 44.8, 45.2 and 45.4 (they pass under every wm). unixwm-4.1–4.3 still fail on main under metacity (gnome family), as the ticket expects for gnome3/unity." data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>c365d17390</span><span class="yr">2018</span><span class="ti">unixWm : failure tracking bug</span><span class="vd">NOT-REPRODUCED for 44.7, 44.8, 45.2 and 45.4 (they pass under every WM). unixWm-4.1–4.3 still fail on main under metacity (GNOME family), as the ti…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/c365d17390">Open ticket c365d17390</a> · 67. Unix Window Operations · filed 2018-12-17</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Fixed)</strong></p><ul><li>💬 2026-10-03 <strong>serhiy.storchaka</strong>: unixWm-45.2 and 45.4 were fixed in 8.6.14 by <a class="h" href="https://core.tcl-lang.org/tk/info/22eefb9368">22eefb9368</a>. unixWm-44.7 and 44.8 pass even with 8.6.8 and 8.6.9 under xfwm4, so they probably depended on the window manager version. With 8.6.18, the 8.6 branch and trunk, unixWm.test passes under xfwm4. Only 4.1–4.3 still fail under metacity: after a remap from withdrawn the window is offset by the frame size (+20+80 is reported as +-6+57), as expected for GNOME-fam…</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED for 44.7, 44.8, 45.2 and 45.4 (they pass under every WM). unixWm-4.1–4.3 still fail on main under metacity (GNOME family), as the ticket expects for gnome3/unity.</p><ul>
+<li><span class="k">Platform</span> X11 (tests)
+</li>
+<li><span class="k">Tested</span> main (wt build) unixWm.test on Xvfb:
+<ul>
+<li>xfwm4 (the reporter's WM): 0 failures
+</li>
+<li>fvwm, openbox: 0 failures
+</li>
+<li>metacity: 4.1, 4.2, 4.3 and 50.9 fail
+</li>
+<li>no WM: 8.4, 16.3, 23.5, 23.6, 42.1 and 50.1 fail (expected, they need a WM)
+</li></ul>
+</li>
+<li><span class="k">Cause</span> in 4.x under metacity, a window moved while withdrawn and then deiconified ends up offset by the decoration size (for +20+80 we get +-6+57). Metacity places the client, not the frame, at the requested position after a remap from withdrawn; this is a WM gravity quirk.
+</li>
+<li><span class="k">Prototype</span> none (WM-specific)
+</li>
+<li><span class="k">Suggested ticket comment</span> On current main, 44.7/44.8/45.2/45.4 pass under xfwm4, fvwm, openbox and metacity. Only 4.1–4.3 still fail under metacity: the window is placed offset by the frame size after a remap from withdrawn, as noted for GNOME in the description. Suggest closing, or marking 4.x nonPortable.
+</li></ul></div></details><details class="t" id="0cad8f8802" data-s="0cad8f8802 empty glyphs in a ttf font always rendered using system font 46. unix fonts not-reproduced (all tested). not a tk bug: it depended on the fontconfig version." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>0cad8f8802</span><span class="yr">2017</span><span class="ti">empty glyphs in a TTF font always rendered using system font</span><span class="vd">NOT-REPRODUCED (all tested). Not a Tk bug: it depended on the fontconfig version.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/0cad8f8802">Open ticket 0cad8f8802</a> · 46. Unix Fonts · filed 2017-09-26</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested). Not a Tk bug: it depended on the fontconfig version.</p><ul>
+<li><span class="k">Platform</span> X11 (Xft/fontconfig)
+</li>
+<li><span class="k">Tested</span> 9.1b1, 8.6.18 and 8.6.8 on Xvfb with fontconfig 2.17.1. I could not download the original font (no network), so I built a test TTF with fontTools in which U+0145/U+0146 map to empty glyphs with a 150-unit advance. fc-query lists 145-146 in the charset. <code>font actual F -family Ņ</code> returns the test font itself, and <code>font measure</code> gives the narrow advance (8 px vs 28 px for "a"). There is no fallback, even in 8.6.8.
+</li>
+<li><span class="k">Cause</span> Tk (tkUnixRFont.c) chooses fallback fonts from the fontconfig charset. Older fontconfig (FcBlanks era, before about 2.13) left empty non-blank glyphs out of the charset, which caused the fallback. Current fontconfig includes them.
+</li>
+<li><span class="k">Prototype</span> none (not needed)
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce with current fontconfig (2.17). A font with empty glyphs at U+0145/U+0146 is used directly, with no fallback, even by Tk 8.6.8. The old behaviour came from fontconfig leaving empty glyphs out of the font charset. Closing as not a Tk bug.
+</li></ul></div></details><details class="t" id="e9ba676e03" data-s="e9ba676e03 revised [text]: assertion failed in tktextpriv.h:773 18. [text] not-reproduced (revised_text tip 8b6e012e5d, 2026-09-15). the report was a single occurrence with no reproducer." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>e9ba676e03</span><span class="yr">2017</span><span class="ti">Revised [text]: assertion failed in tkTextPriv.h:773</span><span class="vd">NOT-REPRODUCED (revised_text tip 8b6e012e5d, 2026-09-15). The report was a single occurrence with no reproducer.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/e9ba676e03">Open ticket e9ba676e03</a> · 18. [text] · filed 2017-08-20</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (revised_text tip 8b6e012e5d, 2026-09-15). The report was a single occurrence with no reproducer.</p><ul>
+<li><span class="k">Platform</span> generic (revised_text branch only)
+</li>
+<li><span class="k">Tested</span> revised_text tip built with asserts enabled (-DNDEBUG removed for tkText*, tkBitField, tkIntSet), Xvfb. I ran a random stress test of 20000 operations (select/copy/cut/paste/undo/redo/insert with newlines) on a text with -undo 1. No assertion.
+</li>
+<li><span class="k">Cause</span> unknown (stale TkTextIndex line pointer after undoing a paste)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on the current revised_text tip with assertions enabled, including 20000 random paste/undo/redo operations. Without a reproducer, suggest closing. Reopen if it shows up again.
+</li></ul></div></details><details class="t" id="9fd3fbaf03" data-s="9fd3fbaf03 spinbox.test failures 17. [spinbox] not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>9fd3fbaf03</span><span class="yr">2017</span><span class="ti">spinbox.test failures</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/9fd3fbaf03">Open ticket 9fd3fbaf03</a> · 17. [spinbox] · filed 2017-02-02</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> X11
+</li>
+<li><span class="k">Tested</span> main tip (wt-a1) on Xvfb. Full <code>make test</code> with no WM: spinbox.test and raise.test pass (the 28 failures elsewhere come from having no WM). spinbox.test run twice each under fvwm, icewm and openbox: spinbox-19.8, 19.10 and 19.14 always pass. spinbox-5.7 failed once under fvwm, which is an unrelated one-off. KDE could not be tested because kwin_x11 is not installed and mutter would not start.
+</li>
+<li><span class="k">Cause</span> the reported failures are stray FocusIn/FocusOut events from outside activity, or leftovers from earlier tests (fvogel reproduced them only while using the desktop).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce with current main on Xvfb, either in a full <code>make test</code> or under fvwm, icewm and openbox. The failures were caused by focus events from user activity during the run. Suggest closing as works-for-me.
+</li></ul></div></details><details class="t" id="6e49542be6" data-s="6e49542be6 raise-1.1 failure 86. test tools not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>6e49542be6</span><span class="yr">2017</span><span class="ti">raise-1.1 failure</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/6e49542be6">Open ticket 6e49542be6</a> · 86. Test Tools · filed 2017-02-02</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> X11
+</li>
+<li><span class="k">Tested</span> main tip on Xvfb. Full <code>make test</code> with no WM, plus raise.test twice each under fvwm, icewm and openbox: raise-1.1 always passes.
+</li>
+<li><span class="k">Cause</span> unknown; most likely a stacking race with the (KDE) window manager during the full run. fvogel also could not reproduce it on CentOS 7 with KDE.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> raise-1.1 passes with current main in a full run and under several WMs. It was never reproducible, so suggest closing as works-for-me.
+</li></ul></div></details><details class="t" id="2c3ed8aa2b" data-s="2c3ed8aa2b windows: frame resizes to original size upon deletion of an interior widget 48. geometry management not-reproduced (9.1 main, 8.6 tip, windows 11)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2c3ed8aa2b</span><span class="yr">2016</span><span class="ti">windows: frame resizes to original size upon deletion of an interior widget</span><span class="vd">NOT-REPRODUCED (9.1 main, 8.6 tip, Windows 11)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2c3ed8aa2b">Open ticket 2c3ed8aa2b</a> · 48. Geometry Management · filed 2016-12-28</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1 main, 8.6 tip, Windows 11)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> main and 8.6 on X11 under openbox, with the WM resizing the window through an external XResizeWindow: .b is destroyed at h=200 and the window stays 200 high. <code>wm geometry</code> resize is also fine.
+</li>
+<li><span class="k">Cause</span> unknown. Probably tkWinWm.c interactive sizing: the user size (wmPtr-&gt;width/height) is not yet recorded when the grid request from <code>destroy</code> triggers UpdateGeometryInfo during the modal size loop.
+</li>
+<li><span class="k">Prototype</span> none. Repro script win/2c3ed8aa2b.tcl (interactive drag, prints the verdict).
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on X11 (8.6, 9.1). Needs checking on Windows with current versions.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 3</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (9.1 main, 8.6 tip, Windows 11)
+</li>
+<li><span class="k">Tested</span> win/2c3ed8aa2b.tcl with a real mouse drag of the bottom border from y=436 up to y=300 in 15 steps (act.exe drag). The window rect goes from 300,100–516,439 to 300,100–516,303. .b is destroyed during the drag, and the window stays at height 164 on both versions ("OK (bug fixed)").
+</li>
+<li><span class="k">Cause</span> unknown (probably fixed by the tkWinWm.c geometry/sizing changes since 8.6.6)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Windows 11 with 8.6.18 and 9.1: after an interactive resize that destroys the gridded button, the window keeps its new size. Closing.
+</li></ul></div></div></details><details class="t" id="51a90593b6" data-s="51a90593b6 weird bug in input widgets? 84. unix build not-reproduced (all tested, with the local xlib input method)" data-p="pending"><summary><span class="id"><span class="pe" title="Pending" aria-label="Pending">⏳</span>51a90593b6</span><span class="yr">2015</span><span class="ti">Weird bug in input widgets?</span><span class="vd">NOT-REPRODUCED (all tested, with the local Xlib input method)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/51a90593b6">Open ticket 51a90593b6</a> · 84. Unix Build · filed 2015-02-02</p><div class="since"><div class="lab">⏳ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Pending</strong></p><ul><li>💬 2026-10-08 <strong>serhiy.storchaka</strong>: I could not reproduce this on X11 with the built-in input method of Xlib (fr_FR.UTF-8, dead circumflex key), with Tk 8.6.2, 8.6.4, 8.6.18, 9.0.5 and 9.1: after clearing, the composed characters are entered in all entries and texts. Was an input method such as IBus in use? Since <a class="h" href="https://core.tcl-lang.org/tk/info/5d52ad92fa">5d52ad92fa</a> the input contexts are created differently. Does this still happen with a current Tk?</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested, with the local Xlib input method)</p><ul>
+<li><span class="k">Platform</span> X11
+</li>
+<li><span class="k">Tested</span> main, 8.6 tip, 8.5 on Xvfb with <code>setxkbmap fr</code>. Real XTEST key events (dead_circumflex, then e) were sent to 2 and 3 entries plus texts, all fields were cleared, and the typing was repeated. Every field got "ê" in both rounds, without a WM (twm did not start).
+</li>
+<li><span class="k">Cause</span> unknown. The reporter was on Ubuntu 14.10 and probably using ibus XIM, which I did not test. There were many XIM/XIC fixes after 8.6.3.
+</li>
+<li><span class="k">Prototype</span> none.
+</li>
+<li><span class="k">Suggested ticket comment</span> Could not reproduce with Tcl-only code on current 8.6/9.x (French layout, dead keys, several entry/text widgets cleared and retyped). If it still happens, please give the input method in use (ibus/fcitx/none) and a Tk version ≥ 8.6.16. Otherwise suggest closing.
+</li></ul></div></details><details class="t" id="3610628fff" data-s="3610628fff notebook in paned window crashes app when closed 88. themed tk not-reproduced (all tested)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>3610628fff</span><span class="yr">2013</span><span class="ti">Notebook in Paned Window crashes app when closed</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3610628fff">Open ticket 3610628fff</a> · 88. Themed Tk · filed 2013-04-11</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Out of Date)</strong></p><ul><li>💬 2026-10-08 <strong>serhiy.storchaka</strong>: I could not reproduce this with Tk 8.6.0, 8.6.10, 8.6.18 or 9.1 with a script that docks and undocks notebook tabs with wm manage and wm forget and destroys them from a &lt;Destroy&gt; binding inside catch. If the docked windows were embedded toplevels (-use), it may have been fixed by <a class="h" href="https://core.tcl-lang.org/tk/info/4a25f316f7">4a25f316f7</a> (X errors when the container of an embedded window is destroyed). Since the application code was rewritten and there is no …</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> X11
+</li>
+<li><span class="k">Tested</span> 9.1b1, 8.6.18, 8.6.8 on Xvfb, no WM. The stress script ran 20 iterations: ttk::panedwindow holding ttk::notebooks, &lt;Destroy&gt; bindings that do <code>catch {forget; destroy}</code>, a pane forgotten and then destroyed, and a notebook tab with a -container frame and an embedded toplevel destroyed in various orders. No X error or crash. (fvogel could not make his own reduced script from the ticket crash either.)
+</li>
+<li><span class="k">Cause</span> unknown. The X error (BadWindow in X_UnmapWindow) suggests unmapping an already destroyed embedded toplevel. The reporter's application no longer uses this code, and there is no standalone testcase.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible with 8.6.18 or 9.1 using the scenarios from this ticket (forget/destroy from &lt;Destroy&gt; bindings, embedded toplevels in notebook tabs). Without a standalone script there is nothing more to do; proposing to close.
+</li></ul></div></details><details class="t" id="3609727fff" data-s="3609727fff place-14.1 fail - memleak! 51. [place] not-reproduced (main, 8.6 tip; memory-debug builds)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3609727fff</span><span class="yr">2013</span><span class="ti">place-14.1 fail - MEMLEAK!</span><span class="vd">NOT-REPRODUCED (main, 8.6 tip; memory-debug builds)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3609727fff">Open ticket 3609727fff</a> · 51. [place] · filed 2013-04-01</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 8.6 tip; memory-debug builds)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> I built Tcl+Tk with <code>--enable-symbols=mem</code> for main and for 8.6 tip (out-of-tree, in work-a4/{tclmem,tkmem,tcl86mem,tk86mem}). On each branch I ran place.test alone 15×/10× and <code>-file [m-p]*.test</code> 3×, on Xvfb with no WM. place-14.1 passed every time. The only failures were pack-18.x and place-8.x, which need a WM because they iconify the window; they are unrelated.
+</li>
+<li><span class="k">Cause</span> unknown. dgp's own notes suggest the test is flaky: it has also reported negative "leaks", and failures depended on other tests and on display activity. The leak from bug 1028888 that the test targets was fixed.
+</li>
+<li><span class="k">Prototype</span> none (does not reproduce)
+</li>
+<li><span class="k">Suggested ticket comment</span> With memory-debug builds (--enable-symbols=mem) of main and core-8-6-branch, place-14.1 passes repeatedly, both alone and inside <code>-file [m-p]*.test</code>. Proposing to close as works-for-me.
+</li></ul></div></details><details class="t" id="3517228fff" data-s="3517228fff endless loop inside tk library 56. [grab] not-reproduced (main, 8.5)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3517228fff</span><span class="yr">2012</span><span class="ti">Endless loop inside Tk library</span><span class="vd">NOT-REPRODUCED (main, 8.5)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3517228fff">Open ticket 3517228fff</a> · 56. [grab] · filed 2012-04-12</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 8.5)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> X11 main and 8.5, no WM and twm. Real XTest clicks: a local grab on toplevel .app.fsb with child toplevel .app.fsb.sub, clicking into the child, the grab window, and outside windows, with and without menubars (including posting a menubar cascade). No freeze. Events stay in the child or are redirected once to the grab window.
+</li>
+<li><span class="k">Cause</span> not known. In TkPointerEvent every redirect goes to buttonWinPtr or grabWinPtr, and when the redirected event is reprocessed it matches and stops. There was no testcase (the reporter could not make one).
+</li>
+<li><span class="k">Prototype</span> none. The ticket's patch abuses <code>send_event</code>, which is also used for GENERATED_GRAB_EVENT_MAGIC.
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce with a modal toplevel plus a child toplevel on current Tk (tried with several clicks and menubars). Please provide a script that reproduces it, or we will close this.
+</li></ul></div></details><details class="t" id="3421715fff" data-s="3421715fff ttk::sizegrip too small on win7 88. themed tk not-reproduced (windows 11, 133% scaling): vista 16x16 against a 17 px scrollbar" data-p="pending"><summary><span class="id"><span class="pe" title="Pending" aria-label="Pending">⏳</span>3421715fff</span><span class="yr">2011</span><span class="ti">ttk::sizegrip too small on Win7</span><span class="vd">NOT-REPRODUCED (Windows 11, 133% scaling): vista 16x16 against a 17 px scrollbar</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3421715fff">Open ticket 3421715fff</a> · 88. Themed Tk · filed 2011-10-11</p><div class="since"><div class="lab">⏳ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Pending (Works For Me)</strong></p><ul><li>💬 2026-09-30 <strong>serhiy.storchaka</strong>: Not reproduced with 9.1b1 on Windows 11. At 96 DPI the grip is 16x16 pixels in the vista theme (the size of the SP_GRIPPER part of the Windows status bar) and 17x17 in the winnative theme (the width of a scrollbar). Both are drawn by Windows itself, the same as the size grip of native status bars, and are clearly visible. Marlett is not involved. The size was computed the same way in 8.5.10, so the problem was lik…</li><li>💬 2026-10-01 <strong>serhiy.storchaka</strong>: The likely cause was a larger scrollbar size set in "Advanced appearance settings" of Windows 7, as in [3000002] by the same reporter. With 34-pixel scrollbars the grip in the vista theme stays 16x16. A similar difference appears with 175% scaling: the grip is 24x24 next to 30-pixel scrollbars, because Windows provides the grip image only in a few sizes. In both cases the size grip of native status bars is drawn w…</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (Windows 11, 133% scaling): vista 16x16 against a 17 px scrollbar</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> X11 themes give a 16x16 sizegrip (not relevant here). The vista theme gets its size from GetThemePartSize(STATUS, SP_GRIPPER), win/ttkWinVistaTheme.c.
+</li>
+<li><span class="k">Cause</span> unknown. The reporter found it depends on the machine (graphics driver); possibly DPI scaling.
+</li>
+<li><span class="k">Prototype</span> none. Repro: win/3421715fff.tcl (prints the sizegrip size compared with the scrollbar width for each theme)
+</li>
+<li><span class="k">Suggested ticket comment</span> Please retest with 8.6.18/9.0 on Windows 10/11. The reporter said it happens only on some machines.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 4</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (Windows 11, 133% scaling): vista 16x16 against a 17 px scrollbar
+</li>
+<li><span class="k">Tested</span> win/3421715fff.tcl. On 9.1 and 8.6: winnative 17x17 (scrollbar 17), vista 16x16 (17), xpnative 16x16 (17, 8.6 only), clam/alt/default/classic 15x15 (scrollbars 14–16).
+</li>
+<li><span class="k">Cause</span> none. The vista size comes from GetThemePartSize(SP_GRIPPER), and the difference is 1 px.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> On Windows 11 the vista/xpnative sizegrip is 16x16, next to a 17 px scrollbar, which looks normal. The original report was machine-dependent; closing unless it can be reproduced on a current system.
+</li></ul></div></div></details><details class="t" id="3017005fff" data-s="3017005fff  05. canvas items not-reproduced (9.1 main, 8.6 tip)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3017005fff</span><span class="yr">2010</span><span class="ti"></span><span class="vd">NOT-REPRODUCED (9.1 main, 8.6 tip)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3017005fff">Open ticket 3017005fff</a> · 05. Canvas Items · filed 2010-06-16</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1 main, 8.6 tip)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> repro script runs on X11 main (not checked by eye on Xvfb). On X11, <code>update idletasks</code> flushes the drawing because Tk_UpdateObjCmd calls XSync
+</li>
+<li>Cause (hypothesis): generic/tkCmds.c:Tk_UpdateObjCmd uses XSync to flush drawing, but on Windows XSync (win/stubs.c) does nothing. GDI batched output and DWM presentation may therefore wait until the message loop runs. A possible fix is GdiFlush() in the Windows XSync stub.
+</li>
+<li><span class="k">Prototype</span> none. Repro: win/3017005fff.tcl (phase 1 uses update idletasks, phase 2 uses update; the user presses a button and it prints a VERDICT)
+</li>
+<li><span class="k">Suggested ticket comment</span> Needs retesting on Windows 10/11. If it still happens, the likely cause is that XSync is a no-op on Windows, so <code>update idletasks</code> does not flush GDI output.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 4</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (9.1 main, 8.6 tip)
+</li>
+<li><span class="k">Tested</span> 3017005_auto.tcl adds 20 canvas squares with <code>update idletasks</code> or <code>update</code> plus a 120 ms busy wait, and takes screen shots every 250 ms while Tcl is blocked. Visible squares, idletasks phase: 3 6 8 10 13 15 18 20 (9.1) and 3 5 7 9 11 12 15 17 (8.6). The <code>update</code> phase is the same. Drawing is progressive in both phases, so GdiFlush is not needed.
+</li>
+<li><span class="k">Cause</span> none; new items are drawn by the idle handler and appear at once
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Windows 11: canvas items drawn in a loop with <code>update idletasks</code> appear one by one, like with <code>update</code>.
+</li></ul></div></div></details><details class="t" id="2993328fff" data-s="2993328fff  tk_getopenfile -defaultextension broken 37. [tk_get*file] not-reproduced (9.1 main, 8.6 tip)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2993328fff</span><span class="yr">2010</span><span class="ti">tk_getOpenFile -defaultextension broken</span><span class="vd">NOT-REPRODUCED (9.1 main, 8.6 tip)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2993328fff">Open ticket 2993328fff</a> · 37. [tk_get*File] · filed 2010-04-28</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1 main, 8.6 tip)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> code inspection. win/tkWinDialog.c (GetFileNameVista) calls IFileDialog::SetDefaultExtension for the Open dialog too.
+</li>
+<li><span class="k">Cause</span> The report ("doesn't show up extension in dialog box") seems to expect the extension to be displayed. -defaultextension only appends the extension to a typed name without one, and the Windows Open dialog does not display it. Related: 2045553 (Save dialog semantics).
+</li>
+<li><span class="k">Prototype</span> none; repro win/2993328fff.tcl (user types "foo", expects foo.xyz for three option combinations, writes <a class="h" href="#2993328fff">2993328fff</a>.result)
+</li>
+<li><span class="k">Suggested ticket comment</span> -defaultextension is honoured by the Vista+ dialog (SetDefaultExtension): typing "foo" should open foo.xyz. It is not meant to be shown in the dialog. Please verify on Windows 10/11 and close if it works.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 4</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (9.1 main, 8.6 tip)
+</li>
+<li><span class="k">Tested</span> 2993328_auto.tcl types <code>foo</code> into the file-name box and presses Open (WM_COMMAND IDOK), with a foo.xyz file present. In the three variants (-defaultextension only, with XYZ filetypes first, with "All files" first), both builds return .../foo.xyz.
+</li>
+<li><span class="k">Cause</span> none (the Vista IFileDialog applies SetDefaultExtension)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Works on Windows 11 with 8.6.18 and 9.1: typing "foo" returns foo.xyz with -defaultextension .xyz, with or without -filetypes. Closing.
+</li></ul></div></div></details><details class="t" id="2817382fff" data-s="2817382fff rendering problem with ttk::notebook 88. themed tk not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2817382fff</span><span class="yr">2009</span><span class="ti">rendering problem with ttk::notebook</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2817382fff">Open ticket 2817382fff</a> · 88. Themed Tk · filed 2009-07-06</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> X11
+</li>
+<li><span class="k">Tested</span> main, 8.6, Xvfb with no WM, default theme. Moved the panedwindow sash in 7px steps and grabbed the tab area with ffmpeg x11grab: the tabs are pixel-identical at every notebook height until it is smaller than the tab row (normal clipping).
+</li>
+<li><span class="k">Cause</span> unknown (probably specific to the 2009 X server/fonts; jenglish could not reproduce either)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce with 8.6 or 9.1 on X11: the tabs render the same for every sash position. Closing unless someone can still reproduce it.
+</li></ul></div></details><details class="t" id="2389878fff" data-s="2389878fff ttk::frame doesn 88. themed tk not-reproduced for the original report: children of `ttk::frame -borderwidth 5` are placed at 5,5 (main, 8.6, 8.5). jenglish&#x27;s &quot;known issue&quot; still reproduces: -borderwidth set in a style (`ttk::style configure bordered.tframe -borderwidth 5`) is ignored for the frame&#x27;s internal margins (child at 0,0). style -padding is ignored too." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2389878fff</span><span class="yr">2008</span><span class="ti">ttk::frame doesn</span><span class="vd">NOT-REPRODUCED for the original report: children of <code>ttk::frame -borderwidth 5</code> are placed at 5,5 (main, 8.6, 8.5). jenglish's "known issue" still …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2389878fff">Open ticket 2389878fff</a> · 88. Themed Tk · filed 2008-12-04</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED for the original report: children of <code>ttk::frame -borderwidth 5</code> are placed at 5,5 (main, 8.6, 8.5). jenglish's "known issue" still reproduces: -borderwidth set in a style (<code>ttk::style configure Bordered.TFrame -borderwidth 5</code>) is ignored for the frame's internal margins (child at 0,0). Style -padding is ignored too.</p><ul>
+<li><span class="k">Platform</span> generic (tested on X11)
+</li>
+<li><span class="k">Tested</span> main, 8.6, 8.5, default theme, no WM.
+</li>
+<li><span class="k">Cause</span> generic/ttk/ttkFrame.c FrameMargins reads only the widget options borderWidthObj/paddingObj and never uses Ttk_QueryOption. Labelframe does use it. A naive switch to Ttk_QueryOption would pick up <code>"." -borderwidth 1</code> from the default and classic themes and inset every ttk::frame by 1px.
+</li>
+<li><span class="k">Prototype</span> none. The frame needs a deliberate behaviour decision, for example querying only -padding from the style, or giving TFrame an explicit -borderwidth 0 in the themes.
+</li>
+<li><span class="k">Suggested ticket comment</span> The original problem no longer reproduces: children respect -borderwidth. The remaining issue is that -borderwidth and -padding set via the style are not used for the frame's margins (FrameMargins in ttkFrame.c).
+</li></ul></div></details><details class="t" id="1962404fff" data-s="1962404fff &quot;exit handlers were created during tcl_finalize&quot; error 08. [(label)frame] and [toplevel] not-reproduced (all tested)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1962404fff</span><span class="yr">2008</span><span class="ti">"exit handlers were created during Tcl_Finalize" error</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1962404fff">Open ticket 1962404fff</a> · 08. [(label)frame] and [toplevel] · filed 2008-05-12</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main, 8.6 tip, 8.5, 8.4.20 on X11. The ticket script (menu on ., WM_DELETE_WINDOW -&gt; exit) was closed with a real WM_DELETE_WINDOW ClientMessage, and also exited directly with the menu configured. Every run exited with rc=0 and no panic.
+</li>
+<li><span class="k">Cause</span> On main, Tk_SetWindowMenubar no longer calls TkMenuInit (only MenuCmd does), and TkMenuInit registers through TkCreateExitHandler rather than Tcl's handler list. Related earlier fixes: 7ad500616a (2005-10-10, skip TkMenuInit for dead windows, [Bug 749908]) and 180fe53de3 (2006-04-05, removed the extra TkMenuInit call in TkSetWindowMenuBar, [Bug 1456851], trunk). The report is from 8.4.19 and the exact 8.4 fix was not pinpointed.
+</li>
+<li><span class="k">Prototype</span> none (not reproducible)
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce with 8.4.20, 8.5, 8.6 or 9.1 on X11 (closing via WM_DELETE_WINDOW with a menubar configured). TkSetWindowMenuBar no longer re-initialises menus during destruction. Closing as out of date.
+</li></ul></div></details><details class="t" id="1785511fff" data-s="1785511fff &quot;unknown display passed to tk_preservecolormap&quot; 05. canvas items not-reproduced (all tested)" data-p="pending"><summary><span class="id"><span class="pe" title="Pending" aria-label="Pending">⏳</span>1785511fff</span><span class="yr">2007</span><span class="ti">"unknown display passed to Tk_PreserveColormap"</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1785511fff">Open ticket 1785511fff</a> · 05. Canvas Items · filed 2007-08-31</p><div class="since"><div class="lab">⏳ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Pending</strong></p><ul><li>💬 2026-09-28 <strong>serhiy.storchaka</strong>: I cannot reproduce it with 8.4.15 (the reported version), 8.6, 9.0 and 9.1, also under valgrind: photo images displayed on a canvas were deleted and recreated with the same names hundreds of times without update, with the old canvas items removed or kept. The panic is only possible if a photo instance refers to a display which is not open. Please provide a script if it still happens.</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main (9.1b1), 8.6.18, 8.5.19, 8.4.20 on Xvfb. Ran the described scenario (3 photos shown on a canvas, deleted and recreated under the same names with no update in between, 20-30 rounds, with and without deleting the canvas items, default and <code>-colormap new</code> toplevels). Also ran both scripts under valgrind with the wt main build. No panic and no valgrind errors. The 8.4.11/8.4.2 builds do not work in this environment.
+</li>
+<li><span class="k">Cause</span> unknown. The panic means TkGetDisplay() did not find the display, which points to stale or freed PhotoInstance memory (e.g. an idle TkImgDisposeInstance racing with instance reuse in tkImgPhInstance.c). The current code cancels the idle dispose when an instance is reused.
+</li>
+<li><span class="k">Prototype</span> none (not reproducible)
+</li>
+<li><span class="k">Suggested ticket comment</span> Could not reproduce with 8.4.20, 8.5.19, 8.6.18 or 9.1 (including under valgrind) using the described delete/recreate sequence. Please reopen with a script that reproduces it on a current version.
+</li></ul></div></details><details class="t" id="1719282fff" data-s="1719282fff unixselect test suite errors 53. [selection] not-reproduced (all tested); cannot-test with exceed" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>1719282fff</span><span class="yr">2007</span><span class="ti">unixSelect test suite errors</span><span class="vd">NOT-REPRODUCED (all tested); CANNOT-TEST with Exceed</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1719282fff">Open ticket 1719282fff</a> · 53. [selection] · filed 2007-05-15</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Out of Date)</strong></p><ul><li>💬 2026-09-30 <strong>serhiy.storchaka</strong>: Most likely the same cause as [1719278]: Exceed makes the X selection available to the Windows clipboard, so it requests the PRIMARY selection as well, and the extra calls of the handlers show up in the results. The unixSelect tests test the PRIMARY selection of the entry widget, so they cannot use a private selection like the select tests in [610188]. They pass on Linux/X11, also with a client that polls the sele…</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested); CANNOT-TEST with Exceed</p><ul>
+<li><span class="k">Platform</span> X11 (Solaris client + Exceed X server on Windows)
+</li>
+<li><span class="k">Tested</span> main wt build on Xvfb: unixSelect.test 19/19 passed.
+</li>
+<li><span class="k">Cause</span> the extra "COMPOUND_TEXT 0 4000" handler calls show that the selection was fetched a second time. This is most likely Exceed's clipboard integration grabbing PRIMARY/COMPOUND_TEXT when ownership changes. That comes from the X server environment, not a Tk bug.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> unixSelect.test passes on current Tk with Xvfb/Xorg. The extra selection fetches come from Exceed's clipboard sync, not from Tk. Closing as works-for-me.
+</li></ul></div></details><details class="t" id="1719278fff" data-s="1719278fff select test cases fail 53. [selection] not-reproduced (all tested); cannot-test with exceed" data-p="branch"><summary><span class="id"><span class="pe" title="Fix in a branch" aria-label="Fix in a branch">🔧</span>1719278fff</span><span class="yr">2007</span><span class="ti">select test cases fail</span><span class="vd">NOT-REPRODUCED (all tested); CANNOT-TEST with Exceed</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1719278fff">Open ticket 1719278fff</a> · 53. [selection] · filed 2007-05-15</p><div class="since"><div class="lab">🔧 Since triage (updated 2026-10-22)</div><p>Status now: <strong>Open</strong></p><ul><li>🔧 2026-09-30 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/29a21fe034">29a21fe034</a> on <code>select-tests-private-selection</code>, not merged: Fix [610188], [1719278]: selection tests hang or fail if another client (e.g. a clipboard manager or an X server that syncs the Windows clipboard) requests the </li><li>💬 2026-09-30 <strong>serhiy.storchaka</strong>: The unexpected STRING 0 4000 in select-10.1 means that the selection handler was called by another client. Exceed makes the X selection available to the Windows clipboard, so it requests the PRIMARY selection as well. The same happens with clipboard managers on Linux; see [610188]. Proposed fix in branch select-tests-private-selection (<a class="h" href="https://core.tcl-lang.org/tk/info/29a21fe034">29a21fe034</a>): these tests use a private selection instead of PRIMARY, so that …</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested); CANNOT-TEST with Exceed</p><ul>
+<li><span class="k">Platform</span> X11 (Solaris client + Exceed X server)
+</li>
+<li><span class="k">Tested</span> main wt build on Xvfb: select.test 95 passed, 16 skipped, 0 failed. select-10.1…10.6 and 11.1 all passed.
+</li>
+<li><span class="k">Cause</span> as in <a class="h" href="#1719282fff">1719282fff</a>, the selection is fetched a second time by the X server's clipboard manager (extra "STRING 0 4000" handler calls). select-11.1 got "doesn't exist" instead of "owner didn't respond", which suggests Exceed's own handling of the timed-out request.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> select.test passes on current Tk (Xvfb/Xorg). The extra handler invocations come from Exceed fetching the selection itself. Closing as works-for-me, same as 1719282.
+</li></ul></div></details><details class="t" id="1715716fff" data-s="1715716fff window-2.9 deadlocks threaded tk 69. events not-reproduced (main, 9.0, 8.6)" data-p="pending"><summary><span class="id"><span class="pe" title="Pending" aria-label="Pending">⏳</span>1715716fff</span><span class="yr">2007</span><span class="ti">window-2.9 deadlocks threaded Tk</span><span class="vd">NOT-REPRODUCED (main, 9.0, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1715716fff">Open ticket 1715716fff</a> · 69. Events · filed 2007-05-09</p><div class="since"><div class="lab">⏳ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Pending (Fixed)</strong></p><ul></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main, 9.0, 8.6)</p><ul>
+<li><span class="k">Platform</span> generic (X11 tested)
+</li>
+<li><span class="k">Tested</span> ran the ticket's snippet 40 times on each of trunk (9.1b1), 9.0.5 and 8.6.18, all threaded: 120/120 exited 0 with "Destroy .t2 / Destroy .t1", no hang. Also 40/40 on a trunk Tk built with --enable-symbols, and 10/10 per version with TCL_FINALIZE_ON_EXIT=1 (full Tcl_Finalize path). <code>window.test -match window-2.*</code> ran 5 times per version and passed.
+</li>
+<li><span class="k">Cause</span> the old nested Tcl_Finalize → TclpInitLock deadlock. Tcl_Exit now does InvokeExitHandlers + FinalizeThread(quick) by default (tcl generic/tclEvent.c), and the nested [exit] from the .t1 &lt;Destroy&gt; handler completes.
+</li>
+<li><span class="k">Prototype</span> none (not reproducible)
+</li>
+<li><span class="k">Suggested ticket comment</span> No hang in 40 runs each on 8.6.18, 9.0.5 and 9.1 (threaded; also with --enable-symbols and with TCL_FINALIZE_ON_EXIT=1). The last report is from 8.6.8rc in 2017. Can be closed as works-for-me.
+</li></ul></div></details><details class="t" id="1615592fff" data-s="1615592fff wish console misses first fronting click 68. win window operations not-reproduced (9.1 main, 8.6 tip)" data-p="pending"><summary><span class="id"><span class="pe" title="Pending" aria-label="Pending">⏳</span>1615592fff</span><span class="yr">2006</span><span class="ti">Wish console misses first fronting click</span><span class="vd">NOT-REPRODUCED (9.1 main, 8.6 tip)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1615592fff">Open ticket 1615592fff</a> · 68. Win Window Operations · filed 2006-12-14</p><div class="since"><div class="lab">⏳ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Pending (Out of Date)</strong></p><ul><li>💬 2026-09-29 <strong>serhiy.storchaka</strong>: I cannot reproduce this on Windows 11 with Tk 8.5.0, 8.5.19, 8.6.18 and 9.1: while the main window is active and partly covers the console, and neither window has been clicked yet, the first click on the visible part of the console text raises and focuses the console, and the click is delivered to the console (10 runs with each version). So this was either specific to Windows XP or to 8.5a5.</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1 main, 8.6 tip)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> not tested (Windows console only).
+</li>
+<li><span class="k">Cause</span> unknown. The console is a separate Tk toplevel. The first click in the client area of an inactive window is probably eaten (mouse activation / grab handling in win/tkWinWm.c or win/tkWinPointer.c).
+</li>
+<li><span class="k">Prototype</span> none. Repro: win/1615592fff.tcl. It places the main window over the console, asks for one click in the console text, and writes a verdict to <a class="h" href="#1615592fff">1615592fff</a>.txt next to the script. Also check by eye whether the console came to the front.
+</li>
+<li><span class="k">Suggested ticket comment</span> Can anyone still reproduce this with Tk 8.6/9.0 on Windows 10/11?
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 5</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (9.1 main, 8.6 tip)
+</li>
+<li><span class="k">Tested</span> <a class="h" href="#1615592fff">1615592fff</a>.tcl. A real click on the main window makes it foreground (GetForegroundWindow = main). Then one real click on the visible part of the console text: the console becomes foreground, <code>.console</code> gets the focus and receives the ButtonPress (clicks=1).
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Windows 11 with 8.6.18 and 9.1: one click on the console while the main window is active raises and focuses the console and delivers the click.
+</li></ul></div></div></details><details class="t" id="1609320fff" data-s="1609320fff unixselect-1.5 hangs 52. [clipboard] not-reproduced (main)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>1609320fff</span><span class="yr">2006</span><span class="ti">unixSelect-1.5 hangs</span><span class="vd">NOT-REPRODUCED (main)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1609320fff">Open ticket 1609320fff</a> · 52. [clipboard] · filed 2006-12-05</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Out of Date)</strong></p><ul><li>💬 2026-09-30 <strong>serhiy.storchaka</strong>: unixSelect-1.5 passes on Linux/X11 with an input method (IBus with XIM) and with a client that polls the selection. SCIM is not maintained any more, and there have been no reports since 2007. Closing as out of date. For the similar hang of select-10.4, see [610188].</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main)</p><ul>
+<li><span class="k">Platform</span> X11
+</li>
+<li><span class="k">Tested</span> main, unixSelect.test under Xvfb, with no input method and with ibus-daemon <code>--xim</code> running (XIM_SERVERS=@server=ibus, XMODIFIERS=@im=ibus). All 19 tests pass and nothing hangs. SCIM is not available here.
+</li>
+<li><span class="k">Cause</span> probably an XIM server (SCIM) deadlock during selection transfer to the child process (see 1609316 and 1591494). It was never diagnosed.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> unixSelect.test (including 1.5) no longer hangs with an XIM input method (ibus) on current Tk. SCIM is obsolete. Closing unless someone can still reproduce it.
+</li></ul></div></details><details class="t" id="1544491fff" data-s="1544491fff should not ignore the xlfd_average_width for scalable fonts 46. unix fonts not-reproduced (main built with --disable-xft, 8.4.20) — no visible effect on current x.org servers" data-p="pending"><summary><span class="id"><span class="pe" title="Pending" aria-label="Pending">⏳</span>1544491fff</span><span class="yr">2006</span><span class="ti">should NOT ignore the XLFD_AVERAGE_WIDTH for scalable fonts</span><span class="vd">NOT-REPRODUCED (main built with --disable-xft, 8.4.20) — no visible effect on current X.Org servers</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1544491fff">Open ticket 1544491fff</a> · 46. Unix Fonts · filed 2006-08-22</p><div class="since"><div class="lab">⏳ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Pending (Out of Date)</strong></p><ul><li>💬 2026-09-28 <strong>serhiy.storchaka</strong>: This only affects the X11 core fonts (Tk configured with --disable-xft, in 9.1 also --disable-bidi). The current X.Org server lists such names (non-zero pixel size and average width 0) only if the pattern contains the size, but Tk lists the fonts of the family with any size, and gets the scalable fonts with size 0. So with 8.6 and 9.1 the font selection is the same with and without the patch. Debian dropped the pa…</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (main built with --disable-xft, 8.4.20) — no visible effect on current X.Org servers</p><ul>
+<li><span class="k">Platform</span> X11 (core fonts only, i.e. --disable-xft builds)
+</li>
+<li><span class="k">Tested</span> main (--disable-xft build in work-a2/build-core) and 8.4.20 on Xvfb, helvetica and "avant garde gothic" at -10..-60 px. Xvfb lists the scaled instances the ticket calls bogus (e.g. <code>-adobe-helvetica-bold-i-normal--17-120-100-100-p-0-iso8859-1</code>). It also lists the real scalable names (<code>--0-0-0-0-p-0-</code>), and all requested sizes resolve correctly.
+</li>
+<li><span class="k">Cause</span> unix/tkUnixFont.c CreateClosestFont/FindSubFontForChar rank bitmap and scalable fonts separately (bestScore[0]/[1]). A bogus name only wins when its pixel size equals the wanted size exactly, and the server can load that name anyway. It only matters if a server lists the bogus names *without* the 0-0-0 scalable name (the old Debian xfs setups). Doing the fix in generic TkFontParseXLFD would be wrong: a user-supplied XLFD copied from xlsfonts (avg width 0) would lose its size. If the fix is wanted, it belongs in the two unix ranking loops, treating the font as scalable when AVERAGE_WIDTH is "0" (about 10 lines).
+</li>
+<li><span class="k">Prototype</span> none (not reproducible on current servers, and the default Xft build does not use this code)
+</li>
+<li><span class="k">Suggested ticket comment</span> Could not reproduce with current X.Org: the server lists the real scalable name (0-0-0) next to the scaled instances, and Tk's separate bitmap/scalable ranking picks correct sizes. The default Xft font system doesn't use this code any more. Suggest closing as out of date.
+</li></ul></div></details><details class="t" id="1391053fff" data-s="1391053fff win32 nonclient double-click causes spurious button-1 in app 68. win window operations not-reproduced (9.1 main with an 80 ms double-click, 8.6 tip with 300 ms)" data-p="branch"><summary><span class="id"><span class="pe" title="Fix in a branch" aria-label="Fix in a branch">🔧</span>1391053fff</span><span class="yr">2005</span><span class="ti">Win32 nonclient double-click causes spurious Button-1 in app</span><span class="vd">NOT-REPRODUCED (9.1 main with an 80 ms double-click, 8.6 tip with 300 ms)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1391053fff">Open ticket 1391053fff</a> · 68. Win Window Operations · filed 2005-12-27</p><div class="since"><div class="lab">🔧 Since triage (updated 2026-10-22)</div><p>Status now: <strong>Open</strong></p><ul><li>🔧 2026-09-28 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/3f837827c3">3f837827c3</a> on <code>win-nonclient-buttons</code>, not merged: Fix [1391053]: Win32 nonclient double-click causes spurious Button-1 in app</li><li>💬 2026-09-28 <strong>serhiy.storchaka</strong>: Still reproducible on Windows 11 with 8.6 and 9.1, if the second press of the double-click is held a little: maximizing a window by double-clicking the title bar, stretching it vertically by double-clicking its upper or lower border, or closing a dialog by double-clicking its system menu icon, produces &lt;Button-1&gt; in the Tk window which is now under the pointer. Besides the pointer update, the spurious press also c…</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1 main with an 80 ms double-click, 8.6 tip with 300 ms)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> none (Windows-only). Not applicable to X11: the WM owns the title bar there, so Tk never sees those clicks. The attached patch was never applied. Main's win/*.c has no WM_NC*BUTTON* handling.
+</li>
+<li><span class="k">Cause</span> win/tkWinWm.c:WmProc passes WM_NCLBUTTONDOWN/DBLCLK to DefWindowProc without calling Tk_PointerEvent/Tk_UpdatePointer. The next pointer poll sees button 1 down and makes a &lt;Button-1&gt; in whatever window is now under the cursor (after the maximize or close).
+</li>
+<li><span class="k">Prototype</span> none (Windows only). Repro script: win/1391053fff.tcl (double-click the title bar to maximize; it prints REPRODUCED/NOT REPRODUCED)
+</li>
+<li><span class="k">Suggested ticket comment</span> Still no WM_NC* handling in main's WmProc. Needs to be retested on Windows 11 with the attached repro before reviewing badclick-win32-v2.patch.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 5</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (9.1 main with an 80 ms double-click, 8.6 tip with 300 ms)
+</li>
+<li><span class="k">Tested</span> <a class="h" href="#1391053fff">1391053fff</a>.tcl. A real double-click on the caption maximizes the window, and the cursor ends up in the client area. In 3 s no ButtonPress or ButtonRelease reaches the app.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Windows 11 with 8.6.18 and 9.1: maximizing by double-clicking the title bar delivers no &lt;Button-1&gt; to the application. Suggest closing.
+</li></ul></div></div></details><details class="t" id="1348333fff" data-s="1348333fff 8.5 text widget creates to many timers 69. events not-reproduced as reported (8.5.19, 8.6 tip, 9.0), but reproduced as a new 9.1 regression (9.1b1/main) with a different cause" data-p="branch"><summary><span class="id"><span class="pe" title="Fix in a branch" aria-label="Fix in a branch">🔧</span>1348333fff</span><span class="yr">2005</span><span class="ti">8.5 text widget creates to many timers</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tk-triage/prototypes/1348333fff.patch">patch</a><span class="vd">NOT-REPRODUCED as reported (8.5.19, 8.6 tip, 9.0), but REPRODUCED as a new 9.1 regression (9.1b1/main) with a different cause</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1348333fff">Open ticket 1348333fff</a> · 69. Events · filed 2005-11-04</p><div class="since"><div class="lab">🔧 Since triage (updated 2026-10-22)</div><p>Status now: <strong>Open</strong></p><ul><li>🔧 2026-10-19 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/15457ad53b">15457ad53b</a> on <code>text-metrics-idle-wait</code>, not merged: Merge main. Test textDisp-40.1 renumbered to textDisp-41.1.</li><li>💬 2026-09-24 <strong>serhiy.storchaka</strong>: Still reproducible in 8.6 and 9.x with the attached script when imax and jmax are set to 30 (900 text widgets): update never returns and the CPU stays busy. With 8.5.0 the widgets are not even displayed. The cause is what hobbs found: while a redisplay is pending, AsyncUpdateLineMetrics polls for it with a 1 ms timer. With many text widgets these timers are always due, so the idle handlers, including the redisplay…</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED as reported (8.5.19, 8.6 tip, 9.0), but REPRODUCED as a new 9.1 regression (9.1b1/main) with a different cause</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> Xvfb, no WM. A grid of 12x12, 30x30 and 50x50 text widgets, each with 3 or 300 lines. 8.4.20/8.5.19/8.6.18/9.0.5: all mapped and idle in 50–250 ms, no hang. 9.1b1/main: <code>update</code> for 900 texts × 300 lines takes 1.7 s (9.0: 53 ms). A single text with 100k lines takes 1.26 s to map the first time (9.0/8.6: 4 ms).
+</li>
+<li><span class="k">Cause</span> the old hang (1 ms AsyncUpdateLineMetrics timers starving the idle queue) no longer occurs. The 9.1 slowdown comes from library/text.tcl, added in the rtl_text merge <a class="h" href="https://core.tcl-lang.org/tk/info/8ce823d20c">8ce823d20c</a> on 2026-05-20. The <code>bind Text &lt;Map&gt;</code> handler ::tk::TextAutoEnableRtl → ::tk::TextDetectAndTagRtl walks every line in Tcl (split/scan per char) and calls <code>tag remove tk_rtl_right</code> on each line. Every remove invalidates line metrics and restarts the metric timers, and with 900 widgets Tcl_CreateTimerHandler's linear insert takes about 50% of CPU (callgrind). The same full scan also runs from <code>after idle</code> after every tk::TextInsert/paste, i.e. on every keystroke.
+</li>
+<li><span class="k">Prototype</span> prototypes/1348333fff.patch (90-line diff: text.tcl +14/−7 plus 15-line test textTag-19.1). Fast path: return early if <code>[regexp {[\u0590-\u08FF]} [$w get 1.0 end]]</code> finds no RTL char (removing a stale tag if there is one). Otherwise do one <code>tag remove 1.0 end</code> instead of one per line, and clear rtl_detect_pending before the winfo exists check, so the flag no longer stays set when the widget is destroyed before the idle callback runs. Result: 900 widgets 1730→68 ms, 100k-line text 1.26 s→15 ms. RTL tagging gives the same result as before. textTag.test and text.test pass.
+</li>
+<li><span class="k">Suggested ticket comment</span> The original starvation no longer reproduces in 8.5.19, 8.6 or 9.0. 9.1 has a similar slowdown from the new RTL auto-detection in text.tcl (per-line Tcl scan plus <code>tag remove</code> on every &lt;Map&gt; and after every insert). A fast path is prototyped.
+</li></ul></div></details><details class="t" id="1246947fff" data-s="1246947fff tk-6.5 fails 65. generic window operations not-reproduced (all tested)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>1246947fff</span><span class="yr">2005</span><span class="ti">tk-6.5 fails</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1246947fff">Open ticket 1246947fff</a> · 65. Generic Window Operations · filed 2005-07-28</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Out of Date)</strong></p><ul><li>💬 2026-09-28 <strong>serhiy.storchaka</strong>: No longer reproducible: with a current X.Org server tk inactive returns 100-101 ms after tk inactive reset and 100 ms of waiting, and tk-6.5 passes. The X server of that system seemed to update the idle time too coarsely.</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> X11
+</li>
+<li><span class="k">Tested</span> Xvfb: <code>tk inactive</code> after reset + 100 ms returns 101–102 on 8.5.19, 8.6 tip and 9.1b1, so tk-6.5 passes
+</li>
+<li><span class="k">Cause</span> the reporter's old X server (linux/alpha, 2005) had a broken MIT-SCREEN-SAVER extension that reported idle=0. This is an environment problem, not a Tk bug.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> tk-6.5 passes on current X servers. The failure came from an old X server reporting idle time 0 through the XScreenSaver extension. Closing.
+</li></ul></div></details><details class="t" id="1085451fff" data-s="1085451fff flickering with -alpha transparency manipulations 68. win window operations not-reproduced (9.1, 8.6.18, 8.5.19, 8.4.20). this is consistent with the fix in 8.4.17 ([099e9edbef], sticky ws_ex_layered)." data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>1085451fff</span><span class="yr">2004</span><span class="ti">flickering with -alpha transparency manipulations</span><span class="vd">NOT-REPRODUCED (9.1, 8.6.18, 8.5.19, 8.4.20). This is consistent with the fix in 8.4.17 (<a class="h" href="https://core.tcl-lang.org/tk/info/099e9edbef">099e9edbef</a>, sticky WS_EX_LAYERED).</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1085451fff">Open ticket 1085451fff</a> · 68. Win Window Operations · filed 2004-12-14</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Fixed)</strong></p><ul><li>💬 2026-09-28 <strong>serhiy.storchaka</strong>: Fixed in <a class="h" href="https://core.tcl-lang.org/tk/info/099e9edbef">099e9edbef</a>: the WS_EX_LAYERED style is now only added, never removed, so the window is not recreated when -alpha returns to 1.0. With 8.6 and 9.1 on Windows 11 the wrapper window stays the same during a fade from 0.0 to 1.0.</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1, 8.6.18, 8.5.19, 8.4.20). This is consistent with the fix in 8.4.17 (<a class="h" href="https://core.tcl-lang.org/tk/info/099e9edbef">099e9edbef</a>, sticky WS_EX_LAYERED).</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> code inspection only. In main win/tkWinWm.c (WmAttributesCmd, "Only ever add the WS_EX_LAYERED bit"), the style is never removed when alpha returns to 1.0. The repro script is win/1085451fff.tcl (a visual fade that asks yes/no and prints a VERDICT).
+</li>
+<li><span class="k">Cause</span> in 2004, the wrapper's window class/style changed at the 1.0 transition. That is what vincentdarley suggested, and it has since been implemented.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> WS_EX_LAYERED has been sticky since <a class="h" href="https://core.tcl-lang.org/tk/info/099e9edbef">099e9edbef</a> (8.4.17/8.5.0), so going back to -alpha 1.0 should no longer rebuild the wrapper. Please confirm on Windows; otherwise close as fixed.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 5</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (9.1, 8.6.18, 8.5.19, 8.4.20). This is consistent with the fix in 8.4.17 (<a class="h" href="https://core.tcl-lang.org/tk/info/099e9edbef">099e9edbef</a>, sticky WS_EX_LAYERED).
+</li>
+<li><span class="k">Tested</span> <a class="h" href="#1085451fff">1085451fff</a>.tcl. It fades to 0.95, then act.exe takes 40 back-to-back screen captures while alpha is set to 1.0, 3 runs per version. Every sequence goes straight from the blended colour to the final colour, with no intermediate or flash frame.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on Windows 11 with 8.4.20, 8.5.19, 8.6.18 or 9.1: screen captures during the switch to -alpha 1.0 show no flash. Fixed since 8.4.17 (<a class="h" href="https://core.tcl-lang.org/tk/info/099e9edbef">099e9edbef</a>); suggest closing.
+</li></ul></div></div></details><details class="t" id="918052ffff" data-s="918052ffff memory leak connected to x11, tk and an xcursor theme 31. cursor names not-reproduced (all tested). as dgp&#x27;s xlib-only leak.c showed, the leak was in the x server, not in tk." data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>918052ffff</span><span class="yr">2004</span><span class="ti">Memory leak connected to X11, Tk and an XCursor theme</span><span class="vd">NOT-REPRODUCED (all tested). As dgp's Xlib-only leak.c showed, the leak was in the X server, not in Tk.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/918052ffff">Open ticket 918052ffff</a> · 31. Cursor Names · filed 2004-03-17</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Out of Date)</strong></p><ul><li>💬 2026-09-28 <strong>serhiy.storchaka</strong>: No longer reproducible with a current X.Org server (Xvfb) and 9.1: after 120000 switches of . configure -cursor watch and . configure -cursor {} with the Adwaita XCursor theme (20000 with Oxygen_White), the X server grows no more than without a theme. As shown by leak.c, the leak was in the X server.</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested). As dgp's Xlib-only leak.c showed, the leak was in the X server, not in Tk.</p><ul>
+<li><span class="k">Platform</span> X11
+</li>
+<li><span class="k">Tested</span> main on Xvfb with 20000 iterations of <code>. configure -cursor watch; . configure -cursor {}</code>, with and without XCURSOR_THEME=Adwaita. Xvfb RSS stayed constant (66028 KB).
+</li>
+<li><span class="k">Cause</span> X server / libXcursor (2004 XFree86), not Tk
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce with a current X server: server memory stays flat over 20000 cursor switches with a cursor theme. The original leak was shown to be an X server bug (see leak.c). Closing.
+</li></ul></div></details><details class="t" id="629827ffff" data-s="629827ffff moving toplevel windows fails 68. win window operations not-reproduced (9.1 main, 8.6 tip) with synthetic drags" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>629827ffff</span><span class="yr">2002</span><span class="ti">Moving toplevel windows fails</span><span class="vd">NOT-REPRODUCED (9.1 main, 8.6 tip) with synthetic drags</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/629827ffff">Open ticket 629827ffff</a> · 68. Win Window Operations · filed 2002-10-28</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1 main, 8.6 tip) with synthetic drags</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> not on Linux (fvogel already reported that Linux is fine).
+</li>
+<li>Cause (suspected): WM_ENTERSIZEMOVE in win/tkWinWm.c switches to TCL_SERVICE_ALL, so timers, and the <code>vwait</code> inside them, run a nested event loop inside Windows' modal move/size loop. Something in that nested loop, possibly the mouse capture/timer handling in tkWinPointer.c, ends the move loop early (fvogel saw an unexpected WM_EXITSIZEMOVE), and the window snaps back.
+</li>
+<li><span class="k">Repro</span> win/629827ffff.tcl (fvogel's bgproc loop; drag the window for 5 s, it reports snap-back from &lt;Configure&gt; positions)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Still needs work on Windows. Suspect the nested vwait loop that runs inside the modal move loop (TCL_SERVICE_ALL set on WM_ENTERSIZEMOVE) ends the capture. Repro script attached.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 5</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (9.1 main, 8.6 tip) with synthetic drags
+</li>
+<li><span class="k">Tested</span> <a class="h" href="#629827ffff">629827ffff</a>.tcl, with real mouse_event title-bar drags from +100+100 to +500+400: continuous (100 steps × 40 ms), and in steps of 90 ms and 250 ms. The window always ends at +500+400, and no Configure goes back to the start. On 9.1, bgproc's vwait completes about every 300 ms during the paused-step drags without breaking the move. On 8.6, timers do not fire at all during the modal move loop (bgproc pauses from about 1.0 s to 6.2 s), so the trigger never happens there. With continuous 40 ms moves, timers do not fire on 9.1 either.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Could not reproduce on Windows 11 with 8.6.18 or 9.1 using scripted drags: on 9.1 the vwait in the timer completes during the drag and the window keeps moving. Please retest with a real mouse on Windows 10/11.
+</li></ul></div></div></details><details class="t" id="618096ffff" data-s="618096ffff menu bugs with huge display (xinerama) 12. unix menus not-reproduced (all tested); the original setup (solaris 8, openwin xinerama, dtwm) cannot-test" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>618096ffff</span><span class="yr">2002</span><span class="ti">menu bugs with huge display (xinerama)</span><span class="vd">NOT-REPRODUCED (all tested); the original setup (Solaris 8, openwin Xinerama, dtwm) CANNOT-TEST</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/618096ffff">Open ticket 618096ffff</a> · 12. Unix Menus · filed 2002-10-03</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Works For Me)</strong></p><ul><li>💬 2026-10-01 <strong>serhiy.storchaka</strong>: Cannot reproduce with 8.4.15, 8.5.19, 8.6 and 9.1 on two monitors side by side, both with equal (1280x1024 + 1280x1024) and different resolutions (1920x1080 + 1280x1024 in both orders), with no window manager, mwm, twm, fvwm, openbox, icewm, metacity and xfwm4. With the window on the second monitor, a menu posted at x=1800 (in the reporter's layout) is placed at 1800, its cascade next to it, tk_popup places the me…</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested); the original setup (Solaris 8, openwin Xinerama, dtwm) CANNOT-TEST</p><ul>
+<li><span class="k">Platform</span> X11 (Solaris/dtwm)
+</li>
+<li><span class="k">Tested</span> Xvfb 2560x1024 single screen with no WM and fvwm (twm exited at startup): a tear-off menu posted at 1800,120 has rootx 1800, and the cascade is posted next to it (main, 8.6.18, 8.4.20). Xvfb's +xinerama mode is broken (both heads at 0,0), so no real multi-head test.
+</li>
+<li><span class="k">Cause</span> the reporter traced the coordinate change to a ConfigureNotify received in WaitForConfigureNotify after XReconfigureWMWindow. That points to dtwm or Solaris Xinerama reporting head-relative coordinates, not a Tk bug.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Can't reproduce with a 2560-pixel-wide screen on current Linux X servers (8.4.20, 8.6, 9.x). It looks specific to dtwm/Solaris Xinerama. Suggest closing unless it can be reproduced on a current system.
+</li></ul></div></details><details class="t" id="610188ffff" data-s="610188ffff select-10.4 hangs 53. [selection] not-reproduced (all tested)" data-p="branch"><summary><span class="id"><span class="pe" title="Fix in a branch" aria-label="Fix in a branch">🔧</span>610188ffff</span><span class="yr">2002</span><span class="ti">select-10.4 hangs</span><span class="vd">NOT-REPRODUCED (all tested)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/610188ffff">Open ticket 610188ffff</a> · 53. [selection] · filed 2002-09-16</p><div class="since"><div class="lab">🔧 Since triage (updated 2026-10-22)</div><p>Status now: <strong>Open (Works For Me)</strong></p><ul><li>🔧 2026-09-30 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/29a21fe034">29a21fe034</a> on <code>select-tests-private-selection</code>, not merged: Fix [610188], [1719278]: selection tests hang or fail if another client (e.g. a clipboard manager or an X server that syncs the Windows clipboard) requests the </li><li>💬 2026-09-30 <strong>serhiy.storchaka</strong>: Reproduced on Linux/X11 (Xvfb) with a client that polls the PRIMARY selection, like the old Klipper. The handler of select-10.4 sleeps 6 seconds while it sends a long value in parts (INCR). It is called for the requests of the other client as well, and each of them nests a new wait, so the test never finishes. It does not reproduce on the current KDE Plasma on Wayland. Proposed fix in branch select-tests-private-s…</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all tested)</p><ul>
+<li><span class="k">Platform</span> X11
+</li>
+<li><span class="k">Tested</span> select-10.* incl. 10.4 (with <code>-constraints failsOnCILinux</code>) on main (wt build) and 8.6 tip, Xvfb with no WM and with icewm. All pass. KDE (the only environment where it hung, most likely a clipboard manager such as Klipper grabbing PRIMARY) not available.
+</li>
+<li><span class="k">Cause</span> unknown; only ever seen on dgp's SuSE 8.3/KDE box, which he called out of date in 2006.
+</li>
+<li><span class="k">Prototype</span> none (nothing to fix)
+</li>
+<li><span class="k">Suggested ticket comment</span> select-10.4 passes on 9.1 and 8.6 under Xvfb, with and without a WM. The hang only ever showed up on one old SuSE/KDE system. Closing as Out of Date.
+</li></ul></div></details><details class="t" id="554346ffff" data-s="554346ffff spaces in paths break stuff (with patch) 84. unix build install prefix with spaces: not-reproduced (fixed). source/build directory with spaces: reproduced on main (make fails)." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>554346ffff</span><span class="yr">2002</span><span class="ti">spaces in paths break stuff (with patch)</span><span class="vd">install prefix with spaces: NOT-REPRODUCED (fixed). Source/build directory with spaces: REPRODUCED on main (make fails).</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/554346ffff">Open ticket 554346ffff</a> · 84. Unix Build · filed 2002-05-10</p><div class="lab">Full verdict</div><p>install prefix with spaces: NOT-REPRODUCED (fixed). Source/build directory with spaces: REPRODUCED on main (make fails).</p><ul>
+<li><span class="k">Platform</span> build
+</li>
+<li><span class="k">Tested</span> main tarball. With <code>--prefix</code> containing spaces, configure, make and make install all succeed and the installed wish runs; the rpath is quoted correctly. <code>TK_LIB_SPEC</code> in tkConfig.sh is <code>-L/path with space/lib ...</code> unquoted. A source tree under a path with spaces fails in make ("Circular dependency ... sp &lt;- sp", "No rule to make target 'src/unix/../macosx/configure.ac'").
+</li>
+<li><span class="k">Cause</span> GNU make cannot handle spaces in target/prerequisite paths (the Makefile's reconfigure rule depends on $(UNIX_DIR)/../macosx/configure.ac etc.). Not realistically fixable.
+</li>
+<li><span class="k">Prototype</span> none (make limitation; the 2002 patch is obsolete)
+</li>
+<li><span class="k">Suggested ticket comment</span> Installing into a prefix containing spaces works in 9.1. Building from a source dir with spaces fails because GNU make can't handle spaces in target names, which is a make limitation. Closing as Out of Date.
+</li></ul></div></details><details class="t" id="220865ffff" data-s="220865ffff windows/unix discrepancy, toplevel -width/-height/-menu 65. generic window operations the original shrink is not-reproduced: with a non-empty menubar (.z) the client area is 400x300. a remaining discrepancy is reproduced (9.1 main, 8.6 tip): a toplevel whose -menu is an empty menu (.x) gets a 400x320 client area (+20 px)." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>220865ffff</span><span class="yr">2000</span><span class="ti">Windows/Unix discrepancy, Toplevel -width/-height/-menu</span><span class="vd">the original shrink is NOT-REPRODUCED: with a non-empty menubar (.z) the client area is 400x300. A remaining discrepancy is REPRODUCED (9.1 main, 8…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/220865ffff">Open ticket 220865ffff</a> · 65. Generic Window Operations · filed 2000-11-01</p><div class="lab">Full verdict</div><p>the original shrink is NOT-REPRODUCED: with a non-empty menubar (.z) the client area is 400x300. A remaining discrepancy is REPRODUCED (9.1 main, 8.6 tip): a toplevel whose -menu is an empty menu (.x) gets a 400x320 client area (+20 px).</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> X11 9.1 main and 8.6: <code>.x</code> (-menu, empty menubar), <code>.y</code> and <code>.z</code> (-menu with a cascade) are all 400x300. The comment's second complaint, a window that grows when <code>wm geometry</code> is repeated with <code>[winfo reqheight .menubar]</code>, is NOT-A-BUG. The original <code>.menubar</code> is laid out as a vertical menu and its reqheight grows with every entry; the displayed menubar is the clone <code>.#menubar</code>. Windows repro: win/220865ffff.tcl (prints VERDICT).
+</li>
+<li><span class="k">Cause</span> unknown (Windows wm code).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> On X11 (8.6, 9.1) toplevels with and without -menu keep -width/-height. Needs checking on Windows. <code>winfo reqheight</code> of the menubar's original menu is its vertical-layout height, not the menubar height.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 5</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> the original shrink is NOT-REPRODUCED: with a non-empty menubar (.z) the client area is 400x300. A remaining discrepancy is REPRODUCED (9.1 main, 8.6 tip): a toplevel whose -menu is an empty menu (.x) gets a 400x320 client area (+20 px).
+</li>
+<li><span class="k">Tested</span> <a class="h" href="#220865ffff">220865ffff</a>.tcl on both versions (.y without a menu is 400x300).
+</li>
+<li><span class="k">Cause</span> not pinned down. Probably the wrapper size is computed with the menubar height (AdjustWindowRectEx with bMenu = hMenu != NULL, in UpdateGeometryInfo in win/tkWinWm.c), but Windows does not show an empty menubar, so the client area gets the extra height. The client-height correction loop there is supposed to catch this, so the timing of TK_SETMENU may be involved.
+</li>
+<li><span class="k">Prototype</span> none (time-boxed). Next step: pass <code>hMenu != NULL &amp;&amp; GetMenuItemCount(hMenu) &gt; 0</code> to AdjustWindowRectEx and retest.
+</li>
+<li><span class="k">Suggested ticket comment</span> On Windows 11 (8.6.18, 9.1), toplevels with a non-empty -menu keep -width/-height. Only an empty menubar still makes the client area one menu height (20 px) taller than requested.
+</li></ul></div></div></details><details class="t" id="220791ffff" data-s="220791ffff window gives false geometry information 65. generic window operations not-reproduced as reported (the difference is by design; fvwm has a quirk)" data-p="commented"><summary><span class="id"><span class="pe" title="Commented" aria-label="Commented">💬</span>220791ffff</span><span class="yr">2000</span><span class="ti">Window gives false geometry information</span><span class="vd">NOT-REPRODUCED as reported (the difference is by design; fvwm has a quirk)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/220791ffff">Open ticket 220791ffff</a> · 65. Generic Window Operations · filed 2000-11-01</p><div class="since"><div class="lab">💬 Since triage (updated 2026-10-22)</div><p>Status now: <strong>Open</strong></p><ul><li>💬 2026-09-30 <strong>serhiy.storchaka</strong>: A related case is <a class="h" href="https://core.tcl-lang.org/tk/info/d1a711b500">d1a711b500</a>: wm geometry reports the requested position if the window manager moved the window out of the area reserved for a panel. The proposed fix there also makes wm geometry report the position of the decorated window under KWin on Wayland (Xwayland), which decorates windows without reparenting them, as for reparenting window managers. The general issue remains: after wm withdraw and wm dei…</li></ul></div><div class="lab">Full verdict</div><p>NOT-REPRODUCED as reported (the difference is by design; fvwm has a quirk)</p><ul>
+<li><span class="k">Platform</span> X11
+</li>
+<li><span class="k">Tested</span> 9.1 main and 8.4, no WM / fvwm / openbox. <code>wm geometry</code> always returns the requested +120+120 / +130+130. <code>winfo geometry</code> / rootx give the client-area position (e.g. +121+142 under openbox), which is expected: it excludes the decorations. twm would not start here. Under fvwm the first placement is right, but a later <code>wm geometry . +130+130</code> on the mapped window puts the client (not the frame) at 130,130. The frame is then at 125,107 while <code>wm geometry</code> still says +130+130, which is the ICCCM move/gravity ambiguity on fvwm's side.
+</li>
+<li><span class="k">Cause</span> WM-dependent handling of moves of mapped windows; winfo vs wm geometry differ by design.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> <code>wm geometry</code> reports the frame position and <code>winfo geometry</code> the client window, so they differ by the decorations; that is by design. With openbox, and with no WM, both are consistent on 8.4 and 9.1. Suggest closing.
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch and of the Windows VM runs.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

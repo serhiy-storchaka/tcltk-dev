@@ -1,0 +1,693 @@
+<title>Tk Bug Triage: Not a bug / RFE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Untouched open Tk bug tickets: Not a bug / RFE</h1>
+  <p class="sub">Triage of 480 open Bug tickets: those with no comment or check-in from me on 2026-09-24, plus 38 added on 2026-10-04 (filed since then, Pending then, or reopened; 16 of them filed by me). Reproduced on Linux/X11 under Xvfb (main 9.1 tip, 9.0, 8.7, 8.6 tip, 8.5, 8.4) and on a Windows 11 VM (9.1, 8.6, 8.5, 8.4). Rows marked <span class="patch">patch</span> link to a prototype patch (135 in all, in <a href="https://github.com/serhiy-storchaka/tcltk-dev/tree/main/tk-triage/prototypes">tk-triage/prototypes</a>). Updated 2026-10-22 with what happened since: the emoji before each ticket id shows its progress.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">167</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">61</span> Already fixed</a><a class="navchip c-nab cur" href="not-a-bug.html" aria-current="page"><span class="n">54</span> Not a bug / RFE</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">49</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">11</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">138</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="closed" aria-pressed="false"><span aria-hidden="true">✅</span> <span class="n">8</span> Closed</button><button class="pchip" data-p="pending" aria-pressed="false"><span aria-hidden="true">⏳</span> <span class="n">1</span> Pending</button><button class="pchip" data-p="branch" aria-pressed="false"><span aria-hidden="true">🔧</span> <span class="n">2</span> Fix in a branch</button><button class="pchip" data-p="commented" aria-pressed="false"><span aria-hidden="true">💬</span> <span class="n">1</span> Commented</button><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">42</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, subsystem, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="nab"><h2><span class="dot c-nab"></span>Not a bug / RFE <span class="cnt">54</span></h2><details class="t" id="37c6fcf92a" data-s="37c6fcf92a  print.tcl: _print_widget on windows — isotropic mapping uses only one axis, distorts canvas aspect ratio (unused) not-a-bug (not-reproduced on 9.1 main with microsoft print to pdf)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>37c6fcf92a</span><span class="yr">2026</span><span class="ti">print.tcl: _print_widget on Windows — isotropic mapping uses only one axis, distorts canvas aspect ratio</span><span class="vd">NOT-A-BUG (NOT-REPRODUCED on 9.1 main with Microsoft Print to PDF)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/37c6fcf92a">Open ticket 37c6fcf92a</a> · (unused) · filed 2026-06-24</p><div class="lab">Full verdict</div><p>NOT-A-BUG (NOT-REPRODUCED on 9.1 main with Microsoft Print to PDF)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> code reading only
+</li>
+<li><span class="k">Cause</span> library/print.tcl:_print_widget calls <code>_gdi map -logical $lo -physical $ph</code> with single values. GdiMap (win/tkWinGDI.c) then selects MM_ISOTROPIC with equal window and viewport extents on both axes. MM_ISOTROPIC keeps one logical unit the same physical size on both axes, so the aspect ratio should already be preserved. Using two values would switch to MM_ANISOTROPIC and could itself distort output on printers with resx ≠ resy.
+</li>
+<li><span class="k">Prototype</span> none (the proposed change is not obviously right). Repro: win/37c6fcf92a.tcl (wraps ::tk::print::_gdi, prints a wide canvas with a circle and a square, computes the inch-per-pixel ratio on both axes from the mapping actually set, and prints a verdict)
+</li>
+<li><span class="k">Suggested ticket comment</span> The single-value <code>_gdi map</code> selects MM_ISOTROPIC, which keeps the scale equal on both axes. Which printer or driver shows the stretching, and what are its x and y resolutions? A two-value mapping would switch to MM_ANISOTROPIC.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Verdict</span> NOT-A-BUG (NOT-REPRODUCED on 9.1 main with Microsoft Print to PDF)
+</li>
+<li><span class="k">Tested</span> 9.1 main, win/37c6fcf92a.tcl, "Microsoft Print to PDF" (dialogs driven by work-win/printdlg.ps1). Mapping: <code>(4155, 4155) -&gt; (500, 500)</code>, MM_ISOTROPIC, 600x600 dpi; inches per canvas pixel x = y = 0.013850 (ratio 1.0000). In the rendered PDF the circle is round and the square is square. 8.6 has no <code>tk print</code>.
+</li>
+<li><span class="k">Cause</span> none. MM_ISOTROPIC already keeps the axes equal.
+</li></ul>
+<p>Side finding: <code>_print_canvas.rectangle</code> and <code>.oval</code> replace an empty -fill with the printer background, so unfilled items print filled white and hide the items under them (the oval in the repro is covered by the square). Also, the <code>switch</code> in <code>_print_canvas.TransColor</code> uses a braced pattern, so <code>$vtgPrint(canvas.bg)</code> is never substituted.</p>
+<ul>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> With "Microsoft Print to PDF" (600x600 dpi), the single-value <code>_gdi map</code> gives MM_ISOTROPIC with equal scale on both axes, and circles print round. Which printer shows the distortion, and what are its x and y resolutions? Note that <code>dpi_x</code> is taken from dmPrintQuality, which may not be the real X resolution on some drivers.
+</li></ul></div></div></details><details class="t" id="682ff8f637" data-s="682ff8f637 print.tcl: _print_canvas — unqualified info commands may skip canvas item handlers (unused) not-a-bug (the handlers are resolved correctly)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>682ff8f637</span><span class="yr">2026</span><span class="ti">print.tcl: _print_canvas — unqualified info commands may skip canvas item handlers</span><span class="vd">NOT-A-BUG (the handlers are resolved correctly)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/682ff8f637">Open ticket 682ff8f637</a> · (unused) · filed 2026-06-24</p><div class="lab">Full verdict</div><p>NOT-A-BUG (the handlers are resolved correctly)</p><ul>
+<li><span class="k">Platform</span> Windows (library/print.tcl, Windows-only code path) — logic testable anywhere
+</li>
+<li><span class="k">Tested</span> <code>info commands _pc.$type</code> called from a proc in a child namespace, with and without a same-named global command, on tclsh 9.1 (main) and 8.6: it always returns the unqualified name, so the <code>eq</code> test is true and the handler runs.
+</li>
+<li><span class="k">Cause</span> none. <code>info commands</code> with an unqualified pattern searches the current namespace (::tk::print), which is where <code>_print_canvas.&lt;type&gt;</code> lives. The only theoretical problem is an item type name containing glob characters. Minor cleanup if wanted: <code>if {[namespace which _print_canvas.$type] ne ""}</code>. The call also passes <code>$printargs(hDC)</code> where the <code>$hdc</code> argument is available; this is harmless.
+</li>
+<li><span class="k">Prototype</span> none (no bug)
+</li>
+<li><span class="k">Suggested ticket comment</span> <code>info commands</code> with an unqualified pattern resolves in the current namespace (::tk::print), so <code>_print_canvas.$type</code> is found and the check works; checked on 9.1 and 8.6. Closing as not a bug unless someone has a canvas item that is actually skipped.
+</li></ul></div></details><details class="t" id="c2f501a5a0" data-s="c2f501a5a0 [solved] tk apps get progressively slower on debian 13 running x11 67. unix window operations not-a-bug (in tk). per the reporter, the `_server%d_%d`/`_client%d` atoms and the slowdown come from the ibus xim server (imdkit, ibus issue 2924). workaround: `xmodifiers= wish`." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>c2f501a5a0</span><span class="yr">2025</span><span class="ti">[SOLVED] Tk apps get progressively slower on Debian 13 running X11</span><span class="vd">NOT-A-BUG (in Tk). Per the reporter, the <code>_server%d_%d</code>/<code>_client%d</code> atoms and the slowdown come from the ibus XIM server (IMdkit, ibus issue 2924).…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/c2f501a5a0">Open ticket c2f501a5a0</a> · 67. Unix Window Operations · filed 2025-11-01</p><div class="lab">Full verdict</div><p>NOT-A-BUG (in Tk). Per the reporter, the <code>_server%d_%d</code>/<code>_client%d</code> atoms and the slowdown come from the ibus XIM server (IMdkit, ibus issue 2924). Workaround: <code>XMODIFIERS= wish</code>.</p><ul>
+<li><span class="k">Platform</span> X11
+</li>
+<li><span class="k">Tested</span> Xvfb :124 without an IM server, 5 runs each of main and 8.6 with <code>echo exit | wish</code>: the atom count stays at 232, so Tk itself does not leak atoms.
+</li>
+<li><span class="k">Cause</span> ibus XIM IMdkit (external)
+</li>
+<li><span class="k">Prototype</span> none (not a Tk bug)
+</li>
+<li><span class="k">Suggested ticket comment</span> Tk does not create these atoms itself. They come from the ibus XIM server, see <a href="https://github.com/ibus/ibus/issues/2924.">https://github.com/ibus/ibus/issues/2924.</a> The workaround is to start wish with an empty XMODIFIERS. Closing as third-party issue.
+</li></ul></div></details><details class="t" id="97d9ac3eb1" data-s="97d9ac3eb1 adopt tcl 9 interfaces none not-a-bug (refactoring tracker/rfe). branch dgp-adopt-tcl9 has 2 check-ins (980977e8c6 tcl_freeinternalrep, 4cad747bae tcl_getnumberfromobj; 2025-09-03). neither is merged; main still uses neither api." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>97d9ac3eb1</span><span class="yr">2025</span><span class="ti">Adopt Tcl 9 interfaces</span><span class="vd">NOT-A-BUG (refactoring tracker/RFE). Branch dgp-adopt-tcl9 has 2 check-ins (980977e8c6 Tcl_FreeInternalRep, 4cad747bae Tcl_GetNumberFromObj; 2025-0…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/97d9ac3eb1">Open ticket 97d9ac3eb1</a> · None · filed 2025-09-03</p><div class="lab">Full verdict</div><p>NOT-A-BUG (refactoring tracker/RFE). Branch dgp-adopt-tcl9 has 2 check-ins (980977e8c6 Tcl_FreeInternalRep, 4cad747bae Tcl_GetNumberFromObj; 2025-09-03). Neither is merged; main still uses neither API.</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> n/a
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (the work is in branch dgp-adopt-tcl9, which needs review and a merge)
+</li>
+<li><span class="k">Suggested ticket comment</span> Branch [dgp-adopt-tcl9] (2 check-ins) is still unmerged. Needs review before merging to core-9-0-branch/main, or the ticket could be retyped as RFE.
+</li></ul></div></details><details class="t" id="beaa8ecd00" data-s="beaa8ecd00 inconsistent reporting of child geometry changes to grid container (unused) not-a-bug (the events in the &quot;width &amp; height&quot; case are synthetic, sent on purpose; &lt;configure&gt; reports the container&#x27;s own geometry, not its children&#x27;s)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>beaa8ecd00</span><span class="yr">2024</span><span class="ti">Inconsistent reporting of child geometry changes to grid container</span><span class="vd">NOT-A-BUG (the events in the "width &amp; height" case are synthetic, sent on purpose; &lt;Configure&gt; reports the container's own geometry, not its childr…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/beaa8ecd00">Open ticket beaa8ecd00</a> · (unused) · filed 2024-08-30</p><div class="lab">Full verdict</div><p>NOT-A-BUG (the events in the "width &amp; height" case are synthetic, sent on purpose; &lt;Configure&gt; reports the container's own geometry, not its children's)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main, 8.6 tip, 8.6.9, 8.5 (Xvfb, no WM). main/8.6: counts 2/1/1/2 as reported. 8.6.9 and 8.5: last case 0, which is consistent.
+</li>
+<li><span class="k">Cause</span> generic/tkPlace.c:PlaceRequestProc. When <code>place</code> fixes both the width and the height of the content, its geometry request is rejected and <code>TkDoConfigureNotify()</code> sends a synthetic ConfigureNotify with the size unchanged ("to indicate that the size change request was rejected"). This was added in d5989e7ea9 (2019-02-07, Fix <a class="h" href="https://core.tcl-lang.org/tk/info/58665b91dd">58665b91dd</a>, unixEmbed tests, 8.6.10). If only one dimension is fixed, the placer resizes the other one, and a real Configure comes only when the size actually changes. So the extra events are the odd case, not the missing ones. gdb shows no X configure call on the container in that case.
+</li>
+<li><span class="k">Prototype</span> none. For the reporter's use case, bind &lt;Configure&gt; on the children or check <code>winfo reqwidth/reqheight</code> of the container. Removing the synthetic event would mean re-checking the unixEmbed tests.
+</li>
+<li><span class="k">Suggested ticket comment</span> &lt;Configure&gt; on the container reports only changes to its own geometry. The extra events when both width and height (or relwidth/relheight) are fixed are synthetic events. PlaceRequestProc has sent them since 8.6.10 (<a class="h" href="https://core.tcl-lang.org/tk/info/d5989e7ea9">d5989e7ea9</a>) to signal a rejected size request. Bind &lt;Configure&gt; on the content windows instead.
+</li></ul></div></details><details class="t" id="4be479d085" data-s="4be479d085 tkunixrfont.c: nothing defines xft_has_fixed_rotated_placement 46. unix fonts not-a-bug (dead code, still present in main, 9.0 and 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>4be479d085</span><span class="yr">2023</span><span class="ti">tkUnixRFont.c: nothing defines XFT_HAS_FIXED_ROTATED_PLACEMENT</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tk-triage/prototypes/4be479d085.patch">patch</a><span class="vd">NOT-A-BUG (dead code, still present in main, 9.0 and 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/4be479d085">Open ticket 4be479d085</a> · 46. Unix Fonts · filed 2023-11-23</p><div class="lab">Full verdict</div><p>NOT-A-BUG (dead code, still present in main, 9.0 and 8.6)</p><ul>
+<li><span class="k">Platform</span> X11 (code cleanup)
+</li>
+<li><span class="k">Tested</span> grep over main, 9.0 and 8.6: the macro is only tested in TkDrawAngledChars and nothing defines it. main builds without it, and font.test, canvText.test and unixFont.test pass after removing the dead branch.
+</li>
+<li><span class="k">Cause</span> unix/tkUnixRFont.c:TkDrawAngledChars has an #ifdef XFT_HAS_FIXED_ROTATED_PLACEMENT branch from the TIP 119 patch (a2e77573). The branch was never compiled.
+</li>
+<li><span class="k">Prototype</span> prototypes/4be479d085.patch (118 lines, deletions only, no test). It removes the dead #ifdef branch and keeps the #else code that is actually used.
+</li>
+<li><span class="k">Suggested ticket comment</span> The macro was never defined anywhere, so only the &lt;tt&gt;#else&lt;/tt&gt; branch has ever been compiled. Proposed: remove the dead branch (pure deletion).
+</li></ul></div></details><details class="t" id="ac07794b8a" data-s="ac07794b8a ci workflows: use cppflags rather than cflags where appropriate 81. portability not-a-bug (the proposed change would be harmful for the unix builds)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>ac07794b8a</span><span class="yr">2023</span><span class="ti">CI workflows: use CPPFLAGS rather than CFLAGS where appropriate</span><span class="vd">NOT-A-BUG (the proposed change would be harmful for the unix builds)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/ac07794b8a">Open ticket ac07794b8a</a> · 81. Portability · filed 2023-11-17</p><div class="lab">Full verdict</div><p>NOT-A-BUG (the proposed change would be harmful for the unix builds)</p><ul>
+<li><span class="k">Platform</span> build (CI)
+</li>
+<li><span class="k">Tested</span> main and 9.0 still have "CFLAGS=-DTK_NO_DEPRECATED=1" in linux-build.yml and linux-with-tcl9(1)-build.yml. 8.6 has no workflows any more, and .travis.yml was removed in a8515bb7.
+</li>
+<li><span class="k">Cause</span> unix/Makefile.in (and Tcl's) never references @CPPFLAGS@. With CPPFLAGS=-DTK_NO_DEPRECATED=1 the define would reach only the configure checks, not the compile, so the "no deprecated" CI job would silently stop testing anything. CFLAGS=-arch in onefiledist.yml is a compiler flag and is correct as is.
+</li>
+<li><span class="k">Prototype</span> none. A patch would first need CPPFLAGS added to CC_SWITCHES in unix/Makefile.in, which is a build-system change.
+</li>
+<li><span class="k">Suggested ticket comment</span> unix/Makefile.in doesn't use &lt;tt&gt;@CPPFLAGS@&lt;/tt&gt;, so moving &lt;tt&gt;-DTK_NO_DEPRECATED=1&lt;/tt&gt; to CPPFLAGS would drop it from the actual build. Keeping CFLAGS; .travis.yml is already gone. Suggest closing.
+</li></ul></div></details><details class="t" id="bec431fc68" data-s="bec431fc68 nswindow drag regions should only be invalidated on the main thread 83. mac os x build not-a-bug (tk/tkinter used from a non-main thread under gradio). cannot-test (macos)." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>bec431fc68</span><span class="yr">2023</span><span class="ti">NSWindow drag regions should only be invalidated on the Main Thread</span><span class="vd">NOT-A-BUG (Tk/Tkinter used from a non-main thread under gradio). CANNOT-TEST (macOS).</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/bec431fc68">Open ticket bec431fc68</a> · 83. Mac OS X Build · filed 2023-09-02</p><div class="lab">Full verdict</div><p>NOT-A-BUG (Tk/Tkinter used from a non-main thread under gradio). CANNOT-TEST (macOS).</p><ul>
+<li><span class="k">Platform</span> Aqua
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> AppKit requires the main thread. The user's callback creates tk.Tk() in a gradio worker thread, so Tk_Init reaches TkMacOSXMakeRealWindowExist off the main thread.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Tk Aqua (AppKit) can only be used from the process's main thread; creating a Tk interpreter from a gradio worker thread is unsupported. Closing as not a Tk bug.
+</li></ul></div></details><details class="t" id="2b1ce31780" data-s="2b1ce31780 generalise scaling variables for multi-display systems 46. unix fonts not-a-bug (rfe; the limitation is still present on main)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2b1ce31780</span><span class="yr">2023</span><span class="ti">Generalise scaling variables for multi-display systems</span><span class="vd">NOT-A-BUG (RFE; the limitation is still present on main)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2b1ce31780">Open ticket 2b1ce31780</a> · 46. Unix Fonts · filed 2023-08-23</p><div class="lab">Full verdict</div><p>NOT-A-BUG (RFE; the limitation is still present on main)</p><ul>
+<li><span class="k">Platform</span> X11 (design / RFE)
+</li>
+<li><span class="k">Tested</span> main tip. ::tk::scalingPct/::tk::svgFmt are still single global variables that tkCmds.c keeps in sync with [tk scaling] of "." only. The Xvfb test couldn't show a difference because two screens of the same display share one TkDisplay scaling value. Branch scaling-multidisplay (79bdc75153) was last merged in 2023-09 and never went into trunk.
+</li>
+<li><span class="k">Cause</span> the design follows only the main window's display. The proposed fix adds new public commands (tk_scalingPct/tk_svgFormat -displayof), which needs a TIP (fvogel).
+</li>
+<li><span class="k">Prototype</span> none (new API)
+</li>
+<li><span class="k">Suggested ticket comment</span> Still valid for multi-display apps, but the fix adds public commands and needs a TIP; changing type to RFE. Branch scaling-multidisplay is stale since 2023-09.
+</li></ul></div></details><details class="t" id="6bb7fd9ea9" data-s="6bb7fd9ea9 generalise tk systray for multi-display systems (unused) not-a-bug (rfe; still single-display on main)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>6bb7fd9ea9</span><span class="yr">2023</span><span class="ti">Generalise tk systray for multi-display systems</span><span class="vd">NOT-A-BUG (RFE; still single-display on main)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/6bb7fd9ea9">Open ticket 6bb7fd9ea9</a> · (unused) · filed 2023-08-19</p><div class="lab">Full verdict</div><p>NOT-A-BUG (RFE; still single-display on main)</p><ul>
+<li><span class="k">Platform</span> X11 (RFE)
+</li>
+<li><span class="k">Tested</span> main source. tk systray has no -displayof option. unix/tkUnixSysTray.c creates the tray icon on Tk_MainWindow(interp), and library/systray.tcl keeps one global icon.
+</li>
+<li><span class="k">Cause</span> by design there is one tray icon per interpreter.
+</li>
+<li><span class="k">Prototype</span> none (new option/API; would need a TIP)
+</li>
+<li><span class="k">Suggested ticket comment</span> This asks for a new &lt;tt&gt;-displayof&lt;/tt&gt; option, so it's a feature request (TIP) rather than a bug. Changing type to RFE.
+</li></ul></div></details><details class="t" id="da23032e6a" data-s="da23032e6a ttk::combobox: returned index is {} instead of expected -1 88. themed tk not-a-bug (intended tip 577 change in 9.0; docs already updated in [5471e09e40], 2023-12-26)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>da23032e6a</span><span class="yr">2023</span><span class="ti">ttk::combobox: Returned index is {} instead of expected -1</span><span class="vd">NOT-A-BUG (intended TIP 577 change in 9.0; docs already updated in <a class="h" href="https://core.tcl-lang.org/tk/info/5471e09e40">5471e09e40</a>, 2023-12-26)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/da23032e6a">Open ticket da23032e6a</a> · 88. Themed Tk · filed 2023-07-21</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Wont Fix)</strong></p><ul><li>💬 2026-09-30 <strong>serhiy.storchaka</strong>: This is the intended change of TIP 577 in Tk 9.0. The documentation has been updated in <a class="h" href="https://core.tcl-lang.org/tk/info/5471e09e40">5471e09e40</a>: current returns an empty string if the current value is not in the list of -values. As noted above, [.c current] works with both 8.6 and 9.0.</li><li>💬 2026-09-30 <strong>stu</strong>: For the record, I still don't agree with this. The comparison "" &lt; 0 is at minimum wrong-looking. "Actually, checking whether [.c current] equals -1 has never been the recommended style." [Citation Needed]</li><li>💬 2026-09-30 <strong>serhiy.storchaka</strong>: Reopened, but I think it is too late to revert this now. The change was intentional and has been in Tk since 9.0, and programs which were broken by it have probably already been adapted, so reverting it could break them again.</li><li>💬 2026-10-01 <strong>stu</strong>: I don't think this needs re-opening; I doubt it's going to change, and I accept that. I just wanted to register my thoughts on the subject. Thanks.</li><li>💬 2026-10-01 <strong>nemethi</strong>: Closing the ticket again.</li></ul></div><div class="lab">Full verdict</div><p>NOT-A-BUG (intended TIP 577 change in 9.0; docs already updated in <a class="h" href="https://core.tcl-lang.org/tk/info/5471e09e40">5471e09e40</a>, 2023-12-26)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> <code>ttk::combobox .c; .c current</code> → <code>{}</code> on main, 9.1b1, 9.0.5; <code>-1</code> on 8.7b1, 8.6.18, 8.5.19. doc/ttk_combobox.n says <code>{}</code> in main/9.0 and <code>-1</code> in 8.7/8.6, so each branch matches its docs.
+</li>
+<li><span class="k">Cause</span> TIP 577 (9.0 returns an empty string for "no index"). Portable check: <code>[.c current] &lt; 0</code> works on all versions (nemethi's comment).
+</li>
+<li><span class="k">Prototype</span> none (not needed)
+</li>
+<li><span class="k">Suggested ticket comment</span> Intended by TIP 577. The man page was updated in <a class="h" href="https://core.tcl-lang.org/tk/info/5471e09e40">5471e09e40</a> and now documents <code>{}</code> for 9.0+. Use <code>[.c current] &lt; 0</code> for code that must also run on 8.x. Closing.
+</li></ul></div></details><details class="t" id="6b49149b4e" data-s="6b49149b4e tkinter problem with text get 18. [text] not-a-bug in tk; fixed on the tkinter side. tcl 8.7 registers &quot;utf32string&quot; (tclobj.c:394), and cpython gh-103194 (3.13, backported) makes `_tkinter.fromobj()` recognise `utf32stringtype`, so `text get` now returns a python str. the workaround branch `bug-6b49149b4e` ([571b0fd902], 2023-04-16) was never merged and is no longer needed." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>6b49149b4e</span><span class="yr">2023</span><span class="ti">Tkinter problem with text get</span><span class="vd">NOT-A-BUG in Tk; fixed on the Tkinter side. Tcl 8.7 registers "utf32string" (tclObj.c:394), and CPython gh-103194 (3.13, backported) makes `_tkinte…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/6b49149b4e">Open ticket 6b49149b4e</a> · 18. [text] · filed 2023-04-16</p><div class="lab">Full verdict</div><p>NOT-A-BUG in Tk; fixed on the Tkinter side. Tcl 8.7 registers "utf32string" (tclObj.c:394), and CPython gh-103194 (3.13, backported) makes <code>_tkinter.FromObj()</code> recognise <code>UTF32StringType</code>, so <code>text get</code> now returns a Python str. The workaround branch <code>bug-6b49149b4e</code> (<a class="h" href="https://core.tcl-lang.org/tk/info/571b0fd902">571b0fd902</a>, 2023-04-16) was never merged and is no longer needed.</p><ul>
+<li><span class="k">Platform</span> generic (Tcl 8.7 + Tkinter)
+</li>
+<li><span class="k">Tested</span> source inspection of the Tcl 8.7 tree and CPython 3.13 <code>Modules/_tkinter.c</code>; no Python-with-8.7 build to run.
+</li>
+<li><span class="k">Cause</span> Tkinter did not recognise Tcl 8.7's "utf32string" object type.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed in Tkinter by python/cpython gh-103194 (it handles the "utf32string" type registered by Tcl 8.7). The Tk-side workaround branch bug-<a class="h" href="#6b49149b4e">6b49149b4e</a> is not needed. Closing.
+</li></ul></div></details><details class="t" id="f285ddcd23" data-s="f285ddcd23 gif format not handled correctly 42. photo image|gif not-a-bug (rfe). the metadata part is done by tip 632 ([832cdddb]) in 8.7/9.0/main. what is left, automatic playback of animated gifs, is a feature request." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>f285ddcd23</span><span class="yr">2022</span><span class="ti">GIF format not handled correctly</span><span class="vd">NOT-A-BUG (RFE). The metadata part is done by TIP 632 (<a class="h" href="https://core.tcl-lang.org/tk/info/832cdddb">832cdddb</a>) in 8.7/9.0/main. What is left, automatic playback of animated GIFs, is a feature…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/f285ddcd23">Open ticket f285ddcd23</a> · 42. Photo Image|GIF · filed 2022-06-03</p><div class="lab">Full verdict</div><p>NOT-A-BUG (RFE). The metadata part is done by TIP 632 (<a class="h" href="https://core.tcl-lang.org/tk/info/832cdddb">832cdddb</a>) in 8.7/9.0/main. What is left, automatic playback of animated GIFs, is a feature request.</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> made a 2-frame GIF with a partial second frame (PIL) and ran it on main, 9.0 and 8.6. <code>-metadata</code> gives <code>{update region} {5 5 5 5} {delay time} 10 {disposal method} {do not dispose}</code> on main and 9.0 (not available in 8.6). Reading <code>-index 1</code> into an existing photo keeps the pixels outside the update region, so a script can do correct compositing.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (RFE)
+</li>
+<li><span class="k">Suggested ticket comment</span> Frame delay, disposal method and update region are available through -metadata since TIP 632 (Tk 8.7/9.0), and reading a frame into an existing photo keeps the pixels outside the update region. Automatic animation would be a separate RFE/TIP. Suggest closing this ticket or turning it into an RFE.
+</li></ul></div></details><details class="t" id="0fc1fd8ec3" data-s="0fc1fd8ec3 tcllib des package missing proc 23. option parsing not-a-bug (wrong tracker: tcllib, not tk; reporter admits it; already forwarded as tcllib ticket a1dec8173c)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>0fc1fd8ec3</span><span class="yr">2022</span><span class="ti">tcllib des package missing proc</span><span class="vd">NOT-A-BUG (wrong tracker: tcllib, not Tk; reporter admits it; already forwarded as tcllib ticket a1dec8173c)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/0fc1fd8ec3">Open ticket 0fc1fd8ec3</a> · 23. Option Parsing · filed 2022-04-09</p><div class="lab">Full verdict</div><p>NOT-A-BUG (wrong tracker: tcllib, not Tk; reporter admits it; already forwarded as tcllib ticket a1dec8173c)</p><ul>
+<li><span class="k">Platform</span> generic (tcllib)
+</li>
+<li><span class="k">Tested</span> n/a
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> This is a tcllib issue, tracked at [<a href="https://core.tcl-lang.org/tcllib/tktview/a1dec8173cf26c4020ae13bbc50782a3d2a530e7].">https://core.tcl-lang.org/tcllib/tktview/a1dec8173cf26c4020ae13bbc50782a3d2a530e7].</a> Closing here.
+</li></ul></div></details><details class="t" id="a296cf46c6" data-s="a296cf46c6 [pack propagate $w 0] doesn 48. geometry management not-a-bug (long-standing documented behaviour: disabling propagation only means the geometry manager stops setting the requested size; it never restores a previous one) — docs clarification proposed" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>a296cf46c6</span><span class="yr">2022</span><span class="ti">[pack propagate $w 0] doesn</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tk-triage/prototypes/a296cf46c6.patch">patch</a><span class="vd">NOT-A-BUG (long-standing documented behaviour: disabling propagation only means the geometry manager stops setting the requested size; it never res…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/a296cf46c6">Open ticket a296cf46c6</a> · 48. Geometry Management · filed 2022-04-09</p><div class="lab">Full verdict</div><p>NOT-A-BUG (long-standing documented behaviour: disabling propagation only means the geometry manager stops setting the requested size; it never restores a previous one) — DOCS clarification proposed</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main, 8.6, 8.4.20 on X11: all keep the shrunk reqsize (e.g. 63x34) after <code>pack propagate .f 0</code>, <code>pack forget</code>, <code>destroy</code>; <code>.f configure -width [.f cget -width]</code> restores 300x200. grid behaves the same.
+</li>
+<li><span class="k">Cause</span> tkPack.c/tkGrid.c only call Tk_GeometryRequest while propagation is on; the frame's -width/-height are applied only at configure time (same root cause as withdrawn TIP #454).
+</li>
+<li><span class="k">Prototype</span> prototypes/a296cf46c6.patch (docs only: pack.n + grid.n, 11 lines; also fixes pack.n typo "requested width and height of the packer" → "of the container")
+</li>
+<li><span class="k">Suggested ticket comment</span> This is by design: when propagation is turned off, pack/grid simply stop changing the container's requested size, they do not restore an earlier one (re-apply -width/-height for that). Documented this in pack.n and grid.n.
+</li></ul></div></details><details class="t" id="80f2e1ad79" data-s="80f2e1ad79 combobox autocomplete in readonly mode 88. themed tk not-a-bug (feature request; needs tip, as fvogel noted)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>80f2e1ad79</span><span class="yr">2022</span><span class="ti">combobox autocomplete in readonly mode</span><span class="vd">NOT-A-BUG (feature request; needs TIP, as fvogel noted)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/80f2e1ad79">Open ticket 80f2e1ad79</a> · 88. Themed Tk · filed 2022-01-29</p><div class="lab">Full verdict</div><p>NOT-A-BUG (feature request; needs TIP, as fvogel noted)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> n/a
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (RFE)
+</li>
+<li><span class="k">Suggested ticket comment</span> This is a feature request; changing type to RFE. Needs a TIP and an implementation (see wiki code on ttk::combobox).
+</li></ul></div></details><details class="t" id="2058b60730" data-s="2058b60730 tip#611 proposed implementation 41. photo images not-a-bug (tip 611 implementation: photo `rotate`/`reflect` subcommands. it is a feature, not a bug, and not in main.)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2058b60730</span><span class="yr">2021</span><span class="ti">tip#611 proposed implementation</span><span class="vd">NOT-A-BUG (TIP 611 implementation: photo <code>rotate</code>/<code>reflect</code> subcommands. It is a feature, not a bug, and not in main.)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2058b60730">Open ticket 2058b60730</a> · 41. Photo Images · filed 2021-09-03</p><div class="lab">Full verdict</div><p>NOT-A-BUG (TIP 611 implementation: photo <code>rotate</code>/<code>reflect</code> subcommands. It is a feature, not a bug, and not in main.)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> the attached tip611.patch (against core-8-6-branch, 2021) does not apply to main (3 of 4 hunks fail). main has no photo rotate/reflect.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (feature; needs TIP vote and rebase)
+</li>
+<li><span class="k">Suggested ticket comment</span> This is a TIP #611 implementation rather than a bug. It should go to a tip-611 branch (the patch needs a rebase onto main), so this ticket can be closed or changed to a Feature Request.
+</li></ul></div></details><details class="t" id="497e7621b4" data-s="497e7621b4 text widget does not honor font option from tk 75. wish not-a-bug (by design: every -font value is a complete font description, and unspecified attributes get defaults. the previous value, e.g. one from the option database, is not merged in. also, tkfixedfont is a named font, not a family, so `-family tkfixedfont` falls back to the default family.)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>497e7621b4</span><span class="yr">2021</span><span class="ti">Text widget does not honor font option from Tk</span><span class="vd">NOT-A-BUG (by design: every -font value is a complete font description, and unspecified attributes get defaults. The previous value, e.g. one from …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/497e7621b4">Open ticket 497e7621b4</a> · 75. wish · filed 2021-06-06</p><div class="lab">Full verdict</div><p>NOT-A-BUG (by design: every -font value is a complete font description, and unspecified attributes get defaults. The previous value, e.g. one from the option database, is not merged in. Also, TkFixedFont is a named font, not a family, so <code>-family TkFixedFont</code> falls back to the default family.)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main, 8.6 (Xvfb, no WM). <code>{-family TkFixedFont -size 48}</code> → actual Noto Sans 48. Then <code>{-overstrike 1}</code> → Noto Sans 12 (the default size), overstrike 1.
+</li>
+<li><span class="k">Cause</span> font.n, form [5] "option value ...": missing attributes take their defaults (size 0 means the platform default). Nothing in the -font option inherits.
+</li>
+<li><span class="k">Prototype</span> none (not a bug)
+</li>
+<li><span class="k">Suggested ticket comment</span> A font description in option-value form is complete: omitted attributes take their defaults, not the values of the widget's previous font. To derive a font, use a named font (<code>font create F {*}[font actual TkFixedFont] -size 48; font configure F -overstrike 1</code>). Note that <code>-family TkFixedFont</code> isn't valid either: TkFixedFont is a named font, not a family. Closing as not a bug.
+</li></ul></div></details><details class="t" id="e5ccf54254" data-s="e5ccf54254 binding to toplevels fails for the root window 01. bindings not-a-bug (documented behaviour: &quot;.&quot; gets the application class, and its bindtags are &quot;. &lt;class&gt; all&quot;)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>e5ccf54254</span><span class="yr">2020</span><span class="ti">Binding to toplevels fails for the root window</span><span class="vd">NOT-A-BUG (documented behaviour: "." gets the application class, and its bindtags are ". &lt;Class&gt; all")</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/e5ccf54254">Open ticket e5ccf54254</a> · 01. Bindings · filed 2020-12-14</p><div class="lab">Full verdict</div><p>NOT-A-BUG (documented behaviour: "." gets the application class, and its bindtags are ". &lt;Class&gt; all")</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main, 8.6: <code>winfo class .</code> = app class, <code>bindtags .</code> = {. App all}, <code>bindtags .t</code> = {.t Toplevel all}
+</li>
+<li><span class="k">Cause</span> tkWindow.c/tkFrame.c create "." as a toplevel with -class set to the application class. This is the same as <code>toplevel .t -class X</code>.
+</li>
+<li><span class="k">Prototype</span> none (changing it would be an incompatible behaviour change; that would need a TIP)
+</li>
+<li><span class="k">Suggested ticket comment</span> Works as documented (wish(1), bindtags(n)): "." is a toplevel whose class is the application class. Use <code>bindtags . [linsert [bindtags .] 2 Toplevel]</code> if needed. Suggest closing as "Works as designed", or turning this into a TIP for 9.x.
+</li></ul></div></details><details class="t" id="4dc9cdf8f1" data-s="4dc9cdf8f1 font sizing not correct for bold font on windows 10 47. win fonts not-a-bug (documented behaviour; rfe)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>4dc9cdf8f1</span><span class="yr">2020</span><span class="ti">font sizing not correct for bold font on windows 10</span><span class="vd">NOT-A-BUG (documented behaviour; RFE)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/4dc9cdf8f1">Open ticket 4dc9cdf8f1</a> · 47. Win Fonts · filed 2020-06-23</p><div class="lab">Full verdict</div><p>NOT-A-BUG (documented behaviour; RFE)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> X11 main and 8.6. <code>font create B -weight bold</code> gives <code>-size 0</code>, which resolves to 12 while TkDefaultFont is 9/10. This is the same behaviour on every platform.
+</li>
+<li><span class="k">Cause</span> font.n: "If size is unspecified or zero, a platform-dependent default size is chosen". New fonts do not inherit from TkDefaultFont.
+</li>
+<li><span class="k">Prototype</span> none (inheriting from TkDefaultFont would be a behaviour change and needs a TIP)
+</li>
+<li><span class="k">Suggested ticket comment</span> Documented behaviour: a size of 0 means the platform default size, not the TkDefaultFont size. Use <code>font create B {*}[font actual TkDefaultFont] -weight bold</code>. Inheriting defaults from TkDefaultFont would be an RFE/TIP.
+</li></ul></div></details><details class="t" id="9cb6a73003" data-s="9cb6a73003 8.6.10 testing 86. test tools not-a-bug (obsolete). this is a log of test results for the 8.6.10 release candidate on several systems, not a single bug. most of the listed failures depend on the environment (no wm/wayland, fonts, macos drawing)." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>9cb6a73003</span><span class="yr">2019</span><span class="ti">8.6.10 testing</span><span class="vd">NOT-A-BUG (obsolete). This is a log of test results for the 8.6.10 release candidate on several systems, not a single bug. Most of the listed failu…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/9cb6a73003">Open ticket 9cb6a73003</a> · 86. Test Tools · filed 2019-10-01</p><div class="lab">Full verdict</div><p>NOT-A-BUG (obsolete). This is a log of test results for the 8.6.10 release candidate on several systems, not a single bug. Most of the listed failures depend on the environment (no WM/Wayland, fonts, macOS drawing).</p><ul>
+<li><span class="k">Platform</span> generic (test-suite report)
+</li>
+<li><span class="k">Tested</span> main in the wt build, Xvfb with no WM: listbox, scrollbar and select tests pass (listbox-21.9/21.10 from the comments pass). focus-2.6/2.7/2.9/5.1 fail only because no WM was running.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> This is a release-testing log for 8.6.10. Current failures should be reported as separate tickets. Closing as out of date.
+</li></ul></div></details><details class="t" id="67384bce7d" data-s="67384bce7d side effects of destroying an embedded window depend on the os 65. generic window operations not-a-bug (intentional platform difference; the tests were adapted in [02ca3773], 2019-05)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>67384bce7d</span><span class="yr">2019</span><span class="ti">Side effects of destroying an embedded window depend on the OS</span><span class="vd">NOT-A-BUG (intentional platform difference; the tests were adapted in <a class="h" href="https://core.tcl-lang.org/tk/info/02ca3773">02ca3773</a>, 2019-05)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/67384bce7d">Open ticket 67384bce7d</a> · 65. Generic Window Operations · filed 2019-01-24</p><div class="lab">Full verdict</div><p>NOT-A-BUG (intentional platform difference; the tests were adapted in <a class="h" href="https://core.tcl-lang.org/tk/info/02ca3773">02ca3773</a>, 2019-05)</p><ul>
+<li><span class="k">Platform</span> generic (design question)
+</li>
+<li><span class="k">Tested</span> main, 8.6, 8.5, 8.4 on X11. Destroying the embedded toplevel also destroys the container on every version (unix/tkUnixEmbed.c EmbedStructureProc → Tk_DestroyWindow on DestroyNotify). winfo-13.2 expects this on unix and passes.
+</li>
+<li><span class="k">Cause</span> unix/tkUnixEmbed.c and macosx destroy the container on purpose; win/tkWinEmbed.c does not.
+</li>
+<li><span class="k">Prototype</span> none (would be a behaviour decision). The behaviour is not in the docs (frame.n and toplevel.n say nothing about it). Documenting it in frame.n under -container would be the cheap resolution.
+</li>
+<li><span class="k">Suggested ticket comment</span> This has been the documented-by-tests behaviour on X11 since 8.4, and winfo-13.2 is now platform-aware. Unless someone wants Windows changed, I suggest noting in frame.n (-container) that on X11/macOS the container is destroyed with the embedded window, then closing.
+</li></ul></div></details><details class="t" id="8634f9d537" data-s="8634f9d537 namespace path errors in ::oo::infoobject (unused) not-a-bug (still behaves this way in tcl 9.1b1, 8.6.18 and 8.6.8, and it is expected)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>8634f9d537</span><span class="yr">2018</span><span class="ti">namespace path errors in ::oo::InfoObject</span><span class="vd">NOT-A-BUG (still behaves this way in Tcl 9.1b1, 8.6.18 and 8.6.8, and it is expected)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/8634f9d537">Open ticket 8634f9d537</a> · (unused) · filed 2018-12-19</p><div class="lab">Full verdict</div><p>NOT-A-BUG (still behaves this way in Tcl 9.1b1, 8.6.18 and 8.6.8, and it is expected)</p><ul>
+<li><span class="k">Platform</span> generic (Tcl, not Tk)
+</li>
+<li><span class="k">Tested</span> tclsh 9.1b1, 8.6.18, 8.6.8
+</li>
+<li><span class="k">Cause</span> <code>info object namespace</code> is implemented as the command ::oo::InfoObject::namespace. Inside <code>namespace eval ::oo::InfoObject</code>, the word <code>namespace</code> resolves to that command, which treats "path" as an object name. Using <code>::namespace path</code> works.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Not a bug, and a Tcl matter anyway. ::oo::InfoObject contains a command named <code>namespace</code> (the implementation of <code>info object namespace</code>), and it shadows the global one inside that namespace. Use <code>::namespace path</code>. Closing.
+</li></ul></div></details><details class="t" id="65c7412f49" data-s="65c7412f49 make distclean errors out the second time 84. unix build not-a-bug (still behaves this way on main, and it is the standard autoconf/gnu behaviour)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>65c7412f49</span><span class="yr">2018</span><span class="ti">make distclean errors out the second time</span><span class="vd">NOT-A-BUG (still behaves this way on main, and it is the standard autoconf/GNU behaviour)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/65c7412f49">Open ticket 65c7412f49</a> · 84. Unix Build · filed 2018-11-10</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Invalid)</strong></p><ul><li>💬 2026-10-20 <strong>serhiy.storchaka</strong>: This is expected: make distclean removes all files created by configure, including Makefile, as required by the GNU Coding Standards and as in Tcl and Automake-based packages. After that there is no Makefile, so make cannot know any target. Run configure again, or use make clean if the Makefile should be kept.</li></ul></div><div class="lab">Full verdict</div><p>NOT-A-BUG (still behaves this way on main, and it is the standard autoconf/GNU behaviour)</p><ul>
+<li><span class="k">Platform</span> build
+</li>
+<li><span class="k">Tested</span> read unix/Makefile.in in main (distclean: <code>rm -rf Makefile config.status ...</code>). Tcl's unix/Makefile.in does the same.
+</li>
+<li><span class="k">Cause</span> the GNU Coding Standards require distclean to remove everything configure created, including Makefile. After that, make has no Makefile to read.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> This is expected. distclean removes all files created by configure, including the Makefile (GNU Coding Standards; Tcl behaves the same), so a second <code>make distclean</code> has no Makefile to run. Closing.
+</li></ul></div></details><details class="t" id="e01a250dc8" data-s="e01a250dc8 tk radiobutton indicator does not change size with font size 03. [*button] and [label] not-a-bug (design since tip #109). the indicator is still a fixed size relative to the font." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>e01a250dc8</span><span class="yr">2017</span><span class="ti">Tk radiobutton indicator does not change size with font size</span><span class="vd">NOT-A-BUG (design since TIP #109). The indicator is still a fixed size relative to the font.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/e01a250dc8">Open ticket e01a250dc8</a> · 03. [*button] and [label] · filed 2017-09-07</p><div class="lab">Full verdict</div><p>NOT-A-BUG (design since TIP #109). The indicator is still a fixed size relative to the font.</p><ul>
+<li><span class="k">Platform</span> X11
+</li>
+<li><span class="k">Tested</span> main 9.1b1, 8.6.18, 8.4.20 on Xvfb, fonts Helvetica 6 and 32. The indicator space grows with the font in all versions (8.6: 21 to 77 px). The drawn indicator stays fixed: 8.6 uses a hardcoded bitmap, and main uses a 16x16 SVG scaled only by TkScalingLevel2 (tk scaling), not by the font size.
+</li>
+<li><span class="k">Cause</span> unix/tkUnixButton.c TkpDrawCheckIndicator uses fixed RADIO_BUTTON_DIM, scaled by display scaling only. This was intentional in TIP #109 (Windows-like look).
+</li>
+<li><span class="k">Prototype</span> none (would be a behaviour change and needs a TIP or at least a discussion)
+</li>
+<li><span class="k">Suggested ticket comment</span> This is by design since TIP #109. In 9.x the indicator scales with [tk scaling], not with the font size. For font-proportional indicators use -image/-selectimage, or ttk::radiobutton with a style -indicatordiameter. Suggest closing as Won't Fix.
+</li></ul></div></details><details class="t" id="c2290bd04b" data-s="c2290bd04b iwidgets incompatible with auto_load - produces command error. 99. other not-a-bug (in tk). without itcl the script works on main 9.1 and 8.6 (prints &quot;alpha beta charlie&quot;). itcl/iwidgets is not installed here, so i could not run the failing case." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>c2290bd04b</span><span class="yr">2017</span><span class="ti">Iwidgets incompatible with auto_load - produces command error.</span><span class="vd">NOT-A-BUG (in Tk). Without Itcl the script works on main 9.1 and 8.6 (prints "alpha beta Charlie"). Itcl/Iwidgets is not installed here, so I could…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/c2290bd04b">Open ticket c2290bd04b</a> · 99. Other · filed 2017-01-29</p><div class="lab">Full verdict</div><p>NOT-A-BUG (in Tk). Without Itcl the script works on main 9.1 and 8.6 (prints "alpha beta Charlie"). Itcl/Iwidgets is not installed here, so I could not run the failing case.</p><ul>
+<li><span class="k">Platform</span> generic (Itcl, not Tk)
+</li>
+<li><span class="k">Tested</span> tclsh9.1 and tclsh8.6 with the ticket's src.tcl plus auto_mkindex and dst.tcl.
+</li>
+<li><span class="k">Cause</span> itcl library/itcl.tcl (as of itcl.fossil trunk 2017) redefines ::auto_import with an Itcl-3-era version that creates <code>::itcl::import::stub</code> stubs instead of sourcing the auto_index entry. It also lacks Tcl's check that the qualifiers match. So <code>namespace import ::src::*</code> does not load the procs once Itcl is loaded.
+</li>
+<li><span class="k">Prototype</span> none (belongs to Itcl, duplicate of Tcl ticket ba79c2f0ce)
+</li>
+<li><span class="k">Suggested ticket comment</span> Not a Tk issue. Itcl's library/itcl.tcl overrides ::auto_import with its own stub-based version, which breaks autoloading on <code>namespace import</code>. It is already tracked as Tcl <a class="h" href="https://core.tcl-lang.org/tk/info/ba79c2f0ce">ba79c2f0ce</a>; it should be moved to the Itcl tracker and closed here.
+</li></ul></div></details><details class="t" id="4a063ca067" data-s="4a063ca067 bordercolor in ttk button 88. themed tk not-a-bug (theme design; rfe at most)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>4a063ca067</span><span class="yr">2016</span><span class="ti">bordercolor in ttk button</span><span class="vd">NOT-A-BUG (theme design; RFE at most)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/4a063ca067">Open ticket 4a063ca067</a> · 88. Themed Tk · filed 2016-11-19</p><div class="lab">Full verdict</div><p>NOT-A-BUG (theme design; RFE at most)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main and 8.6, <code>ttk::style element options</code> for Button.border in each theme. -bordercolor is supported by clam, and by alt only for the default-button ring. default and classic draw 3-D bevels derived from -background. Native themes (vista, xpnative, aqua) draw with the OS.
+</li>
+<li><span class="k">Cause</span> the Button.border element of the default and classic themes (ttkElements.c) has no -bordercolor option by design.
+</li>
+<li><span class="k">Prototype</span> none (would be a feature: a new element option in the default theme)
+</li>
+<li><span class="k">Suggested ticket comment</span> -bordercolor is a theme-specific styling option. It is honored by clam (and by alt for the default ring), not by the 3-D bevel themes or the native ones. Use clam, or create a custom element with <code>ttk::style element create</code>. Suggest closing as "Works as designed" or turning it into an RFE.
+</li></ul></div></details><details class="t" id="1dde2144bd" data-s="1dde2144bd ttk style configure overwrites tk option add button but not label 88. themed tk not-a-bug (ttk::label has a -font widget option; ttk::button does not)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1dde2144bd</span><span class="yr">2016</span><span class="ti">ttk style configure overwrites Tk option add Button but not Label</span><span class="vd">NOT-A-BUG (ttk::label has a -font widget option; ttk::button does not)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1dde2144bd">Open ticket 1dde2144bd</a> · 88. Themed Tk · filed 2016-09-29</p><div class="lab">Full verdict</div><p>NOT-A-BUG (ttk::label has a -font widget option; ttk::button does not)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main, 8.6, 8.5: label gets {sans-serif 12} from the option db (h=25), button gets courier 40 from the style (h=68).
+</li>
+<li><span class="k">Cause</span> ttk::label has a -font widget option (documented in ttk_label.n), which the option database initializes, and widget options override style settings. ttk::button has no -font widget option, so only the style applies.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> Works as designed: ttk::label has a -font widget option, which <code>option add *Font</code> initializes and which overrides the style. ttk::button has no such option. Use <code>option add *TLabel.font ...</code> or a more specific pattern, or set the font with ttk::style only.
+</li></ul></div></details><details class="t" id="7fcb7ca586" data-s="7fcb7ca586 exec on a script which execute the  75. wish not-a-bug (standard unix job control)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>7fcb7ca586</span><span class="yr">2014</span><span class="ti">exec on a script which execute the</span><span class="vd">NOT-A-BUG (standard Unix job control)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/7fcb7ca586">Open ticket 7fcb7ca586</a> · 75. wish · filed 2014-10-08</p><div class="lab">Full verdict</div><p>NOT-A-BUG (standard Unix job control)</p><ul>
+<li><span class="k">Platform</span> generic (Unix)
+</li>
+<li><span class="k">Tested</span> main on Xvfb, with wish started as a background job under an interactive bash in a pty, using a child script that reads stdin.
+</li>
+<li><span class="k">Cause</span> <code>exec cmd &amp;</code> without redirection makes the child inherit wish's stdin, the controlling tty. wish was started with <code>&amp;</code>, so its job is a background process group. When rsh reads the tty, the kernel sends SIGTTIN to the whole process group, which includes wish, and everything stops (ps shows wish "Tl", job "Stopped (tty input)"). With <code>&lt;/dev/null</code> wish keeps running. tclsh would behave the same way.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> This is job control, not Tk. The background job reads from the terminal, so SIGTTIN stops the whole process group, including wish. Use <code>exec ./script.sh &lt;/dev/null &amp;</code> (or <code>rsh -n</code>).
+</li></ul></div></details><details class="t" id="0e7185dc4c" data-s="0e7185dc4c ttk combobox selection issue 88. themed tk not-a-bug (by design; the dropdown case is not-reproduced)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>0e7185dc4c</span><span class="yr">2013</span><span class="ti">ttk combobox selection issue</span><span class="vd">NOT-A-BUG (by design; the dropdown case is NOT-REPRODUCED)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/0e7185dc4c">Open ticket 0e7185dc4c</a> · 88. Themed Tk · filed 2013-07-12</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Out of Date)</strong></p><ul><li>💬 2026-09-30 <strong>serhiy.storchaka</strong>: Not reproducible with 8.6 and 9.1 on Linux/X11 and Windows: after choosing an item from the drop-down list, the whole new value is selected and exported as the PRIMARY selection. The report was for the separate Tile 0.8.6 package, not the ttk built into Tk. Changing the -textvariable directly still keeps the selection range, as jenglish explained; entry, ttk::entry and ttk::combobox all behave the same way.</li></ul></div><div class="lab">Full verdict</div><p>NOT-A-BUG (by design; the dropdown case is NOT-REPRODUCED)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main (9.1b1), 8.6.18, 8.5.19 on Xvfb with no WM. The ticket's steps were simulated: select the entry text, post the dropdown, pick "Europe" with LBSelected.
+</li>
+<li><span class="k">Cause</span> <code>ttk::combobox::SelectEntry</code> runs <code>selection range 0 end</code>, so picking an item from the list selects the whole value ("Europe" is 0-6, and <code>selection get</code> returns Europe) on all versions. Changing the -textvariable leaves the sel.first/sel.last indices as they were and only clamps them to the new value. For example, 0-end on "Europe" followed by <code>set combo USA</code> gives 0-3. The core entry and ttk::entry do the same. jenglish says in the ticket that this is intended.
+</li>
+<li><span class="k">Prototype</span> none (whether to clear the selection when the value changes is a design decision)
+</li>
+<li><span class="k">Suggested ticket comment</span> Could not reproduce the dropdown case with 8.5.19, 8.6.18 or 9.1b1: picking an item always selects the whole new value. When only the -textvariable changes, the selection indices are kept, as in entry and ttk::entry, so this works as designed. Proposing to close.
+</li></ul></div></details><details class="t" id="3613977fff" data-s="3613977fff tk radiobutton missing an option 03. [*button] and [label] not-a-bug (feature request)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3613977fff</span><span class="yr">2013</span><span class="ti">Tk radiobutton missing an option</span><span class="vd">NOT-A-BUG (feature request)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3613977fff">Open ticket 3613977fff</a> · 03. [*button] and [label] · filed 2013-05-27</p><div class="lab">Full verdict</div><p>NOT-A-BUG (feature request)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> code check on main. <code>selectBorder</code> (-selectcolor) is the only selected-state colour in tkButton.c and tkUnixButton.c. There is still no selected-state foreground option.
+</li>
+<li><span class="k">Cause</span> n/a. Adding a new option (e.g. -selectforeground for radiobutton/checkbutton with -indicatoron 0) needs a TIP.
+</li>
+<li><span class="k">Prototype</span> none (new option = API change)
+</li>
+<li><span class="k">Suggested ticket comment</span> This is a feature request (a new option such as -selectforeground), not a bug. It would need a TIP. ttk::radiobutton with a style map on -foreground for the selected state works today.
+</li></ul></div></details><details class="t" id="3603396fff" data-s="3603396fff ttk::sizegrip doesn 88. themed tk not-a-bug (rfe: native windows modal sizing loop with outline and escape to cancel)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3603396fff</span><span class="yr">2013</span><span class="ti">ttk::sizegrip doesn</span><span class="vd">NOT-A-BUG (RFE: native Windows modal sizing loop with outline and Escape to cancel)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3603396fff">Open ticket 3603396fff</a> · 88. Themed Tk · filed 2013-02-05</p><div class="lab">Full verdict</div><p>NOT-A-BUG (RFE: native Windows modal sizing loop with outline and Escape to cancel)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> sizegrip.tcl resizes the window live by setting <code>wm geometry</code>. Native behaviour would need a C helper, e.g. posting WM_SYSCOMMAND SC_SIZE|WMSZ_BOTTOMRIGHT to the toplevel.
+</li>
+<li><span class="k">Prototype</span> none (feature, needs new C-level hook)
+</li>
+<li><span class="k">Suggested ticket comment</span> This is a feature request. It could be done on win32 by starting the system size loop (WM_SYSCOMMAND SC_SIZE+WMSZ_BOTTOMRIGHT) from the sizegrip binding. Re-categorize as RFE.
+</li></ul></div></details><details class="t" id="3598814fff" data-s="3598814fff invalid kern table error for  45. aqua fonts not-a-bug (broken kern table in the third-party font &quot;bauhaus 93&quot;; coretext writes a log message and tk raises no error). cannot-test (macos)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3598814fff</span><span class="yr">2012</span><span class="ti">Invalid kern table error for</span><span class="vd">NOT-A-BUG (broken kern table in the third-party font "Bauhaus 93"; CoreText writes a log message and Tk raises no error). CANNOT-TEST (macOS)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3598814fff">Open ticket 3598814fff</a> · 45. Aqua Fonts · filed 2012-12-29</p><div class="lab">Full verdict</div><p>NOT-A-BUG (broken kern table in the third-party font "Bauhaus 93"; CoreText writes a log message and Tk raises no error). CANNOT-TEST (macOS)</p><ul>
+<li><span class="k">Platform</span> Aqua
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> The message is logged by CoreText on stderr/console for a malformed font; other applications print it too (wordtech's comment).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> The message comes from CoreText about a malformed font and is not a Tk error. Closing as third-party font issue.
+</li></ul></div></details><details class="t" id="3565268fff" data-s="3565268fff bind&lt;buttonrelease-1&gt; doesnt have same behavior on windows 01. bindings not-a-bug (by design) / needs-windows to confirm" data-p="branch"><summary><span class="id"><span class="pe" title="Fix in a branch" aria-label="Fix in a branch">🔧</span>3565268fff</span><span class="yr">2012</span><span class="ti">bind&lt;ButtonRelease-1&gt; doesnt have same behavior on windows</span><span class="vd">NOT-A-BUG (by design) / NEEDS-WINDOWS to confirm</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3565268fff">Open ticket 3565268fff</a> · 01. Bindings · filed 2012-09-06</p><div class="since"><div class="lab">🔧 Since triage (updated 2026-10-22)</div><p>Status now: <strong>Open</strong></p><ul><li>🔧 2026-10-08 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/57bfd88713">57bfd88713</a> on <code>x11-check-toggle-on-release</code>, not merged: Fix [3565268]: On X11, classic checkbuttons and radiobuttons are now invoked when mouse button 1 is released over them, not when it is pressed, as on Windows an</li><li>💬 2026-10-08 <strong>serhiy.storchaka</strong>: On X11, the classic checkbutton and radiobutton were invoked when mouse button 1 was pressed. On Windows and macOS they are invoked when it is released, in the class binding, which runs after the widget binding. All other toolkits on X11 also toggle on release: Motif, Athena, GTK 3, GTK 4 and Qt 6. So do Tk's ttk checkbutton and radiobutton on all platforms. Proposed fix in branch <a class="h" href="https://core.tcl-lang.org/tk/info/57bfd88713">57bfd88713</a>: on X11 the classic …</li></ul></div><div class="lab">Full verdict</div><p>NOT-A-BUG (by design) / NEEDS-WINDOWS to confirm</p><ul>
+<li><span class="k">Platform</span> Windows (also Aqua)
+</li>
+<li><span class="k">Tested</span> X11 main and 8.5: a widget &lt;ButtonRelease-1&gt; binding sees the new value. Repro: win/3565268fff.tcl
+</li>
+<li><span class="k">Cause</span> library/button.tcl. On x11 the class binding toggles on &lt;Button-1&gt; (tk::CheckInvoke / tk::CheckRadioInvoke). On win32 and aqua it toggles in the class &lt;ButtonRelease-1&gt; binding (tk::ButtonUp), which follows the native look and feel. Widget bindings run before class bindings, so on Windows the widget's release binding still sees the old value.
+</li>
+<li><span class="k">Prototype</span> none (intentional platform behaviour)
+</li>
+<li><span class="k">Suggested ticket comment</span> This is by design. On Windows and macOS the check/radiobutton toggles on button release in its class binding, and that runs after the widget binding. Use -command, a variable trace, or a bindtag placed after the class tag.
+</li></ul></div></details><details class="t" id="3543420fff" data-s="3543420fff toggle.tbutton style doesn’t work on windows 88. themed tk not-a-bug (not run: the windows vm was powered off, vmstate=poweroff since 2026-10-03 21:23, so no 8.6.18 or trunk run)" data-p="pending"><summary><span class="id"><span class="pe" title="Pending" aria-label="Pending">⏳</span>3543420fff</span><span class="yr">2012</span><span class="ti">Toggle.TButton style doesn’t work on Windows</span><span class="vd">NOT-A-BUG (not run: the Windows VM was powered off, VMState=poweroff since 2026-10-03 21:23, so no 8.6.18 or trunk run)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3543420fff">Open ticket 3543420fff</a> · 88. Themed Tk · filed 2012-07-13</p><div class="since"><div class="lab">⏳ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Pending (Remind)</strong></p><ul></ul></div><div class="lab">Full verdict</div><p>NOT-A-BUG (not run: the Windows VM was powered off, VMState=poweroff since 2026-10-03 21:23, so no 8.6.18 or trunk run)</p><ul>
+<li><span class="k">Platform</span> Windows (vista/xpnative themes)
+</li>
+<li><span class="k">Tested</span> Read the attached toggle.pyw. It maps <code>-relief</code> sunken/raised on "Toggle.TButton" but keeps the default TButton layout. Its second button already uses the Toolbutton style. I relied on jenglish's 2012 analysis in the ticket. A local read of library/ttk/vistaTheme.tcl was blocked by the permission classifier, so I did not re-check the theme files myself.
+</li>
+<li><span class="k">Cause</span> On the native Windows themes, TButton's border element is drawn by the visual-styles API (Button.button) and has no -relief option, so <code>style map ... -relief</code> has no effect. Only the default/alt/clam/classic elements honour -relief.
+</li>
+<li><span class="k">Prototype</span> none (works as designed)
+</li>
+<li><span class="k">Suggested ticket comment</span> Works as designed: native Windows button elements ignore -relief. For a toggle button, use <code>ttk::checkbutton -style Toolbutton</code>, which draws a pushed-in state when selected on every theme. This has been Pending since 2016 with nothing new, so it can be closed.
+</li></ul></div></details><details class="t" id="3517803fff" data-s="3517803fff modality not properly working 56. [grab] not-a-bug (documented grab semantics)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3517803fff</span><span class="yr">2012</span><span class="ti">Modality not properly working</span><span class="vd">NOT-A-BUG (documented grab semantics)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3517803fff">Open ticket 3517803fff</a> · 56. [grab] · filed 2012-04-14</p><div class="lab">Full verdict</div><p>NOT-A-BUG (documented grab semantics)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> X11 main and 8.5, no WM: with a grab on .app.fsb, clicks in the sibling toplevel .help go to the grab window (.help.b is not invoked). Descendant toplevels of the grab window still work.
+</li>
+<li><span class="k">Cause</span> generic/tkGrab.c TkGrabState. The <code>mainPtr</code> check separates applications, not toplevel trees. grab.n says a local grab affects the whole application: windows outside the grab subtree "will be insensitive until the grab is released". Only toplevels under the grab window take part in it.
+</li>
+<li><span class="k">Prototype</span> none. The proposed change would redefine what local grabs mean.
+</li>
+<li><span class="k">Suggested ticket comment</span> This is how grab is documented: a local grab makes every window of the application outside the grab subtree insensitive. To keep a help window usable during the modal dialog, make it a descendant of the grabbed window (for example .application.fileSelBox.help).
+</li></ul></div></details><details class="t" id="3476090fff" data-s="3476090fff -help does not work in tk 8.5.11 on macos 73. argv parsing not-a-bug (tk_parseargv called before tk is initialized) / docs" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3476090fff</span><span class="yr">2012</span><span class="ti">-help does not work in tk 8.5.11 on MacOs</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tk-triage/prototypes/3476090fff.patch">patch</a><span class="vd">NOT-A-BUG (Tk_ParseArgv called before Tk is initialized) / DOCS</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3476090fff">Open ticket 3476090fff</a> · 73. Argv Parsing · filed 2012-01-19</p><div class="lab">Full verdict</div><p>NOT-A-BUG (Tk_ParseArgv called before Tk is initialized) / DOCS</p><ul>
+<li><span class="k">Platform</span> generic (C API)
+</li>
+<li><span class="k">Tested</span> own C program calling Tk_ParseArgv(interp, NULL, ...) with -help, without Tk_Init: segfault on Linux main and 8.6.18, works on 8.5.19. With Tcl_Init+Tk_Init first: prints the usage on main and 8.6.
+</li>
+<li><span class="k">Cause</span> libtk is built with Tcl stubs (on Unix since 8.6, probably already in the 8.5 macOS framework). The Tk-side tclStubsPtr is only set up by Tk_Init. Plain option parsing makes no Tcl calls, but PrintUsage calls Tcl_NewStringObj through the stub table, which is NULL at that point, so it crashes. The attached program is not available; this is the most likely explanation.
+</li>
+<li><span class="k">Prototype</span> prototypes/3476090fff.patch (4 lines, doc/ParseArgv.3 only: says that Tk must be initialized in interp before calling Tk_ParseArgv, even if tkwin is NULL)
+</li>
+<li><span class="k">Suggested ticket comment</span> The crash happens because Tk_ParseArgv is called before Tk_Init. Tk calls Tcl through its stub table, and Tk_Init is what sets that table up. Call Tcl_Init/Tk_Init first. The manual page will say this explicitly.
+</li></ul></div></details><details class="t" id="3414673fff" data-s="3414673fff improper look of ttk::checkbutton -style toolbutton 88. themed tk not-a-bug (standard sunken relief)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>3414673fff</span><span class="yr">2011</span><span class="ti">Improper look of ttk::checkbutton -style Toolbutton</span><span class="vd">NOT-A-BUG (standard sunken relief)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3414673fff">Open ticket 3414673fff</a> · 88. Themed Tk · filed 2011-09-27</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Fixed)</strong></p><ul><li>🔧 2026-09-30 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/a0094e41af">a0094e41af</a> on <code>toolbutton-pressed-look</code>, in main, 9.0: Fix [3414673]: Improper look of ttk::checkbutton -style Toolbutton. The contents of a pressed or checked Toolbutton are shifted as for a pressed TButton in the </li><li>🔧 2026-10-02 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/bfa641b9a2">bfa641b9a2</a> on <code>trunk</code>, in main, 9.0, 8.6: Fix for <a class="h" href="https://core.tcl-lang.org/tk/info/3414673fff">3414673fff</a>: Improper look of ttk::checkbutton -style Toolbutton.</li><li>🔧 2026-10-02 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/fe64661016">fe64661016</a> on <code>core-9-0-branch</code>, in main, 9.0: Fix for <a class="h" href="https://core.tcl-lang.org/tk/info/3414673fff">3414673fff</a>: Improper look of ttk::checkbutton -style Toolbutton.</li><li>🔧 2026-10-02 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/7d19595beb">7d19595beb</a> on <code>core-8-6-branch</code>, in main, 9.0, 8.6: Fix for <a class="h" href="https://core.tcl-lang.org/tk/info/3414673fff">3414673fff</a>: Improper look of ttk::checkbutton -style Toolbutton.</li><li>💬 2026-09-30 <strong>serhiy.storchaka</strong>: The colors of the sunken border are the usual ones (dark top and left, light bottom and right) and the same as for a pressed TButton. What is missing is the shift of the contents: TButton sets -shiftrelief 1 in the default, alt and winnative themes, but Toolbutton does not (only classic sets it), so a pressed or checked Toolbutton gets the sunken border without moving its contents. In the clam theme, whose border …</li><li>💬 2026-10-02 <strong>nemethi</strong>: Many thanks, Serhiy! Merged into main, core-9-0-branch, and core-8-6-branch by commits <a class="h" href="https://core.tcl-lang.org/tk/info/bfa641b9">bfa641b9</a>, <a class="h" href="https://core.tcl-lang.org/tk/info/fe646610">fe646610</a>, and <a class="h" href="https://core.tcl-lang.org/tk/info/7d19595b">7d19595b</a>.</li></ul></div><div class="lab">Full verdict</div><p>NOT-A-BUG (standard sunken relief)</p><ul>
+<li><span class="k">Platform</span> generic (X11 themes)
+</li>
+<li><span class="k">Tested</span> main on X11 with the default, clam, alt and classic themes, in screenshots. A selected Toolbutton uses <code>-relief sunken</code>: dark top/left, light bottom/right. This is the same as a classic <code>button -relief sunken</code>.
+</li>
+<li><span class="k">Cause</span> the selected/pressed state is mapped to relief sunken in library/ttk/defaults.tcl, clamTheme.tcl, altTheme.tcl and classicTheme.tcl. The reporter wants a different pressed look (thin border, shifted label), which is an RFE.
+</li>
+<li><span class="k">Prototype</span> none (design preference)
+</li>
+<li><span class="k">Suggested ticket comment</span> A selected Toolbutton is drawn with the standard sunken relief, the same as a Tk button with -relief sunken. A different look can be set with <code>ttk::style map Toolbutton</code>. Suggest closing as not a bug (or RFE).
+</li></ul></div></details><details class="t" id="3403387fff" data-s="3403387fff canvas text clipping 05. canvas items not-a-bug (rfe: a height/max-lines limit for canvas text items)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3403387fff</span><span class="yr">2011</span><span class="ti">Canvas Text Clipping</span><span class="vd">NOT-A-BUG (RFE: a height/max-lines limit for canvas text items)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3403387fff">Open ticket 3403387fff</a> · 05. Canvas Items · filed 2011-09-02</p><div class="lab">Full verdict</div><p>NOT-A-BUG (RFE: a height/max-lines limit for canvas text items)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main source. Canvas text items still have only -width for wrapping and no -height, -maxlines or clipping option.
+</li>
+<li><span class="k">Cause</span> n/a (feature request)
+</li>
+<li><span class="k">Prototype</span> none (new option means a TIP-level API change)
+</li>
+<li><span class="k">Suggested ticket comment</span> This asks for a new feature (clipping or a line limit for canvas text items), not a bug. Needs a TIP; changing the type to RFE.
+</li></ul></div></details><details class="t" id="3310586fff" data-s="3310586fff doubleclicks generated at any speed 69. events not-a-bug (documented behaviour; `-time current` added in 8.6.10 as the fix, tip #532 merge 84fbb57ab3, 2019-08-28)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3310586fff</span><span class="yr">2011</span><span class="ti">Doubleclicks generated at any speed</span><span class="vd">NOT-A-BUG (documented behaviour; <code>-time current</code> added in 8.6.10 as the fix, TIP #532 merge 84fbb57ab3, 2019-08-28)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3310586fff">Open ticket 3310586fff</a> · 69. Events · filed 2011-06-02</p><div class="lab">Full verdict</div><p>NOT-A-BUG (documented behaviour; <code>-time current</code> added in 8.6.10 as the fix, TIP #532 merge 84fbb57ab3, 2019-08-28)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main, 9.0, 8.6 tip, 8.6.9, 8.5, 8.4 on Xvfb. Without -time, all tick counts are 0, so a second generated click always counts as &lt;Double-1&gt; (all versions). On 8.6.10+ <code>event generate ... -time current</code> gives single/single/single, and a real double only when &lt;10 ms apart. Explicit -time values (100/1100/1200) also work.
+</li>
+<li><span class="k">Cause</span> generic/tkBind.c HandleEventGenerate: fields that are not given default to 0, so all generated button events have time 0 and fall inside the double-click interval.
+</li>
+<li><span class="k">Prototype</span> none. Defaulting -time to "current" would change long-standing behaviour that tests rely on. Side note: <code>-time [clock milliseconds]</code> fails with "integer value too large" because Tcl_GetIntFromObj is used for an X Time (unsigned long). That is a separate small issue.
+</li>
+<li><span class="k">Suggested ticket comment</span> Generated events get time 0 unless -time is given, so consecutive generated clicks count as multi-clicks. Since 8.6.10 (TIP #532) use <code>event generate .c &lt;Button-1&gt; -time current</code> (or explicit -time values). Closing as works-as-documented.
+</li></ul></div></details><details class="t" id="3301481fff" data-s="3301481fff ttk::spinbox on windows doesnt handle -width 0 88. themed tk not-a-bug on x11 / needs-windows to confirm vista" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3301481fff</span><span class="yr">2011</span><span class="ti">ttk::spinbox on windows doesnt handle -width 0</span><span class="vd">NOT-A-BUG on X11 / NEEDS-WINDOWS to confirm vista</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/3301481fff">Open ticket 3301481fff</a> · 88. Themed Tk · filed 2011-05-13</p><div class="lab">Full verdict</div><p>NOT-A-BUG on X11 / NEEDS-WINDOWS to confirm vista</p><ul>
+<li><span class="k">Platform</span> Windows (X11 checked)
+</li>
+<li><span class="k">Tested</span> main, 8.6 on X11, all themes. For ttk::entry, ttk::spinbox and ttk::combobox, <code>-width 0</code> gives the same request as <code>-width 1</code>, and spinbox and combobox scale with -width exactly like entry. Windows script: win/3301481fff.tcl (prints VERDICT and checks the vista/winnative themes too).
+</li>
+<li><span class="k">Cause</span> generic/ttk/ttkEntry.c TextareaElementSize treats width &lt;= 0 as 1 char for all ttk entry-like widgets (since 2006). Unlike the classic entry, ttk has no "fit contents" meaning for 0 (doc/ttk_entry.n marks this "Not in ttk"). Shrinking in a narrow parent works through geometry management, not -width.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> In ttk, -width 0 is the same as -width 1 for entry, spinbox and combobox on all platforms (ttk has no "fit the contents" meaning for 0). Use a small -width and let the geometry manager shrink or grow the widget. Unless the attached script shows a difference with the vista theme, this can be closed.
+</li></ul></div></details><details class="t" id="2935309fff" data-s="2935309fff no multi-column menus in tk cocoa 11. aqua menus not-a-bug (documented limitation: menu.n says -columnbreak &quot;is ignored on aqua/macos, where menus are always a single column&quot;; nsmenu has no such support)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>2935309fff</span><span class="yr">2010</span><span class="ti">No multi-column menus in Tk Cocoa</span><span class="vd">NOT-A-BUG (documented limitation: menu.n says -columnbreak "is ignored on Aqua/macOS, where menus are always a single column"; NSMenu has no such s…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2935309fff">Open ticket 2935309fff</a> · 11. Aqua Menus · filed 2010-01-19</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Wont Fix)</strong></p><ul><li>💬 2026-10-08 <strong>serhiy.storchaka</strong>: Menus on macOS are native NSMenus, which have no multi-column layout. This is now documented in the menu manual page: -columnbreak is ignored on Aqua/macOS, where menus are always a single column.</li></ul></div><div class="lab">Full verdict</div><p>NOT-A-BUG (documented limitation: menu.n says -columnbreak "is ignored on Aqua/macOS, where menus are always a single column"; NSMenu has no such support)</p><ul>
+<li><span class="k">Platform</span> Aqua
+</li>
+<li><span class="k">Tested</span> none (source/doc check only; no -columnbreak handling in macosx/tkMacOSXMenu.c)
+</li>
+<li><span class="k">Cause</span> native NSMenu does not support multiple columns; would need a custom menu view (RFE).
+</li>
+<li><span class="k">Prototype</span> none (RFE)
+</li>
+<li><span class="k">Suggested ticket comment</span> This is a documented platform limitation (see -columnbreak in menu(n)): native macOS menus are single-column. Closing; an implementation would be a feature request.
+</li></ul></div></details><details class="t" id="2874745fff" data-s="2874745fff tea 3.6 incompatible tk_include_spec define 84. unix build not-a-bug (tk_includes is not meant to come from tkconfig.sh)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>2874745fff</span><span class="yr">2009</span><span class="ti">TEA 3.6 incompatible TK_INCLUDE_SPEC define</span><span class="vd">NOT-A-BUG (TK_INCLUDES is not meant to come from tkConfig.sh)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2874745fff">Open ticket 2874745fff</a> · 84. Unix Build · filed 2009-10-08</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Invalid)</strong></p><ul><li>💬 2026-10-20 <strong>serhiy.storchaka</strong>: tkConfig.sh does not need to define TK_INCLUDES: in TEA it is computed and substituted by TEA_PUBLIC_TK_HEADERS (and TEA_PRIVATE_TK_HEADERS), which have used TK_INCLUDE_SPEC from tkConfig.sh to find tk.h since tclconfig 8803659fc8 (March 2009). An extension which uses @TK_INCLUDES@ in its Makefile.in must call TEA_PUBLIC_TK_HEADERS in its configure.ac.</li></ul></div><div class="lab">Full verdict</div><p>NOT-A-BUG (TK_INCLUDES is not meant to come from tkConfig.sh)</p><ul>
+<li><span class="k">Platform</span> build
+</li>
+<li><span class="k">Tested</span> code inspection. unix/tkConfig.sh.in still defines only TK_INCLUDE_SPEC; TEA's tcl.m4 computes and AC_SUBSTs TK_INCLUDES itself in TEA_PUBLIC_TK_HEADERS / TEA_PRIVATE_TK_HEADERS (e.g. Tix8.4.3/tclconfig/tcl.m4:3534-3567). An extension using @TK_INCLUDES@ must call TEA_PUBLIC_TK_HEADERS in its configure.ac.
+</li>
+<li><span class="k">Cause</span> extension's configure (itclwidgets) not calling TEA_PUBLIC_TK_HEADERS.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> TK_INCLUDES is set by TEA itself (TEA_PUBLIC_TK_HEADERS / TEA_PRIVATE_TK_HEADERS in tcl.m4), not by tkConfig.sh. Extensions using @TK_INCLUDES@ need to call one of these macros in configure.ac. Closing as not a Tk bug.
+</li></ul></div></details><details class="t" id="2820123fff" data-s="2820123fff canvas item bindings don 05. canvas items not-a-bug (the cursor lines drawn at the pointer become the topmost &quot;current&quot; item, so the rectangle gets &lt;leave&gt;)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2820123fff</span><span class="yr">2009</span><span class="ti">Canvas item bindings don</span><span class="vd">NOT-A-BUG (the cursor lines drawn at the pointer become the topmost "current" item, so the rectangle gets &lt;Leave&gt;)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2820123fff">Open ticket 2820123fff</a> · 05. Canvas Items · filed 2009-07-11</p><div class="lab">Full verdict</div><p>NOT-A-BUG (the cursor lines drawn at the pointer become the topmost "current" item, so the rectangle gets &lt;Leave&gt;)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main, 8.6 (event generate + -warp): with d=0 the current item is a cursor line and the rectangle toggles Enter/Leave. With the cursor items created <code>-state disabled</code> the rectangle stays current.
+</li>
+<li><span class="k">Cause</span> generic/tkCanvas.c PickCurrentItem picks the topmost item under the pointer, which is the freshly created line through the hot spot. This is by design.
+</li>
+<li><span class="k">Prototype</span> none (not a bug)
+</li>
+<li><span class="k">Suggested ticket comment</span> Works as designed: items drawn under the pointer become the ''current'' item, so the rectangle gets &lt;Leave&gt;. Create the cursor items with &lt;tt&gt;-state disabled&lt;/tt&gt; (disabled items are ignored when picking) and the bindings work as expected.
+</li></ul></div></details><details class="t" id="2378039fff" data-s="2378039fff treeview custom layout problems 88. themed tk not-a-bug. `-border 1` in a layout marks the element as a border element (children are placed inside its padding); it is not the border width. without treeview.field, the empty area is filled with treeview -background, as jenglish explained." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2378039fff</span><span class="yr">2008</span><span class="ti">treeview custom layout problems</span><span class="vd">NOT-A-BUG. <code>-border 1</code> in a layout marks the element as a border element (children are placed inside its padding); it is not the border width. With…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2378039fff">Open ticket 2378039fff</a> · 88. Themed Tk · filed 2008-12-02</p><div class="lab">Full verdict</div><p>NOT-A-BUG. <code>-border 1</code> in a layout marks the element as a border element (children are placed inside its padding); it is not the border width. Without Treeview.field, the empty area is filled with Treeview -background, as jenglish explained.</p><ul>
+<li><span class="k">Platform</span> Aqua (originally); generic on X11
+</li>
+<li><span class="k">Tested</span> main, 8.6, 8.5 on X11 with a custom layout that has no field, checked by sampling pixels. Items and the empty area take -background; with the field, the empty area takes -fieldbackground.
+</li>
+<li><span class="k">Cause</span> design. The field element draws the border and the field background.
+</li>
+<li><span class="k">Prototype</span> none.
+</li>
+<li><span class="k">Suggested ticket comment</span> Works as designed (see jenglish's comment). Use <code>ttk::style configure Treeview -borderwidth 0</code>, or remove the field element and set -background. We propose closing.
+</li></ul></div></details><details class="t" id="2128972fff" data-s="2128972fff wish 8.5.4 core dump 75. wish not-a-bug (bug in the oratcl exit handler) / cannot-test (solaris, oratcl)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>2128972fff</span><span class="yr">2008</span><span class="ti">wish 8.5.4 core dump</span><span class="vd">NOT-A-BUG (bug in the Oratcl exit handler) / CANNOT-TEST (Solaris, Oratcl)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2128972fff">Open ticket 2128972fff</a> · 75. wish · filed 2008-09-25</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Invalid)</strong></p><ul><li>💬 2026-10-08 <strong>serhiy.storchaka</strong>: The crash is in Oratcl: its exit handler (Oratcl_Exit → Oratcl_Clean) uses the hash table of an interpreter which was already deleted. When the last window is closed, wish deletes the interpreter and then calls Tcl_Exit, so the exit handlers run after the interpreter deletion callbacks. tclsh evaluates exit while the interpreter still exists, which is why the script did not crash there. Oratcl should handle the de…</li></ul></div><div class="lab">Full verdict</div><p>NOT-A-BUG (bug in the Oratcl exit handler) / CANNOT-TEST (Solaris, Oratcl)</p><ul>
+<li><span class="k">Platform</span> generic (Solaris, Oratcl extension)
+</li>
+<li><span class="k">Tested</span> none (third-party extension)
+</li>
+<li><span class="k">Cause</span> Tk_MainEx calls Tcl_DeleteInterp(interp) and then Tcl_Exit(0) (tkMain.c, unchanged on main at lines 373/376). Oratcl's exit handler then walks a hash table that its interp-delete callback has already freed (Tcl_FirstHashEntry(NULL)). Under tclsh+Tk the process exits via [exit] without deleting the interp first, which is why it does not crash there.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket comment</span> The crash is in Oratcl_Exit, which uses per-interp state after the interp was deleted. Tk_MainEx deletes the interp before Tcl_Exit (still true on main). Extensions must not use interp data in exit handlers. Suggest closing as third-party.
+</li></ul></div></details><details class="t" id="2026017fff" data-s="2026017fff event state bit mask is platform dependent 69. events not-a-bug (by design; the modifier mapping is platform and server specific). the missing documentation is a docs issue." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2026017fff</span><span class="yr">2008</span><span class="ti">Event state bit mask is platform dependent</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tk-triage/prototypes/2026017fff.patch">patch</a><span class="vd">NOT-A-BUG (by design; the modifier mapping is platform and server specific). The missing documentation is a DOCS issue.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/2026017fff">Open ticket 2026017fff</a> · 69. Events · filed 2008-07-23</p><div class="lab">Full verdict</div><p>NOT-A-BUG (by design; the modifier mapping is platform and server specific). The missing documentation is a DOCS issue.</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> Source inspection on main. On X11, Alt is whatever modifier Alt_L is mapped to (Mod1=8 on Xvfb, per xmodmap). macOS uses Mod2Mask (16) for Option (tkMacOSXKeyEvent.c). Windows uses ALT_MASK = AnyModifier&lt;&lt;2 = 131072 (generic/tkInt.h, win/tkWinX.c, tkWinPointer.c).
+</li>
+<li><span class="k">Cause</span> There is no portable Alt bit in X11. Tk passes the native state through.
+</li>
+<li><span class="k">Prototype</span> prototypes/2026017fff.patch (24 lines, docs only: the bind.n %s entry lists the bit values and the platform-dependent Alt bit).
+</li>
+<li><span class="k">Suggested ticket comment</span> The %s value is the raw modifier mask, and the Alt bit is necessarily platform dependent (X11: modifier holding Alt_L, usually Mod1=8; macOS Mod2=16; Windows 131072). Proposed resolution: document it in bind(n) (patch available). Portable code should use &lt;Alt-...&gt; bindings.
+</li></ul></div></details><details class="t" id="1248241fff" data-s="1248241fff dllmain calls tkfinalize (arbitrary side effects) 74. application embedding not-a-bug (design limitation. the reported crash is mitigated. a real fix needs a public tk_finalize, i.e. a tip)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1248241fff</span><span class="yr">2005</span><span class="ti">DllMain calls TkFinalize (arbitrary side effects)</span><span class="vd">NOT-A-BUG (design limitation. The reported crash is mitigated. A real fix needs a public Tk_Finalize, i.e. a TIP)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1248241fff">Open ticket 1248241fff</a> · 74. Application Embedding · filed 2005-07-31</p><div class="lab">Full verdict</div><p>NOT-A-BUG (design limitation. The reported crash is mitigated. A real fix needs a public Tk_Finalize, i.e. a TIP)</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> source inspection only (main, 8.6)
+</li>
+<li><span class="k">Cause</span> win/tkWin32Dll.c DllMain still calls TkFinalize(NULL) on DLL_PROCESS_DETACH. The SEH wrapper was removed in <a class="h" href="https://core.tcl-lang.org/tk/info/71ee5f9d57">71ee5f9d57</a> (2025-11-24). The crash when exit() runs before Tcl/Tk init was fixed by a tclStubsPtr check in TkFinalize, <a class="h" href="https://core.tcl-lang.org/tk/info/ab7f10ab98">ab7f10ab98</a> (2016-02-11, "Fix crash in TkFinalize() if Tk_Init() is never called").
+</li>
+<li><span class="k">Prototype</span> none (the change would affect the API or behaviour)
+</li>
+<li><span class="k">Suggested ticket comment</span> The early-exit crash was fixed in <a class="h" href="https://core.tcl-lang.org/tk/info/ab7f10ab98">ab7f10ab98</a> (TkFinalize returns if Tcl stubs were never initialized). Calling exit handlers from DllMain still works as designed. Removing that call needs a public Tk_Finalize (TIP). Suggest closing.
+</li></ul></div></details><details class="t" id="1038760fff" data-s="1038760fff tcl_dooneevent doesn 70. event loop not-a-bug (nested event loop by design)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1038760fff</span><span class="yr">2004</span><span class="ti">Tcl_DoOneEvent doesn</span><span class="vd">NOT-A-BUG (nested event loop by design)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1038760fff">Open ticket 1038760fff</a> · 70. Event Loop · filed 2004-10-01</p><div class="lab">Full verdict</div><p>NOT-A-BUG (nested event loop by design)</p><ul>
+<li><span class="k">Platform</span> generic (report is Linux/X11)
+</li>
+<li><span class="k">Tested</span> code/design analysis only (no C harness needed)
+</li>
+<li><span class="k">Cause</span> the menu -command runs inside the Tcl_DoOneEvent call that dispatched the menu event. tk_getOpenFile (tkfbox.tcl on X11) then waits in its own nested event loop (vwait/tkwait) until the dialog closes. That outer Tcl_DoOneEvent call cannot return while its handler is still running. TCL_DONT_WAIT only means "don't block when there are no events". It does not limit how long a handler may run. The external poll loop starves because its C work runs only between Tcl_DoOneEvent calls.
+</li>
+<li><span class="k">Prototype</span> none (not a bug)
+</li>
+<li><span class="k">Suggested ticket comment</span> Works as designed. The dialog runs a nested event loop inside the handler that the outer Tcl_DoOneEvent dispatched, so that call can't return until the dialog closes. Do the periodic C work from inside the Tcl event loop instead: a Tcl_CreateTimerHandler callback, a file handler, or a custom event source. The nested loop then keeps running it. Closing.
+</li></ul></div></details><details class="t" id="1025471fff" data-s="1025471fff problem with newline translation when appending to clipboard 52. [clipboard] not-a-bug (really an rfe). the behaviour is unchanged in main." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1025471fff</span><span class="yr">2004</span><span class="ti">Problem with newline translation when appending to clipboard</span><span class="vd">NOT-A-BUG (really an RFE). The behaviour is unchanged in main.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/1025471fff">Open ticket 1025471fff</a> · 52. [clipboard] · filed 2004-09-09</p><div class="lab">Full verdict</div><p>NOT-A-BUG (really an RFE). The behaviour is unchanged in main.</p><ul>
+<li><span class="k">Platform</span> Windows
+</li>
+<li><span class="k">Tested</span> code reading of win/tkWinClipboard.c:TkWinClipboardRender in main. It still turns every LF into CRLF and only serves the STRING target, as CF_UNICODETEXT.
+</li>
+<li><span class="k">Cause</span> CRLF is the required line ending for CF_UNICODETEXT. Excel's paste treats LF inside a quoted field as a line break within the cell, and shows the extra CR as a stray character. Custom -format targets are not exported to the Windows clipboard at all, so there is currently no raw path.
+</li>
+<li><span class="k">Prototype</span> none. A real solution would be an RFE: export named -format targets as registered clipboard formats (e.g. "Csv") without translation.
+</li>
+<li><span class="k">Suggested ticket comment</span> The LF-&gt;CRLF translation is required for CF_TEXT/CF_UNICODETEXT, so it isn't a bug. Excel reads quoted in-cell newlines as bare LF. Handing raw data to Excel would need Tk to export custom -format targets (e.g. CSV) to the Windows clipboard, which is a feature request.
+</li></ul></div></details><details class="t" id="776646ffff" data-s="776646ffff cursor incompatabilities 31. cursor names not-a-bug (rfe); the concrete windows problems were fixed in 2003 (hand2→idc_hand, size/fleur→idc_sizeall, patthoyts)" data-p="closed"><summary><span class="id"><span class="pe" title="Closed" aria-label="Closed">✅</span>776646ffff</span><span class="yr">2003</span><span class="ti">cursor incompatabilities</span><span class="vd">NOT-A-BUG (RFE); the concrete Windows problems were fixed in 2003 (hand2→IDC_HAND, size/fleur→IDC_SIZEALL, patthoyts)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/776646ffff">Open ticket 776646ffff</a> · 31. Cursor Names · filed 2003-07-24</p><div class="since"><div class="lab">✅ Since triage (updated 2026-10-22)</div><p>Status now: <strong>Closed (Fixed)</strong></p><ul><li>💬 2026-09-28 <strong>serhiy.storchaka</strong>: The bugs with the hand2, size and fleur cursors on Windows were fixed long ago. The Windows-only cursor names (no, size_ns, wait, etc.) are still not available on X11, as documented in cursors.n. Portable cursor names mapped to the native cursors of every platform are provided by ttk::cursor (standard, text, link, busy, forbidden, move, hresize, vresize, etc.), but it is not documented, see <a class="h" href="https://core.tcl-lang.org/tk/info/835e5e17ec">835e5e17ec</a>.</li></ul></div><div class="lab">Full verdict</div><p>NOT-A-BUG (RFE); the concrete Windows problems were fixed in 2003 (hand2→IDC_HAND, size/fleur→IDC_SIZEALL, patthoyts)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> main, 8.6, 8.5 on X11. The Windows-only names no, size, size_ne_sw, size_ns, size_nw_se, size_we, starting, uparrow, wait and ibeam all fail with "bad cursor spec". cursors.n documents them as Windows-only.
+</li>
+<li><span class="k">Cause</span> the remaining request is to alias the Windows cursor names on X11 (and make "arrow" the native pointer). That is a feature, not a bug.
+</li>
+<li><span class="k">Prototype</span> none. It would be a new alias table in unix/tkUnixCursor.c. Mappings: ibeam→xterm, wait→watch, size_ns→sb_v_double_arrow, size_we→sb_h_double_arrow, size→fleur, uparrow→sb_up_arrow. There is no good X font cursor for the diagonal ones.
+</li>
+<li><span class="k">Suggested ticket comment</span> The Windows issues were fixed in 2003. The rest asks for cross-platform cursor aliases, which is an RFE. Suggest closing, or moving to a feature request.
+</li></ul></div></details><details class="t" id="456877ffff" data-s="456877ffff app name/send/multiple display problem 58. [send] not-a-bug (by design; this is really an rfe)" data-p="commented"><summary><span class="id"><span class="pe" title="Commented" aria-label="Commented">💬</span>456877ffff</span><span class="yr">2001</span><span class="ti">App name/send/multiple display problem</span><span class="vd">NOT-A-BUG (by design; this is really an RFE)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/456877ffff">Open ticket 456877ffff</a> · 58. [send] · filed 2001-08-30</p><div class="since"><div class="lab">💬 Since triage (updated 2026-10-22)</div><p>Status now: <strong>Open</strong></p><ul><li>💬 2026-09-28 <strong>serhiy.storchaka</strong>: Still the same in 9.1, but this is not about the same names: an application is registered for send only on the display of its main window. A toplevel on other display does not register it there, so applications on that display cannot send to it with any name, and it is not listed by winfo interps there. It can only be reached with send -displayof from a window on its own display. Supporting this would be a new fea…</li></ul></div><div class="lab">Full verdict</div><p>NOT-A-BUG (by design; this is really an RFE)</p><ul>
+<li><span class="k">Platform</span> X11
+</li>
+<li><span class="k">Tested</span> code reading only. Reproducing needs two X displays, and the brief allows only one.
+</li>
+<li><span class="k">Cause</span> unix/tkUnixSend.c: Tk_SetAppName registers the interpreter (RegAddName) only in the registry of its main window's display. Opening a toplevel on a second display does not register the app there, so apps on that display cannot find it, whatever the names are. A <code>tk appname -displayof</code> would be a new feature.
+</li>
+<li><span class="k">Prototype</span> none (new feature).
+</li>
+<li><span class="k">Suggested ticket comment</span> An application is registered for <code>send</code> only on its main display (Tk_SetAppName). Sending back from the other display would need a new registration feature such as <code>tk appname -displayof</code>. Suggest closing or turning this into an RFE.
+</li></ul></div></details><details class="t" id="220933ffff" data-s="220933ffff making tearoff-menus transient 10. generic menus not-a-bug (rfe; still as described)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>220933ffff</span><span class="yr">2000</span><span class="ti">making tearoff-menus transient</span><span class="vd">NOT-A-BUG (RFE; still as described)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/220933ffff">Open ticket 220933ffff</a> · 10. Generic Menus · filed 2000-11-01</p><div class="lab">Full verdict</div><p>NOT-A-BUG (RFE; still as described)</p><ul>
+<li><span class="k">Platform</span> generic (X11)
+</li>
+<li><span class="k">Tested</span> code reading, library/tearoff.tcl on main.
+</li>
+<li><span class="k">Cause</span> tk::TearOffMenu still runs -tearoffcommand after <code>$menu post</code>, so a <code>wm transient</code> set there comes after mapping, and some WMs ignore it. On win32 Tk itself makes the torn-off menu transient before posting (Bug 3181181); on X11 it does not.
+</li>
+<li><span class="k">Prototype</span> none. Two options: make X11 do the same <code>wm transient</code> before posting as win32 (a behaviour change), or document the workaround <code>wm withdraw $m; wm transient $m .; wm deiconify $m</code> in the tearoffcommand.
+</li>
+<li><span class="k">Suggested ticket comment</span> Still as described. On Windows Tk already makes torn-off menus transient before posting; the same could be done on X11. Workaround: withdraw/deiconify around <code>wm transient</code> in the -tearoffcommand.
+</li></ul></div></details><details class="t" id="220931ffff" data-s="220931ffff option get command responding to invalid input 57. [option] not-a-bug (x resource semantics, as dkf said in 2000)" data-p="branch"><summary><span class="id"><span class="pe" title="Fix in a branch" aria-label="Fix in a branch">🔧</span>220931ffff</span><span class="yr">2000</span><span class="ti">option get command responding to invalid input</span><span class="vd">NOT-A-BUG (X resource semantics, as dkf said in 2000)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tk/tktview/220931ffff">Open ticket 220931ffff</a> · 57. [option] · filed 2000-11-01</p><div class="since"><div class="lab">🔧 Since triage (updated 2026-10-22)</div><p>Status now: <strong>Open</strong></p><ul><li>🔧 2026-09-28 check-in <a class="h" href="https://core.tcl-lang.org/tk/info/0fda9c1b82">0fda9c1b82</a> on <code>doc-option-get-class</code>, not merged: Fix [220931]: the documentation of "option get" suggested that an entry must match both the name and the class of the option. An entry matches if the last word </li><li>💬 2026-09-28 <strong>serhiy.storchaka</strong>: The behavior is correct and the same in 9.1: an entry matches if the last word of its pattern is either the name or the class, the other one is not checked. But the documentation said that the entry should match both the name and the class. Proposed documentation fix in branch doc-option-get-class.</li></ul></div><div class="lab">Full verdict</div><p>NOT-A-BUG (X resource semantics, as dkf said in 2000)</p><ul>
+<li><span class="k">Platform</span> generic
+</li>
+<li><span class="k">Tested</span> 9.1 main: with <code>*Button.background cyan</code>, <code>option get .b background Width</code> returns cyan and <code>option get .b bogus Background</code> returns "". A pattern that matches the option name matches whatever class argument is given.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none. option.n could say that a name match does not depend on the class argument (docs only).
+</li>
+<li><span class="k">Suggested ticket comment</span> Works as designed: an entry that names the option matches whatever class is given. Suggest closing (maybe a doc note in option.n).
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch and of the Windows VM runs.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

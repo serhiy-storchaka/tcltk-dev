@@ -1,0 +1,30 @@
+Prototype against core-9-0-branch (NOT trunk: trunk tk.h is Tk 9 only).
+Tcl >= 9.0.4 tcl.h ([ad08bca6b1]/[7c1522f896]) undefines Tcl_Size at its end in Tcl 8 mode, so tk.h
+with -DTCL_MAJOR_VERSION=8 -DTK_MAJOR_VERSION=8 (TEA --with-tcl8) fails: unknown type Tcl_Size.
+
+--- generic/tk.h
++++ generic/tk.h
+@@ -20,6 +20,11 @@
+ #if (TCL_MAJOR_VERSION < 9) && defined(BUILD_tk)
+ #	error Tk 9.0 must be compiled with tcl.h from Tcl 9.0 or better
+ #endif
++#if (TCL_MAJOR_VERSION < 9) && !defined(Tcl_Size)
++    /* tcl.h from Tcl >= 9.0.4 undefines Tcl_Size at its end in Tcl 8 mode */
++#   define Tcl_Size int
++#   define _TKSIZEHANDLED
++#endif
+ 
+ #ifndef EXTERN
+ #   define EXTERN extern TCL_STORAGE_CLASS
+@@ -1563,6 +1568,11 @@
+ 
+ #endif /* RC_INVOKED */
+ 
++#ifdef _TKSIZEHANDLED
++#   undef _TKSIZEHANDLED
++#   undef Tcl_Size
++#endif
++
+ /*
+  * end block for C++
+  */

@@ -1,0 +1,145 @@
+Index: unix/tkUnixRFont.c
+==================================================================
+--- unix/tkUnixRFont.c
++++ unix/tkUnixRFont.c
+@@ -1105,127 +1105,10 @@
+     XGCValues values;
+     XftColor *xftcolor;
+     int xStart = x, yStart = y;
+     ThreadSpecificData *tsdPtr = (ThreadSpecificData *)
+ 	    Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));
+-#ifdef XFT_HAS_FIXED_ROTATED_PLACEMENT
+-    int clen, nglyph;
+-    FT_UInt glyphs[NUM_SPEC];
+-    XGlyphInfo metrics;
+-    XftFont *currentFtFont;
+-    int originX, originY;
+-
+-    if (fontPtr->ftDraw == 0) {
+-	DEBUG(("Switch to drawable 0x%lx\n", drawable));
+-	fontPtr->ftDraw = XftDrawCreate(display, drawable,
+-		fontPtr->visual, fontPtr->colormap);
+-    } else {
+-	Tk_ErrorHandler handler =
+-		Tk_CreateErrorHandler(display, -1, -1, -1, NULL, NULL);
+-
+-	XftDrawChange(fontPtr->ftDraw, drawable);
+-	Tk_DeleteErrorHandler(handler);
+-    }
+-
+-    XGetGCValues(display, gc, GCForeground, &values);
+-    xftcolor = LookUpColor(display, fontPtr, values.foreground);
+-    if (tsdPtr->clipRegion != None) {
+-	XftDrawSetClip(fontPtr->ftDraw, tsdPtr->clipRegion);
+-    }
+-
+-    nglyph = 0;
+-    currentFtFont = NULL;
+-    originX = originY = 0;
+-
+-    while (numBytes > 0) {
+-	XftFont *ftFont;
+-	FcChar32 c;
+-
+-	clen = utf8ToUcs4(source, &c, numBytes);
+-	if (clen <= 0) {
+-	    /*
+-	     * This should not happen, but it can.
+-	     */
+-
+-	    goto doUnderlineStrikeout;
+-	}
+-	source += clen;
+-	numBytes -= clen;
+-
+-	ftFont = GetFont(fontPtr, c, angle);
+-	if (!ftFont) {
+-	    continue;
+-	}
+-
+-	if (ftFont != currentFtFont || nglyph == NUM_SPEC) {
+-	    if (nglyph) {
+-		/*
+-		 * We pass multiple glyphs at once to enable the code to
+-		 * perform better rendering of sub-pixel inter-glyph spacing.
+-		 * If only the current Xft implementation could make use of
+-		 * this information... but we'll be ready when it does!
+-		 */
+-
+-		LOCK;
+-		XftGlyphExtents(fontPtr->display, currentFtFont, glyphs,
+-			nglyph, &metrics);
+-		UNLOCK;
+-
+-		/*
+-		 * Draw glyph only when it fits entirely into 16 bit coords.
+-		 */
+-
+-		if (x >= minCoord && y >= minCoord &&
+-		    x <= maxCoord - metrics.width &&
+-		    y <= maxCoord - metrics.height) {
+-
+-		    /*
+-		     * NOTE:
+-		     * The whole algorithm has a design problem, the choice of
+-		     * NUM_SPEC is arbitrary, and so the inter-glyph spacing could
+-		     * look arbitrary. This algorithm has to draw the whole string
+-		     * at once (or whole blocks with same font), this requires a
+-		     * dynamic 'glyphs' array. In case of overflow the array has to
+-		     * be divided until the maximal string will fit. (GC)
+-		     * Given the resolution of current displays though, this should
+-		     * not be a huge issue since NUM_SPEC is 1024 and thus able to
+-		     * cover about 6000 pixels for a 6 pixel wide font (which is
+-		     * a very small barely readable font)
+-		     */
+-
+-		    LOCK;
+-		    XftDrawGlyphs(fontPtr->ftDraw, xftcolor, currentFtFont,
+-			    originX, originY, glyphs, nglyph);
+-		    UNLOCK;
+-		}
+-	    }
+-	    originX = ROUND16(x);
+-	    originY = ROUND16(y);
+-	    currentFtFont = ftFont;
+-	}
+-	glyphs[nglyph++] = XftCharIndex(fontPtr->display, ftFont, c);
+-    }
+-    if (nglyph) {
+-	LOCK;
+-	XftGlyphExtents(fontPtr->display, currentFtFont, glyphs,
+-		nglyph, &metrics);
+-	UNLOCK;
+-
+-	/*
+-	 * Draw glyph only when it fits entirely into 16 bit coords.
+-	 */
+-
+-	if (x >= minCoord && y >= minCoord &&
+-	    x <= maxCoord - metrics.width &&
+-	    y <= maxCoord - metrics.height) {
+-	    LOCK;
+-	    XftDrawGlyphs(fontPtr->ftDraw, xftcolor, currentFtFont,
+-		    originX, originY, glyphs, nglyph);
+-	    UNLOCK;
+-	}
+-    }
+-#else /* !XFT_HAS_FIXED_ROTATED_PLACEMENT */
+     Tcl_Size clen;
+     int nspec;
+     XftGlyphFontSpec specs[NUM_SPEC];
+     XGlyphInfo metrics;
+     double sinA = sin(angle * PI/180.0), cosA = cos(angle * PI/180.0);
+@@ -1296,11 +1179,10 @@
+     if (nspec) {
+ 	LOCK;
+ 	XftDrawGlyphFontSpec(fontPtr->ftDraw, xftcolor, specs, nspec);
+ 	UNLOCK;
+     }
+-#endif /* XFT_HAS_FIXED_ROTATED_PLACEMENT */
+ 
+   doUnderlineStrikeout:
+     if (tsdPtr->clipRegion != NULL) {
+ 	XftDrawSetClip(fontPtr->ftDraw, NULL);
+     }
+

@@ -1,0 +1,83 @@
+Index: generic/tkMenu.c
+==================================================================
+--- generic/tkMenu.c
++++ generic/tkMenu.c
+@@ -2238,14 +2238,46 @@
+ 	    if ((oldCascadeMenuRefPtr != NULL)
+ 		    && (oldCascadeMenuRefPtr->menuPtr != NULL)) {
+ 		RecursivelyDeleteMenu(oldCascadeMenuRefPtr->menuPtr);
+ 	    }
+ 	}
++
++	/*
++	 * If the cascade menu has not changed, the clone entry must keep
++	 * pointing to the clone of the cascade menu, even if -menu was
++	 * reconfigured with the same value.
++	 */
++
++	if (!cascadeEntryChanged && (mePtr->type == CASCADE_ENTRY)) {
++	    oldCascadePtr = mePtr->namePtr;
++	    if (oldCascadePtr != NULL) {
++		Tcl_IncrRefCount(oldCascadePtr);
++	    }
++	} else {
++	    oldCascadePtr = NULL;
++	}
+ 
+ 	if (ConfigureMenuEntry(mePtr, objc, objv) != TCL_OK) {
++	    if (oldCascadePtr != NULL) {
++		Tcl_DecrRefCount(oldCascadePtr);
++	    }
+ 	    return TCL_ERROR;
+ 	}
++
++	if (oldCascadePtr != NULL) {
++	    if ((mePtr->namePtr == NULL) || (strcmp(Tcl_GetString(oldCascadePtr),
++		    Tcl_GetString(mePtr->namePtr)) != 0)) {
++		Tcl_Obj *newObjv[2];
++
++		newObjv[0] = Tcl_NewStringObj("-menu", TCL_INDEX_NONE);
++		newObjv[1] = oldCascadePtr;
++		Tcl_IncrRefCount(newObjv[0]);
++		ConfigureMenuEntry(mePtr, 2, newObjv);
++		Tcl_DecrRefCount(newObjv[0]);
++	    }
++	    Tcl_DecrRefCount(oldCascadePtr);
++	}
+ 
+ 	if (cascadeEntryChanged && (mePtr->namePtr != NULL)) {
+ 	    if (cascadeMenuRefPtr && cascadeMenuRefPtr->menuPtr != NULL) {
+ 		Tcl_Obj *newObjv[2];
+ 		Tcl_Obj *newCloneNamePtr;
+
+Index: tests/menu.test
+==================================================================
+--- tests/menu.test
++++ tests/menu.test
+@@ -2784,10 +2784,25 @@
+      .m1 entryconfigure File -state disabled
+ } -cleanup {
+     deleteWindows
+ } -result {}
+ 
++test menu-12.5 {ConfigureMenuCloneEntries: same -menu value - bug 3152603} -setup {
++    deleteWindows
++} -body {
++    menu .m1
++    .m1 add cascade -label File -menu .m1.foo
++    menu .m1.foo
++    .m1.foo add command -label bar
++    .m1 clone .m2
++    set before [.m2 entrycget File -menu]
++    .m1 entryconfigure File -menu .m1.foo
++    list [expr {[.m2 entrycget File -menu] eq $before}] \
++	    [string equal $before .m1.foo] [winfo exists $before]
++} -cleanup {
++    deleteWindows
++} -result {1 0 1}
+ 
+ test menu-13.1 {TkGetMenuIndex} -setup {
+     deleteWindows
+ } -body {
+     menu .m1 -tearoff 1
+

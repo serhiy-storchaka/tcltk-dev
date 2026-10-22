@@ -1,0 +1,57 @@
+Index: tests/winfo.test
+==================================================================
+--- tests/winfo.test
++++ tests/winfo.test
+@@ -179,10 +179,26 @@
+     wm withdraw .one
+     after 10; update
+     winfo containing 450 200
+ } -cleanup {
+     wm deiconify .
++} -result ""
++test winfo-4.9 {"winfo containing": withdrawn toplevel whose WM frame is still mapped} -setup {
++    wm geometry . 200x200+100+100
++    after 10; update
++    wm withdraw .
++    destroy .one
++} -body {
++    toplevel .one
++    wm geometry .one 200x200+350+100
++    after 10; update
++    wm withdraw .one
++    update idletasks
++    winfo containing 450 200
++} -cleanup {
++    destroy .one
++    wm deiconify .
+ } -result ""
+ 
+ testutils import child
+ 
+ test winfo-5.1 {"winfo interps" command} -body {
+
+Index: unix/tkUnixWm.c
+==================================================================
+--- unix/tkUnixWm.c
++++ unix/tkUnixWm.c
+@@ -5977,10 +5977,19 @@
+ 
+ 	Tk_DeleteErrorHandler(handler);
+ 	handler = NULL;
+     }
+     winPtr = wmPtr->winPtr;
++
++    /*
++     * The toplevel may have just been withdrawn or iconified while the window
++     * manager has not yet unmapped its decorative frame.
++     */
++
++    if (!Tk_IsMapped(winPtr)) {
++	return NULL;
++    }
+ 
+     /*
+      * Step 3: at this point winPtr and wmPtr refer to the toplevel that
+      * contains the given coordinates, and childX and childY give the
+      * translated coordinates in the *parent* of the toplevel. Now decide
+

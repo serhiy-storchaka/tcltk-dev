@@ -1,0 +1,75 @@
+--- a/win/tkWinClipboard.c
++++ b/win/tkWinClipboard.c
+@@ -14,7 +14,46 @@
+ #include "tkSelect.h"
+ #include <shlobj.h>    /* for DROPFILES */
+ 
++static BOOL		OpenClipboardWait(HWND hwnd);
+ static void		UpdateClipboard(HWND hwnd);
++
++/*
++ *----------------------------------------------------------------------
++ *
++ * OpenClipboardWait --
++ *
++ *	Open the clipboard, waiting a little if another window has it open.
++ *	A clipboard viewer or a clipboard synchronizer (clipboard history,
++ *	VirtualBox, VNC, RDP) which reads a format that we promised with
++ *	delayed rendering keeps the clipboard open until we answer its
++ *	WM_RENDERFORMAT, which is sent to this thread.  So handle sent
++ *	messages while waiting, otherwise we would only wait for ourselves.
++ *
++ * Results:
++ *	Nonzero if the clipboard was opened.
++ *
++ * Side effects:
++ *	Sent (not posted) window messages may be handled.
++ *
++ *----------------------------------------------------------------------
++ */
++
++static BOOL
++OpenClipboardWait(
++    HWND hwnd)
++{
++    DWORD start = GetTickCount();
++    MSG msg;
++
++    while (!OpenClipboard(hwnd)) {
++	if (GetTickCount() - start > 500) {
++	    return FALSE;
++	}
++	MsgWaitForMultipleObjects(0, NULL, FALSE, 10, QS_SENDMESSAGE);
++	PeekMessageW(&msg, NULL, 0, 0, PM_NOREMOVE | PM_QS_SENDMESSAGE);
++    }
++    return TRUE;
++}
+ 
+ /*
+  *----------------------------------------------------------------------
+@@ -59,7 +98,7 @@
+ 	    || (target != XA_STRING)) {
+ 	goto error;
+     }
+-    if (!OpenClipboard(NULL)) {
++    if (!OpenClipboardWait(NULL)) {
+ 	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 		"clipboard cannot be opened, another application grabbed it"));
+ 	Tcl_SetErrorCode(interp, "TK", "CLIPBOARD", "BUSY", (char *)NULL);
+@@ -397,11 +436,11 @@
+     HWND hwnd)
+ {
+     TkWinUpdatingClipboard(TRUE);
+-    OpenClipboard(hwnd);
+-    EmptyClipboard();
+-
+-    SetClipboardData(CF_UNICODETEXT, NULL);
+-    CloseClipboard();
++    if (OpenClipboardWait(hwnd)) {
++	EmptyClipboard();
++	SetClipboardData(CF_UNICODETEXT, NULL);
++	CloseClipboard();
++    }
+     TkWinUpdatingClipboard(FALSE);
+ }
+ 

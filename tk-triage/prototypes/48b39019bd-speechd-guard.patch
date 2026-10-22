@@ -1,0 +1,63 @@
+--- unix/tkUnixAccessibility.c
++++ unix/tkUnixAccessibility.c
+@@ -20,7 +20,9 @@
+ #ifdef HAVE_ATK
+ #include <atk/atk.h>
+ #include <atk-bridge.h>
++#ifdef HAVE_SPEECHD
+ #include <libspeechd.h>
++#endif
+ 
+ /* Structs for custom ATK objects bound to Tk. */
+ typedef struct _TkAtkAccessible {
+@@ -1927,7 +1929,9 @@
+  * Speech-dispatcher connection used for script-level announcements
+  * (::tk::accessible::speak). File-scope so StopSpeech() can reach it.
+  */
++#ifdef HAVE_SPEECHD
+ static SPDConnection *spd_conn = NULL;
++#endif
+ static char *pending_speech_msg = NULL;
+ static Tcl_TimerToken speech_timer = NULL;
+ 
+@@ -1962,10 +1966,12 @@
+ 	Tcl_DeleteTimerHandler(speech_timer);
+ 	speech_timer = NULL;
+     }
++#ifdef HAVE_SPEECHD
+     if (spd_conn) {
+ 	spd_cancel_all(spd_conn);
+ 	spd_stop_all(spd_conn);
+     }
++#endif
+ }
+ 
+ /*
+@@ -1996,6 +2002,7 @@
+     char *msg = pending_speech_msg;
+     pending_speech_msg = NULL;
+ 
++#ifdef HAVE_SPEECHD
+     if (!spd_conn) {
+ 	spd_conn = spd_open("tk", "announce", NULL, SPD_MODE_THREADED);
+ 	if (!spd_conn) {
+@@ -2009,6 +2016,7 @@
+      * so this is the only thing speaking.
+      */
+     spd_say(spd_conn, SPD_IMPORTANT, msg);
++#endif
+     free(msg);
+ }
+ 
+@@ -2065,9 +2073,11 @@
+ StopSpeech(void)
+ {
+     CancelCurrentSpeech();
++#ifdef HAVE_SPEECHD
+     if (!spd_conn) return;
+     spd_close(spd_conn);
+     spd_conn = NULL;
++#endif
+ }
+ 
+ static void

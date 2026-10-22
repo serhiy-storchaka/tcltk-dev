@@ -1,0 +1,117 @@
+Index: generic/tkOption.c
+==================================================================
+--- generic/tkOption.c
++++ generic/tkOption.c
+@@ -922,11 +922,11 @@
+ 				 * TK_INTERACTIVE_PRIO. Must be between 0 and
+ 				 * TK_MAX_PRIO. */
+ {
+     char *src, *dst;
+     char *name, *value;
+-    int lineNum;
++    int lineNum, leading;
+ 
+     src = string;
+     lineNum = 1;
+     while (true) {
+ 	/*
+@@ -994,26 +994,26 @@
+ 
+ 	src++;
+ 	while ((*src == ' ') || (*src == '\t')) {
+ 	    src++;
+ 	}
+-	if (*src == '\\' && (src[1] == '\t' || src[1] == ' ')) {
+-	    src++;
+-	}
+ 	if (*src == '\0') {
+ 	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 		    "missing value on line %d", lineNum));
+ 	    Tcl_SetErrorCode(interp, "TK", "OPTIONDB", "VALUE", (char *)NULL);
+ 	    return TCL_ERROR;
+ 	}
+ 
+ 	/*
+ 	 * Parse off the value, squeezing out backslash-newline sequences
+-	 * along the way.
++	 * along the way. Backslash-space and backslash-tab are only
++	 * recognized in leading white space (so the value can begin with
++	 * white space); elsewhere they are kept to preserve list structure.
+ 	 */
+ 
+ 	dst = value = src;
++	leading = 1;
+ 	while (*src != '\n') {
+ 	    if (*src == '\0') {
+ 		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 			"missing newline on line %d", lineNum));
+ 		Tcl_SetErrorCode(interp, "TK", "OPTIONDB", "NEWLINE", (char *)NULL);
+@@ -1025,19 +1025,26 @@
+ 		    lineNum++;
+ 		    continue;
+ 		} else if (src[1] == 'n') {
+ 		    src += 2;
+ 		    *dst++ = '\n';
++		    leading = 0;
+ 		    continue;
+ 		} else if (src[1] == '\\') {
++		    ++src;
++		} else if (leading && (src[1] == ' ' || src[1] == '\t')) {
+ 		    ++src;
+ 		} else if (src[1] >= '0' && src[1] <= '3' && src[2] >= '0' &&
+ 			src[2] <= '9' && src[3] >= '0' && src[3] <= '9') {
+ 		    *dst++ = ((src[1]&7)<<6) | ((src[2]&7)<<3) | (src[3]&7);
+ 		    src += 4;
++		    leading = 0;
+ 		    continue;
+ 		}
++	    }
++	    if (*src != ' ' && *src != '\t') {
++		leading = 0;
+ 	    }
+ 	    *dst++ = *src++;
+ 	}
+ 	*dst = 0;
+ 
+
+Index: tests/option.test
+==================================================================
+--- tests/option.test
++++ tests/option.test
+@@ -426,11 +426,11 @@
+ 	option get . x6 color
+ } -result {}
+ test option-15.7 {database files} -body {
+     option read $option1
+ 	option get . x9 color
+-} -result " \\\t\\A\n"
++} -result " \t\\A\n"
+ test option-15.8 {database files} -body {
+     option read $option1 widget foo
+ } -returnCodes error -result {wrong # args: should be "option readfile fileName ?priority?"}
+ test option-15.9 {database files} -body {
+     option add *x3 burgundy
+@@ -446,10 +446,22 @@
+     set option3 [file join [testsDirectory] option.file3]
+     option read $option3
+ } -body {
+     option get . {x 4} color
+ } -result brówn
++
++test option-15.12 {database files: backslash-blank only in leading white space} -setup {
++    set option6 [makeFile {} option.file6]
++    set file [open $option6 w]
++    puts $file "*x10:\t\\\t\\ a\\ b\\\tc"
++    close $file
++} -body {
++    option read $option6
++    option get . x10 color
++} -cleanup {
++    removeFile $option6
++} -result "\t a\\ b\\\tc"
+ 
+ test option-16.1 {ReadOptionFile} -body {
+     set option4 [makeFile {} option.file4]
+     set file [open $option4 w]
+     fconfigure $file -translation crlf
+

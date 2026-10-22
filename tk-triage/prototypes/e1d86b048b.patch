@@ -1,0 +1,72 @@
+Index: doc/GetCursor.3
+==================================================================
+--- doc/GetCursor.3
++++ doc/GetCursor.3
+@@ -87,12 +87,12 @@
+ if \fIinterp\fR is not NULL.  \fIObjPtr\fR must contain a standard Tcl
+ list with one of the following forms:
+ .TP
+ \fIname\fR\0[\fIfgColor\fR\0[\fIbgColor\fR]]
+ .
+-\fIName\fR is the name of a cursor in the standard X cursor cursor,
+-i.e., any of the names defined in \fBcursorcursor.h\fR, without
++\fIName\fR is the name of a cursor in the standard X cursor font,
++i.e., any of the names defined in \fBcursorfont.h\fR, without
+ the \fBXC_\fR.  Some example values are \fBX_cursor\fR, \fBhand2\fR,
+ or \fBleft_ptr\fR.  Appendix B of
+ .QW "The X Window System"
+ by Scheifler & Gettys has illustrations showing what each of these
+ cursors looks like.  If \fIfgColor\fR and \fIbgColor\fR are both
+@@ -101,10 +101,13 @@
+ may be used).  If only \fIfgColor\fR is specified, then there
+ will be no background color:  the background will be transparent.
+ If no colors are specified, then the cursor
+ will use black for its foreground color and white for its background
+ color.
++On X11, if no colors (or only black and white) are specified, the
++cursor of the same name from the current cursor theme is used
++instead if the Xcursor library provides one.
+ .RS
+ .PP
+ The Macintosh version of Tk supports all of the X cursors and
+ will also accept any of the standard Mac cursors
+ including \fBibeam\fR, \fBcrosshair\fR, \fBwatch\fR, \fBplus\fR, and
+
+Index: unix/tkUnixCursor.c
+==================================================================
+--- unix/tkUnixCursor.c
++++ unix/tkUnixCursor.c
+@@ -300,13 +300,29 @@
+ 			"couldn't load cursor font", TCL_INDEX_NONE));
+ 		Tcl_SetErrorCode(interp, "TK", "CURSOR", "FONT", (char *)NULL);
+ 		goto cleanup;
+ 	    }
+ 	}
+-	cursor = XCreateGlyphCursor(display, dispPtr->cursorFont,
+-		dispPtr->cursorFont, namePtr->shape, maskIndex,
+-		&fg, &bg);
++	if ((argc == 3) && (fg.red || fg.green || fg.blue
++		|| (bg.red & bg.green & bg.blue) != 65535)) {
++	    /*
++	     * Xcursor replaces a glyph cursor from the cursor font with a
++	     * cursor from the current cursor theme, ignoring the colors, if
++	     * the source and mask fonts are the same. Use another font ID
++	     * for the mask to get the requested colors.
++	     */
++
++	    Font maskFont = XLoadFont(display, CURSORFONT);
++
++	    cursor = XCreateGlyphCursor(display, dispPtr->cursorFont,
++		    maskFont, namePtr->shape, maskIndex, &fg, &bg);
++	    XUnloadFont(display, maskFont);
++	} else {
++	    cursor = XCreateGlyphCursor(display, dispPtr->cursorFont,
++		    dispPtr->cursorFont, namePtr->shape, maskIndex,
++		    &fg, &bg);
++	}
+     } else {
+ 	/*
+ 	 * Prevent file system access in safe interpreters.
+ 	 */
+ 
+

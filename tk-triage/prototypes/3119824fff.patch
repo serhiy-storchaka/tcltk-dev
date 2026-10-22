@@ -1,0 +1,58 @@
+Index: library/text.tcl
+==================================================================
+--- library/text.tcl
++++ library/text.tcl
+@@ -215,10 +215,11 @@
+     tk::TextInsert %W \n
+     if {[%W cget -autoseparators]} {
+ 	%W edit separator
+     }
+ }
++bind Text <KP_Enter> [bind Text <Return>]
+ 
+ # RTL Auto-Detection on Map Event
+ bind Text <Map> {+
+     ::tk::TextAutoEnableRtl %W
+ }
+@@ -311,11 +312,10 @@
+ 
+ bind Text <Alt-Key> {# nothing }
+ bind Text <Meta-Key> {# nothing}
+ bind Text <Control-Key> {# nothing}
+ bind Text <Escape> {# nothing}
+-bind Text <KP_Enter> {# nothing}
+ bind Text <Command-Key> {# nothing}
+ bind Text <Fn-Key> {# nothing}
+ 
+ # Additional emacs-like bindings:
+ 
+
+Index: tests/text.test
+==================================================================
+--- tests/text.test
++++ tests/text.test
+@@ -7840,10 +7840,23 @@
+     event generate .t <B1-Motion> -x 50 -y -50
+     .t index sel.first
+ } -cleanup {
+     destroy .t
+ } -result {1.0}
++
++test text-40.1 {KP_Enter inserts a newline like Return - Bug 3119824} -setup {
++    pack [text .t]
++    .t insert end "ab"
++    .t mark set insert 1.1
++    focus -force .t
++    update
++} -body {
++    event generate .t <KeyPress> -keysym KP_Enter
++    .t get 1.0 end-1c
++} -cleanup {
++    destroy .t
++} -result "a\nb"
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

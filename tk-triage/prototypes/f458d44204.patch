@@ -1,0 +1,78 @@
+Index: unix/Makefile.in
+==================================================================
+--- unix/Makefile.in
++++ unix/Makefile.in
+@@ -109,10 +109,13 @@
+ TCL_PLATFORM_DIR	= $(TCLDIR)/unix
+ 
+ # The directory containing the Tcl library archive file appropriate
+ # for this version of Tk:
+ TCL_BIN_DIR		= @TCL_BIN_DIR@
++
++# Whether Tcl was built as a shared library (1) or not (0):
++TCL_SHARED_BUILD	= @TCL_SHARED_BUILD@
+ 
+ # The linker flags needed to link in the Tcl library (ex: -ltcl9.1)
+ TCL_LIB_FLAG		= @TCL_LIB_FLAG@
+ 
+ # Flag, 1: we're building a shared lib, 0 we're not
+@@ -647,11 +650,11 @@
+ 	    cp -a $(TOP_DIR)/library/* ${TK_VFS_PATH}; \
+ 	fi
+ 	rm -rf ${TK_VFS_PATH}/demos
+ 	@find ${TK_VFS_ROOT} -type d -empty -delete
+ 	@echo "creating ${TK_ZIP_FILE} from ${TK_VFS_PATH}"
+-	-@if test "${ZIPFS_BUILD}" = "2" ; then \
++	-@if test "${ZIPFS_BUILD}" = "2" -a "${TCL_SHARED_BUILD}" = "0" ; then \
+ 	    cp ${TCL_BIN_DIR}/tclsh ${TK_VFS_ROOT}/../${TK_ZIP_FILE} || cp ${TCL_BIN_DIR}/../bin/tclsh${TCLVERSION} ${TK_VFS_ROOT}/../${TK_ZIP_FILE}; \
+ 	    (zip=`(realpath '${NATIVE_ZIP}' || readlink -m '${NATIVE_ZIP}') 2>/dev/null || \
+ 		(echo '${NATIVE_ZIP}' | sed "s?^\./?$$(pwd)/?")`; \
+ 		cd ${TK_VFS_ROOT} && $$zip -A ../${TK_ZIP_FILE} && $$zip -J ../${TK_ZIP_FILE}) \
+ 	fi
+
+Index: unix/configure
+==================================================================
+--- unix/configure
++++ unix/configure
+@@ -668,10 +668,11 @@
+ TK_DEMO_DIR
+ DEMO_DIR
+ INSTALL_MSGS
+ INSTALL_LIBRARIES
+ TK_ZIP_FILE
++TCL_SHARED_BUILD
+ ZIPFS_BUILD
+ ZIP_INSTALL_OBJS
+ ZIP_PROG_VFSSEARCH
+ ZIP_PROG_OPTIONS
+ ZIP_PROG
+@@ -9650,10 +9651,11 @@
+ { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ printf '%s\n' "no" >&6; }
+ INSTALL_LIBRARIES=install-libraries
+ INSTALL_MSGS=install-msgs
+ fi
++
+ 
+ 
+ 
+ 
+ 
+
+Index: unix/configure.ac
+==================================================================
+--- unix/configure.ac
++++ unix/configure.ac
+@@ -873,10 +873,11 @@
+ AC_MSG_RESULT([no])
+ INSTALL_LIBRARIES=install-libraries
+ INSTALL_MSGS=install-msgs
+ fi
+ AC_SUBST(ZIPFS_BUILD)
++AC_SUBST(TCL_SHARED_BUILD)
+ AC_SUBST(TK_ZIP_FILE)
+ AC_SUBST(INSTALL_LIBRARIES)
+ AC_SUBST(INSTALL_MSGS)
+ 
+ #--------------------------------------------------------------------
+

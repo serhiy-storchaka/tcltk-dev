@@ -1,0 +1,44 @@
+Index: generic/tkPointer.c
+==================================================================
+--- generic/tkPointer.c	
++++ generic/tkPointer.c	
+@@ -74,11 +74,20 @@
+     eventPtr->xany.serial = LastKnownRequestProcessed(winPtr->display);
+     eventPtr->xany.send_event = False;
+     eventPtr->xany.display = winPtr->display;
+ 
+     eventPtr->xcrossing.root = RootWindow(winPtr->display, winPtr->screenNum);
++#ifdef _WIN32
++    /*
++     * Use the time the message was posted, not the time it is processed, so
++     * that a slow event handler does not break double clicks.
++     */
++
++    eventPtr->xcrossing.time = (Time)(DWORD)GetMessageTime();
++#else
+     eventPtr->xcrossing.time = TkGetMS();
++#endif
+     eventPtr->xcrossing.x_root = x;
+     eventPtr->xcrossing.y_root = y;
+ 
+     switch (type) {
+     case EnterNotify:
+
+Index: win/tkWinX.c
+==================================================================
+--- win/tkWinX.c	
++++ win/tkWinX.c	
+@@ -1066,11 +1066,11 @@
+     case WM_SYSKEYDOWN:
+     case WM_SYSKEYUP:
+     case WM_KEYDOWN:
+     case WM_KEYUP: {
+ 	unsigned int state = GetState(message, wParam, lParam);
+-	Time time = TkGetMS();
++	Time time = (Time)(DWORD)GetMessageTime();
+ 	POINT clientPoint;
+ 	union {DWORD msgpos; POINTS point;} root;	/* Note: POINT and POINTS are different */
+ 
+ 	/*
+ 	 * Compute the screen and window coordinates of the event.
+

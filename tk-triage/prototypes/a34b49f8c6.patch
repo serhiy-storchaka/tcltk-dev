@@ -1,0 +1,92 @@
+Index: generic/tkTextDisp.c
+==================================================================
+--- generic/tkTextDisp.c
++++ generic/tkTextDisp.c
+@@ -8777,41 +8777,63 @@
+     if (!sValuePtr->elide && (numBytes > offsetBytes)
+ 	    && (stylePtr->fgGC != NULL)) {
+ #ifdef TK_DRAW_IN_CONTEXT
+ 	int start = ciPtr->baseOffset + offsetBytes;
+ 	int len = ciPtr->numBytes - offsetBytes;
+-	int xDisplacement = x - chunkPtr->x;
++	int baseX = ciPtr->baseChunkPtr->x + x - chunkPtr->x;
+ 
+ 	if ((len > 0) && (string[start + len - 1] == '\t')) {
+ 	    len--;
+ 	}
+ 	if (len <= 0) {
+ 	    return;
+ 	}
+ 
+-	Tk_DrawCharsInContext(display, dst, stylePtr->fgGC, sValuePtr->tkfont,
+-		string, numBytes, start, len,
+-		ciPtr->baseChunkPtr->x + xDisplacement,
+-		y + baseline - sValuePtr->offset);
+-
+-	if (sValuePtr->underline) {
+-	    Tk_UnderlineCharsInContext(display, dst, stylePtr->ulGC,
+-		    sValuePtr->tkfont, string, numBytes,
+-		    ciPtr->baseChunkPtr->x + xDisplacement,
+-		    y + baseline - sValuePtr->offset,
+-		    start, start+len);
+-	}
+-	if (sValuePtr->overstrike) {
+-	    Tk_FontMetrics fm;
+-
+-	    Tk_GetFontMetrics(sValuePtr->tkfont, &fm);
+-	    Tk_UnderlineCharsInContext(display, dst, stylePtr->ovGC,
+-		    sValuePtr->tkfont, string, numBytes,
+-		    ciPtr->baseChunkPtr->x + xDisplacement,
+-		    y + baseline - sValuePtr->offset
+-			    - fm.descent - (fm.ascent * 3) / 10,
+-		    start, start+len);
++	/*
++	 * Tabs inside a chunk (only possible with -justify right or center)
++	 * take no space in the layout, so do not draw them: draw each run of
++	 * characters between tabs separately, in the context of the text
++	 * following the preceding tab.
++	 */
++
++	while (len > 0) {
++	    const char *tab = (const char *)memchr(string + start, '\t', len);
++	    int runLen = tab ? (int)(tab - (string + start)) : len;
++	    int ctxStart = start, ctxLen, ctxX = baseX;
++
++	    while ((ctxStart > 0) && (string[ctxStart - 1] != '\t')) {
++		ctxStart--;
++	    }
++	    if (ctxStart > 0) {
++		MeasureChars(sValuePtr->tkfont, string, numBytes, 0, ctxStart,
++			baseX, -1, 0, &ctxX);
++	    }
++	    ctxLen = (tab ? start + runLen : numBytes) - ctxStart;
++
++	    Tk_DrawCharsInContext(display, dst, stylePtr->fgGC,
++		    sValuePtr->tkfont, string + ctxStart, ctxLen,
++		    start - ctxStart, runLen, ctxX,
++		    y + baseline - sValuePtr->offset);
++
++	    if (sValuePtr->underline) {
++		Tk_UnderlineCharsInContext(display, dst, stylePtr->ulGC,
++			sValuePtr->tkfont, string + ctxStart, ctxLen, ctxX,
++			y + baseline - sValuePtr->offset,
++			start - ctxStart, start - ctxStart + runLen);
++	    }
++	    if (sValuePtr->overstrike) {
++		Tk_FontMetrics fm;
++
++		Tk_GetFontMetrics(sValuePtr->tkfont, &fm);
++		Tk_UnderlineCharsInContext(display, dst, stylePtr->ovGC,
++			sValuePtr->tkfont, string + ctxStart, ctxLen, ctxX,
++			y + baseline - sValuePtr->offset
++				- fm.descent - (fm.ascent * 3) / 10,
++			start - ctxStart, start - ctxStart + runLen);
++	    }
++	    start += runLen + 1;
++	    len -= runLen + 1;
+ 	}
+ #else /* !TK_DRAW_IN_CONTEXT */
+ 	string += offsetBytes;
+ 	numBytes -= offsetBytes;
+ 
+

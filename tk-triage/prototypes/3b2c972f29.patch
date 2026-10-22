@@ -1,0 +1,17 @@
+--- unix/tkUnixAccessibility.c
++++ unix/tkUnixAccessibility.c
+@@ -1107,6 +1107,14 @@
+     if (Tk_IsTopLevel(tkwin)) {
+ 	parentAcc = tk_root_accessible;
+ 
++	/*
++	 * Without a parent a screen reader cannot find the window that
++	 * contains the focus: Orca then drops its locus of focus after
++	 * each announcement and presents the focused widget again for the
++	 * following active-descendant-changed event.
++	 */
++	atk_object_set_parent(accessible, parentAcc);
++
+ 	if (!g_list_find(toplevel_accessible_objects, accessible)) {
+ 	    toplevel_accessible_objects = g_list_append(toplevel_accessible_objects, accessible);
+ 	    gint index = g_list_index(toplevel_accessible_objects, accessible);

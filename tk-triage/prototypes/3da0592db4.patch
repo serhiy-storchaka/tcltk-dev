@@ -1,0 +1,104 @@
+Index: library/choosedir.tcl
+==================================================================
+--- library/choosedir.tcl
++++ library/choosedir.tcl
+@@ -35,11 +35,12 @@
+ 
+     # (re)create the dialog box if necessary
+     #
+     if {![winfo exists $w]} {
+ 	::tk::dialog::file::Create $w TkChooseDir
+-    } elseif {[winfo class $w] ne "TkChooseDir"} {
++    } elseif {[winfo class $w] ne "TkChooseDir"
++	    || [info commands $w.contents.icons] eq ""} {
+ 	destroy $w
+ 	::tk::dialog::file::Create $w TkChooseDir
+     } else {
+ 	set data(dirMenuBtn) $w.contents.f1.menu
+ 	set data(dirMenu) $w.contents.f1.menu.menu
+
+Index: library/megawidget.tcl
+==================================================================
+--- library/megawidget.tcl
++++ library/megawidget.tcl
+@@ -10,10 +10,14 @@
+ # this file, and for a DISCLAIMER OF ALL WARRANTIES.
+ #
+ 
+ package require tk
+ 
++# Allow re-sourcing this file, e.g. after [auto_reset] destroyed
++# ::tk::Megawidget but left ::tk::MegawidgetClass behind.
++catch {::tk::MegawidgetClass destroy}
++
+ ::oo::class create ::tk::Megawidget {
+     superclass ::oo::class
+     method unknown {w args} {
+ 	if {[string match .* $w]} {
+ 	    [self] create $w {*}$args
+
+Index: library/tkfbox.tcl
+==================================================================
+--- library/tkfbox.tcl
++++ library/tkfbox.tcl
+@@ -120,11 +120,12 @@
+ 
+     # (re)create the dialog box if necessary
+     #
+     if {![winfo exists $w]} {
+ 	Create $w TkFDialog
+-    } elseif {[winfo class $w] ne "TkFDialog"} {
++    } elseif {[winfo class $w] ne "TkFDialog"
++	    || [info commands $w.contents.icons] eq ""} {
+ 	destroy $w
+ 	Create $w TkFDialog
+     } else {
+ 	set data(dirMenuBtn) $w.contents.f1.menu
+ 	set data(dirMenu) $w.contents.f1.menu.menu
+
+Index: tests/choosedir.test
+==================================================================
+--- tests/choosedir.test
++++ tests/choosedir.test
+@@ -142,10 +142,40 @@
+ } -body {
+     ToEnterDirsByKey $parent [list "" $real $real]
+     tk_chooseDirectory -title "Clear entry, Press OK; Enter $real, press OK" \
+ 	    -parent $parent
+ } -result $real
++
++test choosedir-6.1 {tk_chooseDirectory, tk_getOpenFile after auto_reset} -constraints {
++	unix notAqua
++} -setup {
++    set child [interp create]
++    $child eval {
++	package require tk
++	set errors {}
++	interp bgerror {} {apply {{msg opts} {lappend ::errors $msg}}}
++	proc Cancel {w} {
++	    after 100 [list after idle [list $w.contents.f2.cancel invoke]]
++	}
++    }
++} -body {
++    $child eval {
++	Cancel .__tk_choosedir
++	tk_chooseDirectory
++	Cancel .__tk_filedialog
++	tk_getOpenFile
++	auto_reset
++	Cancel .__tk_choosedir
++	tk_chooseDirectory
++	Cancel .__tk_filedialog
++	tk_getOpenFile
++	set errors
++    }
++} -cleanup {
++    interp delete $child
++    unset child
++} -result {}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

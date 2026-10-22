@@ -1,0 +1,96 @@
+Index: library/entry.tcl
+==================================================================
+--- library/entry.tcl
++++ library/entry.tcl
+@@ -45,15 +45,11 @@
+ 	unset tk::Priv(data)
+     }
+ }
+ bind Entry <<Paste>> {
+     catch {
+-	if {[tk windowingsystem] ne "x11"} {
+-	    catch {
+-		%W delete sel.first sel.last
+-	    }
+-	}
++	catch {%W delete sel.first sel.last}
+ 	%W insert insert [::tk::GetSelection %W CLIPBOARD]
+ 	tk::EntrySeeInsert %W
+     }
+ }
+ bind Entry <<Clear>> {
+
+Index: library/spinbox.tcl
+==================================================================
+--- library/spinbox.tcl
++++ library/spinbox.tcl
+@@ -51,15 +51,11 @@
+ 	unset tk::Priv(data)
+     }
+ }
+ bind Spinbox <<Paste>> {
+     catch {
+-	if {[tk windowingsystem] ne "x11"} {
+-	    catch {
+-		%W delete sel.first sel.last
+-	    }
+-	}
++	catch {%W delete sel.first sel.last}
+ 	%W insert insert [::tk::GetSelection %W CLIPBOARD]
+ 	::tk::EntrySeeInsert %W
+     }
+ }
+ bind Spinbox <<Clear>> {
+
+Index: library/text.tcl
+==================================================================
+--- library/text.tcl
++++ library/text.tcl
+@@ -1198,13 +1198,11 @@
+ 	set oldSeparator [$w cget -autoseparators]
+ 	if {$oldSeparator} {
+ 	    $w configure -autoseparators 0
+ 	    $w edit separator
+ 	}
+-	if {[tk windowingsystem] ne "x11"} {
+-	    catch { $w delete sel.first sel.last }
+-	}
++	catch { $w delete sel.first sel.last }
+ 	$w insert insert $sel
+ 	if {$oldSeparator} {
+ 	    $w edit separator
+ 	    $w configure -autoseparators 1
+ 	}
+
+Index: tests/entry.test
+==================================================================
+--- tests/entry.test
++++ tests/entry.test
+@@ -3680,10 +3680,26 @@
+     .e delete 0 insert
+     lappend res [.e get]
+ } -cleanup {
+     destroy .e
+ } -result {{} {}}
++test entry-25.4 {Bug [3c4435c9ae] - <<Paste>> replaces the selection} -setup {
++    destroy .e
++    pack [entry .e]
++    update
++} -body {
++    .e insert end "aaa bbb ccc"
++    clipboard clear
++    clipboard append XYZ
++    .e selection range 4 7
++    .e icursor 7
++    event generate .e <<Paste>>
++    .e get
++} -cleanup {
++    destroy .e
++    clipboard clear
++} -result {aaa XYZ ccc}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+
