@@ -1,0 +1,95 @@
+Index: unix/tclLoadDl.c
+==================================================================
+--- unix/tclLoadDl.c
++++ unix/tclLoadDl.c
+@@ -37,10 +37,19 @@
+  */
+ 
+ static void *		FindSymbol(Tcl_Interp *interp,
+ 			    Tcl_LoadHandle loadHandle, const char *symbol);
+ static void		UnloadFile(Tcl_LoadHandle loadHandle);
++
++/*
++ * POSIX does not require dlerror() to be thread-safe, and some C libraries
++ * (e.g. NetBSD, OpenBSD) keep its state process-wide. Hold this mutex from
++ * each dlopen()/dlsym() until the matching dlerror() has been read, so that
++ * another thread cannot steal or replace the message. [Bug 1967630]
++ */
++
++TCL_DECLARE_MUTEX(dlMutex)
+ 
+ /*
+  *---------------------------------------------------------------------------
+  *
+  * TclpDlopen --
+@@ -95,10 +104,11 @@
+     if (flags & TCL_LOAD_LAZY) {
+ 	dlopenflags |= RTLD_LAZY;
+     } else {
+ 	dlopenflags |= RTLD_NOW;
+     }
++    Tcl_MutexLock(&dlMutex);
+     handle = dlopen(native, dlopenflags);
+     if (handle == NULL) {
+ 	/*
+ 	 * Let the OS loader examine the binary search path for whatever
+ 	 * string the user gave us which hopefully refers to a file on the
+@@ -107,10 +117,11 @@
+ 
+ 	Tcl_DString ds;
+ 	const char *fileName = TclGetString(pathPtr);
+ 
+ 	if (Tcl_UtfToExternalDStringEx(interp, NULL, fileName, TCL_INDEX_NONE, 0, &ds, NULL) != TCL_OK) {
++	    Tcl_MutexUnlock(&dlMutex);
+ 	    Tcl_DStringFree(&ds);
+ 	    return TCL_ERROR;
+ 	}
+ 	native = Tcl_DStringValue(&ds);
+ 	/*
+@@ -127,16 +138,21 @@
+ 	 */
+ 
+ 	const char *errorStr = dlerror();
+ 
+ 	if (interp) {
++	    if (!errorStr) {
++		errorStr = "unknown";
++	    }
+ 	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+ 		    "couldn't load file \"%s\": %s",
+ 		    TclGetString(pathPtr), errorStr));
+ 	}
++	Tcl_MutexUnlock(&dlMutex);
+ 	return TCL_ERROR;
+     }
++    Tcl_MutexUnlock(&dlMutex);
+     newHandle = (Tcl_LoadHandle)Tcl_Alloc(sizeof(*newHandle));
+     newHandle->clientData = handle;
+     newHandle->findSymbolProcPtr = &FindSymbol;
+     newHandle->unloadFileProcPtr = &UnloadFile;
+     *unloadProcPtr = &UnloadFile;
+@@ -186,10 +202,11 @@
+     if (Tcl_UtfToExternalDStringEx(interp, NULL, symbol, TCL_INDEX_NONE, 0, &ds, NULL) != TCL_OK) {
+ 	Tcl_DStringFree(&ds);
+ 	return NULL;
+     }
+     native = Tcl_DStringValue(&ds);
++    Tcl_MutexLock(&dlMutex);
+     proc = dlsym(handle, native);	/* INTL: Native. */
+     if (proc == NULL) {
+ 	Tcl_DStringInit(&newName);
+ 	TclDStringAppendLiteral(&newName, "_");
+ 	native = Tcl_DStringAppend(&newName, native, TCL_INDEX_NONE);
+@@ -233,10 +250,11 @@
+ 		    "cannot find symbol \"%s\": %s", symbol, errorStr));
+ 	    Tcl_SetErrorCode(interp, "TCL", "LOOKUP", "LOAD_SYMBOL", symbol,
+ 		    (char *)NULL);
+ 	}
+     }
++    Tcl_MutexUnlock(&dlMutex);
+     return proc;
+ }
+ 
+ /*
+  *----------------------------------------------------------------------
+

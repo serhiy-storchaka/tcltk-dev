@@ -1,0 +1,52 @@
+Index: doc/clock.n
+==================================================================
+--- doc/clock.n
++++ doc/clock.n
+@@ -756,12 +756,16 @@
+ On output, produces the time of day in a locale-dependent
+ representation. On input, accepts whatever \fB%X\fR produces and is used
+ to determine time of day.
+ .IP \fB%y\fR
+ On output, produces the two-digit year of the century. On input,
+-accepts two digits, and is used to determine calendar date. The
+-date is presumed to lie between 1938 and 2037 inclusive. Note
++accepts one or two digits, possibly with leading whitespace, and is used
++to determine calendar date. The
++date is presumed to lie between 1938 and 2037 inclusive. As a single digit
++is accepted, \fBclock scan 01221 \-format %m%d%y\fR yields 22 January
++2001 rather than an error; check the input with \fBregexp\fR first if
++exactly two digits are required. Note
+ that \fB%y\fR does not yield a year appropriate for use with the ISO8601
+ week number \fB%V\fR; programs should use \fB%g\fR for that purpose.
+ .IP \fB%Y\fR
+ On output, produces the four-digit calendar year. On input,
+ accepts four digits and may be used to determine calendar date. Note
+
+Index: tests/clock.test
+==================================================================
+--- tests/clock.test
++++ tests/clock.test
+@@ -38900,10 +38900,22 @@
+ } -result {1 1}
+ test clock-71.2 {he locale era names are not swapped} -body {
+     list [clock format 0 -gmt 1 -locale he -format %EE] \
+ 	[clock format -62200000000 -gmt 1 -locale he -format %EE]
+ } -result [list "\u05dc\u05e1\u05d4\"\u05e0" "\u05dc\u05e4\u05e1\u05d4\"\u05e0"]
++
++test clock-72.1 {clock scan: %y accepts one or two digits [3431943fff]} -body {
++    lmap {str fmt} {
++	01221 %m%d%y   012207 %m%d%y   1/5/7 %m/%d/%y   1/5/26 %m/%d/%y
++	{ 7-01-05} %y-%m-%d   {7-01-05} %y-%m-%d   70105 %y%m%d
++    } {
++	clock format [clock scan $str -format $fmt -gmt 1] -format %Y-%m-%d -gmt 1
++    }
++} -result {2001-01-22 2007-01-22 2007-01-05 2026-01-05 2007-01-05 2007-01-05 1970-10-05}
++test clock-72.2 {clock scan: %y does not accept three digits [3431943fff]} -body {
++    clock scan 1/5/123 -format %m/%d/%y -gmt 1
++} -returnCodes error -result {input string does not match supplied format}
+ 
+ # cleanup
+ 
+ rename test {}
+ namespace import -force ::tcltest::*
+

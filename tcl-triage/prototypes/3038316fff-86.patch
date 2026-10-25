@@ -1,0 +1,25 @@
+Index: doc/Encoding.3
+==================================================================
+--- doc/Encoding.3
++++ doc/Encoding.3
+@@ -381,10 +381,19 @@
+ .CE
+ .PP
+ This \fIfreeProc\fR function is called when the encoding is deleted.  The
+ \fIclientData\fR parameter is the same as the \fIclientData\fR field
+ specified to \fBTcl_CreateEncoding\fR when the encoding was created.
++.PP
++\fIFreeProc\fR is called while Tcl holds its internal encoding lock, which
++is not reentrant.  It therefore must not call any function that takes this
++lock, such as \fBTcl_GetEncoding\fR, \fBTcl_GetEncodingFromObj\fR,
++\fBTcl_FreeEncoding\fR, \fBTcl_GetEncodingNames\fR,
++\fBTcl_CreateEncoding\fR or \fBTcl_SetSystemEncoding\fR (directly or
++through other Tcl functions, such as \fBTcl_EvalObjEx\fR); doing so
++deadlocks.  Nor should it wait for another thread that may be calling one of
++these functions.
+ .PP
+ \fBTcl_GetEncodingSearchPath\fR and \fBTcl_SetEncodingSearchPath\fR
+ are called to access and set the list of filesystem directories searched
+ for encoding data files.
+ .PP
+

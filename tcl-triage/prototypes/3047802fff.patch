@@ -1,0 +1,111 @@
+Index: doc/interp.n
+==================================================================
+--- doc/interp.n
++++ doc/interp.n
+@@ -121,10 +121,17 @@
+ which is a child of interpreter
+ .QW \fBa\fR ,
+ which is a child of the invoking interpreter.  An empty list specifies
+ the interpreter invoking the command.  \fIsrcCmd\fR gives the name of
+ a new command, which will be created in the source interpreter.
++The name is interpreted as by \fBTcl_CreateObjCommand\fR, not as by
++\fBproc\fR: an unqualified \fIsrcCmd\fR is always created in the global
++namespace of the source interpreter, even if \fBinterp alias\fR is called
++from within another namespace, while a qualified name that does not start
++with \fB::\fR (such as \fBa::b\fR) is resolved relative to the current
++namespace of the source interpreter. Use a fully-qualified \fIsrcCmd\fR
++(such as \fB::a::b\fR) to avoid any ambiguity.
+ \fITargetPath\fR and \fItargetCmd\fR specify a target interpreter
+ and command, and the \fIarg\fR arguments, if any, specify additional
+ arguments to \fItargetCmd\fR which are prepended to any arguments specified
+ in the invocation of \fIsrcCmd\fR.
+ \fITargetCmd\fR may be undefined at the time of this call, or it may
+@@ -477,10 +484,11 @@
+ Creates an alias such that whenever \fIsrcCmd\fR is invoked
+ in \fIchild\fR, \fItargetCmd\fR is invoked in the parent.
+ The \fIarg\fR arguments will be passed to \fItargetCmd\fR as additional
+ arguments, prepended before any arguments passed in the invocation of
+ \fIsrcCmd\fR.
++\fISrcCmd\fR is interpreted as described for \fBinterp alias\fR above.
+ See \fBALIAS INVOCATION\fR below for details.
+ The command returns a token that uniquely identifies the command created
+ \fIsrcCmd\fR, even if the command is renamed afterwards. The token may but
+ does not have to be equal to \fIsrcCmd\fR.
+ .\" METHOD: bgerror
+@@ -751,10 +759,13 @@
+ where \fItargetCmd\fR and \fIarg\fRs are the values supplied when the
+ alias was created.  \fITargetCmd\fR is then used to locate a command
+ procedure in the target interpreter, and that command procedure
+ is invoked with the new set of arguments.  An error occurs if
+ there is no command named \fItargetCmd\fR in the target interpreter.
++A \fItargetCmd\fR that is not fully qualified is looked up in the global
++namespace of the target interpreter each time the alias is invoked, not in
++the namespace that was current when the alias was created.
+ No additional substitutions are performed on the words:  the
+ target command procedure is invoked directly, without
+ going through the normal Tcl evaluation mechanism.
+ Substitutions are thus performed on each word exactly once:
+ \fItargetCmd\fR and \fIargs\fR were substituted when parsing the command
+
+Index: tests/interp.test
+==================================================================
+--- tests/interp.test
++++ tests/interp.test
+@@ -2453,10 +2453,56 @@
+ 	interp hide {} bar
+     }
+     namespace delete foo
+     list [catch {interp invokehidden {} foo::bar} msg] $msg
+ } {1 {invalid hidden command name "foo"}}
++test interp-27.9 {interp alias: unqualified srcCmd is created in the global namespace [3047802fff]} -body {
++    namespace eval foo {
++	interp alias {} aliasBug3047 {} return
++    }
++    list [info commands ::aliasBug3047] [info commands ::foo::aliasBug3047] \
++	[namespace eval foo {aliasBug3047 -level 0 ok}]
++} -cleanup {
++    rename ::aliasBug3047 {}
++    namespace delete foo
++} -result {::aliasBug3047 {} ok}
++test interp-27.10 {interp alias: relative qualified srcCmd is relative to the current namespace [3047802fff]} -body {
++    namespace eval foo {
++	set tok [interp alias {} foo::aliasBug3047 {} return]
++	interp alias {} ::foo::aliasBug3047b {} return
++    }
++    list $foo::tok [info commands ::foo::foo::aliasBug3047] \
++	[info commands ::foo::aliasBug3047] [info commands ::foo::aliasBug3047b]
++} -cleanup {
++    namespace delete foo
++} -result {foo::aliasBug3047 ::foo::foo::aliasBug3047 {} ::foo::aliasBug3047b}
++test interp-27.11 {interp alias: unqualified targetCmd is resolved in the global namespace [3047802fff]} -setup {
++    proc aliasTarget3047 {} {return global}
++    namespace eval foo {
++	proc aliasTarget3047 {} {return foo}
++    }
++} -body {
++    namespace eval foo {
++	interp alias {} ::foo::aliasBug3047 {} aliasTarget3047
++	aliasBug3047
++    }
++} -cleanup {
++    namespace delete foo
++    rename aliasTarget3047 {}
++} -result global
++test interp-27.12 {child alias: unqualified srcCmd is created in the child's global namespace [3047802fff]} -setup {
++    set i [interp create]
++} -body {
++    $i eval {namespace eval foo {}}
++    namespace eval foo {
++	$::i alias aliasBug3047 return
++    }
++    list [$i eval {info commands ::aliasBug3047}] [$i eval {info commands ::foo::aliasBug3047}]
++} -cleanup {
++    interp delete $i
++    namespace delete foo
++} -result {::aliasBug3047 {}}
+ 
+ test interp-28.1 {getting fooled by child's namespace ?} -setup {
+     set i [interp create -safe]
+     proc parent {interp args} {interp hide $interp list}
+ } -body {
+

@@ -1,0 +1,98 @@
+Index: doc/info.n
+==================================================================
+--- doc/info.n
++++ doc/info.n
+@@ -317,14 +317,20 @@
+ exact version of the Tcl library initially stored.
+ .\" METHOD: procs
+ .TP
+ \fBinfo procs \fR?\fIpattern\fR?
+ .
+-Returns the names of all visible procedures. If \fIpattern\fR is given, returns
++Returns the names of the procedures in the current namespace, including
++procedures imported into it. If \fIpattern\fR is given, returns
+ only those names that match according to \fBstring match\fR.  Only the final
+ component in \fIpattern\fR is actually considered a pattern.  Any qualifying
+-components simply select a namespace.  See \fBNAMESPACE RESOLUTION\fR in the
++components simply select a namespace, and the names returned are then
++qualified in the same way.  Unlike \fBinfo commands\fR, an unqualified
++\fIpattern\fR (or no \fIpattern\fR) does not also search the global
++namespace: when called in a namespace other than the global one, procedures
++of the global namespace are only returned by a pattern qualified with
++\fB::\fR, such as \fBinfo procs ::*\fR.  See \fBNAMESPACE RESOLUTION\fR in the
+ manual page of the \fBnamespace\fR command.
+ .\" METHOD: script
+ .TP
+ \fBinfo script\fR ?\fIfilename\fR?
+ .
+
+Index: tests/info.test
+==================================================================
+--- tests/info.test
++++ tests/info.test
+@@ -533,16 +533,16 @@
+ 	    puts cmd
+ 	}
+     }
+     info procs test_ns_info2::string*
+ } -result {::test_ns_info2::string_cmd}
+-# This regression test is currently commented out because it requires
+-# that the implementation of "info procs" looks into the global namespace,
+-# which it does not (in contrast to "info commands")
++# Unlike "info commands", "info procs" with an unqualified pattern only looks
++# into the current namespace, not into the global one, as documented in
++# info.n [1059897fff]. Keep the line count: info frame tests depend on it.
+ test info-15.8 {info procs option with a global shadowing proc} -setup {
+     catch {namespace delete test_ns_info2}
+-} -constraints knownBug -body {
++} -body {
+     proc string_cmd { arg } {
+ 	puts cmd
+     }
+     proc string_cmd2 { arg } {
+ 	puts cmd
+@@ -553,11 +553,11 @@
+ 	}
+     }
+     namespace eval test_ns_info2 {
+ 	lsort [info procs string*]
+     }
+-} -result [lsort [list string_cmd string_cmd2]]
++} -result string_cmd
+ 
+ test info-16.1 {info script option} -returnCodes error -body {
+     info script x x
+ } -result {wrong # args: should be "info script ?filename?"}
+ test info-16.2 {info script option} {
+@@ -2640,9 +2640,30 @@
+     interp delete child
+ } -body {
+     child invokehidden info frame
+ } -result 1
+ 
++test info-42.1 {info procs searches only the current namespace [1059897fff]} -setup {
++    namespace eval test_ns_info3 {
++	namespace export eproc
++	proc eproc {} {}
++    }
++    proc test_info_gproc {} {}
++    namespace eval test_ns_info4 {
++	namespace import ::test_ns_info3::eproc
++	proc test_info_lproc {} {}
++    }
++} -body {
++    namespace eval test_ns_info4 {
++	list [lsort [info procs]] [info procs test_info_*] \
++	    [info procs ::test_info_gp*] [lsort [info procs ::test_ns_info4::*]] \
++	    [lsort [info commands test_info_*]]
++    }
++} -cleanup {
++    namespace delete test_ns_info3 test_ns_info4
++    rename test_info_gproc {}
++} -result {{eproc test_info_lproc} test_info_lproc ::test_info_gproc {::test_ns_info4::eproc ::test_ns_info4::test_info_lproc} {test_info_gproc test_info_lproc}}
++
+ # cleanup
+ catch {namespace delete test_ns_info1 test_ns_info2}
+ ::tcltest::cleanupTests
+ return
+

@@ -1,0 +1,194 @@
+Index: doc/Alloc.3
+==================================================================
+--- doc/Alloc.3
++++ doc/Alloc.3
+@@ -72,12 +72,15 @@
+ the procedures \fBTcl_Alloc\fR, \fBTcl_Free\fR, \fBTcl_Realloc\fR,
+ \fBTcl_AttemptAlloc\fR, and \fBTcl_AttempRealloc\fR are implemented
+ as macros, redefined to be special debugging versions of these procedures.
+ .PP
+ \fBTcl_GetMemoryInfo\fR appends a list-of-lists of memory stats to the
+-provided DString. This function cannot be used in stub-enabled extensions,
+-and it is only available if Tcl is compiled with the threaded memory allocator
++provided DString, one list for each cache of the threaded memory allocator.
++This function cannot be used in stub-enabled extensions.
++If Tcl does not use the threaded memory allocator (for example, if it is
++compiled with \fBTCL_MEM_DEBUG\fR or \fBPURIFY\fR defined), it appends
++nothing.
+ When used in stub-enabled embedders, the stubs table must be first initialized
+ using one of \fBTcl_InitSubsystems\fR, \fBTcl_SetPanicProc\fR,
+ \fBTcl_FindExecutable\fR or \fBTclZipfs_AppHook\fR.
+ 
+ .SH KEYWORDS
+
+Index: generic/tclTest.c
+==================================================================
+--- generic/tclTest.c
++++ generic/tclTest.c
+@@ -262,10 +262,11 @@
+ static Tcl_ObjCmdProc2	TestlinkCmd;
+ static Tcl_ObjCmdProc2	TestlinkarrayCmd;
+ static Tcl_ObjCmdProc2	TestlistapiCmd;
+ static Tcl_ObjCmdProc2	TestlistrepCmd;
+ static Tcl_ObjCmdProc2	TestlocaleCmd;
++static Tcl_ObjCmdProc2	TestmemoryinfoCmd;
+ static Tcl_ObjCmdProc2	TestmainthreadCmd;
+ static Tcl_ObjCmdProc2	TestmsbObjCmd;
+ static Tcl_ObjCmdProc2	TestsetmainloopCmd;
+ static Tcl_ObjCmdProc2	TestexitmainloopCmd;
+ static Tcl_ObjCmdProc2	TestpanicCmd;
+@@ -667,10 +668,12 @@
+     Tcl_CreateObjCommand2(interp, "testlinkarray", TestlinkarrayCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testlistapi", TestlistapiCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testlistrep", TestlistrepCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testlocale", TestlocaleCmd, NULL,
+ 	    NULL);
++    Tcl_CreateObjCommand2(interp, "testmemoryinfo", TestmemoryinfoCmd,
++	    NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testmsb", TestmsbObjCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testpanic", TestpanicCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testparseargs", TestparseargsCmd,NULL,NULL);
+     Tcl_CreateObjCommand2(interp, "testparser", TestparserCmd,
+ 	    NULL, NULL);
+@@ -4298,10 +4301,54 @@
+ 	Tcl_BounceRefCount(resultPtr);
+     }
+     return status;
+ }
+ 
++/*
++ *----------------------------------------------------------------------
++ *
++ * TestmemoryinfoCmd --
++ *
++ *	This procedure implements the "testmemoryinfo" command. It returns
++ *	the statistics of the threaded memory allocator, as produced by
++ *	Tcl_GetMemoryInfo.
++ *
++ * Results:
++ *	A standard Tcl result.
++ *
++ * Side effects:
++ *	None.
++ *
++ *----------------------------------------------------------------------
++ */
++
++static int
++TestmemoryinfoCmd(
++    TCL_UNUSED(void *),
++    Tcl_Interp *interp,		/* Current interpreter. */
++    Tcl_Size objc,		/* Number of arguments. */
++    Tcl_Obj *const *objv)	/* The argument objects. */
++{
++    Tcl_DString ds;
++
++    if (objc != 1) {
++	Tcl_WrongNumArgs(interp, 1, objv, NULL);
++	return TCL_ERROR;
++    }
++    Tcl_DStringInit(&ds);
++
++    /*
++     * Tcl_GetMemoryInfo is not in the stubs table, and the stub macro refuses
++     * to work in a stub-enabled module. The tcltest executable is linked
++     * against the Tcl library, so call the function directly.
++     */
++
++    (Tcl_GetMemoryInfo)(&ds);
++    Tcl_DStringResult(interp, &ds);
++    return TCL_OK;
++}
++
+ /*
+  *----------------------------------------------------------------------
+  *
+  * TestlocaleCmd --
+  *
+
+Index: generic/tclThreadAlloc.c
+==================================================================
+--- generic/tclThreadAlloc.c
++++ generic/tclThreadAlloc.c
+@@ -1129,26 +1129,28 @@
+ /*
+  *----------------------------------------------------------------------
+  *
+  * Tcl_GetMemoryInfo --
+  *
+- *	Return a list-of-lists of memory stats.
++ *	Return a list-of-lists of memory stats. Without the threaded memory
++ *	allocator (e.g. in TCL_MEM_DEBUG or PURIFY builds) there are no
++ *	per-thread caches, so the list is empty. [Bug 2345638]
+  *
+  * Results:
+  *	None.
+  *
+  * Side effects:
+- *	List appended to given dstring.
++ *	None.
+  *
+  *----------------------------------------------------------------------
+  */
+ 
+ void
+ Tcl_GetMemoryInfo(
+     TCL_UNUSED(Tcl_DString *))
+ {
+-    Tcl_Panic("Tcl_GetMemoryInfo called when threaded memory allocator not in use");
++    /* Nothing to report: append no elements. */
+ }
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
+
+Index: tests/thread.test
+==================================================================
+--- tests/thread.test
++++ tests/thread.test
+@@ -26,10 +26,12 @@
+ catch [list package require -exact tcl::test [info patchlevel]]
+ 
+ # Some tests require the testthread command
+ 
+ testConstraint testthread [expr {[info commands testthread] ne {}}]
++testConstraint testmemoryinfo [llength [info commands testmemoryinfo]]
++testConstraint memory [llength [info commands memory]]
+ 
+ 
+ set threadSuperKillScript {
+     rename catch ""
+     rename while ""
+@@ -1460,9 +1462,30 @@
+ 	thread::join $::thread
+     }
+ } -cleanup {
+     unset -nocomplain ::threadCount ::execCount ::threads ::thread
+ } -result {}
++
++test thread-9.1 {Tcl_GetMemoryInfo: list of per-cache statistics, no panic [2345638fff]} -constraints {
++    testmemoryinfo
++} -body {
++    set info [testmemoryinfo]
++    set bad {}
++    foreach cache $info {
++	if {![regexp {^(shared|thread.+)$} [lindex $cache 0]]
++		|| [llength $cache] < 2} {
++	    lappend bad $cache
++	}
++    }
++    list [expr {[llength $info] == 0 || "shared" in [lmap c $info {lindex $c 0}]}] $bad
++} -cleanup {
++    unset -nocomplain info bad cache
++} -result {1 {}}
++test thread-9.2 {Tcl_GetMemoryInfo: empty when the threaded allocator is not used [2345638fff]} -constraints {
++    testmemoryinfo memory
++} -body {
++    testmemoryinfo
++} -result {}
+ 
+ # cleanup
+ ::tcltest::cleanupTests
+ return
+

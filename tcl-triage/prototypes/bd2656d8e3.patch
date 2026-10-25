@@ -1,0 +1,116 @@
+Index: doc/unset.n
+==================================================================
+--- doc/unset.n
++++ doc/unset.n
+@@ -33,10 +33,17 @@
+ If an error occurs during variable deletion, any variables after the named one
+ causing the error are not
+ deleted.  An error can occur when the named variable does not exist, or the
+ name refers to an array element but the variable is a scalar, or the name
+ refers to a variable in a non-existent namespace.
++.PP
++A namespace variable that has been declared with \fBvariable\fR but not
++yet given a value does not exist, so \fBunset\fR reports an error for it
++(unless \fB\-nocomplain\fR is given). Nevertheless, the declaration is
++removed: afterwards the variable is no longer listed by \fBinfo vars\fR
++and no longer found by \fBnamespace which \-variable\fR. This is the only
++way to undo such a declaration.
+ .SH EXAMPLE
+ .PP
+ Create an array containing a mapping from some numbers to their
+ squares and remove the array elements for non-prime numbers:
+ .PP
+@@ -57,12 +64,12 @@
+ 
+ puts "The prime squares are:"
+ parray squares
+ .CE
+ .SH "SEE ALSO"
+-set(n), trace(n), upvar(n)
++set(n), trace(n), upvar(n), variable(n)
+ .SH KEYWORDS
+ remove, variable
+ '\" Local Variables:
+ '\" mode: nroff
+ '\" fill-column: 78
+ '\" End:
+
+Index: doc/variable.n
+==================================================================
+--- doc/variable.n
++++ doc/variable.n
+@@ -36,10 +36,13 @@
+ and the variable is created in the current namespace.
+ If \fIname\fR includes any namespace qualifiers,
+ the variable is created in the specified namespace.  If the variable
+ is not defined, it will be visible to the \fBnamespace which\fR
+ command, but not to the \fBinfo exists\fR command.
++\fBunset\fR removes such a declaration, although it reports an error
++because the variable has no value; \fBunset \-nocomplain\fR removes it
++silently (see \fBunset\fR(n)).
+ .PP
+ If the \fBvariable\fR command is executed inside a Tcl procedure,
+ it creates local variables
+ linked to the corresponding namespace variables (and therefore these
+ variables are listed by \fBinfo vars\fR).
+@@ -94,12 +97,12 @@
+         parray someAry
+     }
+ }
+ .CE
+ .SH "SEE ALSO"
+-global(n), namespace(n), upvar(n)
++global(n), namespace(n), unset(n), upvar(n)
+ .SH KEYWORDS
+ global, namespace, procedure, variable
+ .\" Local variables:
+ .\" mode: nroff
+ .\" fill-column: 78
+ .\" End:
+
+Index: tests/var.test
+==================================================================
+--- tests/var.test
++++ tests/var.test
+@@ -584,10 +584,40 @@
+ test var-7.17 {Tcl_VariableObjCmd, no args (TIP 323)} {
+     namespace eval test_ns_var {
+ 	variable
+     }
+ } {}
++
++test var-7.18 {unset of a declared-only namespace variable removes the declaration [bd2656d8e3]} -setup {
++    namespace eval test_ns_var {variable declonly}
++} -body {
++    list [info vars test_ns_var::declonly] [info exists test_ns_var::declonly] \
++	[catch {unset test_ns_var::declonly} msg] $msg \
++	[info vars test_ns_var::declonly] \
++	[namespace which -variable test_ns_var::declonly]
++} -cleanup {
++    namespace delete test_ns_var
++} -result {::test_ns_var::declonly 0 1 {can't unset "test_ns_var::declonly": no such variable} {} {}}
++test var-7.19 {unset -nocomplain of a declared-only variable in a proc removes the declaration [bd2656d8e3]} -setup {
++    namespace eval test_ns_var {variable declonly}
++    proc p {} {
++	variable ::test_ns_var::declonly
++	list [catch {unset declonly} msg] $msg [info vars ::test_ns_var::*]
++    }
++    proc q {} {
++	variable ::test_ns_var::declonly
++	unset -nocomplain declonly
++    }
++} -body {
++    set r [p]
++    namespace eval test_ns_var {variable declonly}
++    lappend r [q] [info vars ::test_ns_var::*]
++} -cleanup {
++    namespace delete test_ns_var
++    rename p {}
++    rename q {}
++} -result {1 {can't unset "declonly": no such variable} {} {} {}}
+ 
+ test var-8.1 {TclDeleteVars, "unset" traces are called with fully-qualified var names} -setup {
+     catch {namespace delete test_ns_var}
+     catch {unset a}
+ } -body {
+

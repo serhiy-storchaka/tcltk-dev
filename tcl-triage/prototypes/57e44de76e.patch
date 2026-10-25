@@ -1,0 +1,92 @@
+Index: doc/trace.n
+==================================================================
+--- doc/trace.n
++++ doc/trace.n
+@@ -199,10 +199,18 @@
+ parenthesized index).  If \fIname\fR refers to a whole array, then
+ \fIcommandPrefix\fR is invoked whenever any element of the array is
+ manipulated.  If the variable does not exist, it will be created but
+ will not be given a value, so it will be visible to \fBnamespace which\fR
+ queries, but not to \fBinfo exists\fR queries.
++Such a variable is not an array yet: reading an element of it fails with a
++.QW "no such variable"
++error without invoking a \fBread\fR trace set on \fIname\fR.
++Traces on a whole array are invoked for its elements only once the
++variable is an array, for example after an element has been written or
++after \fBarray set\fR \fIname\fR \fB{}\fR.
++(A trace set on a single element, such as \fBa(x)\fR, makes the variable
++an array.)
+ .RS
+ .PP
+ \fIOps\fR indicates which operations are of interest, and is a list of
+ one or more of the following items:
+ .TP
+
+Index: tests/trace.test
+==================================================================
+--- tests/trace.test
++++ tests/trace.test
+@@ -2651,10 +2651,62 @@
+     proc foo args {}
+     trace add execution foo enter {rename foo {}; error bar;#}
+     catch foo m
+     return -level 0 $m[unset m]
+ } bar
++
++test trace-41.1 {array read trace on an undefined variable fires only once it is an array [57e44de76e]} -setup {
++    unset -nocomplain tvar
++    set log {}
++    proc tracer {n1 n2 op} {
++	lappend ::log $op $n2
++	uplevel 1 [list set ${n1}($n2) fromtrace]
++    }
++} -body {
++    trace add variable tvar read tracer
++    lappend res [catch {set tvar(x)} msg] $msg $log [array exists tvar]
++    array set tvar {}
++    lappend res [catch {set tvar(x)} msg] $msg $log
++} -cleanup {
++    unset -nocomplain tvar log res msg
++    rename tracer {}
++} -result {1 {can't read "tvar(x)": no such variable} {} 0 0 fromtrace {read x}}
++test trace-41.2 {array read trace on an undefined variable, compiled read [57e44de76e]} -setup {
++    unset -nocomplain tvar
++    set log {}
++    proc tracer {n1 n2 op} {
++	lappend ::log $op $n2
++	uplevel 1 [list set ${n1}($n2) fromtrace]
++    }
++    proc reader {} {
++	global tvar
++	list [catch {set tvar(x)} msg] $msg
++    }
++} -body {
++    trace add variable tvar read tracer
++    lappend res {*}[reader] $log
++    set tvar(y) 1
++    lappend res {*}[reader] $log
++} -cleanup {
++    unset -nocomplain tvar log res
++    rename tracer {}
++    rename reader {}
++} -result {1 {can't read "tvar(x)": no such variable} {} 0 fromtrace {read x}}
++test trace-41.3 {element read trace makes the variable an array [57e44de76e]} -setup {
++    unset -nocomplain tvar
++    set log {}
++    proc tracer {n1 n2 op} {
++	lappend ::log $op $n2
++	uplevel 1 [list set ${n1}($n2) fromtrace]
++    }
++} -body {
++    trace add variable tvar(x) read tracer
++    list [array exists tvar] [set tvar(x)] $log
++} -cleanup {
++    unset -nocomplain tvar log
++    rename tracer {}
++} -result {1 fromtrace {read x}}
+ 
+ # Delete procedures when done, so we don't clash with other tests
+ # (e.g. foobar will clash with 'unknown' tests).
+ catch {rename foobar {}}
+ catch {rename foo {}}
+
