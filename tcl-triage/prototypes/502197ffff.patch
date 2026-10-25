@@ -1,7 +1,7 @@
 Index: generic/tclEnv.c
 ==================================================================
---- generic/tclEnv.c	
-+++ generic/tclEnv.c	
+--- generic/tclEnv.c
++++ generic/tclEnv.c
 @@ -584,10 +584,42 @@
  				 * value of the environment variable is
  				 * stored. */
@@ -45,4 +45,135 @@ Index: generic/tclEnv.c
      index = TclpFindVariable(name, &length);
      result = NULL;
      if (index != -1) {
+
+Index: tests/env.test
+==================================================================
+--- tests/env.test
++++ tests/env.test
+@@ -17,10 +17,11 @@
+ }
+ 
+ source [file join [file dirname [info script]] tcltests.tcl]
+ 
+ testConstraint utf8system [string equal [encoding system] utf-8]
++testConstraint testwinsetenv [llength [info commands testwinsetenv]]
+ if {[llength [auto_execok bash]]} {
+     testConstraint haveBash 1
+ }
+ 
+ # [exec] is required here to see the actual environment received by child
+@@ -545,10 +546,25 @@
+ 	[info exists ::env(ENV110)] \
+ 	[catch {set ::env(ENV110)} error] \
+ 	$error
+ } -result {1 foo {} 0 1 {can't read "::env(ENV110)": no such variable}}
+ 
++test env-12.0 {
++    Bug [502197ffff] - env sees changes made with SetEnvironmentVariable
++} -constraints {win testwinsetenv} -setup {
++    set ::env(ENV120A) first
++} -cleanup {
++    unset -nocomplain ::env(ENV120A) ::env(ENV120B)
++    testwinsetenv ENV120A
++    testwinsetenv ENV120B
++} -body {
++    testwinsetenv ENV120A second
++    testwinsetenv ENV120B fresh
++    list $::env(ENV120A) [info exists ::env(ENV120B)] \
++	[expr {[info exists ::env(ENV120B)] ? $::env(ENV120B) : ""}]
++} -result {second 1 fresh}
++
+ 
+ 
+ # cleanup
+ rename getenv {}
+ rename envrestore {}
+
+Index: win/tclWinTest.c
+==================================================================
+--- win/tclWinTest.c
++++ win/tclWinTest.c
+@@ -40,10 +40,11 @@
+ 
+ static Tcl_ObjCmdProc2	TesteventloopCmd;
+ static Tcl_ObjCmdProc2	TestvolumetypeCmd;
+ static Tcl_ObjCmdProc2	TestwinclockCmd;
+ static Tcl_ObjCmdProc2	TestwinsleepCmd;
++static Tcl_ObjCmdProc2	TestwinsetenvCmd;
+ static Tcl_ObjCmdProc2	TestExceptionCmd;
+ static int		TestplatformChmod(const char *nativePath, int pmode);
+ static Tcl_ObjCmdProc2	TestchmodCmd;
+ static Tcl_ObjCmdProc2	TestlongpathsettingCmd;
+ static Tcl_ObjCmdProc2	TestfilesddlCmd;
+@@ -77,10 +78,11 @@
+     Tcl_CreateObjCommand2(interp, "testeventloop", TesteventloopCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testvolumetype", TestvolumetypeCmd,
+ 	    NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testwinclock", TestwinclockCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testwinsleep", TestwinsleepCmd, NULL, NULL);
++    Tcl_CreateObjCommand2(interp, "testwinsetenv", TestwinsetenvCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testexcept", TestExceptionCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testlongpathsetting",
+ 	TestlongpathsettingCmd, NULL, NULL);
+ 
+     Tcl_CreateObjCommand2(interp, "testfilesddl", TestfilesddlCmd, NULL, NULL);
+@@ -313,10 +315,58 @@
+ 	return TCL_ERROR;
+     }
+     Sleep((DWORD) ms);
+     return TCL_OK;
+ }
++
++/*
++ *----------------------------------------------------------------------
++ *
++ * TestwinsetenvCmd --
++ *
++ *	Sets (or with no value, removes) a variable in the process
++ *	environment block with SetEnvironmentVariableW, bypassing the C
++ *	runtime, as an embedder or extension might do. [Bug 502197]
++ *
++ * Usage:
++ *	testwinsetenv name ?value?
++ *
++ *----------------------------------------------------------------------
++ */
++
++static int
++TestwinsetenvCmd(
++    TCL_UNUSED(void *),
++    Tcl_Interp *interp,		/* Tcl interpreter */
++    Tcl_Size objc,		/* Parameter count */
++    Tcl_Obj *const * objv)	/* Parameter vector */
++{
++    Tcl_DString nameDs, valueDs;
++    BOOL ok;
++
++    if (objc < 2 || objc > 3) {
++	Tcl_WrongNumArgs(interp, 1, objv, "name ?value?");
++	return TCL_ERROR;
++    }
++    Tcl_DStringInit(&nameDs);
++    Tcl_DStringInit(&valueDs);
++    Tcl_UtfToWCharDString(Tcl_GetString(objv[1]), -1, &nameDs);
++    if (objc == 3) {
++	Tcl_UtfToWCharDString(Tcl_GetString(objv[2]), -1, &valueDs);
++    }
++    ok = SetEnvironmentVariableW((WCHAR *)Tcl_DStringValue(&nameDs),
++	    (objc == 3) ? (WCHAR *)Tcl_DStringValue(&valueDs) : NULL);
++    Tcl_DStringFree(&nameDs);
++    Tcl_DStringFree(&valueDs);
++    if (!ok) {
++	Tcl_WinConvertError(GetLastError());
++	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
++		"SetEnvironmentVariable failed: %s", Tcl_PosixError(interp)));
++	return TCL_ERROR;
++    }
++    return TCL_OK;
++}
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
+  * TestExceptionCmd --
 

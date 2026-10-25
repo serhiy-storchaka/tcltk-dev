@@ -2,7 +2,7 @@ Index: tests/cmdMZ.test
 ==================================================================
 --- tests/cmdMZ.test
 +++ tests/cmdMZ.test
-@@ -433,15 +433,15 @@
+@@ -436,15 +436,15 @@
      if {[testConstraint valgrind] && ([lindex $m1 0] >= 100 || [lindex $m1 2] <= 500)} {
  	tcltest::Skip "too-slow-by-valgrind"
      }

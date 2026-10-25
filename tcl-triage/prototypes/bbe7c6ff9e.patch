@@ -2,7 +2,7 @@ Index: generic/tclZipfs.c
 ==================================================================
 --- generic/tclZipfs.c
 +++ generic/tclZipfs.c
-@@ -2272,11 +2272,17 @@
+@@ -2278,11 +2278,17 @@
      Tcl_MutexLock(&ZipFSMutex);
      Tcl_ConditionWait2(&ZipFSCond, &ZipFSMutex, 0);
      Tcl_MutexUnlock(&ZipFSMutex);
@@ -26,7 +26,7 @@ Index: tests/zipfs.test
 ==================================================================
 --- tests/zipfs.test
 +++ tests/zipfs.test
-@@ -1278,12 +1278,12 @@
+@@ -1312,12 +1312,12 @@
  	} -body {
  	    set fd [open [file join $defMountPt $filename]]
  	    gets $fd

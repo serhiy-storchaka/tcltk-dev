@@ -2,7 +2,7 @@ Index: unix/tclUnixThrd.c
 ==================================================================
 --- unix/tclUnixThrd.c
 +++ unix/tclUnixThrd.c
-@@ -67,10 +67,32 @@
+@@ -75,10 +75,32 @@
  
  #ifndef PTHREAD_NULL
  #   define PTHREAD_NULL (pthread_t)0
@@ -35,7 +35,7 @@ Index: unix/tclUnixThrd.c
      volatile pthread_t thread;
      int counter; // Number of additional locks in the same thread.
  } PMutex;
-@@ -95,18 +117,20 @@
+@@ -103,18 +125,20 @@
  static void
  PMutexLock(
      PMutex *pmutexPtr)
@@ -58,7 +58,7 @@ Index: unix/tclUnixThrd.c
  
  static void
  PMutexUnlock(
-@@ -115,11 +139,11 @@
+@@ -123,11 +147,11 @@
      assert(PTHREAD_NULL != pmutexPtr->thread && pthread_equal(pmutexPtr->thread, pthread_self()));
      if (pmutexPtr->counter) {
  	// It's recursive
@@ -71,7 +71,7 @@ Index: unix/tclUnixThrd.c
  }
  
  static void
-@@ -130,13 +154,13 @@
+@@ -138,13 +162,13 @@
      pthread_t mythread = pthread_self();
  
      assert(PTHREAD_NULL != pmutexPtr->thread && pthread_equal(pmutexPtr->thread, mythread));
@@ -87,7 +87,7 @@ Index: unix/tclUnixThrd.c
  
  static void
  PCondTimedWait(
-@@ -147,13 +171,13 @@
+@@ -155,13 +179,13 @@
      pthread_t mythread = pthread_self();
  
      assert(PTHREAD_NULL != pmutexPtr->thread && pthread_equal(pmutexPtr->thread, mythread));
@@ -103,7 +103,7 @@ Index: unix/tclUnixThrd.c
  
  /*
   * globalLock is used to serialize creation of mutexes, condition variables,
-@@ -632,27 +656,27 @@
+@@ -640,27 +664,27 @@
  
  void
  Tcl_MutexLock(
@@ -136,7 +136,7 @@ Index: unix/tclUnixThrd.c
  
  /*
   *----------------------------------------------------------------------
-@@ -742,11 +766,11 @@
+@@ -750,11 +774,11 @@
  {
      pthread_cond_t *pcondPtr;
      PMutex *pmutexPtr;
@@ -149,7 +149,7 @@ Index: unix/tclUnixThrd.c
  	/*
  	 * Double check inside mutex to avoid race, then initialize condition
  	 * variable if necessary.
-@@ -753,11 +777,11 @@
+@@ -761,11 +785,11 @@
  	 */
  
  	if (*condPtr == NULL) {
@@ -162,7 +162,7 @@ Index: unix/tclUnixThrd.c
  	pthread_mutex_unlock(&globalLock);
      }
      pmutexPtr = *((PMutex **)mutexPtr);
-@@ -800,11 +824,11 @@
+@@ -808,11 +832,11 @@
  
  void
  Tcl_ConditionNotify(

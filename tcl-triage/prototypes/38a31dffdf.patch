@@ -2,7 +2,7 @@ Index: tests/fCmd.test
 ==================================================================
 --- tests/fCmd.test
 +++ tests/fCmd.test
-@@ -2053,10 +2053,26 @@
+@@ -2044,10 +2044,26 @@
      }
      file delete -force tfa
  } -cleanup {

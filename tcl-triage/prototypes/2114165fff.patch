@@ -2,7 +2,7 @@ Index: tests/interp.test
 ==================================================================
 --- tests/interp.test
 +++ tests/interp.test
-@@ -3930,10 +3930,28 @@
+@@ -3950,10 +3950,28 @@
      interp eval $i readX
  } -result {123 45} -cleanup {
      interp delete $i

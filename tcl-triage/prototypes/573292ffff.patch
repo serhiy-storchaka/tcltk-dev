@@ -2,7 +2,7 @@ Index: unix/README
 ==================================================================
 --- unix/README
 +++ unix/README
-@@ -132,12 +132,15 @@
+@@ -132,12 +132,16 @@
  (f) Type "make install" to install Tcl binaries and script files in standard
      places. You'll need write permission on the installation directories to do
      this. The installation directories are determined by the "configure"
@@ -10,11 +10,12 @@ Index: unix/README
      options to "configure". See the Makefile for information on what
 -    directories were chosen; you can override these choices by modifying the
 -    "prefix" and "exec_prefix" variables in the Makefile. The installed
-+    directories were chosen. Setting "prefix" or "exec_prefix" on the make
-+    command line does not change them, because configure expands them into
-+    the other directory variables. To install into a staging directory (for
-+    packaging or GNU stow), use "make install DESTDIR=/staging/dir": every
-+    installation path is then prefixed with /staging/dir. The installed
++    directories were chosen. Do not set "prefix" or "exec_prefix" on the
++    make command line: configure has already expanded them in some of the
++    directory variables (e.g. libdir), so only part of the files would move.
++    To install into a staging directory (for packaging or GNU stow), use
++    "make install DESTDIR=/staging/dir": every installation path is then
++    prefixed with /staging/dir. The installed
      binaries have embedded within them path values relative to the install
      directory. If you change your mind about where Tcl should be installed,
      start this procedure over again from step (a) so that the path embedded in

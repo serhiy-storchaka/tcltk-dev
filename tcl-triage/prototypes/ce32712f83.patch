@@ -2,7 +2,7 @@ Index: generic/tclZipfs.c
 ==================================================================
 --- generic/tclZipfs.c
 +++ generic/tclZipfs.c
-@@ -2434,14 +2434,12 @@
+@@ -2440,14 +2440,12 @@
  				 * the ZIP is unprotected. */
  {
      ZipFile *zf;
@@ -18,7 +18,7 @@ Index: generic/tclZipfs.c
       * No mount point, so list all mount points and what is mounted there.
       */
  
-@@ -2548,15 +2546,12 @@
+@@ -2554,15 +2552,12 @@
      if (mountPoint == NULL || data == NULL) {
  	ZIPFS_ERROR(interp, "mount point and/or data are null");
  	return TCL_ERROR;

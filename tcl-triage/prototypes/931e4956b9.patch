@@ -72,7 +72,7 @@ Index: tests/interp.test
 ==================================================================
 --- tests/interp.test
 +++ tests/interp.test
-@@ -3276,11 +3276,11 @@
+@@ -3296,11 +3296,11 @@
      set curlim [$i eval info cmdcount]
      $i limit command -command "cb2 [expr {$curlim + 100}]" \
  	    -value [expr {$curlim + 10}]
@@ -85,7 +85,7 @@ Index: tests/interp.test
      rename cb2 {}
  }
  # The next three tests exercise all the three ways that limit handlers
-@@ -3304,11 +3304,11 @@
+@@ -3324,11 +3324,11 @@
      interp alias $i foo {} cb1
      set curlim [$i eval info cmdcount]
      $i limit command -command "cb2 {}" -value [expr {$curlim + 10}]
@@ -98,7 +98,7 @@ Index: tests/interp.test
      rename cb2 {}
  }
  test interp-34.6 {limits with callbacks: removing limits and handlers} -setup {
-@@ -3329,11 +3329,11 @@
+@@ -3349,11 +3349,11 @@
      interp alias $i foo {} cb1
      set curlim [$i eval info cmdcount]
      $i limit command -command cb2 -value [expr {$curlim + 10}]
@@ -111,7 +111,7 @@ Index: tests/interp.test
      rename cb2 {}
  }
  test interp-34.7 {limits with callbacks: deleting the handler interp} -setup {
-@@ -3376,11 +3376,11 @@
+@@ -3396,11 +3396,11 @@
  	$i eval {
  	    for {set i 0} {$i<10} {incr i} {foo}
  	}

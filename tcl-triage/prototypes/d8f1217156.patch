@@ -1,7 +1,7 @@
 Index: generic/tclFileName.c
 ==================================================================
---- generic/tclFileName.c
-+++ generic/tclFileName.c
+--- generic/tclFileName.c	
++++ generic/tclFileName.c	
 @@ -121,25 +121,29 @@
  	    extended = 2;
  	    path = path + 4;
@@ -67,8 +67,8 @@ Index: generic/tclFileName.c
 
 Index: tests/fileName.test
 ==================================================================
---- tests/fileName.test
-+++ tests/fileName.test
+--- tests/fileName.test	
++++ tests/fileName.test	
 @@ -382,10 +382,20 @@
  } {foo bar~ baz}
  test filename-6.30 {Tcl_SplitPath: win} {testsetplatform} {

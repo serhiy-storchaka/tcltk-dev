@@ -25,7 +25,7 @@ Index: unix/tclUnixPipe.c
 ==================================================================
 --- unix/tclUnixPipe.c
 +++ unix/tclUnixPipe.c
-@@ -432,10 +432,12 @@
+@@ -473,10 +473,12 @@
      char errSpace[200 + TCL_INTEGER_SPACE];
      Tcl_DString *volatile dsArray;
      char **volatile newArgv;
@@ -38,12 +38,12 @@ Index: unix/tclUnixPipe.c
      static int use_spawn = -1;
  #endif
  
-@@ -451,10 +453,37 @@
-     if (TclpCreatePipe(&errPipeIn, &errPipeOut) == 0) {
- 	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+@@ -494,10 +496,37 @@
  		"couldn't create pipe: %s", Tcl_PosixError(interp)));
  	goto error;
      }
+     errPipeIn = pipeIn;
+     errPipeOut = pipeOut;
 +
 +    /*
 +     * The child's fds 0, 1, 2 are set up in this order, so an output file
@@ -76,7 +76,7 @@ Index: unix/tclUnixPipe.c
       * We need to allocate and convert this before the fork so it is properly
       * deallocated later
       */
-@@ -638,14 +667,28 @@
+@@ -681,14 +710,28 @@
  		end, Tcl_PosixError(interp)));
  	goto error;
      }

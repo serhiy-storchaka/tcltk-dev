@@ -1,7 +1,7 @@
 Index: win/tclWinChan.c
 ==================================================================
---- win/tclWinChan.c
-+++ win/tclWinChan.c
+--- win/tclWinChan.c	
++++ win/tclWinChan.c	
 @@ -101,11 +101,11 @@
  static int		FileTruncateProc(void *instanceData,
  			    long long length);

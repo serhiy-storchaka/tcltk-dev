@@ -1,3 +1,22 @@
+Index: doc/const.n
+==================================================================
+--- doc/const.n
++++ doc/const.n
+@@ -26,11 +26,12 @@
+ to \fIvalue\fR and marked as a constant; this means that no other command
+ (e.g., \fBset\fR, \fBappend\fR, \fBincr\fR, \fBunset\fR)
+ may modify or remove the variable; variables are checked for whether they
+ are constants before any traces are called.
+ If a variable \fIvarName\fR already exists, it is an error unless that
+-variable is marked as a constant (in which case \fBconst\fR is a no-op).
++variable is marked as a constant and \fIvalue\fR is equal (as a string) to
++its current value, in which case \fBconst\fR is a no-op.
+ .PP
+ The \fIvarName\fR may not be a qualified name or reference an element of an
+ array by any means. If the variable exists and is an array, that is an error.
+ .PP
+ Constants are normally only removed by their containing procedure exiting or
+
 Index: generic/tclExecute.c
 ==================================================================
 --- generic/tclExecute.c
@@ -51,16 +70,12 @@ Index: generic/tclVar.c
   * A test to see if we are in a call frame that has local variables. This is
   * true if we are inside a procedure body.
   */
-@@ -4887,10 +4888,34 @@
-  * Side effects:
-  *	See the user documentation.
-  *
+@@ -4874,10 +4875,34 @@
+ }
+ 
+ /*
   *----------------------------------------------------------------------
-  */
-+
-+/*
-+ *----------------------------------------------------------------------
-+ *
+  *
 + * TclConstValueDiffers --
 + *
 + *	Checks whether redefining the constant in varPtr with valuePtr would
@@ -81,11 +96,15 @@ Index: generic/tclVar.c
 +    }
 +    return TclStringCmp(oldPtr, valuePtr, 1, 0, -1) != 0;
 +}
- 
- int
- Tcl_ConstObjCmd(
-     TCL_UNUSED(void *),
-     Tcl_Interp *interp,		/* Current interpreter. */
++
++/*
++ *----------------------------------------------------------------------
++ *
+  * Tcl_ConstObjCmd --
+  *
+  *	This function is invoked to process the "const" Tcl command.
+  *	See the user documentation for details on what it does.
+  *
 @@ -4924,14 +4949,21 @@
  	Tcl_SetErrorCode(interp, "TCL", "LOOKUP", "CONST", (char *)NULL);
  	return TCL_ERROR;

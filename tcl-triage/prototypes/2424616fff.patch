@@ -27,8 +27,8 @@ Index: doc/Eval.3
 +.TP 23
 +\fBTCL_EVAL_INVOKE\fR
 +.
-+This flag is only used by \fBTcl_EvalObjv\fR and \fBTcl_NREvalObjv\fR; it
-+is ignored by other procedures.  It is intended for commands such as aliases
++This flag is meant for \fBTcl_EvalObjv\fR and \fBTcl_NREvalObjv\fR;
++other procedures do not support it.  It is intended for commands such as aliases
 +and ensembles that dispatch to another command on behalf of their caller.
 +The first word of \fIobjv\fR is resolved in the global namespace instead of
 +the current namespace (the variable context is not changed), no
@@ -38,8 +38,8 @@ Index: doc/Eval.3
 +.TP 23
 +\fBTCL_EVAL_NOERR\fR
 +.
-+This flag is only used by \fBTcl_EvalObjv\fR and \fBTcl_NREvalObjv\fR; it
-+is ignored by other procedures.  If this flag bit is set, no exception
++This flag is meant for \fBTcl_EvalObjv\fR and \fBTcl_NREvalObjv\fR;
++other procedures do not support it.  If this flag bit is set, no exception
 +processing is done at all: no information is added to the
 +\fB\-errorinfo\fR return option, and when called at the top level, a
 +\fBTCL_RETURN\fR, \fBTCL_BREAK\fR or \fBTCL_CONTINUE\fR result is returned

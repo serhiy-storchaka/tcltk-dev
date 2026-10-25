@@ -2,15 +2,7 @@ Index: doc/StringObj.3
 ==================================================================
 --- doc/StringObj.3
 +++ doc/StringObj.3
-@@ -81,21 +81,21 @@
- .sp
- Tcl_Obj *
- \fBTcl_ConcatObj\fR(\fIobjc, objv\fR)
- .sp
- int
--\fBTcl_IsEmpty\fR(\fIfIobjPtr\fR)
-+\fBTcl_IsEmpty\fR(\fIobjPtr\fR)
- .fi
+@@ -88,14 +88,14 @@
  .SH ARGUMENTS
  .AS "const Tcl_UniChar" *appendObjPtr in/out
  .AP "const char" *bytes in

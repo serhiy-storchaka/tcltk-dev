@@ -1,7 +1,7 @@
 Index: tests/env.test
 ==================================================================
---- tests/env.test
-+++ tests/env.test
+--- tests/env.test	
++++ tests/env.test	
 @@ -544,10 +544,23 @@
  	[set ::env(ENV110) ""] \
  	[info exists ::env(ENV110)] \
@@ -29,9 +29,9 @@ Index: tests/env.test
 
 Index: win/tclWinInit.c
 ==================================================================
---- win/tclWinInit.c
-+++ win/tclWinInit.c
-@@ -599,10 +599,17 @@
+--- win/tclWinInit.c	
++++ win/tclWinInit.c	
+@@ -610,10 +610,17 @@
  	Tcl_WCharToUtfDString(szUserName, cchUserNameLen, bufferPtr);
      }
      return Tcl_DStringValue(bufferPtr);
@@ -49,7 +49,7 @@ Index: win/tclWinInit.c
   *
   * TclpSetVariables --
   *
-@@ -654,15 +661,21 @@
+@@ -665,15 +672,21 @@
  		TCL_GLOBAL_ONLY);
      }
  

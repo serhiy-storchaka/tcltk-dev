@@ -27,7 +27,7 @@ Index: tests/clock.test
 ==================================================================
 --- tests/clock.test
 +++ tests/clock.test
-@@ -37604,10 +37604,30 @@
+@@ -37609,10 +37609,30 @@
  	    {-18000 0 3600 0 11 0 1 2 0 0 0 0 3 0 2 2 0 0 0} \
  	    America/New_York
  	::tcl::clock::ClearCaches

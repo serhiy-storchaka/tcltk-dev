@@ -2,7 +2,7 @@ Index: generic/tclCmdIL.c
 ==================================================================
 --- generic/tclCmdIL.c
 +++ generic/tclCmdIL.c
-@@ -3837,12 +3837,12 @@
+@@ -3845,12 +3845,12 @@
  	 */
  
  	Tcl_SetObjResult(interp, Tcl_NewObj());
@@ -22,12 +22,12 @@ Index: tests/lsearch.test
 ==================================================================
 --- tests/lsearch.test
 +++ tests/lsearch.test
-@@ -620,10 +620,18 @@
+@@ -618,10 +618,18 @@
+     lsearch -inline -subindices -all -index {0 0} -exact {{{a c} {a b} {d a}} {{a c} {a b} {d a}}} a
+ } {a a}
  test lsearch-25.6 {lsearch -subindices option} {
      lsearch -inline -subindices -all -index {1 0} -exact {{{a c} {a b} {d a}} {{a c} {a b} {d a}}} a
  } {a a}
- 
- # 26* mimics 19* but with -stride added
 +test lsearch-25.7 {lsearch -sorted -inline -subindices, bug bc4ac0dd5f} {
 +    list [lsearch -sorted -subindices -inline -index 0 {{a 1} {a 2} {b 3} {c 4} {c 5}} b] \
 +	[lmap i {1 2 3 4 5 6} {
@@ -36,9 +36,9 @@ Index: tests/lsearch.test
 +	    } $i
 +	}]
 +} {b {1.0 2.0 3.000 4.00 5.0 6.000}}
+ 
+ # 26* mimics 19* but with -stride added
  test lsearch-26.1 {lsearch -stride + -subindices option} {
      lsearch -stride 3 -subindices -index {0 0} {{x x} {x b} {a d} {a c} {a b} {a a}} a
  } {3 0}
- test lsearch-26.2 {lsearch -stride + -subindices option} {
-     lsearch -stride 3 -subindices -index {2 0} -exact {{x x} {x b} {a d} {a c} {a b} {a a}} a
 

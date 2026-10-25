@@ -2,16 +2,12 @@ Index: generic/tclInterp.c
 ==================================================================
 --- generic/tclInterp.c
 +++ generic/tclInterp.c
-@@ -2661,10 +2661,35 @@
-  * Side effects:
-  *	Assigns to the pointer variable passed in, if not NULL.
-  *
+@@ -2648,10 +2648,35 @@
+ }
+ 
+ /*
   *----------------------------------------------------------------------
-  */
-+
-+/*
-+ *----------------------------------------------------------------------
-+ *
+  *
 + * ChildNameKey --
 + *
 + *	Returns the key under which a child interpreter name is stored in the
@@ -33,11 +29,15 @@ Index: generic/tclInterp.c
 +    }
 +    return name;
 +}
- 
- static Tcl_Interp *
- GetInterp(
-     Tcl_Interp *interp,		/* Interp. to start search from. */
-     Tcl_Obj *pathPtr)		/* List object containing name of interp. to
++
++/*
++ *----------------------------------------------------------------------
++ *
+  * GetInterp --
+  *
+  *	Helper function to find a child interpreter given a pathname.
+  *
+  * Results:
 @@ -2683,11 +2708,11 @@
  
      searchInterp = interp;

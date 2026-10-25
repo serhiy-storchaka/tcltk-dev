@@ -1,7 +1,47 @@
+Index: tests/load.test
+==================================================================
+--- tests/load.test	
++++ tests/load.test	
+@@ -242,10 +242,34 @@
+ 	[list $dll $loaded] {
+     load [file join $testDir tcl9pkgooa$ext]
+     list [pkgooa_stubsok] [lsort [info commands pkgooa_*]]
+ } {1 pkgooa_stubsok}
+ 
++# A copy of the dde DLL that imports a missing DLL instead of USER32.dll
++set ddeDll [lindex [glob -nocomplain -directory \
++	[file dirname [info nameofexecutable]] *dde*.dll] 0]
++testConstraint ddeDll [expr {[testConstraint win] && $ddeDll ne ""}]
++test load-12.1 {missing dependent library, long path (Bug [66aa81c90a])} -constraints {
++    ddeDll
++} -setup {
++    # The native path must not fit in the static buffer of a Tcl_DString
++    set dir [makeDirectory [string repeat x 120]]
++    set f [open $ddeDll rb]
++    set data [read $f]
++    close $f
++    set f [open [file join $dir depmissing.dll] wb]
++    puts -nonewline $f [string map {USER32.dll USERXX.dll} $data]
++    close $f
++    unset data
++} -body {
++    list [catch {load [file join $dir depmissing.dll] Dde} msg] $msg $::errorCode
++} -cleanup {
++    removeDirectory [string repeat x 120]
++    unset -nocomplain dir f msg
++} -match glob -result {1 {couldn't load library "*depmissing.dll": this library or a dependent library could not be found in library path} {WIN_LOAD MOD_NOT_FOUND}}
++unset ddeDll
++
+ # cleanup
+ unset ext
+ ::tcltest::cleanupTests
+ return
+ 
+
 Index: win/tclWinLoad.c
 ==================================================================
---- win/tclWinLoad.c
-+++ win/tclWinLoad.c
+--- win/tclWinLoad.c	
++++ win/tclWinLoad.c	
 @@ -69,11 +69,11 @@
      TCL_UNUSED(int) /*flags*/)
  {

@@ -2,7 +2,7 @@ Index: generic/tclCmdAH.c
 ==================================================================
 --- generic/tclCmdAH.c
 +++ generic/tclCmdAH.c
-@@ -2517,10 +2517,11 @@
+@@ -2519,10 +2519,11 @@
      iterPtr->cond = objv[2];
      iterPtr->body = objv[4];
      iterPtr->next = objv[3];
@@ -14,7 +14,7 @@ Index: generic/tclCmdAH.c
  
      /*
       * TIP #280. Make invoking context available to initial script.
-@@ -2545,10 +2546,29 @@
+@@ -2547,10 +2548,29 @@
  	return result;
      }
      TclNRAddCallback(interp, TclNRForIterCallback, iterPtr, NULL, NULL, NULL);
@@ -44,7 +44,7 @@ Index: generic/tclCmdAH.c
  TclNRForIterCallback(
      void *data[],
      Tcl_Interp *interp,
-@@ -2565,10 +2585,16 @@
+@@ -2567,10 +2587,16 @@
  	 * Otherwise, any error message will be appended to the result of the
  	 * last evaluation.
  	 */
@@ -66,7 +66,7 @@ Index: generic/tclCmdMZ.c
 ==================================================================
 --- generic/tclCmdMZ.c
 +++ generic/tclCmdMZ.c
-@@ -5390,10 +5390,11 @@
+@@ -5392,10 +5392,11 @@
      iterPtr->cond = objv[1];
      iterPtr->body = objv[2];
      iterPtr->next = NULL;

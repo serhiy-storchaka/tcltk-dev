@@ -28,7 +28,7 @@ Index: tests/http.test
 ==================================================================
 --- tests/http.test
 +++ tests/http.test
-@@ -608,10 +608,26 @@
+@@ -615,10 +615,26 @@
      http::reset $token
      http::status $token
  } -cleanup {

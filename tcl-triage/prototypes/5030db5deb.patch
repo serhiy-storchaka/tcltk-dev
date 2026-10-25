@@ -2,7 +2,7 @@ Index: generic/tclZipfs.c
 ==================================================================
 --- generic/tclZipfs.c
 +++ generic/tclZipfs.c
-@@ -6420,11 +6420,14 @@
+@@ -6472,11 +6472,14 @@
  	"    }\n"
  	"    foreach file [::list {*}$normal {*}$hidden] {\n"
  	"        if {[file tail $file] in {. ..}} {\n"

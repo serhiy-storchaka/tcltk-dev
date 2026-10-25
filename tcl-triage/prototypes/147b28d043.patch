@@ -1,7 +1,7 @@
 Index: win/tclWinPipe.c
 ==================================================================
---- win/tclWinPipe.c
-+++ win/tclWinPipe.c
+--- win/tclWinPipe.c	
++++ win/tclWinPipe.c	
 @@ -1149,19 +1149,15 @@
      if (applType == APPL_DOS) {
  	WaitForSingleObject(procInfo.hProcess, 50);

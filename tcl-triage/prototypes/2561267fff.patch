@@ -2,7 +2,7 @@ Index: doc/StringObj.3
 ==================================================================
 --- doc/StringObj.3
 +++ doc/StringObj.3
-@@ -384,10 +384,14 @@
+@@ -384,10 +384,17 @@
  reallocating the string space; the original allocated size for the
  string is recorded in the value, so that the string length can be
  enlarged in a subsequent call to \fBTcl_SetObjLength\fR without
@@ -12,6 +12,9 @@ Index: doc/StringObj.3
 +a character boundary: truncating in the middle of a multi-byte character, or
 +leaving uninitialized bytes after enlarging, produces an invalid string
 +unless the caller fixes up the bytes.
++(If the value has no string representation at all, only the internal
++Unicode one, as after \fBTcl_NewUnicodeObj\fR, \fInewLength\fR is
++counted in characters instead.)
  .PP
  \fBTcl_AttemptSetObjLength\fR is identical in function to
  \fBTcl_SetObjLength\fR except that if sufficient memory to satisfy the

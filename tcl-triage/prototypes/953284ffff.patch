@@ -30,7 +30,7 @@ Index: generic/tclPathObj.c
 ==================================================================
 --- generic/tclPathObj.c
 +++ generic/tclPathObj.c
-@@ -1832,10 +1832,17 @@
+@@ -1838,10 +1838,17 @@
  	    fsPathPtr->normPathPtr = copy;
  
  	    TclDecrRefCount(dir);
@@ -48,7 +48,7 @@ Index: generic/tclPathObj.c
      /*
       * Ensure cwd hasn't changed.
       */
-@@ -1863,10 +1870,11 @@
+@@ -1869,10 +1876,11 @@
  	     */
  
  	    TclFSNormalizeToUniquePath(interp, copy, cwdLen-1);
@@ -60,7 +60,7 @@ Index: generic/tclPathObj.c
      if (fsPathPtr->normPathPtr == NULL) {
  	Tcl_Obj *useThisCwd = NULL;
  
-@@ -1948,10 +1956,11 @@
+@@ -1954,10 +1962,11 @@
  	if (fsPathPtr->normPathPtr) {
  	    Tcl_DecrRefCount(fsPathPtr->normPathPtr);
  	}

@@ -21,7 +21,7 @@ Index: tests/http.test
 ==================================================================
 --- tests/http.test
 +++ tests/http.test
-@@ -728,10 +728,49 @@
+@@ -735,10 +735,49 @@
      resetWhileOpening 1
  } -result {- reset {} {}}
  test http-4.18.$ThreadLevel {reset while the socket command runs the event loop} -body {

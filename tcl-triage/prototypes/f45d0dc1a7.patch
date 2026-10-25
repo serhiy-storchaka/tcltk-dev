@@ -2,7 +2,7 @@ Index: generic/tclTest.c
 ==================================================================
 --- generic/tclTest.c
 +++ generic/tclTest.c
-@@ -332,10 +332,11 @@
+@@ -341,10 +341,11 @@
  static Tcl_ObjCmdProc2	TestUtfPrevCmd;
  static Tcl_ObjCmdProc2	TestUtfToNormalizedDStringCmd;
  static Tcl_ObjCmdProc2	TestUtfToNormalizedCmd;
@@ -14,7 +14,7 @@ Index: generic/tclTest.c
  static Tcl_ObjCmdProc2	TestHashSystemHashCmd;
  static Tcl_ObjCmdProc2	TestGetIntForIndexCmd;
  static Tcl_ObjCmdProc2	TestLutilCmd;
-@@ -699,10 +700,12 @@
+@@ -710,10 +711,12 @@
  	    TestUtfPrevCmd, NULL, NULL);
      Tcl_CreateObjCommand2(interp, "testnumutfchars",
  	    TestNumUtfCharsCmd, NULL, NULL);
@@ -27,7 +27,7 @@ Index: generic/tclTest.c
      Tcl_CreateObjCommand2(interp, "testfindlast",
  	    TestFindLastCmd, NULL, NULL);
      Tcl_CreateObjCommand2(interp, "testgetintforindex",
-@@ -8150,10 +8153,41 @@
+@@ -8292,10 +8295,41 @@
      Tcl_SetObjResult(interp, Tcl_NewIntObj(c));
  
      return TCL_OK;

@@ -40,7 +40,7 @@ Index: tests/fileSystem.test
 ==================================================================
 --- tests/fileSystem.test
 +++ tests/fileSystem.test
-@@ -862,10 +862,19 @@
+@@ -846,10 +846,19 @@
      cd [tcltest::temporaryDirectory]
      testsimplefilesystem 0
      file delete -force simpledir

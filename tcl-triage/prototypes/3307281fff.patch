@@ -54,7 +54,7 @@ Index: generic/tclTest.c
 ==================================================================
 --- generic/tclTest.c
 +++ generic/tclTest.c
-@@ -6582,10 +6582,28 @@
+@@ -6724,10 +6724,28 @@
  	Tcl_GetChannelErrorInterp(interp, &msg);
  	Tcl_SetObjResult(interp, msg);
  	Tcl_DecrRefCount(msg);

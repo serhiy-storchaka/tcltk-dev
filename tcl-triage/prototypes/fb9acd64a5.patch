@@ -83,22 +83,22 @@ Index: tests/interp.test
 ==================================================================
 --- tests/interp.test
 +++ tests/interp.test
-@@ -3929,10 +3929,21 @@
+@@ -3949,10 +3949,21 @@
      $i set x "123 45"
      interp eval $i readX
  } -result {123 45} -cleanup {
      interp delete $i
  }
 +
-+test interp-41.1 {close stdout in child before parent used it, bug fb9acd64a5} -setup {
++test interp-42.1 {close stdout in child before parent used it, bug fb9acd64a5} -setup {
 +    set f [makeFile {
 +	[interp create] eval {close stdout}
 +	puts stderr [catch {puts "hello"} msg]:$msg
-+    } interp-41.1.tcl]
++    } interp-42.1.tcl]
 +} -body {
 +    exec [interpreter] $f 2>@1
 +} -cleanup {
-+    removeFile interp-41.1.tcl
++    removeFile interp-42.1.tcl
 +} -result "hello\n0:"
  
  #####################################################################

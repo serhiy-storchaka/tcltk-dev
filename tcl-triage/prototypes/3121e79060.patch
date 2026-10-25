@@ -39,8 +39,8 @@ Index: doc/pkgconfig.n
 +.SH KEYS
 +.PP
 +The boolean keys (values \fB0\fR or \fB1\fR) are \fBdebug\fR (built with
-+symbols), \fBthreaded\fR, \fBprofiled\fR, \fB64bit\fR (configured with
-+\fB\-\-enable\-64bit\fR), \fBoptimized\fR, \fBmem_debug\fR,
++symbols), \fBthreaded\fR, \fBprofiled\fR, \fB64bit\fR (a 64-bit build; on Unix only
++when configured with \fB\-\-enable\-64bit\fR), \fBoptimized\fR, \fBmem_debug\fR,
 +\fBcompile_debug\fR and \fBcompile_stats\fR.
 +.PP
 +The path keys come in two forms: \fIname\fB,install\fR is the location

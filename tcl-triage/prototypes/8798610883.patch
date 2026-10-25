@@ -2,7 +2,7 @@ Index: generic/tclInt.h
 ==================================================================
 --- generic/tclInt.h
 +++ generic/tclInt.h
-@@ -4291,11 +4291,11 @@
+@@ -4295,11 +4295,11 @@
   * MODULE_SCOPE int	TclIsInfinite(double d);
   * MODULE_SCOPE int	TclIsNaN(double d);
   */

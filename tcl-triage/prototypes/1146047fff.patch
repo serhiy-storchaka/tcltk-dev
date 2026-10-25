@@ -2,7 +2,7 @@ Index: generic/tclFileName.c
 ==================================================================
 --- generic/tclFileName.c
 +++ generic/tclFileName.c
-@@ -2195,12 +2195,24 @@
+@@ -2212,12 +2212,24 @@
  	    result = TclListObjGetElements(interp, subdirsPtr,
  		    &subdirc, &subdirv);
  	    for (i=0; result==TCL_OK && i<subdirc; i++) {

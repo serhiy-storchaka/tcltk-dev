@@ -34,3 +34,95 @@ Index: generic/tclStrToD.c
      fract = frexp(d, &expt);
      if (expt <= 0) {
 
+Index: generic/tclTestObj.c
+==================================================================
+--- generic/tclTestObj.c
++++ generic/tclTestObj.c
+@@ -173,15 +173,16 @@
+     Tcl_Interp *interp,		/* Tcl interpreter */
+     Tcl_Size objc,		/* Argument count */
+     Tcl_Obj *const *objv)	/* Argument vector */
+ {
+     static const char *const subcmds[] = {
+-	"set", "get", "mult10", "div10", "iseven", "radixsize", NULL
++	"set", "get", "mult10", "div10", "iseven", "radixsize", "fromdouble",
++	NULL
+     };
+     enum options {
+ 	BIGNUM_SET, BIGNUM_GET, BIGNUM_MULT10, BIGNUM_DIV10, BIGNUM_ISEVEN,
+-	BIGNUM_RADIXSIZE
++	BIGNUM_RADIXSIZE, BIGNUM_FROMDOUBLE
+     } idx;
+     int index;
+     Tcl_Size varIndex;
+     const char *string;
+     mp_int bignumValue;
+@@ -340,10 +341,44 @@
+ 	} else {
+ 	    SetVarToObj(varPtr, varIndex, Tcl_NewWideIntObj(index));
+ 	}
+ 	mp_clear(&bignumValue);
+ 	break;
++
++    case BIGNUM_FROMDOUBLE: {
++	void *ptr;
++	int type;
++
++	if (objc != 4) {
++	    Tcl_WrongNumArgs(interp, 2, objv, "varIndex double");
++	    return TCL_ERROR;
++	}
++
++	/*
++	 * Unlike Tcl_GetDoubleFromObj, this lets NaN through, so that
++	 * Tcl_InitBignumFromDouble can be tested with it. [Bug d6d8509933]
++	 */
++
++	if (Tcl_GetNumberFromObj(interp, objv[3], &ptr, &type) != TCL_OK) {
++	    return TCL_ERROR;
++	}
++	if (type != TCL_NUMBER_DOUBLE && type != TCL_NUMBER_NAN) {
++	    Tcl_SetObjResult(interp, Tcl_NewStringObj(
++		    "expected floating-point value", -1));
++	    return TCL_ERROR;
++	}
++	if (Tcl_InitBignumFromDouble(interp, *(double *)ptr,
++		&bignumValue) != TCL_OK) {
++	    return TCL_ERROR;
++	}
++	if ((varPtr[varIndex] != NULL) && !Tcl_IsShared(varPtr[varIndex])) {
++	    Tcl_SetBignumObj(varPtr[varIndex], &bignumValue);
++	} else {
++	    SetVarToObj(varPtr, varIndex, Tcl_NewBignumObj(&bignumValue));
++	}
++	break;
++    }
+     }
+ 
+     Tcl_SetObjResult(interp, varPtr[varIndex]);
+     return TCL_OK;
+ }
+
+Index: tests/obj.test
+==================================================================
+--- tests/obj.test
++++ tests/obj.test
+@@ -585,10 +585,17 @@
+     set result ""
+     lappend result [testbignumobj set 1 9]
+     lappend result [testbignumobj radixsize 1]    ;
+     lappend result [testobj type 1]
+ } {9 2 int}
++test obj-34.3 {Tcl_InitBignumFromDouble} testobj {
++    binary scan [binary format q NaN] q nan
++    list [testbignumobj fromdouble 1 1e20] \
++	[catch {testbignumobj fromdouble 1 Inf} msg] $msg \
++	[catch {testbignumobj fromdouble 1 $nan} msg opts] $msg \
++	[dict get $opts -errorcode]
++} {100000000000000000000 1 {integer value too large to represent} 1 {floating point value is Not a Number} {TCL VALUE DOUBLE NAN}}
+ 
+ if {[testConstraint testobj]} {
+     testobj freeallvars
+ }
+ 
+

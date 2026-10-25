@@ -67,6 +67,19 @@ Index: generic/tclExecute.c
  /*
   * Auxiliary code to insure that GrowEvaluationStack always returns correctly
   * aligned memory.
+@@ -10262,11 +10251,11 @@
+     objBytesIfUnshared = 0.0;
+     strBytesIfUnshared = 0.0;
+     strBytesSharedMultX = 0.0;
+     strBytesSharedOnce = 0.0;
+     for (ui = 0;  ui < globalTablePtr->numBuckets;  ui++) {
+-	for (entryPtr = globalTablePtr->buckets[i];  entryPtr != NULL;
++	for (entryPtr = globalTablePtr->buckets[ui];  entryPtr != NULL;
+ 		entryPtr = entryPtr->nextPtr) {
+ 	    if (TclHasInternalRep(entryPtr->objPtr, &tclByteCodeType)) {
+ 		numByteCodeLits++;
+ 	    }
+ 	    (void) TclGetStringFromObj(entryPtr->objPtr, &length);
 
 Index: generic/tclInterp.c
 ==================================================================
@@ -92,4 +105,49 @@ Index: generic/tclInterp.c
       * Remove the standard channels from the interpreter; safe interpreters do
       * not ordinarily have access to stdin, stdout and stderr.
       *
+
+Index: tests/execute.test
+==================================================================
+--- tests/execute.test
++++ tests/execute.test
+@@ -33,10 +33,12 @@
+     && [llength [info commands testdoubleobj]]
+     && [llength [info commands teststringobj]]
+ }]
+ 
+ testConstraint testexprlongobj [llength [info commands testexprlongobj]]
++# evalstats exists only in builds with TCL_COMPILE_STATS
++testConstraint evalstats [llength [info commands evalstats]]
+ 
+ 
+ if {[namespace which -command testbumpinterpepoch] eq ""} {
+   proc testbumpinterpepoch {} { rename ::set ::dummy; rename ::dummy ::set }
+ }
+@@ -1173,10 +1175,26 @@
+ 	trace add variable x write {apply {args {error boo}}}
+ 	lappend x 4 5
+     }}
+ } -returnCodes error -result {can't set "x": boo}
+ 
++test execute-13.1 {evalstats in child interps, bug 1743302} -constraints {
++    evalstats
++} -setup {
++    interp create child
++    interp create -safe safechild
++} -body {
++    list [child eval {info commands evalstats}] \
++	[child eval {info exists tcl_traceExec}] \
++	[string match *statistics* [child eval evalstats]] \
++	[string match *statistics* [safechild eval evalstats]] \
++	[safechild eval {info exists tcl_traceExec}]
++} -cleanup {
++    interp delete child
++    interp delete safechild
++} -result {evalstats 1 1 1 0}
++
+ # cleanup
+ if {[info commands testobj] != {}} {
+    testobj freeallvars
+ }
+ catch {namespace delete {*}[namespace children :: test_ns_*]}
 

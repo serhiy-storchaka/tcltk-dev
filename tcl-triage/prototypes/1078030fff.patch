@@ -1,7 +1,7 @@
 Index: win/tclWinDde.c
 ==================================================================
---- win/tclWinDde.c
-+++ win/tclWinDde.c
+--- win/tclWinDde.c	
++++ win/tclWinDde.c	
 @@ -967,11 +967,25 @@
  static void
  DdeExitProc(

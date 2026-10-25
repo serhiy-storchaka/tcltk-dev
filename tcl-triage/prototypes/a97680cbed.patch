@@ -25,7 +25,7 @@ Index: generic/tclFileName.c
 ==================================================================
 --- generic/tclFileName.c
 +++ generic/tclFileName.c
-@@ -738,14 +738,12 @@
+@@ -743,14 +743,12 @@
   * TclFSJoinPathHelper --
   *
   *	This function takes the given object, which should usually be a valid
@@ -42,7 +42,7 @@ Index: generic/tclFileName.c
   *	Returns object owned by the caller (which should increment its
   *	refCount) - typically an object with refCount of zero.
   *
-@@ -796,14 +794,12 @@
+@@ -801,14 +799,12 @@
   *	This function takes the given object, which should usually be a valid
   *	path or NULL, and joins onto it the array of paths segments given.
   *	This function behaves as the join command in that any non-relative paths

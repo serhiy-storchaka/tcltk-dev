@@ -2,7 +2,7 @@ Index: generic/tclInt.h
 ==================================================================
 --- generic/tclInt.h
 +++ generic/tclInt.h
-@@ -4276,14 +4276,25 @@
+@@ -4277,14 +4277,25 @@
  #define	TCL_DTRACE_OBJ_CREATE(objPtr)	{}
  #define	TCL_DTRACE_OBJ_FREE(objPtr)	{}
  #endif /* USE_DTRACE */

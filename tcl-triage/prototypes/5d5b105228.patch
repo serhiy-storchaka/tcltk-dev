@@ -2,7 +2,7 @@ Index: generic/tclCmdMZ.c
 ==================================================================
 --- generic/tclCmdMZ.c
 +++ generic/tclCmdMZ.c
-@@ -3948,10 +3948,20 @@
+@@ -3950,10 +3950,20 @@
  	    ctxPtr->line = (int *)Tcl_Alloc(objc * sizeof(int));
  	    ctxPtr->nline = objc;
  	    for (k=0; k < objc; k++) {

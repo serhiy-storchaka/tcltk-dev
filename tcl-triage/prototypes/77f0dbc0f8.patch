@@ -44,7 +44,7 @@ Index: tests/interp.test
 ==================================================================
 --- tests/interp.test
 +++ tests/interp.test
-@@ -3162,10 +3162,23 @@
+@@ -3182,10 +3182,23 @@
      rename testMyNewSet {}
      rename mySet {}
      rename myNewSet {}

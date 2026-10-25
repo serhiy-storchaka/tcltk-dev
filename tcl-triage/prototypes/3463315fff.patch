@@ -1,7 +1,44 @@
+Index: tests/winFCmd.test
+==================================================================
+--- tests/winFCmd.test	
++++ tests/winFCmd.test	
+@@ -1314,10 +1314,31 @@
+     pwd
+ } -cleanup {
+     set ::env(HOME) $oldhome
+     cd $pwd
+ } -result $pwd
++
++# Changes an ACL with icacls: run only with -constraints allowfilesecuritychanges
++# (or in CI). Without privileges like SeBackupPrivilege, which allow listing
++# the directory anyway, it fails without the fix.
++if {![testConstraint notInCIenv]} {
++    testConstraint allowfilesecuritychanges 1
++}
++test winFCmd-16.15 {Windows file normalization - denied dir listing (bugs d40d8db3fb, 3463315)} -constraints {
++    win allowfilesecuritychanges
++} -setup {
++    set dir [makeDirectory winFCmd-16.15]
++    file mkdir [file join $dir middledir tail]
++    set who $::env(USERNAME)
++    exec icacls [file nativename [file join $dir middledir]] /deny $who:(RD)
++} -body {
++    file normalize [file join $dir middledir tail]
++} -cleanup {
++    exec icacls [file nativename [file join $dir middledir]] /remove:d $who
++    removeDirectory winFCmd-16.15
++    unset -nocomplain dir who
++} -result [file join [temporaryDirectory] winFCmd-16.15 middledir tail]
+ 
+ test winFCmd-17.1 {Windows bad permissions cd} -constraints win -body {
+     set d {}
+     foreach dd {c:/ d:/ e:/} {
+ 	eval lappend d [glob -nocomplain \
+
 Index: win/tclWinFile.c
 ==================================================================
---- win/tclWinFile.c
-+++ win/tclWinFile.c
+--- win/tclWinFile.c	
++++ win/tclWinFile.c	
 @@ -2730,15 +2730,26 @@
  		    HANDLE handle;
  

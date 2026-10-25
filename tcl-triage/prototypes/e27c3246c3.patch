@@ -24,7 +24,7 @@ Index: generic/tclTest.c
 ==================================================================
 --- generic/tclTest.c
 +++ generic/tclTest.c
-@@ -328,10 +328,11 @@
+@@ -337,10 +337,11 @@
  static Tcl_FSPathInFilesystemProc SimplePathInFilesystem;
  static Tcl_Obj *	SimpleRedirect(Tcl_Obj *pathPtr);
  static Tcl_FSMatchInDirectoryProc SimpleMatchInDirectory;
@@ -36,7 +36,7 @@ Index: generic/tclTest.c
  static Tcl_ObjCmdProc2	TestNumUtfCharsCmd;
  static Tcl_ObjCmdProc2	TestGetUniCharCmd;
  static Tcl_ObjCmdProc2	TestFindFirstCmd;
-@@ -695,10 +696,12 @@
+@@ -706,10 +707,12 @@
  	    TestsetobjerrorcodeCmd, NULL, NULL);
      Tcl_CreateObjCommand2(interp, "testutfnext",
  	    TestUtfNextCmd, NULL, NULL);
@@ -49,7 +49,7 @@ Index: generic/tclTest.c
      Tcl_CreateObjCommand2(interp, "testgetunichar",
  	    TestGetUniCharCmd, NULL, NULL);
      Tcl_CreateObjCommand2(interp, "testfindfirst",
-@@ -8084,10 +8087,52 @@
+@@ -8226,10 +8229,52 @@
      result = Tcl_UtfPrev(bytes + offset, bytes);
      Tcl_SetObjResult(interp, Tcl_NewWideIntObj(result - bytes));
      return TCL_OK;

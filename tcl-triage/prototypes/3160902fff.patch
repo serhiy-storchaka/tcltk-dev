@@ -2,7 +2,7 @@ Index: tests/socket.test
 ==================================================================
 --- tests/socket.test
 +++ tests/socket.test
-@@ -167,18 +167,38 @@
+@@ -180,18 +180,38 @@
  	set name [lindex $args 0]
  	puts "[lindex [time {uplevel [linsert $args 0 tcltest::test]}] 0] @@@ $name"
      }

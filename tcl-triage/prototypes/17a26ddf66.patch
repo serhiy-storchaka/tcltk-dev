@@ -2,7 +2,7 @@ Index: tests/fCmd.test
 ==================================================================
 --- tests/fCmd.test
 +++ tests/fCmd.test
-@@ -2387,20 +2387,22 @@
+@@ -2378,20 +2378,22 @@
  } -match glob -result *
  test fCmd-27.5 {TclFileAttrsCmd - setting one option} -setup {
      catch {file delete -force -- foo.tmp}

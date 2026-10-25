@@ -2,45 +2,133 @@ Index: generic/tclEncoding.c
 ==================================================================
 --- generic/tclEncoding.c
 +++ generic/tclEncoding.c
-@@ -758,10 +758,32 @@
+@@ -233,10 +233,11 @@
+ static Tcl_DupInternalRepProc	DupEncodingInternalRep;
+ static Tcl_EncodingFreeProc	EscapeFreeProc;
+ static Tcl_EncodingConvertProc	EscapeFromUtfProc;
+ static Tcl_EncodingConvertProc	EscapeToUtfProc;
+ static void			FillEncodingFileMap(void);
++static Tcl_Obj *	FindEncodingNameNoCase(const char *name, int files);
+ static void			FreeEncoding(Tcl_Encoding encoding);
+ static Tcl_FreeInternalRepProc	FreeEncodingInternalRep;
+ static Encoding *		GetTableEncoding(EscapeEncodingData *dataPtr,
+ 				    int state);
+ static Tcl_Encoding		LoadEncodingFile(Tcl_Interp *interp,
+@@ -741,10 +742,12 @@
+     Tcl_Interp *interp,		/* Interp for error reporting, if not NULL. */
+     const char *name)		/* The name of the desired encoding. */
+ {
+     Tcl_HashEntry *hPtr;
+     Encoding *encodingPtr;
++    Tcl_Encoding encoding;
++    Tcl_Obj *nameObj;
+ 
+     Tcl_MutexLock(&encodingMutex);
+     if (name == NULL) {
+ 	encodingPtr = (Encoding *) systemEncoding;
  	encodingPtr->refCount++;
+@@ -759,11 +762,94 @@
  	Tcl_MutexUnlock(&encodingMutex);
  	return (Tcl_Encoding) encodingPtr;
      }
      Tcl_MutexUnlock(&encodingMutex);
-+
+ 
+-    return LoadEncodingFile(interp, name);
 +    /*
-+     * Encoding names are case-insensitive (see RFC 2978). All encodings
-+     * that come with Tcl have lower-case names, so retry with that.
++     * Encoding names are case-insensitive (see RFC 2978). If there is no
++     * exact match, look for a loaded encoding, then for an encoding file,
++     * whose name differs only in case. [Bug 1214461]
 +     */
 +
-+    for (const char *p = name; *p != '\0'; p++) {
-+	if (isupper(UCHAR(*p))) {
-+	    Tcl_DString ds;
-+	    Tcl_Encoding encoding;
-+
-+	    Tcl_DStringInit(&ds);
-+	    Tcl_DStringAppend(&ds, name, TCL_INDEX_NONE);
-+	    Tcl_UtfToLower(Tcl_DStringValue(&ds));
-+	    encoding = Tcl_GetEncoding(NULL, Tcl_DStringValue(&ds));
-+	    Tcl_DStringFree(&ds);
-+	    if (encoding != NULL) {
-+		return encoding;
-+	    }
-+	    break;
++    nameObj = FindEncodingNameNoCase(name, 0);
++    if (nameObj == NULL) {
++	encoding = LoadEncodingFile(interp, name);
++	if (encoding != NULL) {
++	    return encoding;
++	}
++	nameObj = FindEncodingNameNoCase(name, 1);
++	if (nameObj == NULL) {
++	    return NULL;
++	}
++	if (interp != NULL) {
++	    Tcl_ResetResult(interp);
 +	}
 +    }
- 
-     return LoadEncodingFile(interp, name);
++    encoding = Tcl_GetEncoding(interp, TclGetString(nameObj));
++    Tcl_DecrRefCount(nameObj);
++    return encoding;
++}
++
++/*
++ *-------------------------------------------------------------------------
++ *
++ * FindEncodingNameNoCase --
++ *
++ *	Looks for an encoding whose name differs from the given one only in
++ *	case: among the loaded encodings, or (if files is true) among the
++ *	encoding files on the encoding search path.
++ *
++ * Results:
++ *	The name found, with a reference count of 1, or NULL.
++ *
++ *-------------------------------------------------------------------------
++ */
++
++static Tcl_Obj *
++FindEncodingNameNoCase(
++    const char *name,
++    int files)
++{
++    Tcl_Obj *result = NULL;
++
++    if (!files) {
++	Tcl_HashSearch search;
++	Tcl_HashEntry *hPtr;
++
++	Tcl_MutexLock(&encodingMutex);
++	for (hPtr = Tcl_FirstHashEntry(&encodingTable, &search);
++		hPtr != NULL; hPtr = Tcl_NextHashEntry(&search)) {
++	    const char *key = (const char *)
++		    Tcl_GetHashKey(&encodingTable, hPtr);
++
++	    if (TclUtfCasecmp(key, name) == 0) {
++		result = Tcl_NewStringObj(key, TCL_INDEX_NONE);
++		break;
++	    }
++	}
++	Tcl_MutexUnlock(&encodingMutex);
++    } else {
++	Tcl_Obj *map, *key;
++	Tcl_DictSearch search;
++	int done = 0;
++
++	FillEncodingFileMap();
++	map = TclGetProcessGlobalValue(&encodingFileMap);
++	Tcl_DictObjFirst(NULL, map, &search, &key, NULL, &done);
++	for (; !done; Tcl_DictObjNext(&search, &key, NULL, &done)) {
++	    if (strcmp(TclGetString(key), name) != 0
++		    && TclUtfCasecmp(TclGetString(key), name) == 0) {
++		result = key;
++		break;
++	    }
++	}
++	Tcl_DictObjDone(&search);
++    }
++    if (result != NULL) {
++	Tcl_IncrRefCount(result);
++    }
++    return result;
  }
  
  /*
+  *---------------------------------------------------------------------------
+  *
 
 Index: tests/encoding.test
 ==================================================================
 --- tests/encoding.test
 +++ tests/encoding.test
-@@ -64,10 +64,17 @@
+@@ -64,10 +64,18 @@
  } {{fromutf }}
  test encoding-1.3 {Tcl_GetEncoding: load encoding} {
      list [encoding convertto jis0208 乎] \
@@ -48,8 +136,9 @@ Index: tests/encoding.test
  } "8C 乎"
 +test encoding-1.4 {Tcl_GetEncoding: names are case-insensitive, bug 1214461} -body {
 +    list [encoding convertfrom ISO8859-1 \xE9] [encoding convertfrom CP1251 \xC0] \
-+	[encoding convertto UTF-8 \xE9] [encoding convertto Utf-16LE A]
-+} -result [list \xE9 \u0410 \xC3\xA9 A\x00]
++	[encoding convertto UTF-8 \xE9] [encoding convertto Utf-16LE A] \
++	[encoding convertto MACROMAN \xE9] [encoding convertfrom macroman \x8E]
++} -result [list \xE9 \u0410 \xC3\xA9 A\x00 \x8E \xE9]
 +test encoding-1.5 {Tcl_GetEncoding: unknown mixed-case name} -body {
 +    encoding convertto Foo-Bar abc
 +} -returnCodes error -result {unknown encoding "Foo-Bar"}

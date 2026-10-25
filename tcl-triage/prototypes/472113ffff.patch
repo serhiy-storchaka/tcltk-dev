@@ -1,3 +1,23 @@
+Index: doc/namespace.n
+==================================================================
+--- doc/namespace.n
++++ doc/namespace.n
+@@ -339,10 +339,14 @@
+ If the command or variable does not exist,
+ this command returns an empty string.  If the variable has been
+ created but not defined, such as with the \fBvariable\fR command
+ or through a \fBtrace\fR on the variable, this command will return the
+ fully-qualified name of the variable.
++If \fIname\fR refers to an array element, such as \fBary(i)\fR, the array
++is looked up and its fully-qualified name is returned with the index
++appended, whether or not the element exists; an empty string is returned
++if the array does not exist or is a defined scalar variable.
+ If no flag is given, \fIname\fR is treated as a command name.
+ See the section \fBNAME RESOLUTION\fR below for an explanation of
+ the rules regarding name resolution.
+ .SH "WHAT IS A NAMESPACE?"
+ .PP
+
 Index: generic/tclNamesp.c
 ==================================================================
 --- generic/tclNamesp.c

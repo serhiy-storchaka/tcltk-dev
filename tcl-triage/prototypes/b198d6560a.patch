@@ -2,14 +2,22 @@ Index: generic/tclCompCmdsSZ.c
 ==================================================================
 --- generic/tclCompCmdsSZ.c
 +++ generic/tclCompCmdsSZ.c
-@@ -1898,15 +1898,20 @@
+@@ -1898,15 +1898,27 @@
  	 * Punt to the interpreted version.
  	 */
  
  	return TCL_ERROR;
      }
 -    if (numWords < 3) {
--	return TCL_ERROR;
++    if (noCase && mode == Switch_Integer) {
++	/*
++	 * Error case: let the interpreted version report it.
++	 */
++
+ 	return TCL_ERROR;
+     }
+-    tokenPtr = TokenAfter(tokenPtr);
+-    numWords--;
 +    if (numWords >= 3) {
 +	/*
 +	 * We stopped at "--"; skip it. Otherwise the options were followed by
@@ -19,9 +27,7 @@ Index: generic/tclCompCmdsSZ.c
 +
 +	tokenPtr = TokenAfter(tokenPtr);
 +	numWords--;
-     }
--    tokenPtr = TokenAfter(tokenPtr);
--    numWords--;
++    }
  
      /*
       * The value to test against is going to always get pushed on the stack.
@@ -32,7 +38,7 @@ Index: tests/switch.test
 ==================================================================
 --- tests/switch.test
 +++ tests/switch.test
-@@ -864,10 +864,28 @@
+@@ -864,10 +864,34 @@
  } -result {expected integer but got "gorp"}
  test switch-19.7 {switch -integer: compiled, splitlist} -returnCodes error -body {
      switch -integer -- gorp {0 {error body}}
@@ -55,6 +61,12 @@ Index: tests/switch.test
 +	    [switch -nocase $a {-GLOB {string cat ok} default {string cat no}}]
 +    }} -glob
 +} -result {no ok ok}
++test switch-20.4 {switch -nocase -integer: compiled error, with and without --} -body {
++    apply {a {
++	list [catch {switch -nocase -integer $a {1 {string cat x}}} m] $m \
++	    [catch {switch -nocase -integer -- $a {1 {string cat x}}} m] $m
++    }} 1
++} -result {1 {-nocase option cannot be used with -integer option} 1 {-nocase option cannot be used with -integer option}}
 +
  # cleanup
  catch {rename foo {}}

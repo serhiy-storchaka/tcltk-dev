@@ -2,7 +2,7 @@ Index: unix/configure
 ==================================================================
 --- unix/configure
 +++ unix/configure
-@@ -11217,15 +11217,10 @@
+@@ -11135,15 +11135,10 @@
  
  test -z "$TCL_LIBRARY" && TCL_LIBRARY='$(prefix)/lib/tcl$(VERSION)'
  PRIVATE_INCLUDE_DIR='$(includedir)'
@@ -18,7 +18,7 @@ Index: unix/configure
      if test "`uname -s`" = "Darwin" ; then
  	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking how to package libraries" >&5
  printf %s "checking how to package libraries... " >&6; }
-@@ -11322,10 +11317,13 @@
+@@ -11240,10 +11235,13 @@
      if test "${TCL_LIB_VERSIONS_OK}" = "ok"; then
  	TCL_LIB_FLAG="-ltcl${TCL_VERSION}"
      else
@@ -37,7 +37,7 @@ Index: unix/configure.ac
 ==================================================================
 --- unix/configure.ac
 +++ unix/configure.ac
-@@ -731,15 +731,10 @@
+@@ -715,15 +715,10 @@
  
  test -z "$TCL_LIBRARY" && TCL_LIBRARY='$(prefix)/lib/tcl$(VERSION)'
  PRIVATE_INCLUDE_DIR='$(includedir)'
@@ -53,7 +53,7 @@ Index: unix/configure.ac
      TCL_SHLIB_LD_EXTRAS="-compatibility_version ${TCL_VERSION} -current_version ${TCL_VERSION}`echo ${TCL_PATCH_LEVEL} | awk ['{match($0, "\\\.[0-9]+"); print substr($0,RSTART,RLENGTH)}']`"
      TCL_SHLIB_LD_EXTRAS="${TCL_SHLIB_LD_EXTRAS}"' -install_name "${DYLIB_INSTALL_DIR}"/${TCL_LIB_FILE}'
      echo "$LDFLAGS " | grep -q -- '-prebind ' && TCL_SHLIB_LD_EXTRAS="${TCL_SHLIB_LD_EXTRAS}"' -seg1addr 0xA000000'
-@@ -798,10 +793,13 @@
+@@ -782,10 +777,13 @@
      if test "${TCL_LIB_VERSIONS_OK}" = "ok"; then
  	TCL_LIB_FLAG="-ltcl${TCL_VERSION}"
      else

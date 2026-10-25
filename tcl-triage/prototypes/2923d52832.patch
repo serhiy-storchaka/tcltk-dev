@@ -63,3 +63,27 @@ Index: generic/tclUtil.c
  	uptn  = Tcl_GetUnicodeFromObj(ptnObj, &plen);
  	match = TclUniCharMatch(udata, length, uptn, plen, flags);
 
+Index: tests/string.test
+==================================================================
+--- tests/string.test
++++ tests/string.test
+@@ -1463,10 +1463,18 @@
+ 	    [run {string match *===* $longString}]
+ } {0 1 1 1 0 0}
+ test string-11.55.$noComp {string match, invalid binary optimization} {
+     [format string] match \u0141 [binary format c 65]
+ } 0
++test string-11.56.$noComp {string match keeps plain strings, bug 2923d52832} -body {
++    set x [format %s abc]
++    set p [format %s a*]
++    list [run {string match $p $x}] \
++	[lindex [representationpoke $x] 0] [lindex [representationpoke $p] 0]
++} -cleanup {
++    unset -nocomplain x p
++} -result {1 pure pure}
+ 
+ test stringComp-12.1.0.$noComp {Bug 3588366: end-offsets before start} {
+     apply {s {
+ 	string range $s 0 end-5
+     }} 12345
+

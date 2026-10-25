@@ -2,7 +2,7 @@ Index: tests/fCmd.test
 ==================================================================
 --- tests/fCmd.test
 +++ tests/fCmd.test
-@@ -2400,10 +2400,17 @@
+@@ -2391,10 +2391,17 @@
      createfile foo.tmp
      set attrs [file attributes foo.tmp]
      file attributes foo.tmp {*}[lrange $attrs 0 3]

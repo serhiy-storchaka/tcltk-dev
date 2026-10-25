@@ -26,7 +26,7 @@ Index: doc/binary.n
  floating point number may vary across architectures, so the number of
 -bytes that are scanned may vary.  If the data does not represent a
 +bytes that are scanned may vary.  IEEE infinities and not-a-number
-+values are stored as \fBInf\fR, \fB\-Inf\fR and \fBNaN\fR (or
++values are returned as \fBInf\fR, \fB\-Inf\fR and \fBNaN\fR (or
 +\fBNaN(\fIhex\fB)\fR with a non-default payload, possibly preceded by a
 +minus sign); note that \fBexpr\fR raises an error for a NaN operand.
 +If the data does not represent a

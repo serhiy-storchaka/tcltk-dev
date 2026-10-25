@@ -14,7 +14,7 @@ Index: generic/tclCmdIL.c
  
  /*
   * Definitions for [lseq] command
-@@ -4701,10 +4702,11 @@
+@@ -4709,10 +4710,11 @@
  	Tcl_SetErrorCode(interp, "TCL", "MEMORY", (char *)NULL);
  	sortInfo.resultCode = TCL_ERROR;
  	goto done;
@@ -26,7 +26,7 @@ Index: generic/tclCmdIL.c
  	if (indexc) {
  	    /*
  	     * If this is an indexed sort, retrieve the corresponding element
-@@ -4721,18 +4723,44 @@
+@@ -4729,18 +4731,44 @@
  	 * Determine the "value" of this object for sorting purposes
  	 */
  
@@ -74,7 +74,7 @@ Index: generic/tclCmdIL.c
  
  	    if (Tcl_GetDoubleFromObj(sortInfo.interp, indexPtr, &a) != TCL_OK) {
  		sortInfo.resultCode = TCL_ERROR;
-@@ -5097,10 +5125,13 @@
+@@ -5105,10 +5133,13 @@
  	Tcl_WideInt a, b;
  
  	a = elemPtr1->collationKey.wideValue;

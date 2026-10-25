@@ -1,7 +1,7 @@
 Index: win/tclWinFile.c
 ==================================================================
---- win/tclWinFile.c
-+++ win/tclWinFile.c
+--- win/tclWinFile.c	
++++ win/tclWinFile.c	
 @@ -1082,21 +1082,24 @@
  
  	if (handle == INVALID_HANDLE_VALUE) {

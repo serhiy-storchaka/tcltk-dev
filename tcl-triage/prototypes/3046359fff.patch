@@ -2,7 +2,7 @@ Index: generic/tclPathObj.c
 ==================================================================
 --- generic/tclPathObj.c
 +++ generic/tclPathObj.c
-@@ -1564,10 +1564,20 @@
+@@ -1570,10 +1570,29 @@
  	pathPtr = (*fromFilesystem->internalToNormalizedProc)(clientData);
      }
      if (pathPtr == NULL) {
@@ -11,11 +11,20 @@ Index: generic/tclPathObj.c
 +
 +    /*
 +     * If the filesystem has already made a path object with its own internal
-+     * representation, trust it. Throwing it away would also free clientData
-+     * if the filesystem stored it there. [Bug 3046359]
++     * representation, trust it. We still own clientData: keep it if the
++     * filesystem has no native rep there yet, free it if it has a different
++     * one. [Bug 3046359]
 +     */
 +
-+    if (TclHasInternalRep(pathPtr, &fsPathType)) {
++    if (TclHasInternalRep(pathPtr, &fsPathType)
++	    && PATHOBJ(pathPtr)->fsPtr == fromFilesystem) {
++	fsPathPtr = PATHOBJ(pathPtr);
++	if (fsPathPtr->nativePathPtr == NULL) {
++	    fsPathPtr->nativePathPtr = clientData;
++	} else if (fsPathPtr->nativePathPtr != clientData
++		&& fromFilesystem->freeInternalRepProc != NULL) {
++	    fromFilesystem->freeInternalRepProc(clientData);
++	}
 +	return pathPtr;
 +    }
  
@@ -23,4 +32,194 @@ Index: generic/tclPathObj.c
       * Free old representation; shouldn't normally be any, but best to be
       * safe.
       */
+
+Index: generic/tclTest.c
+==================================================================
+--- generic/tclTest.c
++++ generic/tclTest.c
+@@ -300,10 +300,11 @@
+ static Tcl_ObjCmdProc2	TestChannelEventCmd;
+ static Tcl_ObjCmdProc2	TestChanCreateCmd;
+ static Tcl_ObjCmdProc2	TestSocketCmd;
+ static Tcl_ObjCmdProc2	TestFilesystemCmd;
+ static Tcl_ObjCmdProc2	TestSimpleFilesystemCmd;
++static Tcl_ObjCmdProc2	TestNewNativePathCmd;
+ static void		TestReport(const char *cmd, Tcl_Obj *arg1,
+ 			    Tcl_Obj *arg2);
+ static Tcl_Obj *	TestReportGetNativePath(Tcl_Obj *pathPtr);
+ static Tcl_FSStatProc	TestReportStat;
+ static Tcl_FSAccessProc TestReportAccess;
+@@ -588,10 +589,12 @@
+     Tcl_CreateObjCommand2(interp, "testwrongnumargs", TestWrongNumArgsCmd,
+ 	    NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testfilesystem", TestFilesystemCmd,
+ 	    NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testsimplefilesystem", TestSimpleFilesystemCmd,
++	    NULL, NULL);
++    Tcl_CreateObjCommand2(interp, "testnewnativepath", TestNewNativePathCmd,
+ 	    NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testgetindexfromobjstruct",
+ 	    TestGetIndexFromObjStructCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testasync", TestasyncCmd, NULL, NULL);
+     Tcl_CreateObjCommand2(interp, "testbumpinterpepoch",
+@@ -7978,10 +7981,125 @@
+     }
+     Tcl_SetObjResult(interp, Tcl_NewStringObj(msg , -1));
+     return res;
+ }
+ 
++/*
++ *----------------------------------------------------------------------
++ *
++ * TestNewNativePathCmd --
++ *
++ *	Implements the "testnewnativepath path" command: calls
++ *	Tcl_FSNewNativePath for a minimal filesystem whose
++ *	internalToNormalizedProc caches its own internal representation in
++ *	the path it returns. The result is the native representation kept in
++ *	the new path and the number of native representations freed once the
++ *	path is released (2 means none leaked). [Bug 3046359]
++ *
++ *----------------------------------------------------------------------
++ */
++
++static int nativePathFreed;
++
++static int
++NativePathInFilesystem(
++    Tcl_Obj *pathPtr,
++    TCL_UNUSED(void **))
++{
++    return strncmp(TclGetString(pathPtr), "nnp:", 4) ? -1 : TCL_OK;
++}
++
++static void *
++NativePathMakeRep(
++    const char *prefix,
++    const char *path)
++{
++    char *rep = (char *)Tcl_Alloc(strlen(prefix) + strlen(path) + 1);
++
++    strcpy(rep, prefix);
++    strcat(rep, path);
++    return rep;
++}
++
++static void *
++NativePathCreateInternalRep(
++    Tcl_Obj *pathPtr)
++{
++    return NativePathMakeRep("cached:", TclGetString(pathPtr) + 4);
++}
++
++static void *
++NativePathDupInternalRep(
++    void *clientData)
++{
++    return NativePathMakeRep("", (const char *)clientData);
++}
++
++static void
++NativePathFreeInternalRep(
++    void *clientData)
++{
++    nativePathFreed++;
++    Tcl_Free(clientData);
++}
++
++static const Tcl_Filesystem nativePathFilesystem;
++
++static Tcl_Obj *
++NativePathInternalToNormalized(
++    void *clientData)
++{
++    Tcl_Obj *pathPtr = Tcl_ObjPrintf("nnp:%s",
++	    strchr((const char *)clientData, ':') + 1);
++
++    Tcl_IncrRefCount(pathPtr);
++    Tcl_FSGetInternalRep(pathPtr, &nativePathFilesystem);
++    pathPtr->refCount--;
++    return pathPtr;
++}
++
++static const Tcl_Filesystem nativePathFilesystem = {
++    "nativepath", sizeof(Tcl_Filesystem), TCL_FILESYSTEM_VERSION_1,
++    NativePathInFilesystem, NativePathDupInternalRep,
++    NativePathFreeInternalRep, NativePathInternalToNormalized,
++    NativePathCreateInternalRep, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
++    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
++    NULL, NULL, NULL, NULL
++};
++
++static int
++TestNewNativePathCmd(
++    TCL_UNUSED(void *),
++    Tcl_Interp *interp,
++    Tcl_Size objc,
++    Tcl_Obj *const *objv)
++{
++    Tcl_Obj *pathPtr, *resultPtr;
++    const char *rep;
++
++    if (objc != 2) {
++	Tcl_WrongNumArgs(interp, 1, objv, "path");
++	return TCL_ERROR;
++    }
++    if (Tcl_FSRegister(NULL, &nativePathFilesystem) != TCL_OK) {
++	return TCL_ERROR;
++    }
++    nativePathFreed = 0;
++    pathPtr = Tcl_FSNewNativePath(&nativePathFilesystem,
++	    NativePathMakeRep("native:", TclGetString(objv[1])));
++    Tcl_IncrRefCount(pathPtr);
++    rep = (const char *)Tcl_FSGetInternalRep(pathPtr, &nativePathFilesystem);
++    resultPtr = Tcl_NewListObj(0, NULL);
++    Tcl_ListObjAppendElement(NULL, resultPtr,
++	    Tcl_NewStringObj(rep ? rep : "NULL", -1));
++    Tcl_DecrRefCount(pathPtr);
++    Tcl_ListObjAppendElement(NULL, resultPtr, Tcl_NewWideIntObj(nativePathFreed));
++    Tcl_FSUnregister(&nativePathFilesystem);
++    Tcl_SetObjResult(interp, resultPtr);
++    return TCL_OK;
++}
++
+ /*
+  * Treats a file name 'simplefs:/foo' by using the file 'foo' in the current
+  * (native) directory.
+  */
+ 
+
+Index: tests/fileSystem.test
+==================================================================
+--- tests/fileSystem.test
++++ tests/fileSystem.test
+@@ -43,10 +43,11 @@
+ 
+ # Test for commands defined in tcl::test package
+ testConstraint testfilesystem	    [llength [info commands ::testfilesystem]]
+ testConstraint testsetplatform	    [llength [info commands ::testsetplatform]]
+ testConstraint testsimplefilesystem [llength [info commands ::testsimplefilesystem]]
++testConstraint testnewnativepath [llength [info commands ::testnewnativepath]]
+ # Some things fail under all Continuous Integration systems for subtle reasons
+ # such as CI often running with elevated privileges in a container.
+ testConstraint notInCIenv           [expr {![info exists ::env(CI)]}]
+ 
+ variable caseSensitiveFS [expr {
+@@ -1246,10 +1247,16 @@
+ } -result [list $tempDir/MixedCase.Dir/Inside.File [expr {
+     $caseSensitiveFS
+     ? "$tempDir/mixedcase.dir/inside.file"
+     : "$tempDir/MixedCase.Dir/Inside.File"
+ }]]
++
++test filesystem-14.1 {Tcl_FSNewNativePath keeps the filesystem's internal rep, bug 3046359} -constraints {
++    testnewnativepath
++} -body {
++    testnewnativepath /foo/bar
++} -result {cached:/foo/bar 2}
+ 
+ catch {
+ 	file delete -force MixedCaseLink.File MixedCaseLink.Dir
+ }
+ removeFile [file join MixedCase.Dir Inside.File]
 

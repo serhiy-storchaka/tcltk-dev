@@ -1,0 +1,59 @@
+Index: generic/tclStringObj.c
+==================================================================
+--- generic/tclStringObj.c
++++ generic/tclStringObj.c
+@@ -2454,10 +2454,31 @@
+ 	    char *bytes;
+ 
+ 	    if (Tcl_GetDoubleFromObj(interp, segment, &d) != TCL_OK) {
+ 		/* TODO: Figure out ACCEPT_NAN here */
+ 		goto error;
++	    }
++	    if (TclIsInfinite(d)) {
++		/*
++		 * Format infinities ourselves, as C99 specifies, since some C
++		 * runtimes (msvcrt) print "1.#INF". The "0" flag pads with
++		 * spaces. [Bug 40f315bc23]
++		 */
++
++		TclNewObj(segment);
++		allocSegment = 1;
++		if (d < 0) {
++		    Tcl_AppendToObj(segment, "-", 1);
++		} else if (gotPlus) {
++		    Tcl_AppendToObj(segment, "+", 1);
++		} else if (gotSpace) {
++		    Tcl_AppendToObj(segment, " ", 1);
++		}
++		Tcl_AppendToObj(segment,
++			(ch == 'E' || ch == 'G') ? "INF" : "inf", 3);
++		gotZero = 0;
++		break;
+ 	    }
+ 	    *p++ = '%';
+ 	    if (gotMinus) {
+ 		*p++ = '-';
+ 	    }
+
+Index: tests/format.test
+==================================================================
+--- tests/format.test
++++ tests/format.test
+@@ -593,10 +593,16 @@
+     # limit should exceeds in any case,
+     # and it don't throw an error in case the bug is not fixed (and probably no segfault).
+     format %[expr {0xffffffffffffffff - 1}]g 0
+ } -returnCodes error -result "max size for a Tcl value exceeded"
+ 
++test format-19.5 {infinities are formatted the same on all platforms, bug [40f315bc23]} {
++    lmap spec {%e %E %f %g %G %+e {% g} %6E %-6f| %06g %.3e %.0f %#g} {
++	list [format $spec Inf] [format $spec -Inf]
++    }
++} {{inf -inf} {INF -INF} {inf -inf} {inf -inf} {INF -INF} {+inf -inf} {{ inf} -inf} {{   INF} {  -INF}} {{inf   |} {-inf  |}} {{   inf} {  -inf}} {inf -inf} {inf -inf} {inf -inf}}
++
+ # Note that this test may fail in future versions
+ test format-20.1 {Bug 2932421: plain %s caused internalrep change of args} -body {
+     set x [dict create a b c d]
+     format %s $x
+     # After this, obj in $x should be a dict
+

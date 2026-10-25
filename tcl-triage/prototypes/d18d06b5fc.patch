@@ -15,3 +15,24 @@ Index: library/msgs/uk.msg
 +    ::msgcat::mcset uk DATE_TIME_FORMAT "%d.%m.%Y %k:%M:%S %z"
  }
 
+Index: tests/clock.test
+==================================================================
+--- tests/clock.test
++++ tests/clock.test
+@@ -38900,10 +38900,15 @@
+ } -result {1 1}
+ test clock-71.2 {he locale era names are not swapped} -body {
+     list [clock format 0 -gmt 1 -locale he -format %EE] \
+ 	[clock format -62200000000 -gmt 1 -locale he -format %EE]
+ } -result [list "\u05dc\u05e1\u05d4\"\u05e0" "\u05dc\u05e4\u05e1\u05d4\"\u05e0"]
++test clock-72.1 {uk locale date format, bug [d18d06b5fc]} -body {
++    list [clock format 1760572800 -gmt 1 -locale uk -format %x] \
++	[clock format 1760572800 -gmt 1 -locale uk -format %c] \
++	[clock scan 16.10.2025 -gmt 1 -locale uk -format %x]
++} -result {16.10.2025 {16.10.2025  0:00:00 +0000} 1760572800}
+ 
+ # cleanup
+ 
+ rename test {}
+ namespace import -force ::tcltest::*
+

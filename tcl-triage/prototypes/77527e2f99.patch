@@ -2,7 +2,7 @@ Index: doc/tcltest.n
 ==================================================================
 --- doc/tcltest.n
 +++ doc/tcltest.n
-@@ -1264,10 +1264,13 @@
+@@ -1271,10 +1271,13 @@
  Implementation of output and error comparison in the test command
  depends on usage of \fBputs\fR in your application code.  Output is
  intercepted by redefining the global \fBputs\fR command while the defined test

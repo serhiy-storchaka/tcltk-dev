@@ -1,6 +1,10 @@
---- a/tcl.m4
-+++ b/tcl.m4
-@@ -3530,14 +3530,15 @@
+Index: tcl.m4
+==================================================================
+--- tcl.m4
++++ tcl.m4
+@@ -3528,18 +3528,19 @@
+ 	    # and in that situation, look there before installed locations.
+ 	    if test -f "${TCL_BIN_DIR}/Makefile" ; then
  		list="$list `ls -d ${TCL_SRC_DIR}/generic 2>/dev/null`"
  	    fi
  
@@ -20,3 +24,6 @@
  	    if test "${TEA_PLATFORM}" != "windows" -o "$GCC" = "yes"; then
  		list="$list /usr/local/include /usr/include"
  		if test x"${TCL_INCLUDE_SPEC}" != x ; then
+ 		    d=`echo "${TCL_INCLUDE_SPEC}" | sed -e 's/^-I//'`
+ 		    list="$list `ls -d ${d} 2>/dev/null`"
+

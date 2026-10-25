@@ -2,7 +2,7 @@ Index: unix/tclEpollNotfy.c
 ==================================================================
 --- unix/tclEpollNotfy.c
 +++ unix/tclEpollNotfy.c
-@@ -93,13 +93,10 @@
+@@ -118,13 +118,10 @@
  				/* Pointer to head of file handler list. */
      struct PlatformReadyFileHandlerList firstReadyFileHandlerPtr;
  				/* Pointer to head of list of FileHandlers
@@ -16,7 +16,7 @@ Index: unix/tclEpollNotfy.c
  				 * up this thread for inter-thread IPC. */
  #else
      int triggerPipe[2];		/* pipe(2) used by other threads to wake
-@@ -257,35 +254,31 @@
+@@ -282,35 +279,31 @@
   *----------------------------------------------------------------------
   *
   * TclpFinalizeNotifier --
@@ -55,7 +55,7 @@ Index: unix/tclEpollNotfy.c
  	close(tsdPtr->triggerEventFd);
  	tsdPtr->triggerEventFd = -1;
      }
-@@ -307,14 +300,10 @@
+@@ -332,14 +325,10 @@
      }
      if (tsdPtr->readyEvents) {
  	Tcl_Free(tsdPtr->readyEvents);
@@ -70,7 +70,7 @@ Index: unix/tclEpollNotfy.c
  /*
   *----------------------------------------------------------------------
   *
-@@ -327,11 +316,10 @@
+@@ -352,11 +341,10 @@
   * Results:
   *	None.
   *
@@ -82,7 +82,7 @@ Index: unix/tclEpollNotfy.c
   *	- A FileHandler struct is allocated and initialised for the
   *	  eventfd(2), registering interest for TCL_READABLE on it via
   *	  PlatformEventsControl().
-@@ -345,14 +333,10 @@
+@@ -370,14 +358,10 @@
  PlatformEventsInit(void)
  {
      ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
@@ -116,7 +116,7 @@ Index: unix/tclKqueueNotfy.c
      int eventsFd;		/* kqueue(2) file descriptor used to wait for
  				 * fds. */
      struct kevent *readyEvents;	/* Pointer to at most maxReadyEvents events
-@@ -251,35 +248,31 @@
+@@ -255,35 +252,31 @@
   *----------------------------------------------------------------------
   *
   * TclpFinalizeNotifier --
@@ -155,7 +155,7 @@ Index: unix/tclKqueueNotfy.c
  	tsdPtr->triggerPipe[0] = -1;
      }
      if (tsdPtr->triggerPipe[1]) {
-@@ -292,14 +285,10 @@
+@@ -296,14 +289,10 @@
      }
      if (tsdPtr->readyEvents) {
  	Tcl_Free(tsdPtr->readyEvents);
@@ -170,7 +170,7 @@ Index: unix/tclKqueueNotfy.c
  /*
   *----------------------------------------------------------------------
   *
-@@ -314,11 +303,10 @@
+@@ -318,11 +307,10 @@
   * Results:
   *	Returns a handle to the notifier state for this thread.
   *
@@ -182,7 +182,7 @@ Index: unix/tclKqueueNotfy.c
   *	- The kqueue(2) fd is created; fcntl(2) is called on it to set
   *	  FD_CLOEXEC.
   *	- A FileHandler struct is allocated and initialised for the event-
-@@ -334,14 +322,10 @@
+@@ -338,14 +326,10 @@
  {
      ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
      int i, fdFl;

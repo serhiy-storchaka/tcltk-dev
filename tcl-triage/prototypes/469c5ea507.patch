@@ -2,7 +2,7 @@ Index: tests/fCmd.test
 ==================================================================
 --- tests/fCmd.test
 +++ tests/fCmd.test
-@@ -2929,10 +2929,32 @@
+@@ -2920,10 +2920,32 @@
  } -cleanup {
      set ::env(HOME) $oldHome
  } -constraints testfstildeexpand -body {

@@ -2,21 +2,23 @@ Index: doc/trace.n
 ==================================================================
 --- doc/trace.n
 +++ doc/trace.n
-@@ -158,10 +158,16 @@
+@@ -157,10 +157,18 @@
+ \fICode\fR gives the result code of that execution, and \fIresult\fR
  the result string.
  \fIOp\fR indicates what operation is being performed on the
  command execution, and is one of \fBleave\fR or \fBleavestep\fR as
  defined above.
- .PP
++.PP
 +Whether \fBleave\fR and \fBleavestep\fR traces are invoked for an
 +execution of the command is decided when that execution starts.
 +A \fBleave\fR trace added on a command while it is executing (for example,
-+by a procedure on itself) is therefore not guaranteed to be invoked when
-+that execution completes; it is only invoked at the end of later executions.
-+.PP
++by a procedure on itself) is therefore invoked when that execution
++completes only if the command already had execution traces when the
++execution started; otherwise it is first invoked at the end of a later
++execution.
+ .PP
  Note that the creation of many \fBenterstep\fR or
  \fBleavestep\fR traces can lead to unintuitive results, since the
  invoked commands from one trace can themselves lead to further
  command invocations for other traces.
- .PP
 

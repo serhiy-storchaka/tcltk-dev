@@ -32,7 +32,7 @@ Index: generic/tclCmdMZ.c
  static Tcl_NRPostProc	TryPostHandler;
  static int		UniCharIsAscii(int character);
  static int		UniCharIsHexDigit(int character);
-@@ -4101,47 +4102,81 @@
+@@ -4103,47 +4104,81 @@
   *----------------------------------------------------------------------
   */
  
@@ -154,7 +154,7 @@ Index: tests/cmdMZ.test
 ==================================================================
 --- tests/cmdMZ.test
 +++ tests/cmdMZ.test
-@@ -397,10 +397,27 @@
+@@ -400,10 +400,27 @@
  	incr x
      }
      time {incr y; eval $m1} 5

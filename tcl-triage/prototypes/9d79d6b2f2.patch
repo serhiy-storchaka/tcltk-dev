@@ -1,7 +1,7 @@
 Index: tests/winFCmd.test
 ==================================================================
---- tests/winFCmd.test
-+++ tests/winFCmd.test
+--- tests/winFCmd.test	
++++ tests/winFCmd.test	
 @@ -1273,19 +1273,31 @@
      file norm ///bar
  } -result "${d}:/bar"

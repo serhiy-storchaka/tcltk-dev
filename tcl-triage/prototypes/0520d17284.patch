@@ -187,14 +187,14 @@ Index: tests/timer.test
 ==================================================================
 --- tests/timer.test
 +++ tests/timer.test
-@@ -1516,10 +1516,27 @@
+@@ -1516,10 +1516,47 @@
  }  -returnCodes error -result {wrong # args: should be "timer idle script"}
  
  test timer-17.2 {"timer idle" basic} -body {
      timer idle event 1
  }  -returnCodes error -result {wrong # args: should be "timer idle script"}
 +
-+test timer-bug-0520d17284 {after list: cancel and fire in any order} -setup {
++test timer-bug-0520d17284.1 {after list: cancel and fire in any order} -setup {
 +    foreach id [after info] {after cancel $id}
 +} -body {
 +    set l {}
@@ -210,6 +210,26 @@ Index: tests/timer.test
 +    update
 +    lappend r $l [after info]
 +} -result {4 {2 4 5 6} {}}
++
++test timer-bug-0520d17284.2 {after idle: firing many events is linear} -setup {
++    foreach id [after info] {after cancel $id}
++    proc timer-0520 {n} {
++	for {set i 0} {$i < $n} {incr i} {
++	    after idle {set foo bar}
++	}
++	set t [clock microseconds]
++	update
++	expr {[clock microseconds] - $t + 1}
++    }
++} -body {
++    timer-0520 1000
++    set t1 [timer-0520 2000]
++    set t2 [timer-0520 32000]
++    # 16 times more events: about 16 times slower if linear, 256 if quadratic
++    expr {$t2 < 64 * $t1 ? "ok" : "$t1 us vs $t2 us"}
++} -cleanup {
++    rename timer-0520 {}
++} -result ok
  
  # cleanup
  ::tcltest::cleanupTests

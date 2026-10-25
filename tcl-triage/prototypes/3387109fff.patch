@@ -20,14 +20,14 @@ Index: tests/clock.test
 ==================================================================
 --- tests/clock.test
 +++ tests/clock.test
-@@ -38886,10 +38886,21 @@
- 	[clock format 1993186799 -timezone {EST5EDT,J59,J300} \
- 	     -format {%Y-%m-%d %H:%M:%S %z %Z}] \
- 	[clock format 1993186800 -timezone {EST5EDT,J59,J300} \
- 	     -format {%Y-%m-%d %H:%M:%S %z %Z}]
- } {{2032-02-28 01:59:59 -0500 EST} {2032-02-28 03:00:00 -0400 EDT} {2033-02-28 01:59:59 -0500 EST} {2033-02-28 03:00:00 -0400 EDT}}
+@@ -38900,10 +38900,21 @@
+ } -result {1 1}
+ test clock-71.2 {he locale era names are not swapped} -body {
+     list [clock format 0 -gmt 1 -locale he -format %EE] \
+ 	[clock format -62200000000 -gmt 1 -locale he -format %EE]
+ } -result [list "\u05dc\u05e1\u05d4\"\u05e0" "\u05dc\u05e4\u05e1\u05d4\"\u05e0"]
 +
-+test clock-71.1 {tzdata file with the name of an already used POSIX zone [Bug 3387109]} -setup {
++test clock-72.1 {tzdata file with the name of an already used POSIX zone [Bug 3387109]} -setup {
 +    interp create child
 +} -body {
 +    child eval {
