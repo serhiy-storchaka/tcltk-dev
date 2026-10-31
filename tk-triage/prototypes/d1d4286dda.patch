@@ -57,7 +57,7 @@ Index: tests/ttk/scrollbar.test
 ==================================================================
 --- tests/ttk/scrollbar.test
 +++ tests/ttk/scrollbar.test
-@@ -148,10 +148,29 @@
+@@ -149,10 +149,29 @@
      after 200 {set eventprocessed 1} ; vwait eventprocessed
      .t index @0,0
  } -cleanup {
@@ -75,7 +75,7 @@ Index: tests/ttk/scrollbar.test
 +    set y [expr {[winfo height .s] * 2 / 5}]
 +    set f [.s fraction $x $y]
 +    event generate .s <Button-1> -x $x -y $y
-+    after 3000 {set done 1} ; vwait done
++    pause 3000
 +    event generate .s <ButtonRelease-1> -x $x -y $y
 +    lassign [.s get] first last
 +    list [expr {$first > 0.1}] [expr {$last < 0.6}]

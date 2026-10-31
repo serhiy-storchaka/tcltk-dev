@@ -1,0 +1,82 @@
+Index: library/console.tcl
+==================================================================
+--- library/console.tcl
++++ library/console.tcl
+@@ -49,12 +49,12 @@
+ 	set mod "Cmd"
+     } else {
+ 	set mod "Ctrl"
+     }
+ 
+-    if {[catch {menu .menubar} err]} {
+-	bgerror "INIT: $err"
++    if {[catch {menu .menubar} err opts]} {
++	{*}[interp bgerror {}] "INIT: $err" $opts
+     }
+     AmpMenuArgs .menubar add cascade -label [mc &File] -menu .menubar.file
+     AmpMenuArgs .menubar add cascade -label [mc &Edit] -menu .menubar.edit
+ 
+     menu .menubar.file -tearoff 0
+
+Index: library/fontchooser.tcl
+==================================================================
+--- library/fontchooser.tcl
++++ library/fontchooser.tcl
+@@ -341,12 +341,12 @@
+ #	Errors are reported via the background error mechanism
+ #
+ proc ::tk::fontchooser::Apply {} {
+     variable S
+     if {$S(-command) ne ""} {
+-	if {[catch {uplevel #0 $S(-command) [list $S(result)]} err]} {
+-	    ::bgerror $err
++	if {[catch {uplevel #0 $S(-command) [list $S(result)]} err opts]} {
++	    {*}[interp bgerror {}] $err $opts
+ 	}
+     }
+     event generate $S(-parent) <<TkFontchooserFontChanged>>
+ }
+ 
+
+Index: tests/fontchooser.test
+==================================================================
+--- tests/fontchooser.test
++++ tests/fontchooser.test
+@@ -182,10 +182,36 @@
+ test fontchooser-5.1 {fontchooser multiple configure} -constraints {scriptImpl} -body {
+     tk fontchooser configure -title TestTitle -command foo
+     tk fontchooser configure -command bar
+     tk fontchooser configure -title
+ } -result {TestTitle}
++
++test fontchooser-6.2 {-command error goes to interp bgerror handler} -constraints {
++    scriptImpl
++} -setup {
++    set res {}
++    set handler [interp bgerror {}]
++    proc bgerror {msg} {lappend ::res [list bgerror $msg]}
++    proc testBgerror {msg opts} {lappend ::res [list handler $msg]}
++    interp bgerror {} testBgerror
++} -body {
++    testDialog launch {
++	tk::fontchooser::Configure -command {error oops} -font courier
++	tk::fontchooser::Show
++    }
++    testDialog onDisplay {
++	Click apply
++	Click cancel
++    }
++    set res
++} -cleanup {
++    interp bgerror {} $handler
++    rename bgerror {}
++    rename testBgerror {}
++    tk::fontchooser::Configure -command {}
++    unset res handler
++} -result {{handler oops}}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

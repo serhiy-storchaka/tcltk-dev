@@ -121,14 +121,16 @@ Index: tests/select.test
 ==================================================================
 --- tests/select.test
 +++ tests/select.test
-@@ -1113,10 +1113,39 @@
+@@ -1113,10 +1113,41 @@
      selection get -selection CLIPBOARD_MANAGER -type SAVE_TARGETS
      clipboard get
  } -cleanup {
      rename get_clip {}
  } -result {abcd}
 +
-+test select-14.2 {Bug [af31a84c91]: Replacing selection handler also replaces implicit UTF8_STRING handler} -setup {
++test select-14.2 {Bug [af31a84c91]: Replacing selection handler also replaces implicit UTF8_STRING handler} -constraints {
++    unix
++} -setup {
 +    proc strhandler {str offset count} {
 +	return [string range $str $offset [expr {$offset + $count - 1}]]
 +    }

@@ -1,7 +1,7 @@
 Index: tests/winFont.test
 ==================================================================
---- tests/winFont.test	
-+++ tests/winFont.test	
+--- tests/winFont.test
++++ tests/winFont.test
 @@ -105,11 +105,11 @@
      set x {}
  } -body {
@@ -15,12 +15,58 @@ Index: tests/winFont.test
  } -setup {
      set x {}
  } -body {
+@@ -825,13 +825,45 @@
+ test winfont-12.1 {a script which the base font cannot shape is shaped with a fallback font - bug 1b22c74dc7} -constraints win -body {
+     # Courier claims Hebrew letters, but Uniscribe cannot shape Hebrew with
+     # it: nothing was measured, and a label with such text hung.
+     expr {[font measure {Courier -12} "\u05d0\u05d1\u05d2"] > 0}
+ } -result 1
++
++test winfont-13.1 {canvas text with Courier is rotated - bug 3249f7d4c6} -constraints {
++    win testpixel
++} -setup {
++    destroy .c
++    canvas .c -width 160 -height 160 -borderwidth 0 -highlightthickness 0 \
++	-background white
++    pack .c
++    update
++} -body {
++    # A raster font (e.g. coure.fon for "Courier") cannot be rotated by GDI.
++    .c create text 80 80 -text ABCDEFGH -font {Courier 12} -angle 90 \
++	    -fill black
++    update
++    # Bounding box of the ink.
++    lassign {160 160 -1 -1} x0 y0 x1 y1
++    for {set y 0} {$y < 160} {incr y 2} {
++	for {set x 0} {$x < 160} {incr x 2} {
++	    if {[testpixel .c $x $y] ne "#ffffff"} {
++		if {$x < $x0} {set x0 $x}
++		if {$x > $x1} {set x1 $x}
++		if {$y < $y0} {set y0 $y}
++		if {$y > $y1} {set y1 $y}
++	    }
++	}
++    }
++    expr {$x1 >= 0 && $y1 - $y0 > 2 * ($x1 - $x0) ? 1 :
++	    "ink $x0,$y0 to $x1,$y1"}
++} -cleanup {
++    destroy .c
++    unset -nocomplain x0 y0 x1 y1 x y
++} -result 1
+ 
+ wm attributes . -topmost 0
+ 
+ cleanupTests
+ 
+ # Local variables:
+ # mode: tcl
+ # End:
 
 Index: win/tkWinFont.c
 ==================================================================
---- win/tkWinFont.c	
-+++ win/tkWinFont.c	
-@@ -3331,14 +3331,19 @@
+--- win/tkWinFont.c
++++ win/tkWinFont.c
+@@ -3608,14 +3608,19 @@
      /*
       * If the family exists, WinFontExistProc() will be called and
       * EnumFontFamilies() will return whatever WinFontExistProc() returns. If
@@ -41,7 +87,7 @@ Index: win/tkWinFont.c
  }
  
  static const char *
-@@ -3365,13 +3370,16 @@
+@@ -3642,13 +3647,16 @@
  
  static int CALLBACK
  WinFontExistProc(

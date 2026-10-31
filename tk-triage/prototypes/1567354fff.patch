@@ -2,11 +2,14 @@ Index: tests/winWm.test
 ==================================================================
 --- tests/winWm.test
 +++ tests/winWm.test
-@@ -610,6 +610,21 @@
+@@ -688,10 +688,25 @@
+     list [testwinevent [wm frame .t] 0 WM_MOUSEACTIVATE [wm frame .t] $lParam] \
+ 	    [testwinevent [wm frame .t] 0 WM_MOUSEACTIVATE [testforeignwindow] $lParam]
+ } -cleanup {
      destroy .t
- } -result 0
- 
-+test winWm-11.1 {WM_DISPLAYCHANGE keeps tk scaling, Bug 1567354} -constraints {
+ } -result {1 1}
++
++test winWm-13.1 {WM_DISPLAYCHANGE keeps tk scaling, Bug 1567354} -constraints {
 +    win testwinevent
 +} -setup {
 +    set oldScaling [tk scaling]
@@ -20,55 +23,66 @@ Index: tests/winWm.test
 +    tk scaling $oldScaling
 +    unset oldScaling scaling
 +} -result 1
-+
+ 
  #
  # TESTFILE CLEANUP
  #
+ 
+
 Index: win/tkWinInt.h
 ==================================================================
 --- win/tkWinInt.h
 +++ win/tkWinInt.h
-@@ -173,6 +173,8 @@
+@@ -173,10 +173,12 @@
+  * Used by tkWinX.c on for certain system display change messages and cleanup
+  * up containers
   */
  
  MODULE_SCOPE void TkWinDisplayChanged(Display *display);
 +MODULE_SCOPE void TkWinScreenSizeChanged(Screen *screen, int width,
 +			    int height, HDC dc);
- MODULE_SCOPE void TkWinCleanupContainerList(void);
- MODULE_SCOPE LRESULT TkWinEmbeddedEventProc(HWND, UINT, WPARAM, LPARAM);
- MODULE_SCOPE unsigned int TkWinGetModifierState(void);
+ typedef struct TkWinColorGlyphCache TkWinColorGlyphCache;
+ 				/* Color emoji cache of a subfont (tkWinColorEmoji.c). */
+ MODULE_SCOPE int TkWinDrawColorGlyphs(HDC hdc, HFONT hFont,
+ 	TkWinColorGlyphCache **cachePtr, int x, int y,
+ 	const SCRIPT_ANALYSIS *saPtr, const WORD *glyphs, const int *advances,
+
 Index: win/tkWinTest.c
 ==================================================================
 --- win/tkWinTest.c
 +++ win/tkWinTest.c
-@@ -297,6 +297,7 @@
+@@ -410,10 +410,11 @@
  	{WM_GETTEXT,		"WM_GETTEXT"},
  	{WM_SETTEXT,		"WM_SETTEXT"},
  	{WM_COMMAND,            "WM_COMMAND"},
-+	{WM_DISPLAYCHANGE,      "WM_DISPLAYCHANGE"},
+ 	{WM_MOUSEACTIVATE,	"WM_MOUSEACTIVATE"},
+ 	{WM_SYSCOMMAND,         "WM_SYSCOMMAND"},
++	{WM_DISPLAYCHANGE,	"WM_DISPLAYCHANGE"},
  	{-1,			NULL}
      };
  
-@@ -406,6 +407,14 @@
+     if ((objc == 3) && (strcmp(Tcl_GetString(objv[1]), "debug") == 0)) {
+ 	int b;
+@@ -521,10 +522,11 @@
+ 	snprintf(buf, sizeof(buf), "%d", (int) SendMessageA(hwnd, message, wParam, lParam));
  	Tcl_SetObjResult(interp, Tcl_NewStringObj(buf, TCL_INDEX_NONE));
  	break;
      }
-+    case WM_DISPLAYCHANGE: {
-+	char buf[TCL_INTEGER_SPACE];
-+
-+	snprintf(buf, sizeof(buf), "%d",
-+		(int) SendMessageA(hwnd, message, wParam, lParam));
-+	Tcl_SetObjResult(interp, Tcl_NewStringObj(buf, TCL_INDEX_NONE));
-+	break;
-+    }
+     case WM_MOUSEACTIVATE:
++    case WM_DISPLAYCHANGE:
+ 	result = SendMessageW(hwnd, message, wParam, lParam);
+ 	Tcl_SetObjResult(interp, Tcl_NewWideIntObj(result));
+ 	break;
      default: {
  	char buf[TCL_INTEGER_SPACE];
- 
+
 Index: win/tkWinWm.c
 ==================================================================
 --- win/tkWinWm.c
 +++ win/tkWinWm.c
-@@ -8206,12 +8206,8 @@
+@@ -8291,16 +8291,12 @@
+ 
+ 		TkWinDisplayChanged(Tk_Display(winPtr));
  	    } else {
  		HDC dc = GetDC(NULL);
  
@@ -83,11 +97,16 @@ Index: win/tkWinWm.c
  		ReleaseDC(NULL, dc);
  	    }
  	    if (Tk_Depth(winPtr) != (int) wParam) {
+ 		/*
+ 		 * Defer the window depth check to here so that each toplevel
+
 Index: win/tkWinX.c
 ==================================================================
 --- win/tkWinX.c
 +++ win/tkWinX.c
-@@ -372,6 +372,47 @@
+@@ -370,10 +370,51 @@
+ }
+ 
  /*
   *----------------------------------------------------------------------
   *
@@ -135,7 +154,11 @@ Index: win/tkWinX.c
   * TkWinDisplayChanged --
   *
   *	Called to set up initial screen info or when an event indicated
-@@ -399,12 +440,8 @@
+  *	display (screen) change.
+  *
+@@ -397,16 +438,12 @@
+ 	return;
+     }
      screen = (((_XPrivDisplay)(display))->screens);
  
      dc = GetDC(NULL);
@@ -150,3 +173,6 @@ Index: win/tkWinX.c
  
      /*
       * On windows, when creating a color bitmap, need two pieces of
+      * information: the number of color planes and the number of pixels per
+      * plane. Need to remember both quantities so that when constructing an
+

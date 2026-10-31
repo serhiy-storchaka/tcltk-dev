@@ -1,52 +1,257 @@
+Index: generic/tkInt.h
+==================================================================
+--- generic/tkInt.h
++++ generic/tkInt.h
+@@ -708,10 +708,15 @@
+ 				 * down. For Tcl 9.1+ */
+     unsigned int nbTabPosition, nbTabPlacement;
+ 				/* Information used by ttk::notebook. */
+     int troughInnerX, troughInnerY, troughInnerWidth, troughInnerHeight;
+ 				/* Information used by ttk::scale. */
++    struct TkCmdToken **cmdTokens;
++				/* Tokens of Tk's builtin commands, used to
++				 * disable them after Tk is shut down, also
++				 * if they were renamed. Managed by
++				 * tkWindow.c. */
+ } TkMainInfo;
+ 
+ /*
+  * Tk keeps the following data structure for each of it's builtin bitmaps.
+  * This structure is only used by tkBitmap.c and other platform specific
+
 Index: generic/tkWindow.c
 ==================================================================
 --- generic/tkWindow.c
 +++ generic/tkWindow.c
-@@ -1639,10 +1639,11 @@
+@@ -102,10 +102,23 @@
+     Tcl_ObjCmdProc2 *objProc;	/* Command's object- (or string-) based
+ 				 * function, or initProc. */
+     int flags;
+ } TkCmd;
  
- 	    winPtr->mainPtr->deletionEpoch++;
- 	}
- 	if (winPtr->mainPtr->refCount-- <= 1) {
- 	    const TkCmd *cmdPtr;
-+	    Tcl_CmdInfo cmdInfo;
- 
- 	    /*
- 	     * We just deleted the last window in the application. Delete the
- 	     * TkMainInfo structure too and replace all of Tk's commands with
- 	     * dummy commands that return errors. Also delete the "send"
-@@ -1669,10 +1670,20 @@
- 				    cmdPtr->name,
- 				    (Tcl_ObjCmdProc *)winPtr->mainPtr->tclUpdateObjProc,
- 				    NULL, NULL);
- #endif /* TCL_NO_DEPRECATED */
- 			}
-+		    } else if (!(cmdPtr->flags & USEINITPROC)
-+			    && Tcl_GetCommandInfo(winPtr->mainPtr->interp,
-+				    cmdPtr->name, &cmdInfo)
-+			    && (cmdInfo.isNativeObjectProc != 2
-+				    || cmdInfo.objProc2 != cmdPtr->objProc)) {
-+			/*
-+			 * The command was replaced by the user. Leave it alone.
-+			 */
++/*
++ * The following structure tracks one of Tk's builtin commands, so that it
++ * can be disabled when the application is destroyed, wherever it was renamed
++ * to, and so that a command which replaced it under the same name is left
++ * alone. The token is reset by a delete trace when the command is deleted.
++ */
 +
++typedef struct TkCmdToken {
++    Tcl_Command token;		/* The command, or NULL if it was deleted. */
++    int orphan;			/* The TkMainInfo was freed: the delete trace
++				 * frees this structure. */
++} TkCmdToken;
++
+ static const TkCmd commands[] = {
+     /*
+      * Commands that are part of the intrinsics:
+      */
+ 
+@@ -207,10 +220,11 @@
+  */
+ 
+ static Tk_Window	CreateTopLevelWindow(Tcl_Interp *interp,
+ 			    Tk_Window parent, const char *name,
+ 			    const char *screenName, unsigned int flags);
++static Tcl_CommandTraceProc CmdDeletedProc;
+ static void		DeleteWindowsExitProc(void *clientData);
+ static TkDisplay *	GetScreen(Tcl_Interp *interp, const char *screenName,
+ 			    int *screenPtr);
+ static int		Initialize(Tcl_Interp *interp);
+ static int		IsInEmbeddedToplevel(const TkWindow *winPtr);
+@@ -812,10 +826,45 @@
+ }
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
++ * CmdDeletedProc --
++ *
++ *	This function is invoked by a delete trace when one of Tk's builtin
++ *	commands is deleted.
++ *
++ * Results:
++ *	None.
++ *
++ * Side effects:
++ *	The token is forgotten, or the structure is freed if the application
++ *	was already destroyed.
++ *
++ *----------------------------------------------------------------------
++ */
++
++static void
++CmdDeletedProc(
++    void *clientData,		/* Pointer to TkCmdToken structure. */
++    TCL_UNUSED(Tcl_Interp *),
++    TCL_UNUSED(const char *),	/* oldName */
++    TCL_UNUSED(const char *),	/* newName */
++    TCL_UNUSED(int))		/* flags */
++{
++    TkCmdToken *tokenPtr = (TkCmdToken *)clientData;
++
++    if (tokenPtr->orphan) {
++	Tcl_Free(tokenPtr);
++    } else {
++	tokenPtr->token = NULL;
++    }
++}
++
++/*
++ *----------------------------------------------------------------------
++ *
+  * TkCreateMainWindow --
+  *
+  *	Make a new main window. A main window is a special kind of top-level
+  *	window used as the outermost window in an application.
+  *
+@@ -899,10 +948,12 @@
+     Tcl_InitHashTable(&mainPtr->imageTable, TCL_STRING_KEYS);
+     mainPtr->strictMotif = 0;
+     mainPtr->alwaysShowSelection = 0;
+     mainPtr->tclUpdateObjProc = NULL;
+     mainPtr->tclUpdateObjProc2 = NULL;
++    mainPtr->cmdTokens = (TkCmdToken **)Tcl_Alloc(sizeof(commands));
++    memset(mainPtr->cmdTokens, 0, sizeof(commands));
+     if (Tcl_LinkVar(interp, "tk_strictMotif", &mainPtr->strictMotif,
+ 	    TCL_LINK_BOOLEAN) != TCL_OK) {
+ 	Tcl_ResetResult(interp);
+     }
+     if (Tcl_CreateNamespace(interp, "::tk", NULL, NULL) == NULL) {
+@@ -939,10 +990,11 @@
+      */
+ 
+     isSafe = Tcl_IsSafe(interp);
+     for (cmdPtr = commands; cmdPtr->name != NULL; cmdPtr++) {
+ 	Tcl_CmdInfo cmdInfo;
++	Tcl_Command token;
+ 
+ 	if (cmdPtr->objProc == NULL) {
+ 	    Tcl_Panic("TkCreateMainWindow: builtin command with NULL string and object procs");
+ 	}
+ 
+@@ -972,13 +1024,24 @@
+ #endif /* TCL_NO_DEPRECATED */
+ 	    }
+ 	}
+ 	if (cmdPtr->flags & USEINITPROC) {
+ 	    ((TkInitProc *)(void *)cmdPtr->objProc)(interp, clientData);
++	    token = Tcl_FindCommand(interp, cmdPtr->name, NULL,
++		    TCL_GLOBAL_ONLY);
+ 	} else {
+-	    Tcl_CreateObjCommand2(interp, cmdPtr->name, cmdPtr->objProc,
+-		    clientData, NULL);
++	    token = Tcl_CreateObjCommand2(interp, cmdPtr->name,
++		    cmdPtr->objProc, clientData, NULL);
++	}
++	if (token != NULL) {
++	    TkCmdToken *tokenPtr = (TkCmdToken *)Tcl_Alloc(sizeof(TkCmdToken));
++
++	    tokenPtr->token = token;
++	    tokenPtr->orphan = 0;
++	    mainPtr->cmdTokens[cmdPtr - commands] = tokenPtr;
++	    Tcl_TraceCommand(interp, cmdPtr->name, TCL_TRACE_DELETE,
++		    CmdDeletedProc, tokenPtr);
+ 	}
+ 	if (isSafe && !(cmdPtr->flags & ISSAFE)) {
+ 	    Tcl_HideCommand(interp, cmdPtr->name, cmdPtr->name);
+ 	}
+     }
+@@ -1685,34 +1748,63 @@
+ 	     * NOTE: Only replace the commands it if the interpreter is not
+ 	     * being deleted. If it *is*, the interpreter cleanup will do all
+ 	     * the needed work.
+ 	     */
+ 
+-	    if ((winPtr->mainPtr->interp != NULL) &&
+-		!Tcl_InterpDeleted(winPtr->mainPtr->interp)) {
+-		for (cmdPtr = commands; cmdPtr->name != NULL; cmdPtr++) {
+-		    if (cmdPtr->flags & SAVEUPDATECMD) {
+-			/* Restore Tcl's version of [update] */
+-			if (winPtr->mainPtr->tclUpdateObjProc2 != NULL) {
+-			    Tcl_CreateObjCommand2(winPtr->mainPtr->interp,
+-				    cmdPtr->name,
+-				    winPtr->mainPtr->tclUpdateObjProc2,
+-				    NULL, NULL);
++	    int interpAlive = (winPtr->mainPtr->interp != NULL) &&
++		    !Tcl_InterpDeleted(winPtr->mainPtr->interp);
++
++	    for (cmdPtr = commands; cmdPtr->name != NULL; cmdPtr++) {
++		TkCmdToken *tokenPtr =
++			winPtr->mainPtr->cmdTokens[cmdPtr - commands];
++		Tcl_CmdInfo cmdInfo;
++
++		if (tokenPtr == NULL) {
++		    continue;
++		}
++		if (tokenPtr->token == NULL) {
++		    /*
++		     * The command was deleted (or renamed to "").
++		     */
++
++		    Tcl_Free(tokenPtr);
++		    continue;
++		}
++
++		/*
++		 * The delete trace frees the structure when the command is
++		 * deleted, possibly with the interpreter.
++		 */
++
++		tokenPtr->orphan = 1;
++		if (!interpAlive || !Tcl_GetCommandInfoFromToken(
++			tokenPtr->token, &cmdInfo)) {
++		    continue;
++		}
++		if (cmdPtr->flags & SAVEUPDATECMD) {
++		    /* Restore Tcl's version of [update] */
++		    if (winPtr->mainPtr->tclUpdateObjProc2 != NULL) {
++			cmdInfo.objProc2 = winPtr->mainPtr->tclUpdateObjProc2;
+ #ifndef TCL_NO_DEPRECATED
+-			} else if (winPtr->mainPtr->tclUpdateObjProc != NULL) {
+-			    Tcl_CreateObjCommand(winPtr->mainPtr->interp,
+-				    cmdPtr->name,
+-				    (Tcl_ObjCmdProc *)winPtr->mainPtr->tclUpdateObjProc,
+-				    NULL, NULL);
++		    } else if (winPtr->mainPtr->tclUpdateObjProc != NULL) {
++			Tcl_CreateObjCommand(winPtr->mainPtr->interp,
++				cmdPtr->name,
++				(Tcl_ObjCmdProc *)winPtr->mainPtr->tclUpdateObjProc,
++				NULL, NULL);
 +			continue;
+ #endif /* TCL_NO_DEPRECATED */
+-			}
  		    } else {
- 			Tcl_CreateObjCommand2(winPtr->mainPtr->interp,
- 					     cmdPtr->name, TkDeadAppObjCmd,
- 					     NULL, NULL);
+-			Tcl_CreateObjCommand2(winPtr->mainPtr->interp,
+-					     cmdPtr->name, TkDeadAppObjCmd,
+-					     NULL, NULL);
++			cmdInfo.objProc2 = TkDeadAppObjCmd;
  		    }
++		} else {
++		    cmdInfo.objProc2 = TkDeadAppObjCmd;
+ 		}
++		cmdInfo.objClientData2 = NULL;
++		Tcl_SetCommandInfoFromToken(tokenPtr->token, &cmdInfo);
++	    }
++	    Tcl_Free(winPtr->mainPtr->cmdTokens);
++	    if (interpAlive) {
+ 		Tcl_CreateObjCommand2(winPtr->mainPtr->interp, "send",
+ 			TkDeadAppObjCmd, NULL, NULL);
+ 		Tcl_UnlinkVar(winPtr->mainPtr->interp, "tk_strictMotif");
+ 		Tcl_UnlinkVar(winPtr->mainPtr->interp,
+ 			"::tk::AlwaysShowSelection");
 
 Index: tests/window.test
 ==================================================================
 --- tests/window.test
 +++ tests/window.test
-@@ -314,10 +314,32 @@
+@@ -314,10 +314,59 @@
  } -result {0 {waiting
  ringing the bell -> cannot invoke "bell" command: application has been destroyed
  done waiting
  bell -> cannot invoke "bell" command: application has been destroyed
  update -> }}
-+test window-2.13 {Bug [1556406fff]: destroying the app keeps user-defined commands} -constraints {
++test window-2.14 {destroying the app keeps commands replacing Tk's - bug 1556406fff} -constraints {
 +    unixOrWin
 +} -body {
 +    set code [loadTkCommand]
@@ -54,8 +259,6 @@ Index: tests/window.test
 +	rename scale tk_scale
 +	proc scale args {return "user scale"}
 +	destroy .
-+	catch {bell} msg
-+	puts "bell -> $msg"
 +	puts "scale -> [scale]"
 +    }
 +    set script [makeFile $code script]
@@ -66,8 +269,37 @@ Index: tests/window.test
 +    }
 +    removeFile script
 +    list $error $msg
-+} -result {0 {bell -> cannot invoke "bell" command: application has been destroyed
-+scale -> user scale}}
++} -result {0 {scale -> user scale}}
++test window-2.15 {destroying the app disables renamed Tk commands - bug 1556406fff} -constraints {
++    unixOrWin
++} -body {
++    set code [loadTkCommand]
++    append code {
++	rename scale tk_scale
++	rename canvas tk_canvas
++	rename update tk_update
++	rename label {}
++	destroy .
++	catch {tk_scale .s} msg
++	puts "tk_scale -> $msg"
++	catch {tk_canvas .c} msg
++	puts "tk_canvas -> $msg"
++	catch {tk_update foo} msg
++	puts "tk_update -> $msg"
++	puts "label -> \"[info commands label]\""
++    }
++    set script [makeFile $code script]
++    if {[catch {exec [interpreter] $script -geometry 10x10+0+0} msg]} {
++	set error 1
++    } else {
++	set error 0
++    }
++    removeFile script
++    list $error $msg
++} -result {0 {tk_scale -> cannot invoke "tk_scale" command: application has been destroyed
++tk_canvas -> cannot invoke "tk_canvas" command: application has been destroyed
++tk_update -> bad option "foo": must be idletasks
++label -> ""}}
  
  
  test window-3.1 {Tk_MakeWindowExist procedure, stacking order and menubars} -constraints {

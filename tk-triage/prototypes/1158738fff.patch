@@ -30,11 +30,56 @@ Index: tests/unixWm.test
  } {1 {wrong # args: should be "wm withdraw window"}}
  test unixWm-38.2 {Tk_WmCmd procedure, "withdraw" option} unix {
 
+Index: tests/wm.test
+==================================================================
+--- tests/wm.test
++++ tests/wm.test
+@@ -2217,10 +2217,39 @@
+     update
+     list [wm state .t2] [winfo ismapped .t2]
+ } -cleanup {
+     deleteWindows
+ } -result {normal 1}
++test wm-transient-8.3 {withdrawn transient to withdrawn window, Bug 1158738} -constraints withWindowManager -setup {
++    deleteWindows
++    set result {}
++} -body {
++    toplevel .t1; wm withdraw .t1; update
++    toplevel .t2; wm withdraw .t2; wm transient .t2 .t1; update
++    wm deiconify .t1; update
++    wm deiconify .t2; update
++    lappend result [winfo ismapped .t1] [winfo ismapped .t2]
++    raise .t1; raiseDelay; update
++    lappend result [lsearch -all -inline -glob [wm stackorder .] ".t?"]
++} -cleanup {
++    deleteWindows
++} -result {1 1 {.t1 .t2}}
++test wm-transient-8.4 {transient set on withdrawn window, Bug 1158738} -constraints withWindowManager -setup {
++    deleteWindows
++    set result {}
++} -body {
++    toplevel .t1; wm withdraw .t1; update
++    toplevel .t2; wm withdraw .t2; update
++    wm transient .t2 .t1; update
++    wm deiconify .t1; update
++    wm deiconify .t2; update
++    lappend result [winfo ismapped .t1] [winfo ismapped .t2]
++    raise .t1; raiseDelay; update
++    lappend result [lsearch -all -inline -glob [wm stackorder .] ".t?"]
++} -cleanup {
++    deleteWindows
++} -result {1 1 {.t1 .t2}}
+ 
+ 
+ ### wm state ###
+ test wm-state-1.1 {usage} -returnCodes error -body {
+     wm state
+
 Index: unix/tkUnixWm.c
 ==================================================================
 --- unix/tkUnixWm.c
 +++ unix/tkUnixWm.c
-@@ -3678,27 +3678,32 @@
+@@ -3689,27 +3689,32 @@
  
  	    wmPtr->containerPtr = containerPtr;
  	}
@@ -77,59 +122,13 @@ Index: unix/tkUnixWm.c
  }
  
 
-Index: tests/wm.test
-==================================================================
---- tests/wm.test
-+++ tests/wm.test
-@@ -2184,6 +2184,35 @@
- } -cleanup {
-     deleteWindows
- } -result {0 0 1 1 {.t1 .t2}}
-+test wm-transient-8.2 {withdrawn transient to withdrawn window, Bug 1158738} -constraints {failsOnCILinux failsOnXQuartz} -setup {
-+    deleteWindows
-+    set result {}
-+} -body {
-+    toplevel .t1; wm withdraw .t1; update
-+    toplevel .t2; wm withdraw .t2; wm transient .t2 .t1; update
-+    wm deiconify .t1; update
-+    wm deiconify .t2; update
-+    lappend result [winfo ismapped .t1] [winfo ismapped .t2]
-+    raise .t1; raiseDelay; update
-+    lappend result [lsearch -all -inline -glob [wm stackorder .] ".t?"]
-+} -cleanup {
-+    deleteWindows
-+} -result {1 1 {.t1 .t2}}
-+test wm-transient-8.3 {transient set on withdrawn window, Bug 1158738} -constraints {failsOnCILinux failsOnXQuartz} -setup {
-+    deleteWindows
-+    set result {}
-+} -body {
-+    toplevel .t1; wm withdraw .t1; update
-+    toplevel .t2; wm withdraw .t2; update
-+    wm transient .t2 .t1; update
-+    wm deiconify .t1; update
-+    wm deiconify .t2; update
-+    lappend result [winfo ismapped .t1] [winfo ismapped .t2]
-+    raise .t1; raiseDelay; update
-+    lappend result [lsearch -all -inline -glob [wm stackorder .] ".t?"]
-+} -cleanup {
-+    deleteWindows
-+} -result {1 1 {.t1 .t2}}
- 
- 
- ### wm state ###
 Index: win/tkWinWm.c
 ==================================================================
 --- win/tkWinWm.c
 +++ win/tkWinWm.c
-@@ -2318,7 +2318,6 @@
- 
- 	if (wmPtr->containerPtr != NULL && !Tk_IsMapped(wmPtr->containerPtr)) {
- 	    wmPtr->hints.initial_state = WithdrawnState;
--	    return;
- 	}
-     } else {
- 	if (wmPtr->hints.initial_state == WithdrawnState) {
-@@ -5799,10 +5798,15 @@
+@@ -5833,14 +5833,19 @@
+     }
+     if (!((wmPtr->flags & WM_NEVER_MAPPED)
  	    && !(winPtr->flags & TK_EMBEDDED))) {
  	if (wmPtr->containerPtr != NULL
  		&& !Tk_IsMapped(wmPtr->containerPtr)) {
@@ -147,3 +146,6 @@ Index: win/tkWinWm.c
      }
      return TCL_OK;
  }
+ 
+ /*
+

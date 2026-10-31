@@ -2,7 +2,7 @@ Index: library/menu.tcl
 ==================================================================
 --- library/menu.tcl
 +++ library/menu.tcl
-@@ -99,10 +99,19 @@
+@@ -105,10 +105,19 @@
  bind Menubutton <B1-Motion> {
      tk::MbMotion %W down %X %Y
  }
@@ -27,13 +27,16 @@ Index: tests/menubut.test
 ==================================================================
 --- tests/menubut.test
 +++ tests/menubut.test
-@@ -808,10 +808,34 @@
-     bind .b <Configure> {unset -nocomplain var}
-     update
-     destroy .b
-     unset new
- } {}
-+test menubutton-12.1 {destroying a posted menubutton does not prevent posting a new one} -setup {
+@@ -1071,10 +1071,37 @@
+     tk::MbPost .t.mb
+     list [winfo exists .t] $tk::Priv(postedMb)
+ } -cleanup {
+     destroy .t
+ } -result {0 {}}
++
++test menubutton-15.1 {destroying a posted menubutton does not prevent posting a new one - bug 601954ffff} -constraints {
++    x11
++} -setup {
 +    deleteWindows
 +    proc create {} {
 +	menubutton .mb -text Sample -menu .mb.menu

@@ -31,12 +31,12 @@ Index: tests/text.test
 ==================================================================
 --- tests/text.test
 +++ tests/text.test
-@@ -7840,10 +7840,23 @@
-     event generate .t <B1-Motion> -x 50 -y -50
-     .t index sel.first
+@@ -7878,10 +7878,23 @@
+     lappend res $log
  } -cleanup {
-     destroy .t
- } -result {1.0}
+     destroy .top
+     unset -nocomplain log res
+ } -result {{} {y 0.0 0.5 x 0.0 0.5}}
 +
 +test text-40.1 {KP_Enter inserts a newline like Return - Bug 3119824} -setup {
 +    pack [text .t]
@@ -51,8 +51,8 @@ Index: tests/text.test
 +    destroy .t
 +} -result "a\nb"
  
- #
- # TESTFILE CLEANUP
- #
+ # A word made only of right-to-left characters (Hebrew).
+ set rtlWord [format %c%c%c%c 0x5E9 0x5DC 0x5D5 0x5DD]
  
+ test text-46.1 {RTL detection: a text destroyed before its idle check does not stop the others} -setup {
 

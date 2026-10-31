@@ -1,0 +1,169 @@
+Index: generic/tkIcu.c
+==================================================================
+--- generic/tkIcu.c
++++ generic/tkIcu.c
+@@ -31,10 +31,11 @@
+ typedef int32_t	(*fn_icu_following)(void *, int32_t);
+ typedef int32_t	(*fn_icu_previous)(void *);
+ typedef int32_t	(*fn_icu_next)(void *);
+ typedef void	(*fn_icu_setText)(void *, const void *, int32_t, UErrorCodex *);
+ typedef int32_t (*fn_icu_canonicalize)(const char *, char *, int32_t, UErrorCodex *);
++typedef int32_t	(*fn_icu_getRuleStatus)(void *);
+ 
+ static struct {
+     size_t				nopen;
+     Tcl_LoadHandle		lib;
+     fn_icu_open			open;
+@@ -43,26 +44,30 @@
+     fn_icu_following	following;
+     fn_icu_previous	previous;
+     fn_icu_next	next;
+     fn_icu_setText	setText;
+     fn_icu_canonicalize	canonicalize;
++    fn_icu_getRuleStatus	getRuleStatus;
+ } icu_fns = {
+-    0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
++    0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+ };
+ 
+ #define FLAG_WORD 1
+ #define FLAG_FOLLOWING 4
+ #define FLAG_SPACE 8
++
++#define UBRK_WORD_NONE_LIMITX 100
+ 
+ #define icu_open			icu_fns.open
+ #define icu_close			icu_fns.close
+ #define icu_preceding		icu_fns.preceding
+ #define icu_following		icu_fns.following
+ #define icu_previous		icu_fns.previous
+ #define icu_next		icu_fns.next
+ #define icu_setText		icu_fns.setText
+ #define icu_canonicalize	icu_fns.canonicalize
++#define icu_getRuleStatus	icu_fns.getRuleStatus
+ 
+ TCL_DECLARE_MUTEX(icu_mutex);
+ 
+ const char *const compatFunctions[] = {
+     NULL,
+@@ -80,10 +85,41 @@
+     NULL,
+     "tcl_endOfWord",
+     NULL,
+     NULL,
+ };
++
++/*
++ * ICU puts a word boundary after every punctuation character. Skip the
++ * boundaries between two punctuation characters, so that a run of
++ * punctuation counts as a single word, like a run of letters.
++ */
++
++static int32_t
++SkipPunctuation(
++    void *it,
++    const uint16_t *ustr,
++    Tcl_Size len,
++    int32_t idx,
++    int following)
++{
++    while (icu_getRuleStatus && idx > 0 && idx < len
++	    && icu_getRuleStatus(it) < UBRK_WORD_NONE_LIMITX
++	    && !Tcl_UniCharIsSpace(ustr[idx-1])) {
++	int ch = ustr[idx];
++
++	if (((ch & 0xFC00) == 0xD800) && (idx + 1 < len)
++		&& ((ustr[idx+1] & 0xFC00) == 0xDC00)) {
++	    ch = (((ch & 0x3FF) << 10) | (ustr[idx+1] & 0x3FF)) + 0x10000;
++	}
++	if (Tcl_UniCharIsSpace(ch) || Tcl_UniCharIsWordChar(ch)) {
++	    break;
++	}
++	idx = following ? icu_next(it) : icu_previous(it);
++    }
++    return idx;
++}
+ 
+ static int
+ startEndOfCmd(
+     void *clientData,
+     Tcl_Interp *interp,
+@@ -158,31 +194,37 @@
+     if (flags & FLAG_FOLLOWING) {
+ 	if ((idx < 0) && (flags & FLAG_WORD)) {
+ 	    idx = 0;
+ 	}
+ 	idx = icu_following(it, (int32_t)idx);
++	if (flags & FLAG_WORD) {
++	    idx = SkipPunctuation(it, ustr, len, (int32_t)idx, 1);
++	}
+ 	if ((flags & FLAG_WORD) && idx >= len) {
+ 	    idx = -1;
+ 	}
+     } else if (idx > 0) {
+ 	if (!(flags & FLAG_WORD)) {
+ 	    idx += 1 + (((ustr[idx]&0xFC00) == 0xD800) && ((ustr[idx+1]&0xFC00) == 0xDC00));
+ 	}
+ 	idx = icu_preceding(it, (int32_t)idx);
++	if (flags & FLAG_WORD) {
++	    idx = SkipPunctuation(it, ustr, len, (int32_t)idx, 0);
++	}
+ 	if (idx == 0 && (flags & FLAG_WORD)) {
+ 	    flags &= ~FLAG_WORD; /* If 0 is reached here, don't do a further search */
+ 	}
+     }
+     if ((flags & FLAG_WORD) && (idx != TCL_INDEX_NONE)) {
+ 	if (!(flags & FLAG_SPACE) == ((idx >= len) || Tcl_UniCharIsSpace(ustr[idx]))) {
+ 	    if (flags & FLAG_FOLLOWING) {
+-		idx = icu_next(it);
++		idx = SkipPunctuation(it, ustr, len, icu_next(it), 1);
+ 		if (idx >= len) {
+ 		    idx = TCL_INDEX_NONE;
+ 		}
+ 	    } else {
+-		idx = icu_previous(it);
++		idx = SkipPunctuation(it, ustr, len, icu_previous(it), 0);
+ 	    }
+ 	} else if (idx == 0 && !(flags & FLAG_FOLLOWING)) {
+ 	    idx = TCL_INDEX_NONE;
+ 	}
+     }
+@@ -329,10 +371,11 @@
+ 	    ICU_SYM(preceding);
+ 	    ICU_SYM(following);
+ 	    ICU_SYM(previous);
+ 	    ICU_SYM(next);
+ 	    ICU_SYM(setText);
++	    ICU_SYM(getRuleStatus);
+ 	    strcpy(symbol, "uloc_canonicalize");
+ 	    strcat(symbol, icuversion);
+ 	    icu_fns.canonicalize = (fn_icu_canonicalize)
+ 		    Tcl_FindSymbol(NULL, icu_fns.lib, symbol);
+ #undef ICU_SYM
+
+Index: tests/cluster.test
+==================================================================
+--- tests/cluster.test
++++ tests/cluster.test
+@@ -257,10 +257,20 @@
+     ::tk::wordBreakBefore a b c d
+ } -returnCodes 1 -result {wrong # args: should be "::tk::wordBreakBefore str start ?locale?"}
+ test cluster-8.6 {::tk::wordBreakAfter} -body {
+     ::tk::wordBreakAfter a b c d
+ } -returnCodes 1 -result {wrong # args: should be "::tk::wordBreakAfter str start ?locale?"}
++
++test cluster-9.0 {::tk::startOfNextWord, punctuation run} -constraints needsICU -body {
++    lmap i {0 1 2 3 4 5 6 7 8 9 10 11 12} {::tk::startOfNextWord "ab!!!cd ::ef" $i}
++} -result {2 2 5 5 5 8 8 8 10 10 {} {} {}}
++test cluster-9.1 {::tk::endOfWord, punctuation run} -constraints needsICU -body {
++    lmap i {0 1 2 3 4 5 6 7 8 9 10 11 12} {::tk::endOfWord "ab!!!cd ::ef" $i}
++} -result {5 5 7 7 7 7 7 10 {} {} {} {} {}}
++test cluster-9.2 {::tk::startOfPreviousWord, punctuation run} -constraints needsICU -body {
++    lmap i {0 1 2 3 4 5 6 7 8 9 10 11 12} {::tk::startOfPreviousWord "ab!!!cd ::ef" $i}
++} -result {{} 0 0 2 2 2 5 5 5 8 8 10 10}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

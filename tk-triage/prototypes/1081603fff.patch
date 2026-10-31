@@ -1,0 +1,130 @@
+Index: tests/canvas.test
+==================================================================
+--- tests/canvas.test
++++ tests/canvas.test
+@@ -1545,10 +1545,46 @@
+     update
+     list [stippleColors .c 60 10] [testpixel .c 60 110]
+ } -cleanup {
+     destroy .c
+ } -result {{#0000ff #ffffff} #ffffff}
++test canvas-27.3 {arc ends neither stop short nor overshoot - bug 1081603} -constraints {
++    testpixel
++} -setup {
++    destroy .c
++    canvas .c -width 120 -height 120 -background white -highlightthickness 0
++    pack .c
++} -body {
++    # Ends at 0, 90, 180, 270 degrees: the pixels before, at and after the
++    # end along the tangent; one of the first two must be drawn and the last
++    # one must not.
++    set res {}
++    foreach {start extent} {0 90 90 90 180 90 270 90 0 -90 90 -90 180 -90 270 -90} {
++	.c delete all
++	.c create arc 10 10 110 110 -start $start -extent $extent -style arc
++	update
++	foreach a [list $start [expr {($start + $extent) % 360}]] \
++		dir [list $extent [expr {-$extent}]] {
++	    # Offset from the end into the arc along the tangent.
++	    set d [expr {(($a == 0 || $a == 90) == ($dir > 0)) ? -1 : 1}]
++	    lassign [dict get {0 {110 60 0 1} 90 {60 10 1 0} 180 {10 60 0 1}
++		    270 {60 110 1 0}} $a] x y dx dy
++	    set p {}
++	    foreach i [list $d 0 [expr {-$d}]] {
++		append p [expr {[testpixel .c [expr {$x + $i*$dx}] \
++			[expr {$y + $i*$dy}]] ne "#ffffff"}]
++	    }
++	    if {![string match {1?0} $p] && ![string match {?10} $p]} {
++		lappend res "$start $extent at $a: $p"
++	    }
++	}
++    }
++    set res
++} -cleanup {
++    destroy .c
++    unset -nocomplain res start extent a dir d x y dx dy p i
++} -result {}
+ 
+ test canvas-30.1 {a wide line with many points is drawn in reasonable time - bug 630171} -setup {
+     canvas .c -width 301 -height 301
+     pack .c
+     update
+
+Index: win/tkWinDraw.c
+==================================================================
+--- win/tkWinDraw.c
++++ win/tkWinDraw.c
+@@ -1585,11 +1585,11 @@
+     HBRUSH brush, oldBrush;
+     HPEN pen, oldPen;
+     TkWinDCState state;
+     int clockwise = (extent < 0); /* non-zero if clockwise */
+     int xstart, ystart, xend, yend;
+-    double radian_start, radian_end, xr, yr;
++    double radian_start, radian_end, xr, yr, delta;
+ 
+     if (d == None) {
+ 	return BadDrawable;
+     }
+ 
+@@ -1620,19 +1620,29 @@
+     radian_end = XAngleToRadians(extent);
+ 
+     /*
+      * Now compute points on the radial lines that define the starting and
+      * ending angles. Be sure to take into account that the y-coordinate
+-     * system is inverted.
++     * system is inverted. GDI ends the arc where the line from the center
++     * of its bounding rectangle (one pixel larger than the X one, see
++     * below) through such a point crosses the ellipse: use that center, and
++     * points far away, so that rounding them does not move the ends. Move
++     * the ends inwards by a quarter pixel: GDI draws the pixel after the
++     * start when the line runs exactly through a pixel center.
+      */
+ 
+-    xr = x + width / 2.0;
+-    yr = y + height / 2.0;
+-    xstart = (int)((xr + cos(radian_start)*width/2.0) + 0.5);
+-    ystart = (int)((yr + sin(-radian_start)*height/2.0) + 0.5);
+-    xend = (int)((xr + cos(radian_end)*width/2.0) + 0.5);
+-    yend = (int)((yr + sin(-radian_end)*height/2.0) + 0.5);
++    xr = x + (width + 1) / 2.0;
++    yr = y + (height + 1) / 2.0;
++    delta = radian_end - radian_start;
++    if (delta < 0) {
++	delta += 2*PI;
++    }
++    delta = extent_is_360_deg ? 0.0 : fmin(delta / 4, 1.0 / (width + height + 2));
++    xstart = (int)floor(xr + cos(radian_start + delta)*width*32.0 + 0.5);
++    ystart = (int)floor(yr + sin(-radian_start - delta)*height*32.0 + 0.5);
++    xend = (int)floor(xr + cos(radian_end - delta)*width*32.0 + 0.5);
++    yend = (int)floor(yr + sin(-radian_end + delta)*height*32.0 + 0.5);
+ 
+     if ((xstart == xend) && (ystart == yend) && !extent_is_360_deg) {
+ 	/*
+ 	 * The extent is so small that the arc size is less than one pixel.
+ 	 * If the Arc, Chord, or Pie GDI function later received this, then
+@@ -1700,10 +1710,22 @@
+ 	 */
+ 
+ 	SetBkMode(dc, TRANSPARENT);
+ 	Arc(dc, x, y,  x + (int)width + 1, y + (int)height + 1, xstart, ystart,
+ 		xend, yend);
++	if (gc->line_width <= 1 && gc->line_style == LineSolid
++		&& gc->function == GXcopy && !extent_is_360_deg) {
++	    /*
++	     * Like lines, the arc is drawn without its last pixel. Add it.
++	     */
++
++	    int xlast = (int)floor(xr + cos(radian_end)*width/2.0);
++	    int ylast = (int)floor(yr + sin(-radian_end)*height/2.0);
++
++	    MoveToEx(dc, xlast, ylast, NULL);
++	    LineTo(dc, xlast + 1, ylast);
++	}
+     } else {
+ 	brush = CreateSolidBrush(gc->foreground);
+ 	oldBrush = (HBRUSH)SelectObject(dc, brush);
+ 	if (gc->arc_mode == ArcChord) {
+ 	    Chord(dc, x, y,  x + (int)width + 1, y + (int)height + 1,
+

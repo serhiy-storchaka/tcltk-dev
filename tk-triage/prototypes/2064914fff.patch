@@ -74,7 +74,20 @@ Index: tests/ttk/layout.test
 ==================================================================
 --- tests/ttk/layout.test
 +++ tests/ttk/layout.test
-@@ -43,10 +43,26 @@
+@@ -17,10 +17,12 @@
+ source [file join [file dirname [tcltest::configure -testdir]] main.tcl]
+ 
+ # Ensure a pristine initial window state
+ resetWindows
+ 
++testConstraint vista [expr {"vista" in [ttk::style theme names]}]
++
+ #
+ # TESTS
+ #
+ 
+ test layout-1.1 "Size computations for mixed-orientation layouts" -body {
+@@ -43,11 +45,47 @@
  } -cleanup { destroy .b } -result [list 24 24]
  
  test layout-2 "Empty -children not allowed" -body {
@@ -96,11 +109,32 @@ Index: tests/ttk/layout.test
 +    destroy .mb
 +    wm geometry . {}
 +} -result label
++
++test layout-3.2 "Menubutton label fills the available width, vista theme" -constraints {
++    vista
++} -setup {
++    set theme [ttk::style theme use]
++    ttk::style theme use vista
++} -body {
++    ttk::menubutton .mb -text somestring -width 1
++    pack .mb -fill x
++    wm geometry . 300x100
++    update
++    set y [expr {[winfo height .mb] / 2}]
++    set x [expr {[winfo width .mb] / 2}]
++    .mb identify element $x $y
++} -cleanup {
++    destroy .mb
++    wm geometry . {}
++    ttk::style theme use $theme
++    unset -nocomplain theme x y
++} -result label
  
  #
  # TESTFILE CLEANUP
  #
  
+ tcltest::cleanupTests
 
 Index: win/ttkWinVistaTheme.c
 ==================================================================

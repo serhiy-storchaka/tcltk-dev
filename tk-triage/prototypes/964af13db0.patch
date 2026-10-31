@@ -56,7 +56,7 @@ Index: tests/choosedir.test
 ==================================================================
 --- tests/choosedir.test
 +++ tests/choosedir.test
-@@ -133,10 +133,35 @@
+@@ -133,10 +133,37 @@
      ToPressButton $parent ok
      tk_chooseDirectory \
  	    -title "Press OK" \
@@ -69,11 +69,13 @@ Index: tests/choosedir.test
 +	upvar #0 ::tk::dialog::file::__tk_choosedir data
 +	lappend result $data(selectPath) [$data(ent) get]
 +	SendButtonPress . ok mouse
-+	after 50 {SendButtonPress . ok mouse}
++	set afterId [after 50 {SendButtonPress . ok mouse}]
 +    }
 +    set result {}
 +    lappend result [tk_chooseDirectory -title "Press Ok twice" \
 +	    -parent $parent -initialdir [file join $fake sub] -mustexist 0]
++} -cleanup {
++    after cancel $afterId
 +} -result [list [file dirname $fake] [file join $fake sub] [file join $fake sub]]
 +test choosedir-4.5 {tk_chooseDirectory, nonexistent initialdir, -mustexist 1} -constraints {
 +	unix notAqua

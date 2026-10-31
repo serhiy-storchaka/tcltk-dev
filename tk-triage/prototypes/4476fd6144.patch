@@ -1,0 +1,111 @@
+Index: generic/tkDecls.h
+==================================================================
+--- generic/tkDecls.h
++++ generic/tkDecls.h
+@@ -1810,11 +1810,11 @@
+ /* !END!: Do not edit above this line. */
+ 
+ #define Tk_GetImageMasterData Tk_GetImageModelData
+ 
+ #undef TkPointToChar_
+-#ifndef MAC_OSX_TK
++#ifdef _WIN32
+ #   undef Tk_ClipDrawableToRect
+ #endif
+ 
+ EXTERN void  Tk_MainEx(Tcl_Size argc, char **argv,
+ 	Tcl_AppInitProc *appInitProc, Tcl_Interp *interp);
+
+Index: generic/tkStubInit.c
+==================================================================
+--- generic/tkStubInit.c
++++ generic/tkStubInit.c
+@@ -23,11 +23,11 @@
+ 
+ #if defined(MAC_OSX_TK)
+ /* we could have used _TKMACINT */
+ #include "tkMacOSXInt.h"
+ #include "tkMacOSXPrivate.h"
+-#else
++#elif defined(_WIN32)
+ #   define Tk_ClipDrawableToRect 0
+ #endif
+ 
+ /* TODO: These ought to come in some other way */
+ #include "tkPlatDecls.h"
+
+Index: unix/tkUnixDraw.c
+==================================================================
+--- unix/tkUnixDraw.c
++++ unix/tkUnixDraw.c
+@@ -376,10 +376,69 @@
+     XFreePixmap(display, srcPix);
+     return Success;
+ }
+ #endif /* HAVE_XRENDER */
+ 
++/*
++ *----------------------------------------------------------------------
++ *
++ * Tk_ClipDrawableToRect --
++ *
++ *	Clip drawing to the given rectangle. If width or height are negative,
++ *	reset to no clipping. On X11 this only affects text drawn with Xft,
++ *	which ignores the clip mask of the GC; other drawing must be clipped
++ *	with the GC as usual. The clipping applies to all drawables until it
++ *	is reset.
++ *
++ * Results:
++ *	None.
++ *
++ * Side effects:
++ *	Subsequent Xft text drawing in this thread is clipped.
++ *
++ *----------------------------------------------------------------------
++ */
++
++#if defined(HAVE_XFT) || defined(HAVE_BIDI)
++static Tcl_ThreadDataKey clipKey;
++#endif
++
++void
++Tk_ClipDrawableToRect(
++    TCL_UNUSED(Display *),
++    TCL_UNUSED(Drawable),
++    int x, int y,
++    int width, int height)
++{
++#if defined(HAVE_XFT) || defined(HAVE_BIDI)
++    Region *clipRegionPtr = (Region *)
++	    Tcl_GetThreadData(&clipKey, sizeof(Region));
++
++    if (*clipRegionPtr != NULL) {
++	TkUnixSetXftClipRegion(NULL);
++	XDestroyRegion(*clipRegionPtr);
++	*clipRegionPtr = NULL;
++    }
++    if (width >= 0 && height >= 0) {
++	XRectangle rect;
++
++	rect.x = x;
++	rect.y = y;
++	rect.width = width;
++	rect.height = height;
++	*clipRegionPtr = XCreateRegion();
++	XUnionRectWithRegion(&rect, *clipRegionPtr, *clipRegionPtr);
++	TkUnixSetXftClipRegion(*clipRegionPtr);
++    }
++#else
++    (void)x;
++    (void)y;
++    (void)width;
++    (void)height;
++#endif
++}
++
+ /*
+  * Local Variables:
+  * mode: c
+  * c-basic-offset: 4
+  * fill-column: 78
+

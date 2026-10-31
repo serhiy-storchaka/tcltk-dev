@@ -2,7 +2,7 @@ Index: generic/tkFrame.c
 ==================================================================
 --- generic/tkFrame.c
 +++ generic/tkFrame.c
-@@ -2032,10 +2032,19 @@
+@@ -2031,10 +2031,19 @@
  	    Tk_SetWindowMenubar(framePtr->interp, framePtr->tkwin, NULL,
  		    Tcl_GetString(framePtr->menuNameObj));
  	}
@@ -27,7 +27,7 @@ Index: tests/wm.test
 ==================================================================
 --- tests/wm.test
 +++ tests/wm.test
-@@ -2638,10 +2638,31 @@
+@@ -2701,10 +2701,54 @@
      lappend res [winfo ismapped .m]
  } -cleanup {
      destroy .m
@@ -53,7 +53,30 @@ Index: tests/wm.test
 +    destroy .m
 +    update
 +    winfo exists .m
++} -cleanup {
++    destroy .t .m
 +} -result 0
++test wm-forget-2.3 {bug [3515522fff] - [wm forget] releases the menubar} -setup {
++    catch {destroy .t .m}
++} -body {
++    menu .m
++    .m add command -label x
++    toplevel .t -menu .m
++    update
++    wm forget .t
++    update
++    destroy .m
++    menu .m
++    .m add command -label y
++    update
++    set res [list [winfo children .t]]
++    wm manage .t
++    update
++    lappend res [llength [winfo children .t]]
++} -cleanup {
++    destroy .t .m
++    unset -nocomplain res
++} -result {{} 1}
  
  #
  # TESTFILE CLEANUP
@@ -64,7 +87,7 @@ Index: win/tkWinWm.c
 ==================================================================
 --- win/tkWinWm.c
 +++ win/tkWinWm.c
-@@ -8470,10 +8470,17 @@
+@@ -8569,10 +8569,17 @@
  TkWinGetWrapperWindow(
      Tk_Window tkwin)		/* The window we need the wrapper from */
  {

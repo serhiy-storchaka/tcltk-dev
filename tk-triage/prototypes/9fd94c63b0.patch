@@ -1,0 +1,313 @@
+Index: generic/tkCanvText.c
+==================================================================
+--- generic/tkCanvText.c
++++ generic/tkCanvText.c
+@@ -847,10 +847,43 @@
+ 	}
+     }
+     textPtr->header.y2 = ROUND(TkCanvClampCoord(tmp));
+ }
+ 
++/*
++ *--------------------------------------------------------------
++ *
++ * TkCanvTextRedrawMargin --
++ *
++ *	Glyphs can extend beyond their advance width (e.g. in italic fonts),
++ *	so the ink of a text item can stick out of its bounding box. This
++ *	function returns an extra margin by which the area redrawn for the
++ *	item should be enlarged.
++ *
++ * Results:
++ *	The margin in pixels.
++ *
++ * Side effects:
++ *	None.
++ *
++ *--------------------------------------------------------------
++ */
++
++int
++TkCanvTextRedrawMargin(
++    Tk_Item *itemPtr)		/* Text item. */
++{
++    TextItem *textPtr = (TextItem *) itemPtr;
++    Tk_FontMetrics fm;
++
++    if (textPtr->actualWidth <= 0 || textPtr->tkfont == NULL) {
++	return 0;
++    }
++    Tk_GetFontMetrics(textPtr->tkfont, &fm);
++    return (fm.ascent + fm.descent + 3) / 4;
++}
++
+ /*
+  *--------------------------------------------------------------
+  *
+  * DisplayCanvText --
+  *
+
+Index: generic/tkCanvas.c
+==================================================================
+--- generic/tkCanvas.c
++++ generic/tkCanvas.c
+@@ -251,10 +251,12 @@
+ static void		DisplayCanvas(void *clientData);
+ static void		DoItem(Tcl_Obj *accumObj,
+ 			    Tk_Item *itemPtr, Tk_Uid tag);
+ static void		EventuallyRedrawItem(TkCanvas *canvasPtr,
+ 			    Tk_Item *itemPtr);
++static void		GetItemRedrawArea(Tk_Item *itemPtr, int *x1Ptr,
++			    int *y1Ptr, int *x2Ptr, int *y2Ptr);
+ static int		FindItems(Tcl_Interp *interp, TkCanvas *canvasPtr,
+ 			    Tcl_Size objc, Tcl_Obj *const *objv,
+ 			    Tcl_Obj *newTagObj, Tcl_Size first,
+ 			    TagSearch **searchPtrPtr);
+ static int		FindArea(Tcl_Interp *interp, TkCanvas *canvasPtr,
+@@ -1184,12 +1186,11 @@
+ 	     * replace could result in a new area larger than the old area.
+ 	     * Except if the dCharsProc or insertProc sets the
+ 	     * TK_ITEM_DONT_REDRAW flag, nothing more needs to be done.
+ 	     */
+ 
+-	    x1 = itemPtr->x1; y1 = itemPtr->y1;
+-	    x2 = itemPtr->x2; y2 = itemPtr->y2;
++	    GetItemRedrawArea(itemPtr, &x1, &y1, &x2, &y2);
+ 
+ 	    itemPtr->redraw_flags &= ~TK_ITEM_DONT_REDRAW;
+ 	    ItemDelChars(canvasPtr, itemPtr, index, index);
+ 	    dontRedraw1 = itemPtr->redraw_flags & TK_ITEM_DONT_REDRAW;
+ 
+@@ -1335,12 +1336,11 @@
+ 	     * delete could result in a new area larger than the old area.
+ 	     * Except if the dCharsProc sets the TK_ITEM_DONT_REDRAW flag,
+ 	     * nothing more needs to be done.
+ 	     */
+ 
+-	    x1 = itemPtr->x1; y1 = itemPtr->y1;
+-	    x2 = itemPtr->x2; y2 = itemPtr->y2;
++	    GetItemRedrawArea(itemPtr, &x1, &y1, &x2, &y2);
+ 	    itemPtr->redraw_flags &= ~TK_ITEM_DONT_REDRAW;
+ 	    ItemDelChars(canvasPtr, itemPtr, first, last);
+ 	    if (!(itemPtr->redraw_flags & TK_ITEM_DONT_REDRAW)) {
+ 		Tk_CanvasEventuallyRedraw((Tk_Canvas) canvasPtr,
+ 			x1, y1, x2, y2);
+@@ -1578,12 +1578,11 @@
+ 	     * insertion could result in a new area either larger or smaller
+ 	     * than the old area. Except if the insertProc sets the
+ 	     * TK_ITEM_DONT_REDRAW flag, nothing more needs to be done.
+ 	     */
+ 
+-	    x1 = itemPtr->x1; y1 = itemPtr->y1;
+-	    x2 = itemPtr->x2; y2 = itemPtr->y2;
++	    GetItemRedrawArea(itemPtr, &x1, &y1, &x2, &y2);
+ 	    itemPtr->redraw_flags &= ~TK_ITEM_DONT_REDRAW;
+ 	    ItemInsert(canvasPtr, itemPtr, beforeThis, objv[4]);
+ 	    if (!(itemPtr->redraw_flags & TK_ITEM_DONT_REDRAW)) {
+ 		Tk_CanvasEventuallyRedraw((Tk_Canvas) canvasPtr,
+ 			x1, y1, x2, y2);
+@@ -1796,12 +1795,11 @@
+ 	     * replace could result in a new area larger than the old area.
+ 	     * Except if the dCharsProc or insertProc sets the
+ 	     * TK_ITEM_DONT_REDRAW flag, nothing more needs to be done.
+ 	     */
+ 
+-	    x1 = itemPtr->x1; y1 = itemPtr->y1;
+-	    x2 = itemPtr->x2; y2 = itemPtr->y2;
++	    GetItemRedrawArea(itemPtr, &x1, &y1, &x2, &y2);
+ 
+ 	    itemPtr->redraw_flags &= ~TK_ITEM_DONT_REDRAW;
+ 	    ItemDelChars(canvasPtr, itemPtr, first, last);
+ 	    dontRedraw1 = itemPtr->redraw_flags & TK_ITEM_DONT_REDRAW;
+ 
+@@ -3198,19 +3196,20 @@
+ 	 * unmapped when they move off-screen).
+ 	 */
+ 
+ 	for (itemPtr = canvasPtr->firstItemPtr; itemPtr != NULL;
+ 		itemPtr = itemPtr->nextPtr) {
+-	    if ((itemPtr->x1 >= screenX2)
+-		    || (itemPtr->y1 >= screenY2)
+-		    || (itemPtr->x2 < screenX1)
+-		    || (itemPtr->y2 < screenY1)) {
++	    int x1, y1, x2, y2;
++
++	    GetItemRedrawArea(itemPtr, &x1, &y1, &x2, &y2);
++	    if ((x1 >= screenX2) || (y1 >= screenY2)
++		    || (x2 < screenX1) || (y2 < screenY1)) {
+ 		if (!AlwaysRedraw(itemPtr)
+-			|| (itemPtr->x1 >= canvasPtr->redrawX2)
+-			|| (itemPtr->y1 >= canvasPtr->redrawY2)
+-			|| (itemPtr->x2 < canvasPtr->redrawX1)
+-			|| (itemPtr->y2 < canvasPtr->redrawY1)) {
++			|| (x1 >= canvasPtr->redrawX2)
++			|| (y1 >= canvasPtr->redrawY2)
++			|| (x2 < canvasPtr->redrawX1)
++			|| (y2 < canvasPtr->redrawY1)) {
+ 		    continue;
+ 		}
+ 	    }
+ 	    if (itemPtr->state == TK_STATE_HIDDEN ||
+ 		    (itemPtr->state == TK_STATE_NULL &&
+@@ -3509,50 +3508,89 @@
+ EventuallyRedrawItem(
+     TkCanvas *canvasPtr,	/* Information about widget. */
+     Tk_Item *itemPtr)		/* Item to be redrawn. May be NULL, in which
+ 				 * case nothing happens. */
+ {
++    int x1, y1, x2, y2;
++
+     if (itemPtr == NULL || canvasPtr->tkwin == NULL) {
+ 	return;
+     }
+-    if ((itemPtr->x1 >= itemPtr->x2) || (itemPtr->y1 >= itemPtr->y2) ||
+-	    (itemPtr->x2 < canvasPtr->xOrigin) ||
+-	    (itemPtr->y2 < canvasPtr->yOrigin) ||
+-	    (itemPtr->x1 >= canvasPtr->xOrigin+Tk_Width(canvasPtr->tkwin)) ||
+-	    (itemPtr->y1 >= canvasPtr->yOrigin+Tk_Height(canvasPtr->tkwin))) {
++    GetItemRedrawArea(itemPtr, &x1, &y1, &x2, &y2);
++    if ((x1 >= x2) || (y1 >= y2) ||
++	    (x2 < canvasPtr->xOrigin) ||
++	    (y2 < canvasPtr->yOrigin) ||
++	    (x1 >= canvasPtr->xOrigin+Tk_Width(canvasPtr->tkwin)) ||
++	    (y1 >= canvasPtr->yOrigin+Tk_Height(canvasPtr->tkwin))) {
+ 	if (!AlwaysRedraw(itemPtr)) {
+ 	    return;
+ 	}
+     }
+     if (!(itemPtr->redraw_flags & FORCE_REDRAW)) {
+ 	if (canvasPtr->flags & BBOX_NOT_EMPTY) {
+-	    if (itemPtr->x1 <= canvasPtr->redrawX1) {
+-		canvasPtr->redrawX1 = itemPtr->x1;
+-	    }
+-	    if (itemPtr->y1 <= canvasPtr->redrawY1) {
+-		canvasPtr->redrawY1 = itemPtr->y1;
+-	    }
+-	    if (itemPtr->x2 >= canvasPtr->redrawX2) {
+-		canvasPtr->redrawX2 = itemPtr->x2;
+-	    }
+-	    if (itemPtr->y2 >= canvasPtr->redrawY2) {
+-		canvasPtr->redrawY2 = itemPtr->y2;
++	    if (x1 <= canvasPtr->redrawX1) {
++		canvasPtr->redrawX1 = x1;
++	    }
++	    if (y1 <= canvasPtr->redrawY1) {
++		canvasPtr->redrawY1 = y1;
++	    }
++	    if (x2 >= canvasPtr->redrawX2) {
++		canvasPtr->redrawX2 = x2;
++	    }
++	    if (y2 >= canvasPtr->redrawY2) {
++		canvasPtr->redrawY2 = y2;
+ 	    }
+ 	} else {
+-	    canvasPtr->redrawX1 = itemPtr->x1;
+-	    canvasPtr->redrawY1 = itemPtr->y1;
+-	    canvasPtr->redrawX2 = itemPtr->x2;
+-	    canvasPtr->redrawY2 = itemPtr->y2;
++	    canvasPtr->redrawX1 = x1;
++	    canvasPtr->redrawY1 = y1;
++	    canvasPtr->redrawX2 = x2;
++	    canvasPtr->redrawY2 = y2;
+ 	    canvasPtr->flags |= BBOX_NOT_EMPTY;
+ 	}
+ 	itemPtr->redraw_flags |= FORCE_REDRAW;
+     }
+     if (!(canvasPtr->flags & REDRAW_PENDING)) {
+ 	Tcl_DoWhenIdle(DisplayCanvas, canvasPtr);
+ 	canvasPtr->flags |= REDRAW_PENDING;
+     }
+ }
++
++/*
++ *----------------------------------------------------------------------
++ *
++ * GetItemRedrawArea --
++ *
++ *	Compute the area of the canvas that must be redrawn for an item. This
++ *	is the item's bounding box, enlarged for text items because glyphs can
++ *	extend beyond their advance width.
++ *
++ * Results:
++ *	The area is stored in *x1Ptr, *y1Ptr, *x2Ptr and *y2Ptr.
++ *
++ * Side effects:
++ *	None.
++ *
++ *----------------------------------------------------------------------
++ */
++
++static void
++GetItemRedrawArea(
++    Tk_Item *itemPtr,
++    int *x1Ptr, int *y1Ptr,
++    int *x2Ptr, int *y2Ptr)
++{
++    int margin = 0;
++
++    if (itemPtr->typePtr == &tkTextType
++	    && itemPtr->x1 < itemPtr->x2 && itemPtr->y1 < itemPtr->y2) {
++	margin = TkCanvTextRedrawMargin(itemPtr);
++    }
++    *x1Ptr = itemPtr->x1 - margin;
++    *y1Ptr = itemPtr->y1 - margin;
++    *x2Ptr = itemPtr->x2 + margin;
++    *y2Ptr = itemPtr->y2 + margin;
++}
+ 
+ /*
+  *----------------------------------------------------------------------
+  *
+  * Tk_CreateItemType --
+
+Index: generic/tkCanvas.h
+==================================================================
+--- generic/tkCanvas.h
++++ generic/tkCanvas.h
+@@ -289,10 +289,11 @@
+  * to the outside world:
+  */
+ 
+ MODULE_SCOPE int	TkCanvPostscriptObjCmd(TkCanvas *canvasPtr,
+ 			    Tcl_Interp *interp, Tcl_Size objc, Tcl_Obj *const objv[]);
++MODULE_SCOPE int	TkCanvTextRedrawMargin(Tk_Item *itemPtr);
+ MODULE_SCOPE Tcl_Size	TkCanvTranslatePath(TkCanvas *canvPtr,
+ 			    Tcl_Size numVertex, double *coordPtr, int closed,
+ 			    XPoint *outPtr);
+ 
+ /*
+
+Index: tests/canvText.test
+==================================================================
+--- tests/canvText.test
++++ tests/canvText.test
+@@ -1065,10 +1065,28 @@
+     }
+     set res
+ } -cleanup {
+     destroy .c
+ } -result {1 1 1}
++
++test canvText-23.1 {glyph overhang is redrawn - bug 9fd94c63b0} -constraints {
++    testpixel
++} -setup {
++    destroy .c
++    canvas .c -width 400 -height 200 -background white -highlightthickness 0
++    # Italic glyphs stick out of the bounding box of the item.
++    set t [.c create text 100 100 -text f -font {Times -100 italic}]
++    pack .c
++    update
++} -body {
++    lassign [.c bbox $t] x1 y1 x2 y2
++    .c delete $t
++    update
++    countPixels .c [expr {$x1 - 30}] $y1 [expr {$x2 + 30}] $y2
++} -cleanup {
++    destroy .c
++} -result 0
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+

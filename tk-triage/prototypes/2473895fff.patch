@@ -1,8 +1,40 @@
+Index: tests/winDialog.test
+==================================================================
+--- tests/winDialog.test
++++ tests/winDialog.test
+@@ -757,10 +757,24 @@
+ } -body {
+     exec [interpreter] <$script
+ } -cleanup {
+     removeFile script
+ } -result {.t.e}
++
++test winDialog-5.28 {tk_getOpenFile: -multiple -initialfile is a list - bug 2473895} -constraints {
++    nt testwinevent
++} -body {
++    unset -nocomplain x y
++    testDialog launch {set x [tk_getOpenFile -multiple 1 \
++		      -initialdir [file nativename $initialDir] \
++		      -initialfile [list a.txt "b c.txt"] -title Foo]}
++    testDialog onDisplay {
++	set y [GetText 0x47c]
++	Click cancel
++    }
++    list $y $x
++} -result {{"a.txt" "b c.txt"} {}}
+ 
+ test winDialog-6.1 {MakeFilter} -constraints {emptyTest nt} -body {}
+ 
+ 
+ test winDialog-7.1 {Tk_MessageBoxObjCmd} -constraints {emptyTest nt} -body {}
+
 Index: win/tkWinDialog.c
 ==================================================================
 --- win/tkWinDialog.c
 +++ win/tkWinDialog.c
-@@ -554,6 +554,7 @@
+@@ -619,10 +619,11 @@
+     enum OFNOper oper,			/* 1 for Open, 0 for Save */
+     OFNOpts *optsPtr)           /* Output, uninitialized on entry */
  {
      Tcl_Size i;
      Tcl_DString ds;
@@ -10,12 +42,17 @@ Index: win/tkWinDialog.c
      enum options {
  	FILE_DEFAULT, FILE_TYPES, FILE_INITDIR, FILE_INITFILE, FILE_PARENT,
  	FILE_TITLE, FILE_TYPEVARIABLE, FILE_MULTIPLE, FILE_CONFIRMOW,
-@@ -638,12 +639,7 @@
+ 	FILE_MUSTEXIST,
+     };
+@@ -703,17 +704,11 @@
+ 	    if (Tcl_TranslateFileName(interp, string,
+ 				      &optsPtr->utfDirString) == NULL)
  		goto error_return;
  	    break;
  	case FILE_INITFILE:
 -	    if (Tcl_TranslateFileName(interp, string, &ds) == NULL)
 -		goto error_return;
+-	    Tcl_DStringFree(&optsPtr->utf16FileName);
 -	    Tcl_UtfToExternalDStringEx(interp, TkWinGetUnicodeEncoding(),
 -		Tcl_DStringValue(&ds), Tcl_DStringLength(&ds),
 -		TCL_ENCODING_PROFILE_REPLACE, &optsPtr->utf16FileName, NULL);
@@ -24,10 +61,15 @@ Index: win/tkWinDialog.c
  	    break;
  	case FILE_PARENT:
  	    optsPtr->tkwin = Tk_NameToWindow(interp, string, (Tk_Window)clientData);
-@@ -676,6 +672,44 @@
+ 	    if (optsPtr->tkwin == NULL)
+ 		goto error_return;
+@@ -741,10 +736,48 @@
+ 				      &optsPtr->mustExist) != TCL_OK)
+ 		goto error_return;
+ 	    break;
  	}
      }
- 
++
 +    if (initFileObj != NULL) {
 +	Tcl_Obj **names = &initFileObj;
 +	Tcl_Size j, numNames = 1;
@@ -65,7 +107,9 @@ Index: win/tkWinDialog.c
 +		TCL_ENCODING_PROFILE_REPLACE, &optsPtr->utf16FileName, NULL);
 +	Tcl_DStringFree(&utf);
 +    }
-+
+ 
      return TCL_OK;
  
  error_return:                   /* interp should already hold error */
+     /* On error, we need to clean up anything we might have allocated */
+

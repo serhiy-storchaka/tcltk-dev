@@ -1,8 +1,56 @@
+Index: tests/unixWm.test
+==================================================================
+--- tests/unixWm.test
++++ tests/unixWm.test
+@@ -2749,10 +2749,42 @@
+     list [expr {$before - [winfo reqheight .t]}] \
+ 	    [expr {$after - [winfo reqheight .t] - [winfo rooty .t] + $rooty}]
+ } -cleanup {
+     destroy .t
+ } -result {0 0}
++
++test unixWm-64.1 {UpdateGeometryInfo procedure, toggle the menubar of a\
++	zoomed window, bug [1d926db566]} -constraints {
++    unix withWindowManager
++} -setup {
++    destroy .t
++    toplevel .t
++    menu .t.m
++    .t.m add cascade -label File
++    .t configure -menu .t.m
++    update
++} -body {
++    wm attributes .t -zoomed 1
++    pause 500
++    update
++    set height [winfo height .t]
++    set result {}
++    # The window manager keeps the size of the zoomed wrapper, so the
++    # toplevel grows when the menubar is removed and shrinks when it is
++    # added back.
++    foreach menu {{} .t.m {} .t.m} {
++	.t configure -menu $menu
++	update
++	pause 100
++	update
++	lappend result [expr {[winfo height .t] - $height}]
++    }
++    lmap d $result {expr {$d > 0}}
++} -cleanup {
++    destroy .t
++    unset -nocomplain height result menu d
++} -result {1 0 1 0}
+ 
+ #
+ # TESTFILE CLEANUP
+ #
+ 
+
 Index: unix/tkUnixWm.c
 ==================================================================
 --- unix/tkUnixWm.c
 +++ unix/tkUnixWm.c
-@@ -340,10 +340,11 @@
+@@ -348,10 +348,11 @@
  
  static bool		ComputeReparentGeometry(WmInfo *wmPtr);
  static void		ConfigureEvent(WmInfo *wmPtr,
@@ -14,7 +62,7 @@ Index: unix/tkUnixWm.c
  static void		MenubarDestroyProc(void *clientData,
  			    XEvent *eventPtr);
  static int		ParseGeometry(Tcl_Interp *interp, const char *string,
-@@ -4001,11 +4002,10 @@
+@@ -4012,11 +4013,10 @@
  				 * wmPtr->wrapperPtr. */
  {
      TkWindow *wrapperPtr = wmPtr->wrapperPtr;
@@ -26,7 +74,7 @@ Index: unix/tkUnixWm.c
       * Update size information from the event. There are a couple of tricky
       * points here:
       *
-@@ -4134,12 +4134,45 @@
+@@ -4145,12 +4145,45 @@
  	}
      }
  
@@ -74,7 +122,7 @@ Index: unix/tkUnixWm.c
      handler = Tk_CreateErrorHandler(winPtr->display, -1, -1, -1, NULL, NULL);
      XMoveResizeWindow(winPtr->display, winPtr->window, 0,
  	    wmPtr->menuHeight, (unsigned) wrapperPtr->changes.width,
-@@ -4810,13 +4843,19 @@
+@@ -4821,13 +4854,19 @@
  		&& (height == wmPtr->wrapperPtr->changes.height)) {
  	    /*
  	     * The window is already just the size we want, so don't bother to
@@ -95,4 +143,25 @@ Index: unix/tkUnixWm.c
  	wmPtr->configWidth = width;
  	wmPtr->configHeight = height;
  	if (winPtr->dispPtr->flags & TK_DISPLAY_WM_TRACING) {
+@@ -4847,10 +4886,20 @@
+ 	Tk_MoveResizeWindow(wmPtr->menubar, 0, 0,
+ 		wmPtr->wrapperPtr->changes.width, wmPtr->menuHeight);
+ 	XResizeWindow(winPtr->display, wmPtr->wrapperPtr->window,
+ 		(unsigned) width, (unsigned) height);
+     } else {
++	/*
++	 * The wrapper was already asked for this size, but the window manager
++	 * may have refused it (e.g. a maximized window), so the toplevel may
++	 * not fit the wrapper if the menubar height has changed.
++	 */
++
++	if (winPtr->changes.height
++		!= wmPtr->wrapperPtr->changes.height - wmPtr->menuHeight) {
++	    LayoutWrapper(wmPtr);
++	}
+ 	return;
+     }
+ 
+     /*
+      * Wait for the configure operation to complete. Don't need to do this,
 

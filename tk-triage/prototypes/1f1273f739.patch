@@ -2,7 +2,7 @@ Index: library/text.tcl
 ==================================================================
 --- library/text.tcl
 +++ library/text.tcl
-@@ -535,11 +535,15 @@
+@@ -538,11 +538,15 @@
      if {$x > [lindex $bbox 0]} {
  	$w mark gravity $anchorname right
      } else {
@@ -24,14 +24,14 @@ Index: tests/text.test
 ==================================================================
 --- tests/text.test
 +++ tests/text.test
-@@ -7840,10 +7840,36 @@
-     event generate .t <B1-Motion> -x 50 -y -50
-     .t index sel.first
+@@ -7857,11 +7857,35 @@
+     event generate .t <ButtonRelease-1> -x $x -y $y
+     lappend res {*}[.t tag ranges sel]
  } -cleanup {
      destroy .t
- } -result {1.0}
-+
-+test text-39.1 {Clicking a disabled text widget takes the focus unless -takefocus 0 - Bug 1f1273f739} -setup {
+ } -result {1.5 1.0 1.5}
+-
++test text-38.3 {Clicking a disabled text widget takes the focus unless -takefocus 0 - Bug 1f1273f739} -setup {
 +    pack [text .t] [entry .e]
 +    .t insert end "Some text"
 +    .t configure -state disabled
@@ -57,8 +57,8 @@ Index: tests/text.test
 +    unset -nocomplain res
 +} -result {.t .e .t}
  
- #
- # TESTFILE CLEANUP
- #
- 
+ test text-39.1 {no scroll command before the text is mapped - bug 991849} -setup {
+     toplevel .top
+     wm withdraw .top
+     set log {}
 

@@ -2,7 +2,7 @@ Index: generic/tkFont.c
 ==================================================================
 --- generic/tkFont.c
 +++ generic/tkFont.c
-@@ -3023,11 +3023,11 @@
+@@ -3180,11 +3180,11 @@
  				 * upper-left hand corner of the text layout
  				 * itself. */
      int width, int height)	/* The width and height of the above
@@ -15,7 +15,7 @@ Index: generic/tkFont.c
      TkFont *fontPtr;
      int left, top, right, bottom;
  
-@@ -3043,14 +3043,28 @@
+@@ -3200,14 +3200,28 @@
  
      left = x;
      top = y;
@@ -50,7 +50,7 @@ Index: tests/canvText.test
 ==================================================================
 --- tests/canvText.test
 +++ tests/canvText.test
-@@ -922,10 +922,22 @@
+@@ -920,10 +920,22 @@
      .c find enclosed 99 99 [expr {$x2 + 1}] [expr {$y2 + 1}]
  } -cleanup {
      destroy .c
@@ -69,8 +69,8 @@ Index: tests/canvText.test
 +    destroy .c
 +} -result {{1 2} {}}
  
- test canvText-19.1 {patch 1006286, leading space caused wrap under Win32} -constraints {aqua} -setup {
-     # Text measurements may differ slightly from legacy Tk due to proper font shaping
- 	# with Harfbuzz/SheenBidi (X11) and Uniscribe (Windows); run on macOS only, which
-     # supports shaping natively.
+ test canvText-19.1 {patch 1006286, leading space caused wrap under Win32} -setup {
+     destroy .c
+     set c [canvas .c -bg black -width 964]
+     pack $c
 

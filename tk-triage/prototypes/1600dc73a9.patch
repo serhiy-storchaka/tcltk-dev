@@ -47,11 +47,11 @@ Index: tests/ttk/combobox.test
 +    toplevel .t
 +    wm geometry .t [winfo width .]x[winfo height .]+[winfo rootx .]+[winfo rooty .]
 +    update
-+    after 200 {set done 1}; vwait done
++    pause 200
 +    lappend result [winfo ismapped .cb.popdown]
 +} -cleanup {
 +    destroy .t .cb
-+    unset -nocomplain result done
++    unset -nocomplain result
 +} -result {1 0}
  
  test combobox-4.1 "style command" -body {

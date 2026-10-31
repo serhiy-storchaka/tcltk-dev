@@ -1,0 +1,159 @@
+Index: tests/winFont.test
+==================================================================
+--- tests/winFont.test
++++ tests/winFont.test
+@@ -381,10 +381,42 @@
+     .t.l config -text "a"
+     update
+ } -cleanup {
+     destroy .t.l
+ } -result {}
++test winfont-6.2 {Tk_DrawAngledChars procedure: raster font is rotated} -constraints {
++    win testpixel
++} -setup {
++    destroy .t.c
++    canvas .t.c -width 200 -height 200 -borderwidth 0 -highlightthickness 0 \
++	-background white
++    pack .t.c
++    raise .t
++    update
++} -body {
++    # GDI cannot rotate the raster font Fixedsys: the text was drawn
++    # horizontally, outside the bbox of the item. Redraw the whole canvas,
++    # so that ink outside the bbox is not clipped away.
++    .t.c create text 100 100 -text ABCDEFGH -font Fixedsys -angle 90 -tags t
++    update
++    .t.c configure -background white
++    update
++    lassign [.t.c bbox t] x0 y0 x1 y1
++    set n 0
++    for {set y 0} {$y < 200} {incr y 2} {
++	for {set x 0} {$x < 200} {incr x 2} {
++	    if {($x < $x0 || $x >= $x1 || $y < $y0 || $y >= $y1)
++		    && [testpixel .t.c $x $y] ne "#ffffff"} {
++		incr n
++	    }
++	}
++    }
++    set n
++} -cleanup {
++    destroy .t.c
++    unset -nocomplain x0 y0 x1 y1 x y n
++} -result 0
+ 
+ 
+ test winfont-7.1 {InitFont procedure: use old font} -constraints win -setup {
+     destroy .c
+ } -setup {
+
+Index: win/tkWinFont.c
+==================================================================
+--- win/tkWinFont.c
++++ win/tkWinFont.c
+@@ -296,10 +296,13 @@
+ static int		LoadFontRanges(HDC hdc, HFONT hFont,
+ 			    USHORT **startCount, USHORT **endCount,
+ 			    int *symbolPtr,
+ 			    ULONG **startGroup, ULONG **endGroup,
+ 			    int *groupCount);
++static int		DrawUnrotatableRun(HDC hdc, HFONT *hAngledPtr,
++			    const TkWinShapedRun *run, const WCHAR *wstr,
++			    int x, int y);
+ static void		MultiFontTextOut(HDC hdc, WinFont *fontPtr,
+ 			    const char *source, int numBytes,
+ 			    double x, double y, double angle);
+ static void		ReleaseFont(WinFont *fontPtr);
+ static inline void	ReleaseSubFont(SubFont *subFontPtr);
+@@ -2409,12 +2412,15 @@
+ 	    if (hAngled) hDrawFont = hAngled;
+ 	}
+ 
+ 	SelectObject(hdc, hDrawFont);
+ 
+-	/* Color emoji layers first (no rotation); GDI only draws outlines. */
+-	if (!(hAngled == NULL
++	if (hAngled && !run->sa.fRTL
++		&& DrawUnrotatableRun(hdc, &hAngled, run, wstr,
++			(int)(x + 0.5), (int)(y + 0.5))) {
++	    /* Drawn with a TrueType substitute. */
++	} else if (!(hAngled == NULL
+ 		&& fontPtr->subFontArray[run->scriptCacheIdx].familyPtr->isColor
+ 		&& TkWinDrawColorGlyphs(hdc, hDrawFont,
+ 			&fontPtr->subFontArray[run->scriptCacheIdx].colorCache,
+ 			(int)(x + 0.5), (int)(y + 0.5), &run->sa, run->glyphs,
+ 			run->advances, run->offsets, run->glyphCount))) {
+@@ -2459,10 +2465,73 @@
+     /* Free all resources allocated by TkWinShapeString for the runs. */
+     Tcl_Free(order);
+     TkWinFreeShapedRuns(runs, nRuns);
+     Tcl_DStringFree(&uniStr);
+ }
++
++/*
++ *-------------------------------------------------------------------------
++ *
++ * DrawUnrotatableRun --
++ *
++ *	GDI cannot rotate raster fonts (e.g. "Courier" or "Fixedsys"): the
++ *	angled font selected in hdc is drawn unrotated. If that is the case,
++ *	draw the characters of the run with a rotated TrueType font instead,
++ *	spaced like the shaped glyphs.
++ *
++ * Results:
++ *	1 if the run was drawn, 0 if the selected font can be rotated.
++ *
++ * Side effects:
++ *	*hAngledPtr may be replaced by the TrueType font (the old one is
++ *	deleted).
++ *
++ *-------------------------------------------------------------------------
++ */
++
++static int
++DrawUnrotatableRun(
++    HDC hdc,
++    HFONT *hAngledPtr,		/* Angled font, selected in hdc. */
++    const TkWinShapedRun *run,
++    const WCHAR *wstr,
++    int x, int y)
++{
++    TEXTMETRICW tm;
++    LOGFONTW lf;
++    HFONT hFont;
++    int *dx, c, g, end;
++
++    if (!GetTextMetricsW(hdc, &tm) || (tm.tmPitchAndFamily & TMPF_VECTOR)
++	    || run->charLen <= 0) {
++	return 0;
++    }
++    GetObjectW(*hAngledPtr, sizeof(lf), &lf);
++    lf.lfOutPrecision = OUT_TT_ONLY_PRECIS;
++    lf.lfPitchAndFamily = (tm.tmPitchAndFamily & 0xF0)
++	    | ((tm.tmPitchAndFamily & TMPF_FIXED_PITCH) ? VARIABLE_PITCH
++	    : FIXED_PITCH);
++    hFont = CreateFontIndirectW(&lf);
++    if (hFont == NULL) {
++	return 0;
++    }
++    SelectObject(hdc, hFont);
++    DeleteObject(*hAngledPtr);
++    *hAngledPtr = hFont;
++
++    dx = (int *)Tcl_Alloc(sizeof(int) * run->charLen);
++    for (c = 0; c < run->charLen; c++) {
++	end = (c + 1 < run->charLen) ? run->logClust[c + 1] : run->glyphCount;
++	dx[c] = 0;
++	for (g = run->logClust[c]; g < end; g++) {
++	    dx[c] += run->advances[g];
++	}
++    }
++    ExtTextOutW(hdc, x, y, 0, NULL, wstr + run->charStart, run->charLen, dx);
++    Tcl_Free(dx);
++    return 1;
++}
+ 
+ /*
+  *---------------------------------------------------------------------------
+  *
+  * InitFont --
+

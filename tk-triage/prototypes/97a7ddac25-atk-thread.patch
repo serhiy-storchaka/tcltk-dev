@@ -2,7 +2,7 @@ Index: unix/tkUnixAccessibility.c
 ==================================================================
 --- unix/tkUnixAccessibility.c
 +++ unix/tkUnixAccessibility.c
-@@ -74,10 +74,20 @@
+@@ -78,10 +78,20 @@
  static GList *toplevel_accessible_objects = NULL;
  static GHashTable *tk_to_atk_map = NULL;
  extern Tcl_HashTable *TkAccessibilityObject;
@@ -23,12 +23,13 @@ Index: unix/tkUnixAccessibility.c
  static void Atk_Event_Check(void *clientData, int flags);
  static int Atk_Event_Run(Tcl_Event *event, int flags);
  static void ignore_atk_critical(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
-@@ -1925,12 +1935,46 @@
-  *
-  *----------------------------------------------------------------------
-  */
+@@ -2238,14 +2248,49 @@
  
- #ifdef HAVE_ATK
+     /* Cut off speech and close speechd when Tk/the interpreter exits. */
+     Tcl_CreateExitHandler(SpeechExitProc, NULL);
+     return TCL_OK;
+ }
++
 +/* Command which does nothing, used in threads without ATK support. */
 +
 +static int
@@ -40,8 +41,9 @@ Index: unix/tkUnixAccessibility.c
 +{
 +    return TCL_OK;
 +}
-+
- int TkAtkAccessibility_Init(Tcl_Interp *interp)
+ 
+ int
+ TkAtkAccessibility_Init(Tcl_Interp *interp)
  {
 +    bool isAtkThread;
 +
@@ -62,12 +64,13 @@ Index: unix/tkUnixAccessibility.c
 +		TkAccessibleNoopObjCmd, NULL, NULL);
 +	Tcl_CreateObjCommand2(interp, "::tk::accessible::check_screenreader",
 +		TkAccessibleNoopObjCmd, NULL, NULL);
++	Tcl_CreateObjCommand2(interp, "::tk::accessible::speak",
++		TkAccessibleNoopObjCmd, NULL, NULL);
 +	return TCL_OK;
 +    }
-+
-     /* Initialize AT-SPI bridge. */
-     if (atk_bridge_adaptor_init(NULL, NULL) != 0) {
- 	Tcl_SetResult(interp, "Failed to initialize AT-SPI bridge", TCL_STATIC);
- 	return TCL_ERROR;
-     }
+     return TkWaylandAccessibility_Init(interp);
+ }
+ 
+ void
+ TkWaylandAccessibility_Finalize(void)
 

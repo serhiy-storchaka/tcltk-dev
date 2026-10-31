@@ -20,7 +20,7 @@ Index: generic/tkInt.h
 ==================================================================
 --- generic/tkInt.h
 +++ generic/tkInt.h
-@@ -563,12 +563,10 @@
+@@ -565,12 +565,10 @@
      unsigned int flags;		/* Various flag values: these are all defined
  				 * in below. */
      TkCaret caret;		/* Information about the caret for this
@@ -29,11 +29,11 @@ Index: generic/tkInt.h
 -    int iconDataSize;		/* Size of default iconphoto image data. */
 -    unsigned char *iconDataPtr;	/* Default iconphoto image data, if set. */
      int ximGeneration;          /* Used to invalidate XIC */
- } TkDisplay;
- 
- /*
-  * Flag values for TkDisplay flags.
-@@ -693,10 +691,13 @@
+     Tcl_HashTable deletedWinTable;
+ 				/* Maps from X window ids of recently deleted
+ 				 * windows to the serial number of the last
+ 				 * request made before the deletion. */
+@@ -708,10 +706,13 @@
  				 * down. For Tcl 9.1+ */
      unsigned int nbTabPosition, nbTabPlacement;
  				/* Information used by ttk::notebook. */
@@ -52,7 +52,7 @@ Index: generic/tkWindow.c
 ==================================================================
 --- generic/tkWindow.c
 +++ generic/tkWindow.c
-@@ -896,10 +896,12 @@
+@@ -899,10 +899,12 @@
      Tcl_InitHashTable(&mainPtr->imageTable, TCL_STRING_KEYS);
      mainPtr->strictMotif = 0;
      mainPtr->alwaysShowSelection = 0;
@@ -65,7 +65,7 @@ Index: generic/tkWindow.c
  	Tcl_ResetResult(interp);
      }
      if (Tcl_CreateNamespace(interp, "::tk", NULL, NULL) == NULL) {
-@@ -1700,10 +1702,13 @@
+@@ -1734,10 +1736,13 @@
  	     * in an X error
  	     */
  
@@ -84,7 +84,7 @@ Index: unix/tkUnixWm.c
 ==================================================================
 --- unix/tkUnixWm.c
 +++ unix/tkUnixWm.c
-@@ -538,14 +538,10 @@
+@@ -547,14 +547,10 @@
  	if (wmPtr->clientMachine != NULL) {
  	    Tcl_Free(wmPtr->clientMachine);
  	}
@@ -99,7 +99,7 @@ Index: unix/tkUnixWm.c
  /*
   *--------------------------------------------------------------
   *
-@@ -2542,15 +2538,15 @@
+@@ -2551,15 +2547,15 @@
      if (wmPtr->iconDataPtr != NULL) {
  	Tcl_Free(wmPtr->iconDataPtr);
  	wmPtr->iconDataPtr = NULL;
@@ -119,7 +119,7 @@ Index: unix/tkUnixWm.c
  	wmPtr->iconDataSize = size;
      }
      if (!(wmPtr->flags & WM_NEVER_MAPPED)) {
-@@ -5028,12 +5024,12 @@
+@@ -5047,12 +5043,12 @@
      WmInfo *wmPtr = winPtr->wmInfoPtr;
      unsigned char *data = wmPtr->iconDataPtr;
      int size = wmPtr->iconDataSize;
