@@ -17,6 +17,8 @@ make valgrind TESTFLAGS="-file text.test"  # Tk: tktest under memcheck
 make ro-test                               # Tcl: suite with an unwritable cwd
 ```
 
+When the version changes (e.g. to 9.2), `make` builds a library with a new name (`libtcl9tk9.2.so`), but a `tktest` linked before still loads the old one. The `make test` targets relink `tktest`; if you run `./tktest` directly, run `make tktest` first and check `ldd tktest`.
+
 Tk's `tests/all.tcl` and `tests/ttk/all.tcl` default to `-singleproc 1`, all test files in one process. Options in `TESTFLAGS` are applied on top of that default, so `TESTFLAGS="-singleproc 0"` runs each file in its own process.
 
 ## tcltest options (TESTFLAGS)
@@ -97,7 +99,21 @@ DISPLAY=:78 setxkbmap us,ua
 
 ### Wayland branch
 
-Use the `~/tcltk/tk-wayland` checkout. Headless sway works; headless Weston crashes GLFW in `glfwInit()`.
+Use the `~/tcltk/tk-wayland` checkout. Test under more than one compositor: they fail differently. sway doesn't maximize floating windows (wm-state-2.20 and wm-maxsize-2.7 always fail there), GNOME Shell draws no decorations itself (libdecor's title bar makes a window at least 180 pixels wide), and KWin draws the decorations itself. Headless Weston (14.0) can't be used: it offers no `wl_seat`, and without one `glfwInit()` crashes in libdecor's GTK plugin (`gdk_seat_get_keyboard: assertion 'GDK_IS_SEAT (seat)' failed`). Tk checks for a seat first and refuses to start ("couldn't connect to display").
+
+Each compositor gets a private `XDG_RUNTIME_DIR`, `HOME` and D-Bus, as in the X11 examples above:
+
+```
+PRIVATE=$(mktemp -d); chmod 700 $PRIVATE
+env -u DISPLAY -u WAYLAND_DISPLAY XDG_RUNTIME_DIR=$PRIVATE HOME=$(mktemp -d) \
+    dbus-run-session -- sh -c 'COMPOSITOR & sleep 5; WAYLAND_DISPLAY=NAME make test'
+```
+
+| Compositor | COMPOSITOR | NAME |
+|---|---|---|
+| sway | `WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman LIBGL_ALWAYS_SOFTWARE=1 sway -c minimal.conf` | the socket in `$PRIVATE`, usually `wayland-1` |
+| KWin | `QT_QPA_PLATFORM=offscreen kwin_wayland --virtual --width 1280 --height 1024 --socket wl-kwin` | `wl-kwin` |
+| GNOME Shell | `gnome-shell --headless --wayland --no-x11 --virtual-monitor 1280x1024 --wayland-display wl-gnome` | `wl-gnome` |
 
 `minimal.conf` for sway:
 
@@ -108,14 +124,18 @@ default_border none
 default_floating_border none
 ```
 
-```
-PRIVATE=$(mktemp -d); chmod 700 $PRIVATE
-env -u DISPLAY -u WAYLAND_DISPLAY XDG_RUNTIME_DIR=$PRIVATE \
-  WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman \
-  LIBGL_ALWAYS_SOFTWARE=1 sway -c minimal.conf &
-sleep 2; ls $PRIVATE                       # the socket name, usually wayland-1
-WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=$PRIVATE make test
-```
+Display scale:
+
+- sway: `output HEADLESS-1 resolution 2560x1600 scale 1.5` in the config.
+- KWin: `--scale` only makes the virtual output larger. Set `"scale"` (and `"mode"`) of the output in `$XDG_CONFIG_HOME/kwinoutputconfig.json` before starting KWin; the file is written on the first start.
+- GNOME Shell: call `org.gnome.Mutter.DisplayConfig.ApplyMonitorsConfig` on the private bus with `gdbus`. Only the scales listed by `GetCurrentState` are accepted (no 1.5 at 2560x1600). The property `layout-mode` 2 selects the physical layout mode, in which mutter reports a wrong xdg-output size for scaled outputs.
+- GLFW reports the scale rounded up to an integer; the logical size of an output comes from xdg-output.
+
+Several outputs: `WLR_HEADLESS_OUTPUTS=2` or `swaymsg create_output` for sway, `--output-count 2` for KWin, `--virtual-monitor` twice for GNOME Shell.
+
+X11 Tk can be tested under the Xwayland of these compositors (`--xwayland` for KWin, `xwayland enable` for sway). Find its display by comparing `/tmp/.X11-unix` before and after the compositor starts, never by process name, and never use `:0` or another display of your session.
+
+Run tests in your real Wayland session (`WAYLAND_DISPLAY=wayland-0`) only when a test needs it, e.g. a panel, a real fractional scale or several real monitors: windows appear, and your input can change the results.
 
 ## Windows VM
 
@@ -154,4 +174,5 @@ macOS can't be tested locally; GitHub Actions is the only macOS check. In Tk, ta
 - Run each version the same number of times before calling it "good". Use at least 10 runs for a test failure and at least 40 for races or crashes. Report counts ("fails 3/10"), not "passes".
 - Classify crashes by stack (`coredumpctl`) before blaming a change.
 - Run a test file alone and in the full suite. Some failures depend on test order or on state left behind (fonts, focus, grabs).
+- To decide on a rare failure, repeat the steps of the test in a loop in one process, together with the setup and the tests before it that it depends on. For example, unixWm-6.3 failed 1/30 in full runs, but its steps after a new window and unixWm-6.1 and 6.2 gave 22/900 against 0/900. Repeating only the body of the test showed nothing.
 - Installed releases `~/tcltk/<version>/bin/wish*` give quick baselines across versions.
