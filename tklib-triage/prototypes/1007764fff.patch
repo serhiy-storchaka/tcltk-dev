@@ -1,0 +1,44 @@
+Index: modules/ctext/ctext.man
+==================================================================
+--- modules/ctext/ctext.man
++++ modules/ctext/ctext.man
+@@ -38,10 +38,21 @@
+ 
+ Highlighting is controlled with text widget tags, that are called highlight classes.
+ The [arg class] is a tag name and can be configured like any text widget tag.
+ Four types of highlight classes are supported. All highlight classes are automatically used
+ by the [method highlight] method of the widget.
++[para]
++Text is highlighted when it is inserted (unless option [option -highlight] is false
++or [method fastinsert] is used).
++Adding, changing or deleting a highlight class does not rehighlight text which is
++already in the widget; call [arg pathName] [method highlight] [const {1.0 end}]
++after filling the widget or after changing the highlight classes.
++[para]
++A class created with [cmd ::ctext::addHighlightClassForRegexp] holds a single pattern;
++adding it again with the same class name replaces the previous pattern. To highlight
++several patterns, use different class names or combine the patterns into one
++with regular expression alternation.
+ 
+ [list_begin definitions]
+ 
+ [call [cmd ::ctext::addHighlightClass] [arg pathName] [arg class] [arg color] [arg keywordlist]]
+ 
+@@ -73,10 +84,16 @@
+ [call [cmd ::ctext::addHighlightClassForRegexp] [arg pathName] [arg class] [arg color] [arg pattern]]
+ 
+ Add a highlighting class [arg class] to the ctext widget [arg pathName].
+ The highlighting will be done with the color [arg color]. All text parts matching the regexp [arg pattern]
+ will be highlighted.
++Embedded options can be used, e.g. a pattern starting with [const (?i)] matches case-insensitively.
++
++[example {
++	# highlight Fortran keywords in any case
++	::ctext::addHighlightClassForRegexp .t keywords blue {(?i)\m(subroutine|function|end)\M}
++ }]
+ 
+ [call [cmd ::ctext::clearHighlightClasses] [arg pathName]]
+ 
+ Remove all highlight classes from the widget [arg pathName].
+ 
+

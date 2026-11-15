@@ -1,0 +1,126 @@
+Index: modules/swaplist/swaplist.tcl
+==================================================================
+--- modules/swaplist/swaplist.tcl
++++ modules/swaplist/swaplist.tcl
+@@ -167,12 +167,12 @@
+     grid columnconfigure $w {0 2} -weight 1
+     grid rowconfigure $w 1 -weight 1
+ 
+     bind $w <Key-Up> [list ::swaplist::UpDown %W %K]
+     bind $w <Key-Down> [list ::swaplist::UpDown %W %K]
+-    bind $w.list1.list <Double-Button-1> [list ::swaplist::Double %W]
+-    bind $w.list2.list <Double-Button-1> [list ::swaplist::Double %W]
++    bind $w.list1.list <Double-Button-1> [list ::swaplist::Double $w 1]
++    bind $w.list2.list <Double-Button-1> [list ::swaplist::Double $w 2]
+     #bind $w.list1.list <<ListboxSelect>> [list ::swaplist::SetButtonState %W]
+     #bind $w.list2.list <<ListboxSelect>> [list ::swaplist::SetButtonState %W]
+ 
+     if {![catch {package present autoscroll}]} {
+         ::autoscroll::autoscroll $w.list1.scrollx
+@@ -345,16 +345,15 @@
+         return
+     }
+ }
+ 
+ # binding for double click, just invoke the left or right button
+-proc ::swaplist::Double {w} {
+-    set top [winfo toplevel $w]
+-    if {[string match *.list1.* $w]} {
+-        $top.lr.right invoke
+-    } elseif {[string match *.list2.* $w]} {
+-        $top.lr.left invoke
++proc ::swaplist::Double {w side} {
++    if {$side == 1} {
++        $w.lr.right invoke
++    } else {
++        $w.lr.left invoke
+     }
+ }
+ 
+ proc ::swaplist::SetButtonState {w} {
+     set top [winfo toplevel $w]
+
+ADDED    modules/swaplist/swaplist.test
+Index: modules/swaplist/swaplist.test
+==================================================================
+--- /dev/null
++++ modules/swaplist/swaplist.test
+@@ -0,0 +1,77 @@
++# -*- tcl -*-
++# Tests for the swaplist package
++#
++# Sourcing this file into Tcl runs the tests and generates output for errors.
++# No output means no errors were found.
++
++if {![package vsatisfies [package provide Tcl] 8.5-]} {
++    puts "    Aborting the tests found in \"[file tail [info script]]\"."
++    puts "    Requiring Tcl 8.5, have [package present Tcl]"
++    return
++}
++
++if {[catch { package require Tk 8.5- } msg]} {
++    puts "    Aborting the tests found in \"[file tail [info script]]\"."
++    puts "    Requiring Tk 8.5, $msg"
++    return
++}
++
++package require tcltest 2.1
++namespace import ::tcltest::*
++
++source [file join [file dirname [info script]] swaplist.tcl]
++
++# -------------------------------------------------------------------------
++
++# Collect background errors instead of showing the error dialog
++proc bgerrorHandler {msg opts} {
++    lappend ::bgerrors $msg
++}
++set oldBgerror [interp bgerror {}]
++interp bgerror {} bgerrorHandler
++
++proc doubleClick {lb index} {
++    lassign [$lb bbox $index] x y
++    incr x 2
++    incr y 2
++    foreach _ {1 2} {
++        event generate $lb <ButtonPress-1>   -x $x -y $y
++        event generate $lb <ButtonRelease-1> -x $x -y $y
++    }
++    update
++}
++
++test swaplist-1.1 {double click moves items in an embedded swaplist} -setup {
++    toplevel .t
++    ::swaplist::swaplist .t.swl ::sels {a b c} {d e} -embed
++    pack .t.swl
++    update
++} -body {
++    set ::bgerrors {}
++    doubleClick .t.swl.list1.list 0
++    set res [list [.t.swl.list1.list get 0 end] [.t.swl.list2.list get 0 end]]
++    doubleClick .t.swl.list2.list end
++    lappend res [.t.swl.list1.list get 0 end] [.t.swl.list2.list get 0 end] $::bgerrors
++} -cleanup {
++    destroy .t
++    unset -nocomplain ::sels
++} -result {{b c} {d e a} {a b c} {d e} {}}
++
++test swaplist-1.2 {double click moves items in an embedded swaplist in a frame} -setup {
++    toplevel .t
++    frame .t.f
++    ::swaplist::swaplist .t.f.swl ::sels {a b c} {d e} -embed
++    pack .t.f .t.f.swl
++    update
++} -body {
++    set ::bgerrors {}
++    doubleClick .t.f.swl.list2.list 0
++    list [.t.f.swl.list1.list get 0 end] [.t.f.swl.list2.list get 0 end] $::bgerrors
++} -cleanup {
++    destroy .t
++    unset -nocomplain ::sels
++} -result {{d a b c} e {}}
++
++# -------------------------------------------------------------------------
++interp bgerror {} $oldBgerror
++::tcltest::cleanupTests
+

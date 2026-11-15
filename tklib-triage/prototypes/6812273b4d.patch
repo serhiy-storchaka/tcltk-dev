@@ -1,0 +1,122 @@
+Index: modules/plotchart/plotbind.tcl
+==================================================================
+--- modules/plotchart/plotbind.tcl
++++ modules/plotchart/plotbind.tcl
+@@ -18,27 +18,54 @@
+ #     None
+ #
+ proc ::Plotchart::BindPlot {w event cmd} {
+     variable scaling
+ 
+-    if {![info exists scaling($w,eventobj)]} {
+-        set scaling($w,eventobj) ""
+-    }
+-
+-    if { $scaling($w,eventobj) == "" } {
+-
+-        set pxmin $scaling($w,pxmin)
+-        set pxmax $scaling($w,pxmax)
+-        set pymin $scaling($w,pymin)
+-        set pymax $scaling($w,pymax)
+-
+-        set scaling($w,eventobj) [$w create rectangle $pxmin $pymin $pxmax $pymax -fill {} -outline {}]
+-    }
+-    $w lower $scaling($w,eventobj)
+-
+-    $w bind $scaling($w,eventobj) $event [list ::Plotchart::BindCmd %x %y $w $cmd]
+-
++    #
++    # Bind to the canvas widget itself rather than to an invisible
++    # canvas item, so that the event is also received when the cursor
++    # is over a data item, the background or any other item in the plot
++    #
++    set c [lindex [interp alias {} $w] 0]
++    if { $c == "" } {
++        set c $w
++    }
++
++    if { ![info exists scaling($w,bindplot,$event)] } {
++        bind $c $event +[list ::Plotchart::BindPlotCmd %x %y $w $event]
++    }
++    set scaling($w,bindplot,$event) $cmd
++}
++
++# BindPlotCmd --
++#     Call the command bound to the plot, if the event occurred
++#     within the plot area
++#
++# Arguments:
++#     xcoord          X coordinate of event (window coordinates)
++#     ycoord          Y coordinate of event (window coordinates)
++#     w               Canvas widget
++#     event           Type of event
++#
++# Result:
++#     None
++#
++proc ::Plotchart::BindPlotCmd {xcoord ycoord w event} {
++    variable scaling
++
++    if { ![info exists scaling($w,bindplot,$event)] } {
++        return
++    }
++
++    set xcoord [$w canvasx $xcoord]
++    set ycoord [$w canvasy $ycoord]
++    if { $xcoord < $scaling($w,pxmin) || $xcoord > $scaling($w,pxmax) ||
++         $ycoord < $scaling($w,pymin) || $ycoord > $scaling($w,pymax) } {
++        return
++    }
++
++    BindCmd $xcoord $ycoord $w $scaling($w,bindplot,$event)
+ }
+ 
+ # BindLast --
+ #     Bind an event to the last data point of a data series
+ #
+
+Index: modules/plotchart/plotchart.test
+==================================================================
+--- modules/plotchart/plotchart.test
++++ modules/plotchart/plotchart.test
+@@ -777,8 +777,39 @@
+ 
+     #set res [checkCanvasItems .c {data xaxis yaxis}]
+     destroy .c
+     set res
+ } -result 1 ;# {}
++
++test Plotchart-6.3 {bindplot also works over data items} -constraints tk -setup {
++    toplevel .t
++    canvas .t.c -width 400 -height 300
++    pack .t.c
++    update
++    proc callback {args} {lappend ::hits [expr {round([lindex $args 0])}] [expr {round([lindex $args 1])}]}
++} -body {
++    set p [::Plotchart::createXYPlot .t.c {0 10 2} {0 10 2}]
++    $p dataconfig s -symbol circle -type both -width 5
++    $p plot s 0 0
++    $p plot s 5 5
++    $p plot s 10 10
++    $p bindplot <ButtonPress-1> callback
++    update
++    set ::hits {}
++    foreach {x y} {5 5 2 7 -2 5} {
++        foreach {px py} [::Plotchart::coordsToPixel .t.c $x $y] {break}
++        set px [expr {round($px)}]
++        set py [expr {round($py)}]
++        event generate .t.c <Motion>          -x $px -y $py
++        event generate .t.c <ButtonPress-1>   -x $px -y $py
++        event generate .t.c <ButtonRelease-1> -x $px -y $py
++        update
++    }
++    set ::hits
++} -cleanup {
++    destroy .c
++    rename callback {}
++    unset -nocomplain ::hits
++} -result {5 5 2 7}
+ 
+ # -------------------------------------------------------------------------
+ ::tcltest::cleanupTests
+

@@ -9,3 +9,4 @@ Practical notes for working on the Tcl and Tk core: building, testing, version c
 - [Tcl bug triage](tcl-triage/): reproduction and status of the open Tcl bug tickets, 2026-10
 - [Tk bug triage](tk-triage/): reproduction and status of the open Tk bug tickets, 2026-09/10
 - [tcllib ticket triage](tcllib-triage/): status of all open tcllib tickets (bugs, patches, feature requests), with prototype fixes, 2026-11
+- [tklib ticket triage](tklib-triage/): status of all open tklib tickets (bugs, patches, feature requests), with prototype fixes, 2026-11

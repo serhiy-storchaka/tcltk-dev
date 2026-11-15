@@ -1,0 +1,95 @@
+Index: modules/ctext/ctext.tcl
+==================================================================
+--- modules/ctext/ctext.tcl
++++ modules/ctext/ctext.tcl
+@@ -504,12 +504,11 @@
+ 
+ 	    if {"modified" == $subCmd} {
+ 		if {$argsLength == 1} {
+ 		    return $ar(modified)
+ 		} elseif {$argsLength == 2} {
+-		    set value [lindex $args 1]
+-		    set ar(modified) $value
++		    ctext::modified $self [lindex $args 1]
+ 		} else {
+ 		    return -code error "invalid arg(s) to $self edit modified: $args"
+ 		}
+ 	    } else {
+ 		#Tk 8.4 has other edit subcommands that I don't want to emulate.
+@@ -1105,9 +1104,13 @@
+     proc ctext::linemapUpdateOffset {args} {}
+ }
+ 
+ proc ctext::modified {win value} {
+     ctext::getAr $win config ar
+-    set ar(modified) $value
+-    event generate $win <<Modified>>
++    set value [expr {$value ? 1 : 0}]
++    # Like the text widget, only send <<Modified>> when the flag changes.
++    if {$ar(modified) != $value} {
++	set ar(modified) $value
++	event generate $win <<Modified>>
++    }
+     return $value
+ }
+
+ADDED    modules/ctext/ctext.test
+Index: modules/ctext/ctext.test
+==================================================================
+--- /dev/null
++++ modules/ctext/ctext.test
+@@ -0,0 +1,53 @@
++# -*- tcl -*-
++# Test cases of the ctext package
++
++if {![package vsatisfies [package provide Tcl] 8.5-]} {
++    puts "    Aborting the tests found in \"[file tail [info script]]\"."
++    puts "    Requiring Tcl 8.5, have [package present Tcl]"
++    return
++}
++
++if {[catch { package require Tk 8.5- } msg]} {
++    puts "    Aborting the tests found in \"[file tail [info script]]\"."
++    puts "    Requiring Tk 8.5, $msg"
++    return
++}
++
++package require tcltest 2.2
++namespace import ::tcltest::*
++
++source [file join [file dirname [info script]] ctext.tcl]
++
++# -------------------------------------------------------------------------
++
++test ctext-modified-1.1 {<<Modified>> is sent only when the flag changes} -setup {
++    ctext .t
++    set ::events 0
++    bind .t <<Modified>> {incr ::events}
++} -body {
++    .t insert end a
++    .t insert end b
++    .t delete 1.0
++    list $::events [.t edit modified]
++} -cleanup {
++    destroy .t
++    unset ::events
++} -result {1 1}
++
++test ctext-modified-1.2 {edit modified sends <<Modified>> on change} -setup {
++    ctext .t
++    .t insert end a
++    set ::events 0
++    bind .t <<Modified>> {incr ::events}
++} -body {
++    .t edit modified 0
++    .t edit modified 0
++    .t edit modified 1
++    list $::events [.t edit modified]
++} -cleanup {
++    destroy .t
++    unset ::events
++} -result {2 1}
++
++# -------------------------------------------------------------------------
++::tcltest::cleanupTests
+

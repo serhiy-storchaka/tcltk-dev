@@ -1,0 +1,167 @@
+<title>tklib Ticket Triage: Not a bug</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280; --patch:#BE185D; --super:#78716C; --rfe:#0F766E;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --patch:#F472B6; --super:#A8A29E; --rfe:#2DD4BF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --patch:#F472B6; --super:#A8A29E; --rfe:#2DD4BF;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}.c-patch{--c:var(--patch)}.c-super{--c:var(--super)}.c-rfe{--c:var(--rfe)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Open tklib tickets: Not a bug</h1>
+  <p class="sub">Triage of all 71 open and Pending tickets of <a href="https://core.tcl-lang.org/tklib">tklib</a> (bugs, patches and feature requests) on 2026-11-15: whether a bug still exists in tklib trunk with Tk 9.1 and 8.6, whether a patch is still needed, and whether a request has been implemented, superseded or become outdated. 25 prototype patches with regression tests; rows marked <span class="patch">patch</span> have one. None is committed.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">27</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">6</span> Already fixed</a><a class="navchip c-super" href="superseded.html"><span class="n">14</span> Superseded or outdated</a><a class="navchip c-rfe" href="rfe.html"><span class="n">7</span> Open RFEs</a><a class="navchip c-nab cur" href="not-a-bug.html" aria-current="page"><span class="n">3</span> Not a bug</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">5</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">6</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">3</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">3</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, subsystem, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="nab"><h2><span class="dot c-nab"></span>Not a bug <span class="cnt">3</span></h2><details class="t" id="7db3e9288a" data-s="7db3e9288a colour vs color general request · bug not-a-bug. the submitter withdrew it: plotchart accepts both spellings (e.g. `-colour`/`-color`, `-fillcolour`/`-fillcolor`, as plotchart.man documents). the resolution is already &quot;invalid&quot;, but the status is still open." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>7db3e9288a</span><span class="yr">2026</span><span class="ti">colour vs color</span><span class="vd">NOT-A-BUG. The submitter withdrew it: plotchart accepts both spellings (e.g. <code>-colour</code>/<code>-color</code>, <code>-fillcolour</code>/<code>-fillcolor</code>, as plotchart.man docum…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/7db3e9288a">Open ticket 7db3e9288a</a> · general request · Bug · filed 2026-10-30</p><div class="lab">Full verdict</div><p>NOT-A-BUG. The submitter withdrew it: plotchart accepts both spellings (e.g. <code>-colour</code>/<code>-color</code>, <code>-fillcolour</code>/<code>-fillcolor</code>, as plotchart.man documents). The resolution is already "Invalid", but the status is still Open.</p><ul>
+<li><span class="k">Module</span> plotchart (filed under "general request") · Bug
+</li>
+<li><span class="k">Tested</span> grep of plotchart.man and the sources.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket action</span> As noted in the comments, both spellings are supported. Close (resolution Invalid is already set).
+</li></ul></div></details><details class="t" id="cd399b24db" data-s="cd399b24db ttk::spinbox command is invoked without stop widget · bug not-a-bug (for tklib; the problem is in tk)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>cd399b24db</span><span class="yr">2017</span><span class="ti">ttk::spinbox command is invoked without stop</span><span class="vd">NOT-A-BUG (for tklib; the problem is in Tk)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/cd399b24db">Open ticket cd399b24db</a> · widget · Bug · filed 2017-03-27</p><div class="lab">Full verdict</div><p>NOT-A-BUG (for tklib; the problem is in Tk)</p><ul>
+<li><span class="k">Module</span> (not tklib: Tk core ttk::spinbox) · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1.1, 8.6.18, clicking the up arrow with <code>event generate</code>. If <code>-command</code> uses <code>tkwait</code> and the button release arrives during the wait, the command runs once (not reproduced). If <code>-command</code> raises an error and the default bgerror dialog is shown, the command repeats endlessly (28 times in 3 s). The dialog's grab swallows the <code>&lt;ButtonRelease-1&gt;</code>, so <code>ttk::CancelRepeat</code> never runs.
+</li>
+<li><span class="k">Cause</span> Tk library/ttk/utils.tcl <code>ttk::Repeatedly</code> and library/ttk/spinbox.tcl. The auto-repeat timer is armed before the script runs and is cancelled only by <code>&lt;ButtonRelease-1&gt;</code>.
+</li>
+<li><span class="k">Prototype</span> none (not tklib)
+</li>
+<li><span class="k">Suggested ticket action</span> This is about Tk's ttk::spinbox, not tklib. The endless repeat can be reproduced when the command raises an error and the bgerror dialog takes the grab. Please re-file it on the Tk tracker. Close here as "Not a tklib bug".
+</li></ul></div></details><details class="t" id="4e6715533c" data-s="4e6715533c arrow not drawn correctly in diagrams diagrams · bug not-a-bug (user script error). `rjust` is an attribute without an argument (an alias for `anchor east`, basic.tcl). the following `south` is therefore read as a direction, which adds an implicit `then` waypoint of one movelength (2 cm) to the south. for the first arrow that waypoint lies between from and to, so nothing is visible. the second arrow is only 70 px long, shorter than the 78.8 px step, so it overshoots and comes back. without `south` both arrows are correct, even on unfixed trunk." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>4e6715533c</span><span class="yr">2015</span><span class="ti">Arrow not drawn correctly in diagrams</span><span class="vd">NOT-A-BUG (user script error). <code>rjust</code> is an attribute without an argument (an alias for <code>anchor east</code>, basic.tcl). The following <code>south</code> is theref…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/4e6715533c">Open ticket 4e6715533c</a> · diagrams · Bug · filed 2015-11-19</p><div class="lab">Full verdict</div><p>NOT-A-BUG (user script error). <code>rjust</code> is an attribute without an argument (an alias for <code>anchor east</code>, basic.tcl). The following <code>south</code> is therefore read as a direction, which adds an implicit <code>then</code> waypoint of one movelength (2 cm) to the south. For the first arrow that waypoint lies between from and to, so nothing is visible. The second arrow is only 70 px long, shorter than the 78.8 px step, so it overshoots and comes back. Without <code>south</code> both arrows are correct, even on unfixed trunk.</p><ul>
+<li><span class="k">Module</span> diagrams · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1, 8.6: canvas coords of both arrows with and without <code>south</code>. With current tcllib, both arrows are also wrong because of the math::geometry orientation bug, see <a class="h" href="reproduced.html#e9c4eeae1f">e9c4eeae1f</a>.
+</li>
+<li><span class="k">Cause</span> script semantics; core.tcl <code>Directions</code> treats unknown direction words as <code>then</code> waypoints.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket action</span> <code>rjust</code> takes no argument. The extra <code>south</code> adds a waypoint one movelength south, which the short second arrow overshoots. Use <code>... rjust</code> (or <code>anchor east</code>) without <code>south</code>. Close as Works As Designed.
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch and of the Windows VM runs.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

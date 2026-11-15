@@ -1,0 +1,134 @@
+<title>tklib Ticket Triage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280; --patch:#BE185D; --super:#78716C; --rfe:#0F766E;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --patch:#F472B6; --super:#A8A29E; --rfe:#2DD4BF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --patch:#F472B6; --super:#A8A29E; --rfe:#2DD4BF;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}.c-patch{--c:var(--patch)}.c-super{--c:var(--super)}.c-rfe{--c:var(--rfe)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Open tklib tickets</h1>
+  <p class="sub">Triage of all 71 open and Pending tickets of <a href="https://core.tcl-lang.org/tklib">tklib</a> (bugs, patches and feature requests) on 2026-11-15: whether a bug still exists in tklib trunk with Tk 9.1 and 8.6, whether a patch is still needed, and whether a request has been implemented, superseded or become outdated. 25 prototype patches with regression tests; rows marked <span class="patch">patch</span> have one. None is committed.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip cur" href="index.html" aria-current="page">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">27</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">6</span> Already fixed</a><a class="navchip c-super" href="superseded.html"><span class="n">14</span> Superseded or outdated</a><a class="navchip c-rfe" href="rfe.html"><span class="n">7</span> Open RFEs</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">3</span> Not a bug</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">5</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">6</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">3</span> Not tested</a></nav>
+</header>
+<details class="hl" open><summary>Highlights</summary>
+<h3>Triage run 2026-11-15</h3><p>all 71 open and Pending tickets of tklib: 43 bugs, 12 patches and 16 feature requests, filed from 2002 to 2026. Each was checked against tklib trunk with Tk 9.1.1 and 8.6.18 on Linux (Xvfb), and the two Windows-specific ones also on a Windows 11 VM. 25 prototype patches are linked from their rows; 23 of them include a regression test that fails without the fix and passes with it on both Tk versions (the other two change only comments or documentation). None is committed.</p>
+<h3>Bugs with a prototype fix</h3><ul>
+<li>plotchart: <a class="h" href="reproduced.html#2683544fff">2683544fff</a> (the x-axis title overlaps the tick labels with a larger axis font), <a class="h" href="reproduced.html#6812273b4d">6812273b4d</a> (<code>bindplot</code> ignores clicks over data), <a class="h" href="reproduced.html#ee430592d9">ee430592d9</a> (bars drawn outside the plot when the axis does not start at zero), <a class="h" href="reproduced.html#a033bd45cb">a033bd45cb</a> (xyplot draws every segment as a separate item; about 10 times faster with <code>plotlist</code>), <a class="h" href="not-reproduced.html#009b09029f">009b09029f</a> (zero labelled <code>2.77555756156e-16</code> on reversed axes, unformatted polar labels).
+</li>
+<li>diagrams: <a class="h" href="reproduced.html#e9c4eeae1f">e9c4eeae1f</a> and its duplicate <a class="h" href="reproduced.html#ffcd8611b8">ffcd8611b8</a>: since tcllib math::geometry 1.4 (<a class="h" href="https://core.tcl-lang.org/tklib/info/1f54de21e6">1f54de21e6</a>, 2020) <code>direction</code> and <code>octant</code> use the mathematical y axis, so <code>line north</code> goes down; diagrams now carries its own canvas-oriented versions.
+</li>
+<li>ctext: <a class="h" href="reproduced.html#3567463fff">3567463fff</a> (<code>&lt;&lt;Modified&gt;&gt;</code> sent on every change, and not at all for <code>edit modified</code>), <a class="h" href="reproduced.html#1167772fff">1167772fff</a> (user tags removed on insert/delete).
+</li>
+<li>ico: <a class="h" href="reproduced.html#3470437fff">3470437fff</a> (wrong row padding of the AND mask for widths like 8, 20, 40), <a class="h" href="reproduced.html#e7f1ed859e">e7f1ed859e</a> (256x256 icons read as size 0).
+</li>
+<li>ipentry: <a class="h" href="reproduced.html#2962077fff">2962077fff</a> (array element as <code>-textvariable</code>), <a class="h" href="reproduced.html#4c5222924f">4c5222924f</a> (error after destroying and recreating the widget).
+</li>
+<li>controlwidget: <a class="h" href="reproduced.html#7ae7ab1e83">7ae7ab1e83</a> (rdial fails with the default width), <a class="h" href="reproduced.html#b845a924db">b845a924db</a> (tachometer needle angle with integer limits; also fails with Tk 9 because canvas <code>cget -width</code> returns "50m").
+</li>
+<li>autoscroll <a class="h" href="reproduced.html#6da48f4579">6da48f4579</a> (scrollbar packed with <code>-in</code>), notifywindow <a class="h" href="reproduced.html#79747a0cb5">79747a0cb5</a> (a second notification fails), widget <a class="h" href="reproduced.html#d74509223b">d74509223b</a> (widgetl requires <code>img::png</code>) and <a class="h" href="reproduced.html#fa6fbae045">fa6fbae045</a> (dateentry <code>-textvariable</code>).
+</li>
+<li>Docs: <a class="h" href="docs.html#1007764fff">1007764fff</a> (ctext highlighting, with the <code>(?i)</code> workaround for <a class="h" href="rfe.html#1007766fff">1007766fff</a>).
+</li></ul>
+<h3>Patches that still apply</h3><p><a class="h" href="reproduced.html#8bbf1faad0">8bbf1faad0</a> (license typo), <a class="h" href="reproduced.html#38d95aee72">38d95aee72</a> and <a class="h" href="reproduced.html#4c28633e3a">4c28633e3a</a> (plotchart log axes), <a class="h" href="reproduced.html#42622db198">42622db198</a> (swaplist <code>-embed</code> double-click), <a class="h" href="reproduced.html#2829049fff">2829049fff</a> (getstring prefill), <a class="h" href="reproduced.html#2a98e11189">2a98e11189</a> (Russian weekday names). Each is saved as a prototype with a test.</p>
+<h3>Can be closed</h3><p>already fixed or implemented: <a class="h" href="fixed.html#2059415fff">2059415fff</a>, <a class="h" href="fixed.html#35e973946d">35e973946d</a>, <a class="h" href="fixed.html#1475567fff">1475567fff</a>, <a class="h" href="fixed.html#1891251fff">1891251fff</a>, <a class="h" href="fixed.html#a54379ce4f">a54379ce4f</a>, <a class="h" href="fixed.html#6e85abae9e">6e85abae9e</a>. Superseded or outdated: <a class="h" href="superseded.html#777061ffff">777061ffff</a> (tooltip <code>-image</code>), <a class="h" href="superseded.html#1580085fff">1580085fff</a>, <a class="h" href="superseded.html#3480882fff">3480882fff</a>, <a class="h" href="superseded.html#535066ffff">535066ffff</a>, <a class="h" href="superseded.html#1167797fff">1167797fff</a>, <a class="h" href="superseded.html#1475562fff">1475562fff</a>, <a class="h" href="superseded.html#2168846fff">2168846fff</a>, <a class="h" href="superseded.html#577678ffff">577678ffff</a>, <a class="h" href="superseded.html#9c9ba34930">9c9ba34930</a>, <a class="h" href="superseded.html#971076ffff">971076ffff</a>, <a class="h" href="superseded.html#714947ffff">714947ffff</a>, and the old tcllib tickets filed under tklib: <a class="h" href="superseded.html#509776ffff">509776ffff</a>, <a class="h" href="superseded.html#663394ffff">663394ffff</a>, <a class="h" href="superseded.html#832488ffff">832488ffff</a>. Not a bug: <a class="h" href="not-a-bug.html#4e6715533c">4e6715533c</a> (script error), <a class="h" href="not-a-bug.html#7db3e9288a">7db3e9288a</a> (withdrawn), <a class="h" href="not-a-bug.html#cd399b24db">cd399b24db</a> (a Tk issue).</p>
+<h3>Side findings without a ticket</h3><ul>
+<li>ico: <code>getIcon -type ICODATA</code> always fails (it runs <code>file exists</code> on the data), and <code>writeIconICODATA</code> is broken.
+</li>
+<li>widgetv: <code>widget::validator</code> keeps references to destroyed entries.
+</li>
+<li>widget::calendar: the Greek and Hebrew weekday names are double-encoded UTF-8; dateentry's initial date is UTC midnight, so it shows yesterday east of UTC just after midnight.
+</li>
+<li>plotchart: vertical gradient backgrounds are not drawn (negative step), and <code>methodProc(xyplot,bindcmd)</code> refers to a proc with another signature.
+</li>
+<li><a class="h" href="reproduced.html#1346295fff">1346295fff</a>: 23 plotchart files and files in other modules still have the executable bit in the repository.
+</li></ul>
+<h3>Applying several prototypes</h3><p>some create the same new test file and need merging by hand: modules/ctext/ctext.test (<a class="h" href="reproduced.html#3567463fff">3567463fff</a>, <a class="h" href="reproduced.html#1167772fff">1167772fff</a>), modules/ico/ico.test (<a class="h" href="reproduced.html#3470437fff">3470437fff</a>, <a class="h" href="reproduced.html#e7f1ed859e">e7f1ed859e</a>), modules/ipentry/ipentry.test (<a class="h" href="reproduced.html#2962077fff">2962077fff</a>, <a class="h" href="reproduced.html#4c5222924f">4c5222924f</a>), modules/controlwidget/controlwidget.test (<a class="h" href="reproduced.html#7ae7ab1e83">7ae7ab1e83</a>, <a class="h" href="reproduced.html#b845a924db">b845a924db</a>); the plotchart prototypes each append a test Plotchart-6.N to plotchart.test.</p>
+</details>
+
+<footer>Generated from the triage notes of each batch and of the Windows VM runs.</footer>
+</div>
+

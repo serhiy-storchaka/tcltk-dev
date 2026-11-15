@@ -1,0 +1,205 @@
+<title>tklib Ticket Triage: Open RFEs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280; --patch:#BE185D; --super:#78716C; --rfe:#0F766E;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --patch:#F472B6; --super:#A8A29E; --rfe:#2DD4BF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --patch:#F472B6; --super:#A8A29E; --rfe:#2DD4BF;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}.c-patch{--c:var(--patch)}.c-super{--c:var(--super)}.c-rfe{--c:var(--rfe)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Open tklib tickets: Open RFEs</h1>
+  <p class="sub">Triage of all 71 open and Pending tickets of <a href="https://core.tcl-lang.org/tklib">tklib</a> (bugs, patches and feature requests) on 2026-11-15: whether a bug still exists in tklib trunk with Tk 9.1 and 8.6, whether a patch is still needed, and whether a request has been implemented, superseded or become outdated. 25 prototype patches with regression tests; rows marked <span class="patch">patch</span> have one. None is committed.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">27</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">6</span> Already fixed</a><a class="navchip c-super" href="superseded.html"><span class="n">14</span> Superseded or outdated</a><a class="navchip c-rfe cur" href="rfe.html" aria-current="page"><span class="n">7</span> Open RFEs</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">3</span> Not a bug</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">5</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">6</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">3</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">7</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, subsystem, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="rfe"><h2><span class="dot c-rfe"></span>Open RFE <span class="cnt">7</span></h2><details class="t" id="5c3ef04594" data-s="5c3ef04594 allow rotated horizontal axis labels plotchart · rfe rfe-open (only bar charts support `-xlabelangle` (plotaxis.tcl:drawxlabels, tk 8.6+). the xy, tx and log plots&#x27; drawxaxis/drawtimeaxis have no angle option)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>5c3ef04594</span><span class="yr">2025</span><span class="ti">Allow rotated horizontal axis labels</span><span class="vd">RFE-OPEN (only bar charts support <code>-xlabelangle</code> (plotaxis.tcl:DrawXlabels, Tk 8.6+). The xy, tx and log plots' DrawXaxis/DrawTimeaxis have no angl…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/5c3ef04594">Open ticket 5c3ef04594</a> · plotchart · RFE · filed 2025-05-22</p><div class="lab">Full verdict</div><p>RFE-OPEN (only bar charts support <code>-xlabelangle</code> (plotaxis.tcl:DrawXlabels, Tk 8.6+). The xy, tx and log plots' DrawXaxis/DrawTimeaxis have no angle option)</p><ul>
+<li><span class="k">Module</span> plotchart · RFE
+</li>
+<li><span class="k">Tested</span> code inspection of trunk plotaxis.tcl
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (needs a new axis option, e.g. <code>xconfig -labelangle</code> or a plotconfig <code>bottomaxis labelangle</code> property, used by DrawXaxis/DrawLogXaxis/DrawTimeaxis with anchor selection as in DrawXlabels, plus a larger bottom margin. That is moderate work with an API addition.)
+</li>
+<li><span class="k">Suggested ticket action</span> Bar charts already have <code>-xlabelangle</code>. Extending this to the xy, time and log axes as a <code>labelangle</code> axis property (rotating the labels and enlarging the bottom margin) seems worthwhile. Keep open.
+</li></ul></div></details><details class="t" id="5e9db38151" data-s="5e9db38151 tklib::diagrams should through syntax sugar can run pikchr script diagrams · patch rfe-open (large; low value). there is no pikchr compatibility. diagrams already has equivalents for some pikchr shapes: `drum` is a cylinder and `ellipse` an oval. `file`, `dot`, `fit`, `same`, `behind` and `%` units are missing." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>5e9db38151</span><span class="yr">2021</span><span class="ti">tklib::diagrams should through syntax sugar can run pikchr script</span><span class="vd">RFE-OPEN (large; low value). There is no pikchr compatibility. diagrams already has equivalents for some pikchr shapes: <code>drum</code> is a cylinder and `e…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/5e9db38151">Open ticket 5e9db38151</a> · diagrams · Patch · filed 2021-07-05</p><div class="lab">Full verdict</div><p>RFE-OPEN (large; low value). There is no pikchr compatibility. diagrams already has equivalents for some pikchr shapes: <code>drum</code> is a cylinder and <code>ellipse</code> an oval. <code>file</code>, <code>dot</code>, <code>fit</code>, <code>same</code>, <code>behind</code> and <code>%</code> units are missing.</p><ul>
+<li><span class="k">Module</span> diagrams · Patch (actually an RFE; no patch attached)
+</li>
+<li><span class="k">Tested</span> n/a (code inspection of basic.tcl element definitions).
+</li>
+<li><span class="k">Prototype</span> none (new language front end, far beyond 60 lines)
+</li>
+<li><span class="k">Suggested ticket action</span> Change the type to Feature Request. A pikchr front end would be a sizeable new subsystem. Contributions are welcome; otherwise close as Won't Fix.
+</li></ul></div></details><details class="t" id="4e8fb9d55e" data-s="4e8fb9d55e update ctext ctext · patch rfe-open. no patch is attached; the code lives in an external github repo (ctextadvanced) and was not reviewed (no network). none of the proposed features are in trunk: no per-class tag options in `addhighlightclass*`, no `-linemap_font`, no `-linemap_font_select`. the linemap bug behind item 2 does reproduce: with a highlight class whose tag font is larger (`helvetica 20 bold`), line numbers drift away from the text lines. line 9 is at text y=179 but its linemap number is at y=123, on both tk 9.1 and 8.6." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>4e8fb9d55e</span><span class="yr">2019</span><span class="ti">Update ctext</span><span class="vd">RFE-OPEN. No patch is attached; the code lives in an external GitHub repo (ctextAdvanced) and was not reviewed (no network). None of the proposed f…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/4e8fb9d55e">Open ticket 4e8fb9d55e</a> · ctext · Patch · filed 2019-05-30</p><div class="lab">Full verdict</div><p>RFE-OPEN. No patch is attached; the code lives in an external GitHub repo (ctextAdvanced) and was not reviewed (no network). None of the proposed features are in trunk: no per-class tag options in <code>addHighlightClass*</code>, no <code>-linemap_font</code>, no <code>-linemap_font_select</code>. The linemap bug behind item 2 does reproduce: with a highlight class whose tag font is larger (<code>Helvetica 20 bold</code>), line numbers drift away from the text lines. Line 9 is at text y=179 but its linemap number is at y=123, on both Tk 9.1 and 8.6.</p><ul>
+<li><span class="k">Module</span> ctext · Patch
+</li>
+<li><span class="k">Tested</span> Tk 9.1, 8.6: ctext with a big-font tag on odd lines, compared <code>dlineinfo</code> of the text and the linemap.
+</li>
+<li><span class="k">Cause</span> ctext.tcl <code>ctext::linemapUpdate</code> draws the numbers in a second text widget with uniform line height, so it cannot follow lines with different heights.
+</li>
+<li><span class="k">Prototype</span> none (needs a linemap redesign, e.g. a canvas placed with <code>dlineinfo</code> as in the wiki example; well over 60 lines)
+</li>
+<li><span class="k">Suggested ticket action</span> Ask the submitter to attach the patch against current trunk, split into (a) a linemap that copes with variable line heights and (b) the new options. Keep it open as a feature request.
+</li></ul></div></details><details class="t" id="1730868fff" data-s="1730868fff install as tcl modules (none) · rfe rfe-open (low value). neither `installer.tcl`, `support/installation/*.tcl` nor `makefile.in` knows anything about `.tm` installation. most tklib packages are multi-file and/or carry data files, so tcl module installation would only fit a subset of them." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1730868fff</span><span class="yr">2007</span><span class="ti">install as Tcl Modules</span><span class="vd">RFE-OPEN (low value). Neither <code>installer.tcl</code>, <code>support/installation/*.tcl</code> nor <code>Makefile.in</code> knows anything about <code>.tm</code> installation. Most tklib p…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/1730868fff">Open ticket 1730868fff</a> · (none) · RFE · filed 2007-06-04</p><div class="lab">Full verdict</div><p>RFE-OPEN (low value). Neither <code>installer.tcl</code>, <code>support/installation/*.tcl</code> nor <code>Makefile.in</code> knows anything about <code>.tm</code> installation. Most tklib packages are multi-file and/or carry data files, so Tcl Module installation would only fit a subset of them.</p><ul>
+<li><span class="k">Module</span> installer · RFE
+</li>
+<li><span class="k">Tested</span> grep of the installer and sak sources in trunk.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (installer redesign, not a small fix)
+</li>
+<li><span class="k">Suggested ticket action</span> Still not implemented in the tklib installer. Most tklib packages consist of several files and resources, so .tm installation would cover only a few single-file packages. Close as "Won't Fix" unless someone wants to work on it.
+</li></ul></div></details><details class="t" id="1346299fff" data-s="1346299fff ctext module dir contains obsolete files ctext · bug rfe-open (still valid; housekeeping). the file is `install.tcl`, not `installer.tcl`. it is still in trunk, together with the &quot;installation&quot; section of readme that tells users to run `wish8.4 install.tcl`. other leftovers from before tklib: `test.c` (panache wm c source, unrelated), `long_test_script`, and the ad-hoc `ctext_test*.tcl` demo scripts. the tklib installer installs only the package files (`support/installation/modules.tcl`: `module ctext _ctxt _man _null`)." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1346299fff</span><span class="yr">2005</span><span class="ti">ctext module dir contains obsolete files</span><span class="vd">RFE-OPEN (still valid; housekeeping). The file is <code>install.tcl</code>, not <code>installer.tcl</code>. It is still in trunk, together with the "Installation" sectio…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/1346299fff">Open ticket 1346299fff</a> · ctext · Bug · filed 2005-11-02</p><div class="lab">Full verdict</div><p>RFE-OPEN (still valid; housekeeping). The file is <code>install.tcl</code>, not <code>installer.tcl</code>. It is still in trunk, together with the "Installation" section of README that tells users to run <code>wish8.4 install.tcl</code>. Other leftovers from before tklib: <code>test.c</code> (Panache WM C source, unrelated), <code>long_test_script</code>, and the ad-hoc <code>ctext_test*.tcl</code> demo scripts. The tklib installer installs only the package files (<code>support/installation/modules.tcl</code>: <code>Module ctext _ctxt _man _null</code>).</p><ul>
+<li><span class="k">Module</span> ctext · Bug
+</li>
+<li><span class="k">Tested</span> inspected the trunk tree, README and the installer config.
+</li>
+<li><span class="k">Cause</span> files copied over from the standalone ctext distribution.
+</li>
+<li><span class="k">Prototype</span> none (only deletes files and edits README; nothing to regression-test)
+</li>
+<li><span class="k">Suggested ticket action</span> Remove <code>modules/ctext/install.tcl</code>, <code>test.c</code>, <code>long_test_script</code> and the README installation section. Move the <code>ctext_test*.tcl</code> demos to <code>examples/ctext</code>. Then close as Fixed.
+</li></ul></div></details><details class="t" id="1007766fff" data-s="1007766fff add a case-insensitive matching option to ctext ctext · rfe rfe-open, with a working alternative. keyword classes (`addhighlightclass`) are matched by exact array lookup, so there is no case-insensitive mode. `addhighlightclassforregexp .t kw blue {(?i)\m(subroutine|function)\m}` highlights keywords in any case (verified with tk 9.1 and 8.6, as aku hinted in 2022)." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1007766fff</span><span class="yr">2004</span><span class="ti">Add a case-insensitive matching option to ctext</span><span class="vd">RFE-OPEN, with a working alternative. Keyword classes (<code>addHighlightClass</code>) are matched by exact array lookup, so there is no case-insensitive mode…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/1007766fff">Open ticket 1007766fff</a> · ctext · RFE · filed 2004-08-12</p><div class="lab">Full verdict</div><p>RFE-OPEN, with a working alternative. Keyword classes (<code>addHighlightClass</code>) are matched by exact array lookup, so there is no case-insensitive mode. <code>addHighlightClassForRegexp .t kw blue {(?i)\m(subroutine|function)\M}</code> highlights keywords in any case (verified with Tk 9.1 and 8.6, as aku hinted in 2022).</p><ul>
+<li><span class="k">Module</span> ctext · RFE
+</li>
+<li><span class="k">Tested</span> Tk 9.1, 8.6: "Subroutine" and "SUBROUTINE" get the tag through a <code>(?i)</code> regexp class but not through a keyword class.
+</li>
+<li><span class="k">Cause</span> <code>ctext.tcl:ctext::addHighlightClass</code> / <code>highlight</code> look up words case-sensitively.
+</li>
+<li><span class="k">Prototype</span> none for an option (that would be an API addition). The <code>(?i)</code> workaround is documented in <a class="h" href="docs.html#1007764fff">1007764fff</a>.patch.
+</li>
+<li><span class="k">Suggested ticket action</span> Use a regexp class with the (?i) embedded option, e.g. <code>{(?i)\m(subroutine|function)\M}</code>, now mentioned in the docs. Close as Works For Me unless a real -nocase option for keyword classes is still wanted.
+</li></ul></div></details><details class="t" id="996330ffff" data-s="996330ffff ico - testsuite missing ico · bug rfe-open (still valid: trunk has no modules/ico/*.test). the prototypes for 3470437fff and e7f1ed859e both start a modules/ico/ico.test (write/read round trips, icon member sizes)." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>996330ffff</span><span class="yr">2004</span><span class="ti">ico - Testsuite missing</span><span class="vd">RFE-OPEN (still valid: trunk has no modules/ico/*.test). The prototypes for <a class="h" href="reproduced.html#3470437fff">3470437fff</a> and <a class="h" href="reproduced.html#e7f1ed859e">e7f1ed859e</a> both start a modules/ico/ico.test (write/read…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/996330ffff">Open ticket 996330ffff</a> · ico · Bug · filed 2004-07-23</p><div class="lab">Full verdict</div><p>RFE-OPEN (still valid: trunk has no modules/ico/*.test). The prototypes for <a class="h" href="reproduced.html#3470437fff">3470437fff</a> and <a class="h" href="reproduced.html#e7f1ed859e">e7f1ed859e</a> both start a modules/ico/ico.test (write/read round trips, icon member sizes).</p><ul>
+<li><span class="k">Module</span> ico · Bug (reminder)
+</li>
+<li><span class="k">Tested</span> n/a
+</li>
+<li><span class="k">Prototype</span> none of its own; see <a class="h" href="reproduced.html#3470437fff">3470437fff</a>.patch and <a class="h" href="reproduced.html#e7f1ed859e">e7f1ed859e</a>.patch, whose ico.test files need merging.
+</li>
+<li><span class="k">Suggested ticket action</span> A first ico.test arrives with the fixes for <a class="h" href="https://core.tcl-lang.org/tklib/info/3470437fff">3470437fff</a> and <a class="h" href="https://core.tcl-lang.org/tklib/info/e7f1ed859e">e7f1ed859e</a>. Close as Fixed once it is committed.
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch and of the Windows VM runs.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

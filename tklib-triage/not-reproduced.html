@@ -1,0 +1,202 @@
+<title>tklib Ticket Triage: Not reproduced</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280; --patch:#BE185D; --super:#78716C; --rfe:#0F766E;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --patch:#F472B6; --super:#A8A29E; --rfe:#2DD4BF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --patch:#F472B6; --super:#A8A29E; --rfe:#2DD4BF;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}.c-patch{--c:var(--patch)}.c-super{--c:var(--super)}.c-rfe{--c:var(--rfe)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Open tklib tickets: Not reproduced</h1>
+  <p class="sub">Triage of all 71 open and Pending tickets of <a href="https://core.tcl-lang.org/tklib">tklib</a> (bugs, patches and feature requests) on 2026-11-15: whether a bug still exists in tklib trunk with Tk 9.1 and 8.6, whether a patch is still needed, and whether a request has been implemented, superseded or become outdated. 25 prototype patches with regression tests; rows marked <span class="patch">patch</span> have one. None is committed.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">27</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">6</span> Already fixed</a><a class="navchip c-super" href="superseded.html"><span class="n">14</span> Superseded or outdated</a><a class="navchip c-rfe" href="rfe.html"><span class="n">7</span> Open RFEs</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">3</span> Not a bug</a><a class="navchip c-notrep cur" href="not-reproduced.html" aria-current="page"><span class="n">5</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">6</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">3</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">5</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, subsystem, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="notrep"><h2><span class="dot c-notrep"></span>Not reproduced <span class="cnt">5</span></h2><details class="t" id="214b46fbad" data-s="214b46fbad widget::dateentry does not work on windows widget :: dateentry · bug not-reproduced (windows 11, tk 9.1.1 and 8.6.18, tklib trunk, widget::dateentry 0.99)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>214b46fbad</span><span class="yr">2025</span><span class="ti">widget::dateentry does not work on Windows</span><span class="vd">NOT-REPRODUCED (Windows 11, Tk 9.1.1 and 8.6.18, tklib trunk, widget::dateentry 0.99)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/214b46fbad">Open ticket 214b46fbad</a> · widget :: dateentry · Bug · filed 2025-02-02</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (Windows 11, Tk 9.1.1 and 8.6.18, tklib trunk, widget::dateentry 0.99)</p><ul>
+<li><span class="k">Module</span> widget (widget::dateentry) · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1.1, 8.6.18 on X11: both a simulated click and <code>post</code> map the dropdown on top. Repro script: win/214b46fbad.tcl (prints mapped state, stacking order and the window under the pointer, then a verdict).
+</li>
+<li><span class="k">Cause</span> unknown. Likely candidates: the popdown is an overrideredirect toplevel made transient at creation time, with no <code>-topmost</code>. ttk::combobox sets <code>wm transient</code> just before posting and sets <code>-topmost 1</code> on win32 (see the NOTE-WM-TRANSIENT comment in Tk's combobox.tcl). It may also be <code>ttk::globalGrab</code> on <code>&lt;Map&gt;</code> combined with <code>tkwait visibility</code>.
+</li>
+<li><span class="k">Prototype</span> none (needs Windows to verify)
+</li>
+<li><span class="k">Suggested ticket action</span> Not reproducible on Linux. Run win/214b46fbad.tcl on Windows. If it reproduces, change <code>post</code> to set <code>wm transient</code> and <code>wm attributes -topmost 1</code> just before deiconify, as ttk::combobox does.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Verdict</span> NOT-REPRODUCED (Windows 11, Tk 9.1.1 and 8.6.18, tklib trunk, widget::dateentry 0.99)
+</li>
+<li><span class="k">Tested</span> win/214b46fbad.tcl: a simulated click on the entry and <code>post</code> both map the dropdown, it is on top of the stacking order (<code>. .d.__drop</code>) and the window under the pointer is the calendar. The display is scaled (350%), so the dropdown is 738x436.
+</li>
+<li><span class="k">Note</span> the events were synthesized with <code>event generate</code>; a real mouse click was not tried.
+</li>
+<li><span class="k">Suggested ticket action</span> Could not reproduce with tklib trunk and Tk 8.6.18 or 9.1.1 on Windows 11. Please try a current tklib, and say which Windows and Tk version you use if it still happens.
+</li></ul></div></div></details><details class="t" id="009b09029f" data-s="009b09029f axis labels are not always &quot;nice&quot; plotchart · bug not-reproduced for the reported case: the xy plot, strip chart, histogram, isometric plot, bar charts, log plots and tx plot with {121.45 121.51 0.02} / {0.0 2.0 0.2} all give clean labels, because these axes already format with `%.12g` (since 2010/2011). the 2022 legend change [a8df88b405] is unrelated. however, i found two related cases that do reproduce on tk 9.1 and 8.6:" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>009b09029f</span><span class="yr">2022</span><span class="ti">Axis labels are not always "nice"</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/009b09029f.patch">patch</a><span class="vd">NOT-REPRODUCED for the reported case: the XY plot, strip chart, histogram, isometric plot, bar charts, log plots and TX plot with {121.45 121.51 0.…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/009b09029f">Open ticket 009b09029f</a> · plotchart · Bug · filed 2022-01-26</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED for the reported case: the XY plot, strip chart, histogram, isometric plot, bar charts, log plots and TX plot with {121.45 121.51 0.02} / {0.0 2.0 0.2} all give clean labels, because these axes already format with <code>%.12g</code> (since 2010/2011). The 2022 legend change <a class="h" href="https://core.tcl-lang.org/tklib/info/a8df88b405">a8df88b405</a> is unrelated. However, I found two related cases that do reproduce on Tk 9.1 and 8.6:</p><ul>
+<li><span class="k">Module</span> plotchart · Bug
+<ul>
+<li>a reversed axis {2.0 0.0 -0.2} labels zero as <code>2.77555756156e-16</code>;
+</li>
+<li>the polar plot radial labels show <code>0.6000000000000001</code>, <code>1.7999999999999998</code>, and so on.
+</li></ul>
+</li>
+<li><span class="k">Tested</span> Tk 9.1, 8.6: canvas text items for 14 plot types.
+</li>
+<li><span class="k">Cause</span> plotaxis.tcl, axis loops in <code>DrawYaxis</code>, <code>DrawRightaxis</code>, <code>DrawXaxis</code> and <code>DrawXtext</code>: the snap-to-zero check tests the tick position <code>$y</code>/<code>$x</code> instead of the label value <code>$yt</code>/<code>$xt</code>. In <code>DrawPolarAxes</code>, <code>$rad</code> is used as the label text without formatting.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/009b09029f.patch">009b09029f.patch</a> (5 code lines plus tests Plotchart-6.1 and Plotchart-6.2 in plotchart.test). The plotchart suite (46 tests) passes on 9.1 and 8.6.
+</li>
+<li><span class="k">Suggested ticket action</span> The normal axes already use <code>%.12g</code>. Fixed the remaining cases: the zero label on reversed axes and the polar radial labels. Ask the reporter which plot type showed 121.49999999 if it persists; otherwise close as Fixed.
+</li></ul></div></details><details class="t" id="f4b9393051" data-s="f4b9393051 error on ctext when c comments enabled ctext · patch not-reproduced (3000 random fuzz inputs to `ctext::comments` on tk 9.1 and 8.6: quotes, escapes, comment markers, newlines, non-bmp chars, elided ranges; no error). the patch still applies; the code is unchanged since 2013." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>f4b9393051</span><span class="yr">2020</span><span class="ti">Error on ctext when C comments enabled</span><span class="vd">NOT-REPRODUCED (3000 random fuzz inputs to <code>ctext::comments</code> on Tk 9.1 and 8.6: quotes, escapes, comment markers, newlines, non-BMP chars, elided r…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/f4b9393051">Open ticket f4b9393051</a> · ctext · Patch · filed 2020-04-22</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (3000 random fuzz inputs to <code>ctext::comments</code> on Tk 9.1 and 8.6: quotes, escapes, comment markers, newlines, non-BMP chars, elided ranges; no error). The patch still applies; the code is unchanged since 2013.</p><ul>
+<li><span class="k">Module</span> ctext · Patch
+</li>
+<li><span class="k">Tested</span> Tk 9.1, 8.6 fuzz of <code>ctext::comments</code> with comments enabled.
+</li>
+<li><span class="k">Cause</span> in stock ctext, <code>$win search -count length</code> is passed through <code>uplevel 1</code> to the inner text widget, so <code>length</code> is always set when an index is returned. The reported error most likely comes from a wrapper or renamed widget command that does not forward the <code>-count</code> variable to the caller's frame.
+</li>
+<li><span class="k">Prototype</span> none (not reproducible, so no regression test). The 3-line defensive check from the ticket is harmless.
+</li>
+<li><span class="k">Suggested ticket action</span> Could not reproduce with current ctext on Tk 8.6/9.1. Ask for a script that reproduces it, e.g. whether the ctext command is wrapped. Apply the defensive <code>info exists length</code> check if desired, otherwise close as Works For Me.
+</li></ul></div></details><details class="t" id="a697f07a38" data-s="a697f07a38 infinite map/unmap of autoscroll widgets autoscroll · bug not-reproduced. the attachment `testautoscroll.zip` (blob 20950e04…) is missing from the repository, so the original script cannot be run. i tried text widgets with vertical and horizontal autoscroll scrollbars, `-wrap none/char/word`, contents sized right at the fit/no-fit boundary, fixed and propagating toplevels, and resizing the toplevel in 3 px steps over 200–520 px × 5 heights. this was done with no wm and under openbox. no oscillation: at most 2–4 maps per change, never continuous." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>a697f07a38</span><span class="yr">2015</span><span class="ti">Infinite map/unmap of autoscroll widgets</span><span class="vd">NOT-REPRODUCED. The attachment <code>TestAutoscroll.zip</code> (blob 20950e04…) is missing from the repository, so the original script cannot be run. I tried …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/a697f07a38">Open ticket a697f07a38</a> · autoscroll · Bug · filed 2015-04-01</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED. The attachment <code>TestAutoscroll.zip</code> (blob 20950e04…) is missing from the repository, so the original script cannot be run. I tried text widgets with vertical and horizontal autoscroll scrollbars, <code>-wrap none/char/word</code>, contents sized right at the fit/no-fit boundary, fixed and propagating toplevels, and resizing the toplevel in 3 px steps over 200–520 px × 5 heights. This was done with no WM and under openbox. No oscillation: at most 2–4 maps per change, never continuous.</p><ul>
+<li><span class="k">Module</span> autoscroll · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1, 8.6 (Xvfb, no WM and openbox).
+</li>
+<li><span class="k">Cause</span> unknown. <code>autoscroll::map</code> freezes the toplevel geometry to prevent exactly this kind of loop. A known theoretical source is the text widget's asynchronous line-metric updates while the scrollbar toggles.
+</li>
+<li><span class="k">Prototype</span> none (no reproducer)
+</li>
+<li><span class="k">Suggested ticket action</span> The attached example is no longer available in the repository and I could not reproduce a map/unmap loop with Tk 8.6/9.1. Please attach the script again (inline), otherwise close as Works For Me.
+</li></ul></div></details><details class="t" id="2499978fff" data-s="2499978fff infinite bug on widget::scrolledwindow tklib · bug not-reproduced (x11: ttk::treeview with items in an auto-scrolled scrolledwindow, 35 window sizes; and a synthetic widget whose content reflows when a scrollbar appears)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2499978fff</span><span class="yr">2009</span><span class="ti">Infinite bug on widget::scrolledwindow</span><span class="vd">NOT-REPRODUCED (X11: ttk::treeview with items in an auto-scrolled scrolledwindow, 35 window sizes; and a synthetic widget whose content reflows whe…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/2499978fff">Open ticket 2499978fff</a> · tklib · Bug · filed 2009-01-11</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (X11: ttk::treeview with items in an auto-scrolled scrolledwindow, 35 window sizes; and a synthetic widget whose content reflows when a scrollbar appears)</p><ul>
+<li><span class="k">Module</span> widget (widget::scrolledwindow) · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1.1, 8.6.18. No recursion error. The lock in <code>_set_scroll</code> lets scrollbars be added but not removed while locked, so the layout settles.
+</li>
+<li><span class="k">Cause</span> the reporter said it happens only on Windows XP. The traceback is from BWidget <code>Tree::_update_scrollregion</code>, not ttk::treeview. scrollw.tcl <code>_set_scroll</code> has not changed since 2007 (19442b0fab). A small weakness remains: a nested call clears <code>sb(lock)</code> while the outer call is still inside <code>update idletasks</code>. The proposed one-line patch (<code>if {$sb(auto) &amp;&amp; !$sb(lock)}</code>) avoids that, but it can also leave a needed scrollbar hidden.
+</li>
+<li><span class="k">Prototype</span> none (cannot reproduce; the platform is gone)
+</li>
+<li><span class="k">Suggested ticket action</span> Cannot reproduce with Tk 8.6/9.x on Linux, and the report is specific to Windows XP with BWidget Tree. Close as "Out of Date" unless someone can reproduce it on a current Windows.
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch and of the Windows VM runs.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

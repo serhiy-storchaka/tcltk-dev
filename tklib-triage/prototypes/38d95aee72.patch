@@ -1,0 +1,43 @@
+Index: modules/plotchart/plotchart.tcl
+==================================================================
+--- modules/plotchart/plotchart.tcl
++++ modules/plotchart/plotchart.tcl
+@@ -117,11 +117,11 @@
+    set methodProc(xlogyplot,dotconfig)      DotConfigure
+    set methodProc(xlogyplot,interval)       DrawLogInterval
+    set methodProc(xlogyplot,trend)          DrawLogTrendLine
+    set methodProc(xlogyplot,saveplot)       SavePlot
+    set methodProc(xlogyplot,dataconfig)     DataConfig
+-   set methodProc(xlogyplot,xconfig)        XConfigXlogY
++   set methodProc(xlogyplot,xconfig)        XConfigXLogY
+    set methodProc(xlogyplot,yconfig)        YConfigXLogY
+    set methodProc(xlogyplot,xticklines)     DrawXTicklines
+    set methodProc(xlogyplot,yticklines)     DrawYTicklines
+    set methodProc(xlogyplot,background)     BackgroundColour
+    set methodProc(xlogyplot,legendconfig)   LegendConfigure
+
+Index: modules/plotchart/plotchart.test
+==================================================================
+--- modules/plotchart/plotchart.test
++++ modules/plotchart/plotchart.test
+@@ -777,8 +777,19 @@
+ 
+     #set res [checkCanvasItems .c {data xaxis yaxis}]
+     destroy .c
+     set res
+ } -result 1 ;# {}
++
++test Plotchart-6.1 {xconfig method of an X-logY plot} -constraints tk -setup {
++    canvas .c -width 400 -height 300
++    pack .c
++} -body {
++    set p [::Plotchart::createXLogYPlot .c {0 10 2} {1 1000 10}]
++    $p xconfig -format %.2f
++    .c itemcget [lindex [.c find withtag xaxis] end] -text
++} -cleanup {
++    destroy .c
++} -result 10.00
+ 
+ # -------------------------------------------------------------------------
+ ::tcltest::cleanupTests
+

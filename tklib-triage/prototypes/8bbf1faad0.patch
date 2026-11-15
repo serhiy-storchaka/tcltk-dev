@@ -1,0 +1,72 @@
+Index: modules/controlwidget/bindDown.tcl
+==================================================================
+--- modules/controlwidget/bindDown.tcl
++++ modules/controlwidget/bindDown.tcl
+@@ -3,11 +3,11 @@
+ #
+ #    This software is Copyright by the Board of Trustees of Michigan
+ #    State University (c) Copyright 2005.
+ #
+ #    You may use this software under the terms of the GNU public license
+-#    (GPL) ir the Tcl BSD derived license  The terms of these licenses
++#    (GPL) or the Tcl BSD derived license  The terms of these licenses
+ #     are described at:
+ #
+ #     GPL:  http://www.gnu.org/licenses/gpl.txt
+ #     Tcl:  http://www.tcl-lang.org/softare/tcltk/license.html
+ #     Start with the second paragraph under the Tcl/Tk License terms
+
+Index: modules/controlwidget/led.tcl
+==================================================================
+--- modules/controlwidget/led.tcl
++++ modules/controlwidget/led.tcl
+@@ -1,11 +1,11 @@
+ #
+ #    This software is Copyright by the Board of Trustees of Michigan
+ #    State University (c) Copyright 2005.
+ #
+ #    You may use this software under the terms of the GNU public license
+-#    (GPL) ir the Tcl BSD derived license  The terms of these licenses
++#    (GPL) or the Tcl BSD derived license  The terms of these licenses
+ #     are described at:
+ #
+ #     GPL:  http://www.gnu.org/licenses/gpl.txt
+ #     Tcl:  http://www.tcl-lang.org/softare/tcltk/license.html
+ #     Start with the second paragraph under the Tcl/Tk License terms
+
+Index: modules/controlwidget/radioMatrix.tcl
+==================================================================
+--- modules/controlwidget/radioMatrix.tcl
++++ modules/controlwidget/radioMatrix.tcl
+@@ -1,11 +1,11 @@
+ #
+ #    This software is Copyright by the Board of Trustees of Michigan
+ #    State University (c) Copyright 2005.
+ #
+ #    You may use this software under the terms of the GNU public license
+-#    (GPL) ir the Tcl BSD derived license  The terms of these licenses
++#    (GPL) or the Tcl BSD derived license  The terms of these licenses
+ #     are described at:
+ #
+ #     GPL:  http://www.gnu.org/licenses/gpl.txt
+ #     Tcl:  http://www.tcl-lang.org/softare/tcltk/license.html
+ #     Start with the second paragraph under the Tcl/Tk License terms
+
+Index: modules/controlwidget/vertical_meter.tcl
+==================================================================
+--- modules/controlwidget/vertical_meter.tcl
++++ modules/controlwidget/vertical_meter.tcl
+@@ -3,11 +3,11 @@
+ #
+ #    This software is Copyright by the Board of Trustees of Michigan
+ #    State University (c) Copyright 2005.
+ #
+ #    You may use this software under the terms of the GNU public license
+-#    (GPL) ir the Tcl BSD derived license  The terms of these licenses
++#    (GPL) or the Tcl BSD derived license  The terms of these licenses
+ #     are described at:
+ #
+ #     GPL:  http://www.gnu.org/licenses/gpl.txt
+ #     Tcl:  http://www.tcl-lang.org/softare/tcltk/license.html
+ #     Start with the second paragraph under the Tcl/Tk License terms
+

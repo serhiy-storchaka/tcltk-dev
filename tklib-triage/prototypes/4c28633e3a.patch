@@ -1,0 +1,53 @@
+Index: modules/plotchart/plotaxis.tcl
+==================================================================
+--- modules/plotchart/plotaxis.tcl
++++ modules/plotchart/plotaxis.tcl
+@@ -367,16 +367,17 @@
+ # Arguments:
+ #    w           Name of the canvas
+ #    ymin        Minimum y coordinate
+ #    ymax        Maximum y coordinate
+ #    ystep       Step size
++#    args        Options (currently ignored)
+ # Result:
+ #    None
+ # Side effects:
+ #    Axis drawn in canvas
+ #
+-proc ::Plotchart::DrawLogYaxis { w ymin ymax ydelt } {
++proc ::Plotchart::DrawLogYaxis { w ymin ymax ydelt args } {
+     variable scaling
+     variable config
+ 
+     set scaling($w,ydelt) $ydelt
+ 
+
+Index: modules/plotchart/plotchart.test
+==================================================================
+--- modules/plotchart/plotchart.test
++++ modules/plotchart/plotchart.test
+@@ -777,8 +777,23 @@
+ 
+     #set res [checkCanvasItems .c {data xaxis yaxis}]
+     destroy .c
+     set res
+ } -result 1 ;# {}
++
++test Plotchart-6.2 {yconfig method of log-Y plots without a step} -constraints tk -setup {
++    canvas .c -width 400 -height 300
++    pack .c
++} -body {
++    set res {}
++    foreach type {createXLogYPlot createLogXLogYPlot} {
++        .c delete all
++        set p [::Plotchart::$type .c {1 10 1} {1 1000}]
++        lappend res [catch {$p yconfig -format %.2f} msg] [llength [.c find withtag yaxis]]
++    }
++    set res
++} -cleanup {
++    destroy .c
++} -match glob -result {0 [1-9]* 0 [1-9]*}
+ 
+ # -------------------------------------------------------------------------
+ ::tcltest::cleanupTests
+

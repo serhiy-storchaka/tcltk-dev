@@ -1,0 +1,174 @@
+<title>tklib Ticket Triage: Not tested</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280; --patch:#BE185D; --super:#78716C; --rfe:#0F766E;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --patch:#F472B6; --super:#A8A29E; --rfe:#2DD4BF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --patch:#F472B6; --super:#A8A29E; --rfe:#2DD4BF;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}.c-patch{--c:var(--patch)}.c-super{--c:var(--super)}.c-rfe{--c:var(--rfe)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Open tklib tickets: Not tested</h1>
+  <p class="sub">Triage of all 71 open and Pending tickets of <a href="https://core.tcl-lang.org/tklib">tklib</a> (bugs, patches and feature requests) on 2026-11-15: whether a bug still exists in tklib trunk with Tk 9.1 and 8.6, whether a patch is still needed, and whether a request has been implemented, superseded or become outdated. 25 prototype patches with regression tests; rows marked <span class="patch">patch</span> have one. None is committed.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">27</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">6</span> Already fixed</a><a class="navchip c-super" href="superseded.html"><span class="n">14</span> Superseded or outdated</a><a class="navchip c-rfe" href="rfe.html"><span class="n">7</span> Open RFEs</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">3</span> Not a bug</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">5</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">6</span> Docs</a><a class="navchip c-win cur" href="not-tested.html" aria-current="page"><span class="n">3</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">3</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, subsystem, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="win"><h2><span class="dot c-win"></span>Needs Windows <span class="cnt">1</span></h2><details class="t" id="82a76c7411" data-s="82a76c7411 widget::dateentry visibility problem in high-contrast contexts widget · bug needs-windows (inconclusive in the default theme: the calendar background is white and the day text is systembuttontext, which is black there)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>82a76c7411</span><span class="yr">2016</span><span class="ti">widget::dateentry visibility problem in high-contrast contexts</span><span class="vd">NEEDS-WINDOWS (inconclusive in the default theme: the calendar background is white and the day text is SystemButtonText, which is black there)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/82a76c7411">Open ticket 82a76c7411</a> · widget · Bug · filed 2016-03-15</p><div class="lab">Full verdict</div><p>NEEDS-WINDOWS (inconclusive in the default theme: the calendar background is white and the day text is SystemButtonText, which is black there)</p><ul>
+<li><span class="k">Module</span> widget (widget::calendar / dateentry) · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1.1 on X11: the calendar background is hard-coded white, and the day numbers have no <code>-fill</code>, so they use the canvas default. Repro script: win/82a76c7411.tcl (run it with a dark high-contrast theme active).
+</li>
+<li><span class="k">Cause</span> calendar.tcl constructor: <code>-background white</code>. <code>Refresh</code>: day text items have no <code>-fill</code>. On Windows the default fill is <code>SystemButtonText</code>, which is white or yellow in dark high-contrast themes, so the text is light on white. Weekday labels and week numbers are hard-coded white; the title is hard-coded blue. The screenshot attachments are missing from the repository.
+</li>
+<li><span class="k">Prototype</span> none (it needs a colour design decision; it cannot be shown on X11)
+</li>
+<li><span class="k">Suggested ticket action</span> Confirmed from the code: the calendar draws on a fixed white background but leaves the day text at the system foreground colour. A minimal fix is to give the day text an explicit <code>-fill black</code>. A better fix adds <code>-background</code>/<code>-foreground</code> options that default to the system window colours (<code>SystemWindow</code>/<code>SystemWindowText</code> on Windows).
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Verdict</span> NEEDS-WINDOWS (inconclusive in the default theme: the calendar background is white and the day text is SystemButtonText, which is black there)
+</li>
+<li><span class="k">Tested</span> win/82a76c7411.tcl with Tk 9.1.1 in the default theme. A high-contrast theme was not switched on (a system setting), so the verdict rests on the code: the background is hard-coded white while the day text uses the system foreground colour.
+</li></ul></div></div></details></section>
+<section class="grp" data-cat="cant"><h2><span class="dot c-cant"></span>Cannot test <span class="cnt">2</span></h2><details class="t" id="d5e3a8eddd" data-s="d5e3a8eddd partial canvas::snap output, osx canvas · bug cannot-test (macos). canvas::snap only tiles screenshots taken by img&#x27;s `-format window` (package `img::window`). partial output on a retina display points to img&#x27;s window grabber, which captures in points rather than pixels, not to tklib." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>d5e3a8eddd</span><span class="yr">2016</span><span class="ti">partial canvas::snap output, osx</span><span class="vd">CANNOT-TEST (macOS). canvas::snap only tiles screenshots taken by Img's <code>-format window</code> (package <code>img::window</code>). Partial output on a Retina displa…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/d5e3a8eddd">Open ticket d5e3a8eddd</a> · canvas · Bug · filed 2016-12-23</p><div class="lab">Full verdict</div><p>CANNOT-TEST (macOS). canvas::snap only tiles screenshots taken by Img's <code>-format window</code> (package <code>img::window</code>). Partial output on a Retina display points to Img's window grabber, which captures in points rather than pixels, not to tklib.</p><ul>
+<li><span class="k">Module</span> canvas (canvas::snap) · Bug
+</li>
+<li><span class="k">Tested</span> code reading only. canvas_snap.tcl is unchanged in logic since 1.0.1.
+</li>
+<li><span class="k">Cause</span> probably img::window on aqua with HiDPI, outside tklib.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket action</span> canvas::snap relies on Img's window format for the screenshot. Partial output on Retina is most likely an Img (img::window) issue on macOS and should be reported there. Needs re-testing with current Tk 9 on macOS.
+</li></ul></div></details><details class="t" id="1571751fff" data-s="1571751fff [osx] install paths for tcllib 1.9 installer · bug cannot-test (macos). probably outdated. `installer.tcl:defaults` still derives `bindir` as `[file dirname [lindex $tcl_pkgpath end]]/bin`. with apple&#x27;s system tcl this gave `/system/library/bin`. apple&#x27;s system tcl/tk is deprecated, and `/system` has been read-only since macos 10.15, so installing there is impossible anyway. the path can be set with `-app-path`." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1571751fff</span><span class="yr">2006</span><span class="ti">[OSX] Install paths for tcllib 1.9</span><span class="vd">CANNOT-TEST (macOS). Probably OUTDATED. <code>installer.tcl:defaults</code> still derives <code>bindir</code> as <code>[file dirname [lindex $tcl_pkgPath end]]/bin</code>. With App…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/1571751fff">Open ticket 1571751fff</a> · Installer · Bug · filed 2006-10-05</p><div class="lab">Full verdict</div><p>CANNOT-TEST (macOS). Probably OUTDATED. <code>installer.tcl:defaults</code> still derives <code>bindir</code> as <code>[file dirname [lindex $tcl_pkgPath end]]/bin</code>. With Apple's system Tcl this gave <code>/System/Library/bin</code>. Apple's system Tcl/Tk is deprecated, and <code>/System</code> has been read-only since macOS 10.15, so installing there is impossible anyway. The path can be set with <code>-app-path</code>.</p><ul>
+<li><span class="k">Module</span> installer · Bug
+</li>
+<li><span class="k">Tested</span> code reading only.
+</li>
+<li><span class="k">Cause</span> <code>installer.tcl:defaults</code> (bindir derived from the last <code>tcl_pkgPath</code> entry).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested ticket action</span> Was reported against tcllib 1.9 with Apple's system Tcl. That Tcl is deprecated and /System is read-only on current macOS, and the binary directory can be given explicitly. Close as Out of Date.
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch and of the Windows VM runs.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

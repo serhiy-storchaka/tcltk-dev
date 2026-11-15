@@ -1,0 +1,112 @@
+Index: modules/plotchart/plotaxis.tcl
+==================================================================
+--- modules/plotchart/plotaxis.tcl
++++ modules/plotchart/plotaxis.tcl
+@@ -166,11 +166,11 @@
+         while { $y < $ym+0.0001*abs($ydelt) } {
+             lappend ys $y
+             lappend yts $yt
+             set y  [expr {$y+abs($ydelt)}]
+             set yt [expr {$yt+$ydelt}]
+-            if { abs($y) < 0.5*abs($ydelt) } {
++            if { abs($yt) < 0.5*abs($ydelt) } {
+                 set yt 0.0
+             }
+         }
+         set dyminor [expr {$ydelt/($config($w,leftaxis,minorticks)+1.0)}]
+     }
+@@ -308,11 +308,11 @@
+         while { $y < $ym+0.0001*abs($ydelt) } {
+             lappend ys $y
+             lappend yts $yt
+             set y  [expr {$y+abs($ydelt)}]
+             set yt [expr {$yt+$ydelt}]
+-            if { abs($y) < 0.5*abs($ydelt) } {
++            if { abs($yt) < 0.5*abs($ydelt) } {
+                 set yt 0.0
+             }
+         }
+         set dyminor [expr {$ydelt/($config($w,rightaxis,minorticks)+1.0)}]
+     }
+@@ -534,11 +534,11 @@
+             lappend xs       $x
+             lappend xts      $xt
+             lappend xbackup  $xt
+             set x  [expr {$x+abs($xdelt)}]
+             set xt [expr {$xt+$xdelt}]
+-            if { abs($x) < 0.5*abs($xdelt) } {
++            if { abs($xt) < 0.5*abs($xdelt) } {
+                 set xt 0.0
+             }
+         }
+         set dxminor [expr {$xdelt/($config($w,bottomaxis,minorticks)+1.0)}]
+ 
+@@ -749,11 +749,11 @@
+     while { $x < $xm+0.0001*abs($xdelt) } {
+         lappend xs $x
+         lappend xts $xt
+         set x  [expr {$x+abs($xdelt)}]
+         set xt [expr {$xt+$xdelt}]
+-        if { abs($x) < 0.5*abs($xdelt) } {
++        if { abs($xt) < 0.5*abs($xdelt) } {
+             set xt 0.0
+         }
+     }
+     set dxminor [expr {$xdelt/($config($w,axis,minorticks)+1.0)}]
+ 
+@@ -1123,11 +1123,11 @@
+         set oval [$w create oval $xleft $ytop $xright $ybottom -outline $linecolor -width $thickness -fill {} \
+                      -tags [list polar $w]]
+         $w lower $oval
+ 
+         if { $config($w,axis,shownumbers) } {
+-            $w create text $xright [expr {$ytxt+3}] -text $rad -anchor n -fill $textcolor -font $textfont -tags [list polar $w]
++            $w create text $xright [expr {$ytxt+3}] -text [format "%.12g" $rad] -anchor n -fill $textcolor -font $textfont -tags [list polar $w]
+         }
+ 
+         set rad [expr {$rad+$rad_step}]
+     }
+ }
+
+Index: modules/plotchart/plotchart.test
+==================================================================
+--- modules/plotchart/plotchart.test
++++ modules/plotchart/plotchart.test
+@@ -778,7 +778,36 @@
+     #set res [checkCanvasItems .c {data xaxis yaxis}]
+     destroy .c
+     set res
+ } -result 1 ;# {}
+ 
++proc canvasTexts {c} {
++    set texts {}
++    foreach item [$c find all] {
++	if {[$c type $item] eq "text"} {
++	    lappend texts [$c itemcget $item -text]
++	}
++    }
++    return $texts
++}
++
++test Plotchart-6.1 {Labels of reversed axes} -constraints tk -setup {
++    canvas .c -width 600 -height 400 -bg white
++} -body {
++    set p [::Plotchart::createXYPlot .c {2.0 0.0 -0.2} {1.0 0.0 -0.2}]
++    lsort -real [canvasTexts .c]
++} -cleanup {
++    destroy .c
++} -result {0 0 0.2 0.2 0.4 0.4 0.6 0.6 0.8 0.8 1 1 1.2 1.4 1.6 1.8 2}
++
++test Plotchart-6.2 {Radial labels of polar plot} -constraints tk -setup {
++    canvas .c -width 600 -height 400 -bg white
++} -body {
++    set p [::Plotchart::createPolarplot .c {2.0 0.2}]
++    # Skip the angle labels (0.0, 30.0, ...)
++    lsort -real [lsearch -all -inline -not [canvasTexts .c] *.0]
++} -cleanup {
++    destroy .c
++} -result {0.2 0.4 0.6 0.8 1 1.2 1.4 1.6 1.8 2}
++
+ # -------------------------------------------------------------------------
+ ::tcltest::cleanupTests
+

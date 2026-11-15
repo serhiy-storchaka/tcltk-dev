@@ -1,0 +1,172 @@
+Index: modules/ctext/ctext.tcl
+==================================================================
+--- modules/ctext/ctext.tcl
++++ modules/ctext/ctext.tcl
+@@ -370,15 +370,11 @@
+ 		#	set removeEnd $nextSpace
+ 		#}
+ 		set removeStart $lineStart
+ 		set removeEnd $lineEnd
+ 
+-		foreach tag [$self._t tag names] {
+-		    if {[string equal $tag "_cComment"] != 1} {
+-			$self._t tag remove $tag $removeStart $removeEnd
+-		    }
+-		}
++		ctext::removeHighlightTags $self $removeStart $removeEnd
+ 
+ 		set checkStr "$prevChar[set char]"
+ 
+ 		if {[regexp $commentRE $checkStr]} {
+ 		    ctext::commentsAfterIdle $self
+@@ -395,15 +391,11 @@
+ 
+ 		set lineStart [$self._t index "$deleteStartPos linestart"]
+ 		set lineEnd [$self._t index "$deleteEndPos + 1 chars lineend"]
+ 		eval \$self._t delete $args
+ 
+-		foreach tag [$self._t tag names] {
+-		    if {[string equal $tag "_cComment"] != 1} {
+-			$self._t tag remove $tag $lineStart $lineEnd
+-		    }
+-		}
++		ctext::removeHighlightTags $self $lineStart $lineEnd
+ 
+ 		if {[regexp $commentRE $data]} {
+ 		    ctext::commentsAfterIdle $self
+ 		}
+ 
+@@ -456,15 +448,11 @@
+ 
+ 	    if {[$self._t compare $nextSpace > $lineEnd]} {
+ 		set nextSpace $lineEnd
+ 	    }
+ 
+-	    foreach tag [$self._t tag names] {
+-		if {[string equal $tag "_cComment"] != 1} {
+-		    $self._t tag remove $tag $prevSpace $nextSpace
+-		}
+-	    }
++	    ctext::removeHighlightTags $self $prevSpace $nextSpace
+ 
+ 	    set REData $prevChar
+ 	    append REData $data
+ 	    append REData $nextChar
+ 	    if {[regexp $commentRE $REData]} {
+@@ -778,10 +766,19 @@
+ 	    }
+ 	    unset refAr($key)
+ 	}
+     }
+     unset classesAr($classToDelete)
++    $win tag delete $classToDelete
++}
++
++#Remove the tags of the highlight classes (but not the user's own tags)
++#from the given range.
++proc ctext::removeHighlightTags {win start end} {
++    foreach tag [ctext::getHighlightClasses $win] {
++	$win._t tag remove $tag $start $end
++    }
+ }
+ 
+ proc ctext::getHighlightClasses win {
+     ctext::getAr $win classes classesAr
+ 
+@@ -847,10 +844,14 @@
+     }
+     return $i
+ }
+ 
+ proc ctext::clearHighlightClasses {win} {
++    foreach class [ctext::getHighlightClasses $win] {
++	$win tag delete $class
++    }
++
+     #no need to catch, because array unset doesn't complain
+     #puts [array exists ::ctext::highlight$win]
+ 
+     ctext::getAr $win highlight ar
+     array unset ar
+
+ADDED    modules/ctext/ctext.test
+Index: modules/ctext/ctext.test
+==================================================================
+--- /dev/null
++++ modules/ctext/ctext.test
+@@ -0,0 +1,74 @@
++# -*- tcl -*-
++# Test cases of the ctext package
++
++if {![package vsatisfies [package provide Tcl] 8.5-]} {
++    puts "    Aborting the tests found in \"[file tail [info script]]\"."
++    puts "    Requiring Tcl 8.5, have [package present Tcl]"
++    return
++}
++
++if {[catch { package require Tk 8.5- } msg]} {
++    puts "    Aborting the tests found in \"[file tail [info script]]\"."
++    puts "    Requiring Tk 8.5, $msg"
++    return
++}
++
++package require tcltest 2.2
++namespace import ::tcltest::*
++
++source [file join [file dirname [info script]] ctext.tcl]
++
++# -------------------------------------------------------------------------
++
++test ctext-usertags-1.1 {insert keeps the user's tags} -setup {
++    ctext .t -linemap 0
++} -body {
++    .t insert end "hello world" mytag
++    .t insert 1.5 X
++    .t tag ranges mytag
++} -cleanup {
++    destroy .t
++} -result {1.0 1.12}
++
++test ctext-usertags-1.2 {delete keeps the user's tags} -setup {
++    ctext .t -linemap 0
++} -body {
++    .t insert end "hello world" mytag
++    .t delete 1.5
++    set r [.t tag ranges mytag]
++    .t delete 1.0 1.2
++    lappend r {*}[.t tag ranges mytag]
++} -cleanup {
++    destroy .t
++} -result {1.0 1.10 1.0 1.8}
++
++test ctext-usertags-1.3 {highlight tags are still updated on edit} -setup {
++    ctext .t -linemap 0
++    ctext::addHighlightClass .t kw red {foo}
++} -body {
++    .t insert end "foo bar" mytag
++    .t highlight 1.0 end
++    set r [.t tag ranges kw]
++    .t insert 1.3 x
++    update idletasks
++    list $r [.t tag ranges kw] [.t tag ranges mytag]
++} -cleanup {
++    destroy .t
++} -result {{1.0 1.3} {} {1.0 1.8}}
++
++test ctext-usertags-1.4 {deleteHighlightClass removes its highlighting} -setup {
++    ctext .t -linemap 0
++    ctext::addHighlightClass .t kw red {foo}
++} -body {
++    .t insert end "foo bar"
++    .t highlight 1.0 end
++    ctext::deleteHighlightClass .t kw
++    list [lsearch -exact [.t tag names] kw] [ctext::getHighlightClasses .t]
++} -cleanup {
++    destroy .t
++} -result {-1 {}}
++
++# -------------------------------------------------------------------------
++
++cleanupTests
++return
+

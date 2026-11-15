@@ -1,0 +1,414 @@
+<title>tklib Ticket Triage: Reproduced</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280; --patch:#BE185D; --super:#78716C; --rfe:#0F766E;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --patch:#F472B6; --super:#A8A29E; --rfe:#2DD4BF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --patch:#F472B6; --super:#A8A29E; --rfe:#2DD4BF;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}.c-patch{--c:var(--patch)}.c-super{--c:var(--super)}.c-rfe{--c:var(--rfe)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Open tklib tickets: Reproduced</h1>
+  <p class="sub">Triage of all 71 open and Pending tickets of <a href="https://core.tcl-lang.org/tklib">tklib</a> (bugs, patches and feature requests) on 2026-11-15: whether a bug still exists in tklib trunk with Tk 9.1 and 8.6, whether a patch is still needed, and whether a request has been implemented, superseded or become outdated. 25 prototype patches with regression tests; rows marked <span class="patch">patch</span> have one. None is committed.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep cur" href="reproduced.html" aria-current="page"><span class="n">27</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">6</span> Already fixed</a><a class="navchip c-super" href="superseded.html"><span class="n">14</span> Superseded or outdated</a><a class="navchip c-rfe" href="rfe.html"><span class="n">7</span> Open RFEs</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">3</span> Not a bug</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">5</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">6</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">3</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">27</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, subsystem, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="rep"><h2><span class="dot c-rep"></span>Reproduced <span class="cnt">21</span></h2><details class="t" id="79747a0cb5" data-s="79747a0cb5 notifywindow error in successive calls (unused) · bug reproduced (tk 9.1, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>79747a0cb5</span><span class="yr">2026</span><span class="ti">notifywindow error in successive calls</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/79747a0cb5.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/79747a0cb5">Open ticket 79747a0cb5</a> · (unused) · Bug · filed 2026-09-10</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6)</p><ul>
+<li><span class="k">Module</span> notifywindow · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1, 8.6. Two successive <code>notifywindow::notifywindow</code> calls raise <code>window name "_notify" already exists in parent</code>.
+</li>
+<li><span class="k">Cause</span> <code>notifywindow.tcl:notifywindow::notifywindow</code> always creates the fixed toplevel <code>._notify</code> and never checks whether it already exists. Its pending <code>fade_in</code>/<code>fade_out</code> timers are not tracked, so destroying and recreating the window would let the old 3 s <code>fade_out</code> timer fade the new one early.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/79747a0cb5.patch">79747a0cb5.patch</a> (+17/−3 in notifywindow.tcl, plus new modules/notifywindow/notifywindow.test; tests notifywindow-1.1 and notifywindow-1.2). A new call replaces a notification that is still shown: pending timer ids are kept in <code>notifywindow::afterids</code> and cancelled, then the old window is destroyed. No version bump.
+</li>
+<li><span class="k">Suggested ticket action</span> Confirmed with Tk 9.1 and 8.6. Fix: a new notification replaces the one still shown, and the old fade timers are cancelled. Stacking several notifications would be a larger change.
+</li></ul></div></details><details class="t" id="fa6fbae045" data-s="fa6fbae045 widget::dateentry does not accept array as textvariable widget :: dateentry · bug reproduced (tk 9.1, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>fa6fbae045</span><span class="yr">2025</span><span class="ti">widget::dateentry does not accept array as textvariable</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/fa6fbae045.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/fa6fbae045">Open ticket fa6fbae045</a> · widget :: dateentry · Bug · filed 2025-02-16</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6)</p><ul>
+<li><span class="k">Module</span> widget (widget::dateentry) · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1.1, 8.6.18. With <code>-textvariable ::A(date)</code> (and also with a scalar), the variable does not exist after the widget is created, so reading it gives "no such element in array". An existing value is ignored. An unqualified name (<code>A(date)</code>) does not work at all: neither setting it nor choosing a date reaches the global variable.
+</li>
+<li><span class="k">Cause</span> dateentry.tcl. The constructor never writes the linked variable. <code>C-textvariable</code> puts the trace on the name from inside the method, and <code>DateChosen</code> uses <code>upvar 0</code>, so an unqualified name resolves in method scope, not globally as for standard widgets.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/fa6fbae045.patch">fa6fbae045.patch</a> (about 31 code lines: new <code>InitTextvariable</code>, called at the end of construction and when <code>-textvariable</code> is changed later. It shows the variable's date if valid, else stores the current date. The trace is set and <code>upvar</code> is done at the global level. New test file modules/widget/dateentry.test, tests dateentry-textvariable-1.1..1.4.)
+</li>
+<li><span class="k">Suggested ticket action</span> Confirmed: the linked variable is never set when the widget is created, and unqualified names are not treated as global. Fix: initialise or adopt the variable at construction and use global scope for the trace and <code>upvar</code> (prototype available), then bump to 0.100 or 1.0. Side finding: the initial date is computed as UTC midnight (<code>[clock seconds]/86400*86400</code>), so just after local midnight east of UTC it shows yesterday.
+</li></ul></div></details><details class="t" id="a033bd45cb" data-s="a033bd45cb bad performance of xyplot package plotchart · rfe reproduced (tk 9.1, 8.6). fixable." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>a033bd45cb</span><span class="yr">2024</span><span class="ti">Bad performance of xyplot package</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/a033bd45cb.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6). Fixable.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/a033bd45cb">Open ticket a033bd45cb</a> · plotchart · RFE · filed 2024-08-24</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6). Fixable.</p><ul>
+<li><span class="k">Module</span> plotchart (xyplot) · RFE
+</li>
+<li><span class="k">Tested</span> Tk 9.1 and 8.6, 10000 points. xyplot takes about 580 ms and creates 10073 items. A Plotchart <code>plot</code> loop takes about 300 ms, <code>plotlist</code> about 20 ms. Every resize or zoom redraws everything again.
+</li>
+<li><span class="k">Cause</span> plotchart/xyplot.tcl:draw calls <code>$s plot $sid $x $y</code> for every point, creating one canvas line per segment, which is then scaled and moved by <code>rescale</code>.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/a033bd45cb.patch">a033bd45cb.patch</a> (about 15 code lines, plus a new modules/plotchart/xyplot.test, test xyplot-1.1). draw collects x/y lists and draws each series with one <code>plotlist</code> call. 10000 points now take about 60 ms and create 75 items. The data bbox is identical before and after, also after zooming.
+</li>
+<li><span class="k">Suggested ticket action</span> xyplot drew every segment as a separate canvas item. Using <code>plotlist</code> per series makes the initial draw, resize and zoom about 10 times faster. A fix is available.
+</li></ul></div></details><details class="t" id="e9c4eeae1f" data-s="e9c4eeae1f diagrams not rendered proper diagrams · bug reproduced (tk 9.1, 8.6; tcllib math::geometry 1.4.2). the attached diagrams.diff (blob 2a6805ba01…) is missing from the local repository and could not be reviewed." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>e9c4eeae1f</span><span class="yr">2024</span><span class="ti">diagrams not rendered proper</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/e9c4eeae1f.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6; tcllib math::geometry 1.4.2). The attached diagrams.diff (blob 2a6805ba01…) is missing from the local repository and could…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/e9c4eeae1f">Open ticket e9c4eeae1f</a> · diagrams · Bug · filed 2024-07-23</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6; tcllib math::geometry 1.4.2). The attached diagrams.diff (blob 2a6805ba01…) is missing from the local repository and could not be reviewed.</p><ul>
+<li><span class="k">Module</span> diagrams · Bug
+</li>
+<li><span class="k">Tested</span> <code>line north</code> goes down on the screen. <code>line from [0 0] then [by 10 90]</code> ends at y=+10. The circle <code>northeast</code> corner is at (7, 7), i.e. below the centre. The <a class="h" href="not-a-bug.html#4e6715533c">4e6715533c</a> script gets broken arrows.
+</li>
+<li><span class="k">Cause</span> tcllib check-in <a class="h" href="https://core.tcl-lang.org/tklib/info/1f54de21e6">1f54de21e6</a> (2020-09-20, math::geometry 1.4.0) switched <code>math::geometry::direction</code> and <code>octant</code> to the mathematical y orientation. diagrams uses them in screen coordinates (y down) in point.tcl <code>polar2cartesian</code> and in basic.tcl (circle corners, <code>LineCorners</code>, arc direction). It requires only math::geometry 1.1.2, so it silently picks up the incompatible change.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/e9c4eeae1f.patch">e9c4eeae1f.patch</a> (about 29 code lines plus a new modules/diagrams/diagrams.test; tests diagram-direction-1.1 to 1.3). It defines screen-oriented <code>direction</code> and <code>octant</code> in <code>::diagram::point::geo</code>, which override the imported ones, and imports them into <code>::diagram::basic::geo</code>. This makes diagrams independent of the math::geometry version. All 63 figures still render.
+</li>
+<li><span class="k">Suggested ticket action</span> Since math::geometry 1.4 (tcllib <a class="h" href="https://core.tcl-lang.org/tklib/info/1f54de21e6">1f54de21e6</a>), <code>direction</code>/<code>octant</code> use the mathematical y axis, while diagrams works in canvas coordinates. Fixed by giving diagrams its own screen-oriented versions. Close as Fixed after commit; also close <a class="h" href="#ffcd8611b8">ffcd8611b8</a>.
+</li></ul></div></details><details class="t" id="ffcd8611b8" data-s="ffcd8611b8 direction and octant delete the minus sign lead to diagram display bugs diagrams · bug reproduced (tk 9.1, 8.6). duplicate of e9c4eeae1f, same cause: tcllib [1f54de21e6], 2020-09-20. the tcllib side was an intentional fix for tcllib ticket fb4812f82b, so diagrams has to adapt." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>ffcd8611b8</span><span class="yr">2021</span><span class="ti">direction and octant delete the minus sign lead to diagram display bugs</span><span class="vd">REPRODUCED (Tk 9.1, 8.6). Duplicate of <a class="h" href="#e9c4eeae1f">e9c4eeae1f</a>, same cause: tcllib <a class="h" href="https://core.tcl-lang.org/tklib/info/1f54de21e6">1f54de21e6</a>, 2020-09-20. The tcllib side was an intentional fix for tcllib t…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/ffcd8611b8">Open ticket ffcd8611b8</a> · diagrams · Bug · filed 2021-06-16</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6). Duplicate of <a class="h" href="#e9c4eeae1f">e9c4eeae1f</a>, same cause: tcllib <a class="h" href="https://core.tcl-lang.org/tklib/info/1f54de21e6">1f54de21e6</a>, 2020-09-20. The tcllib side was an intentional fix for tcllib ticket fb4812f82b, so diagrams has to adapt.</p><ul>
+<li><span class="k">Module</span> diagrams · Bug
+</li>
+<li><span class="k">Tested</span> see <a class="h" href="#e9c4eeae1f">e9c4eeae1f</a>.
+</li>
+<li><span class="k">Cause</span> see <a class="h" href="#e9c4eeae1f">e9c4eeae1f</a>.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/e9c4eeae1f.patch">e9c4eeae1f.patch</a> (same patch)
+</li>
+<li><span class="k">Suggested ticket action</span> Duplicate of <a class="h" href="https://core.tcl-lang.org/tklib/info/e9c4eeae1f">e9c4eeae1f</a>. diagrams now carries its own canvas-oriented <code>direction</code>/<code>octant</code>. Close as Duplicate (or Fixed together with <a class="h" href="#e9c4eeae1f">e9c4eeae1f</a>).
+</li></ul></div></details><details class="t" id="b845a924db" data-s="b845a924db tachometer : a wrong angle is calculated in method drawline controlwidget · bug reproduced (tk 9.1, 8.6). also found: with tk 9, `controlwidget::tachometer .t` with the default size fails with `cannot use non-numeric string &quot;50m&quot;`. tk 9 returns the canvas `-width` as given (&quot;50m&quot;) rather than in pixels." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>b845a924db</span><span class="yr">2020</span><span class="ti">Tachometer : a wrong angle is calculated in method drawline</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/b845a924db.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6). Also found: with Tk 9, <code>controlwidget::tachometer .t</code> with the default size fails with `cannot use non-numeric string "50…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/b845a924db">Open ticket b845a924db</a> · controlwidget · Bug · filed 2020-09-20</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6). Also found: with Tk 9, <code>controlwidget::tachometer .t</code> with the default size fails with <code>cannot use non-numeric string "50m"</code>. Tk 9 returns the canvas <code>-width</code> as given ("50m") rather than in pixels.</p><ul>
+<li><span class="k">Module</span> controlwidget (tachometer 0.2) · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1, 8.6. With <code>-min 0 -max 10</code> and value 1 the needle is drawn as for value 0, and the coordinates differ from <code>-max 10.0</code>.
+</li>
+<li><span class="k">Cause</span> <code>tachometer.tcl:drawline</code> computes <code>($v-$min)/($max-$min)</code> with integer division when all three are integers. The constructor and <code>drawline</code> use <code>[$c cget -width]</code> directly in <code>expr</code>, which breaks with screen distances such as <code>50m</code> in Tk 9.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/b845a924db.patch">b845a924db.patch</a> (+4/−4 in tachometer.tcl: <code>double($value)</code> and <code>winfo pixels</code> for width/height, plus new modules/controlwidget/controlwidget.test; tests tachometer-1.0, 1.1 and 1.2). No version bump. This patch and <a class="h" href="#7ae7ab1e83">7ae7ab1e83</a> both create controlwidget.test, so they must be merged by hand if both are applied.
+</li>
+<li><span class="k">Suggested ticket action</span> Confirmed. Integer arithmetic truncates the needle angle. Fixed by forcing floating point. The prototype also fixes the Tk 9 failure with the default "50m" size.
+</li></ul></div></details><details class="t" id="e7f1ed859e" data-s="e7f1ed859e the ico package does not handle 256x256 icons properly ico · bug reproduced (tk 9.1, 8.6). `iconmembers` of a 256x256 icon returns `{0 0 0 32}`. in a file with 16 and 256 icons, `geticon -res 256` cannot match the large one. the icodata member reader (`binary scan ccc`) also returns negative sizes for 128 to 255." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>e7f1ed859e</span><span class="yr">2020</span><span class="ti">The ICO package does not handle 256x256 icons properly</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/e7f1ed859e.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6). <code>iconMembers</code> of a 256x256 icon returns <code>{0 0 0 32}</code>. In a file with 16 and 256 icons, <code>getIcon -res 256</code> cannot match th…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/e7f1ed859e">Open ticket e7f1ed859e</a> · ico · Bug · filed 2020-09-12</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6). <code>iconMembers</code> of a 256x256 icon returns <code>{0 0 0 32}</code>. In a file with 16 and 256 icons, <code>getIcon -res 256</code> cannot match the large one. The ICODATA member reader (<code>binary scan ccc</code>) also returns negative sizes for 128 to 255.</p><ul>
+<li><span class="k">Module</span> ico · Bug
+</li>
+<li><span class="k">Tested</span> wrote 16/200/256 icons into one ICO file, then checked <code>iconMembers</code>, <code>getIconMembersICODATA</code> and <code>getIcon -res</code>.
+</li>
+<li><span class="k">Cause</span> ico.tcl <code>getIconMembersICO</code> and <code>getIconMembersICODATA</code> take the directory width/height byte literally (0 means 256) and, for ICODATA, as signed.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/e7f1ed859e.patch">e7f1ed859e.patch</a> (about 13 code lines plus a new modules/ico/ico.test; test ico-members-1.1). It maps 0 to 256 in both readers and masks the ICODATA bytes with <code>&amp; 0xFF</code>, keeping Tcl 8.4 syntax as ico requires.
+</li>
+<li><span class="k">Suggested ticket action</span> Confirmed. A size byte of 0 in the icon directory means 256. Fixed in <code>getIconMembersICO</code> and <code>getIconMembersICODATA</code>, essentially as suggested (the ICODATA bytes are now also read unsigned). Close as Fixed after commit.
+</li></ul></div></details><details class="t" id="7ae7ab1e83" data-s="7ae7ab1e83 rdial &quot;can&#x27;t read &#x27;sfact&#x27;&quot; with tkinter error controlwidget · bug reproduced (tk 9.1, 8.6). nothing tkinter-specific: `controlwidget::rdial .r` fails whenever `-width` is not given explicitly." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>7ae7ab1e83</span><span class="yr">2019</span><span class="ti">rdial "can't read 'sfact'" with tkinter error</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/7ae7ab1e83.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6). Nothing tkinter-specific: <code>controlwidget::rdial .r</code> fails whenever <code>-width</code> is not given explicitly.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/7ae7ab1e83">Open ticket 7ae7ab1e83</a> · controlwidget · Bug · filed 2019-07-19</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6). Nothing tkinter-specific: <code>controlwidget::rdial .r</code> fails whenever <code>-width</code> is not given explicitly.</p><ul>
+<li><span class="k">Module</span> controlwidget (rdial 0.7) · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1, 8.6: <code>controlwidget::rdial .r</code> → <code>Error in constructor: can't read "sfact": no such variable</code>.
+</li>
+<li><span class="k">Cause</span> <code>rdial.tcl</code>: <code>sfact</code> is computed only in <code>SetOption</code> for <code>-width</code>, which runs only when <code>-width</code> is passed. With the default width, <code>draw</code> uses an unset <code>sfact</code>.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/7ae7ab1e83.patch">7ae7ab1e83.patch</a> (1 line in the constructor: <code>set sfact [expr {$ssize*2/$options(-width)}]</code>, plus new modules/controlwidget/controlwidget.test; tests rdial-1.0 and rdial-1.1). No version bump.
+</li>
+<li><span class="k">Suggested ticket action</span> Confirmed: rdial fails with the default -width. Fix: compute the scale factor in the constructor (prototype attached).
+</li></ul></div></details><details class="t" id="d74509223b" data-s="d74509223b widget::listentry and widget::listsimple package require &#x27;img::png&#x27; but should require png widget · bug reproduced (tk 9.1, 8.6): `package require widget::listentry` / `widget::listsimple` fails with &quot;can&#x27;t find package img::png&quot; when the img extension is not installed." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>d74509223b</span><span class="yr">2018</span><span class="ti">widget::listentry and widget::listsimple package require 'img::png' but should require png</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/d74509223b.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6): <code>package require widget::listentry</code> / <code>widget::listsimple</code> fails with "can't find package img::png" when the Img extensio…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/d74509223b">Open ticket d74509223b</a> · widget · Bug · filed 2018-01-23</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6): <code>package require widget::listentry</code> / <code>widget::listsimple</code> fails with "can't find package img::png" when the Img extension is not installed.</p><ul>
+<li><span class="k">Module</span> widgetl · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1.1, 8.6.18
+</li>
+<li><span class="k">Cause</span> listentry.tcl and listsimple.tcl call <code>package require img::png</code> unconditionally. Tk 8.6+ reads PNG natively. The ticket's suggested <code>package require png</code> is the tcllib metadata package and has nothing to do with this; it only "works" because Tk 8.6 already reads PNG.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/d74509223b.patch">d74509223b.patch</a> (8 code lines: require img::png only on Tk &lt; 8.6; new test file modules/widgetl/widgetl.test, tests widgetl-load-1.1..1.2)
+</li>
+<li><span class="k">Suggested ticket action</span> Confirmed. Tk 8.6+ reads PNG natively, so require img::png only for Tk 8.5, and bump both packages to 0.1.3 (prototype available). Do not use the suggested <code>package require png</code>; it is unrelated. Side finding: widget::validator (module widgetv) keeps references to destroyed entries. Destroying a listsimple and then creating another listsimple/listentry gives an "invalid command name .x.e" background error from <code>StylePropagation</code>, and attaching to a reused path name fails with "Unable to attach, .l.e already in use".
+</li></ul></div></details><details class="t" id="6da48f4579" data-s="6da48f4579 autoscroll assumes packed widget managed by parent autoscroll · bug reproduced (tk 9.1, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>6da48f4579</span><span class="yr">2016</span><span class="ti">autoscroll assumes packed widget managed by parent</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/6da48f4579.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/6da48f4579">Open ticket 6da48f4579</a> · autoscroll · Bug · filed 2016-04-05</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6)</p><ul>
+<li><span class="k">Module</span> autoscroll · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1, 8.6. A scrollbar packed with <code>-in .f</code> (master is not its parent) is hidden once the content fits, and is then never packed again when scrolling is needed (<code>pack info .s</code> → "isn't packed").
+</li>
+<li><span class="k">Cause</span> <code>autoscroll.tcl:widgetCommand</code> saves the pack info of <code>[pack slaves [winfo parent $w]]</code>. That list does not contain <code>$w</code> when it is packed in another master, so the scrollbar is not restored.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/6da48f4579.patch">6da48f4579.patch</a> (1-line fix as suggested in the ticket: <code>[pack slaves [lindex [pack info $w] 1]]</code>, which keeps the package's old Tcl baseline). Adds new modules/autoscroll/autoscroll.test with tests autoscroll-1.0 (grid), autoscroll-1.1 (pack) and autoscroll-1.2 (pack -in, the regression test).
+</li>
+<li><span class="k">Suggested ticket action</span> Confirmed. The suggested fix is correct and is in the attached prototype with tests. Apply it and bump autoscroll to 1.1.1.
+</li></ul></div></details><details class="t" id="4c5222924f" data-s="4c5222924f ipentry::ipentry crash after window is destroyed and recreated ipentry · bug reproduced (tk 9.1, 8.6): &quot;bad operation list &quot;&quot;: must be one or more of array, read, unset, or write&quot;." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>4c5222924f</span><span class="yr">2015</span><span class="ti">ipentry::ipentry crash after window is destroyed and recreated</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/4c5222924f.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6): "bad operation list "": must be one or more of array, read, unset, or write".</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/4c5222924f">Open ticket 4c5222924f</a> · ipentry · Bug · filed 2015-01-23</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6): "bad operation list "": must be one or more of array, read, unset, or write".</p><ul>
+<li><span class="k">Module</span> ipentry · Bug
+</li>
+<li><span class="k">Tested</span> ticket script; also two ipentries sharing one variable, then destroying the first.
+</li>
+<li><span class="k">Cause</span> ipentry.tcl <code>destroyWidget</code> removes whichever trace comes first on the variable, which can be another widget's or the user's trace. It also never unsets <code>::ipentry::textvars($w)</code>. When the widget is recreated, <code>configure -textvariable</code> sees the stale entry and calls <code>trace remove</code> with an empty trace spec. It also looked up the trace on the new variable instead of the old one. The trace re-added in the unset branch used <code>ipentry::traceFired</code> without the leading <code>::</code>.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/4c5222924f.patch">4c5222924f.patch</a> (about 25 code lines plus a new modules/ipentry/ipentry.test; tests ipentry-textvariable-2.1, ipentry-textvariable-2.2). It adds <code>::ipentry::untraceVar</code>, which removes exactly this widget's trace and forgets the variable. It is used by <code>destroyWidget</code> and <code>configure -textvariable</code>, and the trace command prefix is now consistent.
+</li>
+<li><span class="k">Suggested ticket action</span> Fixed: the widget now removes exactly its own trace on destroy or reconfigure and forgets the variable, so the widget can be recreated and other traces on the variable are kept. Close as Fixed after commit.
+</li></ul></div></details><details class="t" id="50309a5936" data-s="50309a5936 cumulatively plotting in a histogram does not work properly - overlaid bars plotchart · bug reproduced (tk 9.1, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>50309a5936</span><span class="yr">2014</span><span class="ti">Cumulatively plotting in a histogram does not work properly - overlaid bars</span><span class="vd">REPRODUCED (Tk 9.1, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/50309a5936">Open ticket 50309a5936</a> · plotchart · Bug · filed 2014-12-11</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6)</p><ul>
+<li><span class="k">Module</span> plotchart · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1 and 8.6, the ticket script. The second red bar of data2 goes from 0 to 3 (1+2) and completely covers the green bar of <code>data</code>.
+</li>
+<li><span class="k">Cause</span> plotpriv.tcl:DrawHistogramCumulative only keeps a running sum within the same series (<code>data_series($w,$series,y)</code>) and draws via DrawHistogramData from <code>ymin</code>. It never stacks on top of other series at the same x.
+</li>
+<li><span class="k">Prototype</span> none (the intended semantics are undecided. The maintainer said in 2024 he will "correct or remove" the method). One possible fix: keep a per-x base <code>scaling($w,histbase,$x)</code> that every plot/plotcumulative updates, and draw the cumulative bar from that base to base+y. That changes the meaning of the method.
+</li>
+<li><span class="k">Suggested ticket action</span> Still present: plotcumulative accumulates within one series (a running sum) instead of stacking on the other series. Decide which semantics are intended (see <a class="h" href="docs.html#a6dd880cf2">a6dd880cf2</a>), then fix or deprecate the method.
+</li></ul></div></details><details class="t" id="ee430592d9" data-s="ee430592d9 barchart data are drawn outside the area if the axis does not start at zero plotchart · bug reproduced (tk 9.1, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>ee430592d9</span><span class="yr">2014</span><span class="ti">Barchart data are drawn outside the area if the axis does not start at zero</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/ee430592d9.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/ee430592d9">Open ticket ee430592d9</a> · plotchart · Bug · filed 2014-12-11</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6)</p><ul>
+<li><span class="k">Module</span> plotchart · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1 and 8.6, the attached barchart_test.tcl (y axis 6..35), plus vertical and horizontal bar charts with axis <code>{6 36 6}</code>: 3 bar corners fall below/left of the plot area in each.
+</li>
+<li><span class="k">Cause</span> plotpriv.tcl:DrawVertBarData / DrawHorizBarData draw each bar from the base (initially 0.0, see plotaxis.tcl:DrawXlabels/DrawYlabels) to base+value without regard to the axis range.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/ee430592d9.patch">ee430592d9.patch</a> (about 35 code lines + test, test Plotchart-6.4). New helper ClipToRange clamps both bar ends to [ymin,ymax] (or [xmin,xmax] for horizontal bars). Stacking and showvalues are unchanged, and bars drawn from the origin when the axis contains it are unchanged. The attached script runs fine.
+</li>
+<li><span class="k">Suggested ticket action</span> Confirmed. Clamping the bar ends to the axis range keeps the bars inside the plot area. A fix is available. (The margin issue mentioned in the ticket is not covered.)
+</li></ul></div></details><details class="t" id="6812273b4d" data-s="6812273b4d plotchart &quot;bindplot&quot; not sensitive when cursor is over data/lines plotchart · bug reproduced (tk 9.1, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>6812273b4d</span><span class="yr">2014</span><span class="ti">Plotchart "bindplot" not sensitive when cursor is over data/lines</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/6812273b4d.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/6812273b4d">Open ticket 6812273b4d</a> · plotchart · Bug · filed 2014-09-05</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6)</p><ul>
+<li><span class="k">Module</span> plotchart · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1 and 8.6, xyplot with a line and symbols plus <code>bindplot &lt;ButtonPress-1&gt;</code>. A click on the data point (5,5) does not call the callback. A click on empty space (2,7) does.
+</li>
+<li><span class="k">Cause</span> plotbind.tcl:BindPlot binds the event to an invisible rectangle and then lowers it below everything (<code>$w lower $scaling($w,eventobj)</code>), so any data, background or gradient item on top receives the event. Raising it instead would shadow bindlast, the legend and balloons.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/6812273b4d.patch">6812273b4d.patch</a> (about 50 code lines + test, test Plotchart-6.3). BindPlot now adds (<code>+</code>) a widget-level binding on the real canvas, once per plot/event, which calls a new BindPlotCmd. BindPlotCmd checks that the point (canvasx/canvasy) is inside the plot area and calls the stored command, so a later bindplot for the same event replaces it. Item bindings (bindlast, legend drag) keep working. Behaviour change: <code>&lt;Enter&gt;</code>/<code>&lt;Leave&gt;</code> now refer to the canvas window, not the plot rectangle.
+</li>
+<li><span class="k">Side finding</span> DrawGradientBackground (plotannot.tcl) no longer draws vertical gradients (<code>top-down</code>/<code>bottom-up</code>) because <code>nmax</code> is negative (<code>$rymin-$rymax</code>), as noted in the 2024 comment. Also <code>methodProc(xyplot,bindcmd)</code> points to BindCmd with an incompatible signature (the canvas-wide BindCmd is inside <code>if {0}</code>). Both are worth separate tickets.
+</li>
+<li><span class="k">Suggested ticket action</span> Confirmed: the event rectangle is lowered below all items, so events over data or background never reach it. A fix that binds to the canvas and filters on the plot area is available. The vertical gradient background is a separate bug (negative <code>nmax</code>).
+</li></ul></div></details><details class="t" id="3567463fff" data-s="3567463fff ctext sends &lt;&lt;modified&gt;&gt; too often ctext · bug reproduced (tk 9.1, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3567463fff</span><span class="yr">2012</span><span class="ti">ctext sends &lt;&lt;Modified&gt;&gt; too often</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/3567463fff.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/3567463fff">Open ticket 3567463fff</a> · ctext · Bug · filed 2012-09-13</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6)</p><ul>
+<li><span class="k">Module</span> ctext · Bug
+</li>
+<li><span class="k">Tested</span> bind <code>&lt;&lt;Modified&gt;&gt;</code> on a ctext. 3 inserts give 3 events (a text widget gives 1). <code>.t edit modified 0</code> gives no event at all, although the flag changes.
+</li>
+<li><span class="k">Cause</span> ctext.tcl <code>ctext::modified</code> always runs <code>event generate $win &lt;&lt;Modified&gt;&gt;</code>. The <code>edit modified &lt;value&gt;</code> branch of <code>ctext::instanceCmd</code> sets <code>ar(modified)</code> directly, so it never sends an event.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/3567463fff.patch">3567463fff.patch</a> (9 code lines plus a new modules/ctext/ctext.test; tests ctext-modified-1.1, ctext-modified-1.2). It sends the event only when the normalised flag changes, and <code>edit modified</code> now goes through <code>ctext::modified</code>.
+</li>
+<li><span class="k">Suggested ticket action</span> Fixed by sending &lt;&lt;Modified&gt;&gt; only when the modified flag actually changes, like the text widget. <code>$w edit modified 0/1</code> now also sends the event. Close as Fixed after commit.
+</li></ul></div></details><details class="t" id="3470437fff" data-s="3470437fff padding on and mask rasters incorrect. ico · bug reproduced (tk 9.1, 8.6). writing an icon with transparent pixels and reading it back gives a corrupted mask for widths 8, 20 and 40. widths 16, 24, 32, 48, 64 and 256 pad correctly only by coincidence." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3470437fff</span><span class="yr">2012</span><span class="ti">Padding on and mask rasters incorrect.</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/3470437fff.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6). Writing an icon with transparent pixels and reading it back gives a corrupted mask for widths 8, 20 and 40. Widths 16, 24…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/3470437fff">Open ticket 3470437fff</a> · ico · Bug · filed 2012-01-06</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6). Writing an icon with transparent pixels and reading it back gives a corrupted mask for widths 8, 20 and 40. Widths 16, 24, 32, 48, 64 and 256 pad correctly only by coincidence.</p><ul>
+<li><span class="k">Module</span> ico · Bug
+</li>
+<li><span class="k">Tested</span> <code>writeIcon</code> 24 bpp with transparent pixels, then <code>getIcon -format colors</code>, for widths 8/16/20/24/40/48, via ICO files and the ICODATA reader.
+</li>
+<li><span class="k">Cause</span> ico.tcl <code>getAndMaskFromColors</code> pads each row with <code>w % 32</code> zero bits (special case 8 for 24) instead of <code>(32 - w % 32) % 32</code>. The readers have the same wrong row size: <code>readDIB</code> and <code>readDIBFromData</code>, and the corresponding lines in ico0.tcl.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/3470437fff.patch">3470437fff.patch</a> (6 code lines in ico.tcl and ico0.tcl plus a new modules/ico/ico.test; tests ico-andmask-1.&lt;size&gt;, ico-andmask-2.&lt;size&gt;). It uses the formula from the ticket for writing and <code>((w+31)/32)*4*h</code> bytes for reading. Results for the standard sizes are unchanged.
+</li>
+<li><span class="k">Side finding</span> <code>getIcon</code> and <code>getIconByName</code> with <code>-type ICODATA</code> always fail with "couldn't open …", because they run <code>file exists</code> on the data. <code>writeIconICODATA</code> is broken too (<code>@{$readpos}</code>).
+</li>
+<li><span class="k">Suggested ticket action</span> Confirmed. The AND mask rows were padded to a wrong length, both when writing and when reading, for widths that are not 16, 24, 32, 48 or a multiple of 32. Fixed in writer and reader. Close as Fixed after commit.
+</li></ul></div></details><details class="t" id="2962077fff" data-s="2962077fff error if an array element is used as -textvariable ipentry · bug reproduced (tk 9.1, 8.6): `set foo(bar) 1.1.1.2` raises &quot;can&#x27;t read &quot;var&quot;: variable is array&quot;. the attached patch&#x27;s code hunks still apply (with an offset). its version-bump hunks are obsolete (ipentry is 0.3.2 now)." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2962077fff</span><span class="yr">2010</span><span class="ti">error if an array element is used as -textvariable</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/2962077fff.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6): <code>set foo(bar) 1.1.1.2</code> raises "can't read "var": variable is array". The attached patch's code hunks still apply (with an…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/2962077fff">Open ticket 2962077fff</a> · ipentry · Bug · filed 2010-03-02</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6): <code>set foo(bar) 1.1.1.2</code> raises "can't read "var": variable is array". The attached patch's code hunks still apply (with an offset). Its version-bump hunks are obsolete (ipentry is 0.3.2 now).</p><ul>
+<li><span class="k">Module</span> ipentry · Bug
+</li>
+<li><span class="k">Tested</span> ticket script with ipentry and ipentry6.
+</li>
+<li><span class="k">Cause</span> ipentry.tcl <code>traceFired</code>/<code>traceFired6</code> run <code>upvar #0 $name var</code> on the trace's name1 and ignore name2. The attached patch adds <code>($key)</code>, but name1 is still relative to the frame that accessed the variable.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/2962077fff.patch">2962077fff.patch</a> (4 code lines plus a new modules/ipentry/ipentry.test; tests ipentry-textvariable-1.1, ipentry-textvariable-1.2). The trace callbacks take the variable name from <code>::ipentry::textvars($w)</code> instead of the trace arguments. This is more robust than the attachment.
+</li>
+<li><span class="k">Suggested ticket action</span> Fixed by using the stored textvariable name in the trace callbacks instead of the name passed by the trace, which is relative to the accessing frame. Close as Fixed after commit.
+</li></ul></div></details><details class="t" id="2683544fff" data-s="2683544fff clipped x-labels due to font size plotchart · bug reproduced (tk 9.1, 8.6), partially. the clipping was fixed in [08fd0b98c8] 2009-05-10 (&quot;solved issue 2683544&quot;), but the follow-up report still holds: the x-axis text overlaps the tick labels, and at large fonts slightly exceeds the canvas." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2683544fff</span><span class="yr">2009</span><span class="ti">clipped x-labels due to font size</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/2683544fff.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6), partially. The clipping was fixed in <a class="h" href="https://core.tcl-lang.org/tklib/info/08fd0b98c8">08fd0b98c8</a> 2009-05-10 ("Solved issue 2683544"), but the follow-up report still hol…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/2683544fff">Open ticket 2683544fff</a> · plotchart · Bug · filed 2009-03-11</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6), partially. The clipping was fixed in <a class="h" href="https://core.tcl-lang.org/tklib/info/08fd0b98c8">08fd0b98c8</a> 2009-05-10 ("Solved issue 2683544"), but the follow-up report still holds: the x-axis text overlaps the tick labels, and at large fonts slightly exceeds the canvas.</p><ul>
+<li><span class="k">Module</span> plotchart · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1 and 8.6. With <code>font configure TkDefaultFont -size 11 -weight bold</code> the tick labels span y 254..283 and the xtext 282..304 in a 302 px canvas. With a 30 px bottomaxis font the overlap is about 20 px.
+</li>
+<li><span class="k">Cause</span> plotaxis.tcl:DrawXtext places the text at <code>pymax + config($w,font,char_height) + 4</code>. That value is the default-font height cached when the package loaded, not the bottomaxis font, and the tick length and label offset are ignored. plotpriv.tcl:MarginsRectangle reserves <code>2*char_height+2</code> using the canvas default font, again ignoring the axis font and the tick offset.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/2683544fff.patch">2683544fff.patch</a> (about 15 code lines + test, test Plotchart-6.5). DrawXtext puts the text at pymax + tick offset + linespace of the bottomaxis font. MarginsRectangle reserves <code>max(char_height, linespace)*2 + offtick</code>. The full plotchart suite still passes on 9.1 and 8.6.
+</li>
+<li><span class="k">Suggested ticket action</span> Clipping was fixed in <a class="h" href="https://core.tcl-lang.org/tklib/info/08fd0b98c8">08fd0b98c8</a>, but the x-axis title still overlaps the tick labels when the axis font is larger than the default font, because its position uses a font height cached when the package loads. A fix that uses the bottomaxis font metrics and the tick offset is available.
+</li></ul></div></details><details class="t" id="2346118fff" data-s="2346118fff canvas::sqmap limitations tklib · bug reproduced (tk 9.1, 8.6)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2346118fff</span><span class="yr">2008</span><span class="ti">canvas::sqmap limitations</span><span class="vd">REPRODUCED (Tk 9.1, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/2346118fff">Open ticket 2346118fff</a> · tklib · Bug · filed 2008-11-25</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6)</p><ul>
+<li><span class="k">Module</span> canvas (canvas::sqmap) · Bug
+</li>
+<li><span class="k">Tested</span> Tk 9.1.1, 8.6.18. Made an sqmap with one image cell and one user rectangle. <code>find all</code> / <code>find overlapping</code> return the internal image item too, and <code>gettags</code> on it shows <code>canvas::sqmap::cells</code>.
+</li>
+<li><span class="k">Cause</span> canvas_sqmap.tcl delegates every canvas method except lower/raise/scan/xview/yview straight to the hull. The source comment ("The last 5% needing 90% of the effort. *<strong> Defered </strong>*") says this was left on purpose.
+</li>
+<li><span class="k">Prototype</span> none (doing it properly means wrapping every item and tag method: find, gettags, addtag, dtag, delete all, itemconfigure all, bbox, select, …. That is an API-wide change.)
+</li>
+<li><span class="k">Suggested ticket action</span> Still true in trunk: internal cell items show up in <code>find</code>/<code>gettags</code> and can be hit by <code>delete all</code>. This is a known design limitation, documented in the source. Keep open as an RFE, or close as "Won't Fix" and document the limitation in canvas_sqmap.man.
+</li></ul></div></details><details class="t" id="1346295fff" data-s="1346295fff plotchart files in release have wrong unix permissions plotchart · bug reproduced (repository state). in the trunk baseline manifest 23 files under modules/plotchart still have the x bit: news, pkgindex.tcl, plotchart.man, the *.test files and most *.tcl files. fossil tarballs keep it. other modules have the same problem: controlwidget (6), ctext (6), khim (5), datefield (2), diagrams changelog and pkgindex.tcl, notifywindow/pkgindex.tcl, swaplist/swaplist.tcl." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1346295fff</span><span class="yr">2005</span><span class="ti">plotchart files in release have wrong unix permissions</span><span class="vd">REPRODUCED (repository state). In the trunk baseline manifest 23 files under modules/plotchart still have the x bit: NEWS, pkgIndex.tcl, plotchart.…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/1346295fff">Open ticket 1346295fff</a> · plotchart · Bug · filed 2005-11-02</p><div class="lab">Full verdict</div><p>REPRODUCED (repository state). In the trunk baseline manifest 23 files under modules/plotchart still have the x bit: NEWS, pkgIndex.tcl, plotchart.man, the *.test files and most *.tcl files. Fossil tarballs keep it. Other modules have the same problem: controlwidget (6), ctext (6), khim (5), datefield (2), diagrams ChangeLog and pkgIndex.tcl, notifywindow/pkgIndex.tcl, swaplist/swaplist.tcl.</p><ul>
+<li><span class="k">Module</span> plotchart · Bug
+</li>
+<li><span class="k">Tested</span> <code>fossil artifact</code> of the trunk baseline manifest (F-cards with "x").
+</li>
+<li><span class="k">Cause</span> files were committed with an executable mode.
+</li>
+<li><span class="k">Prototype</span> none (a mode change: <code>chmod -x</code> the files, then <code>fossil commit</code>; a diff cannot express it). Keep x only on real scripts such as modules/diagrams/tools/make_figures and show_figures.
+</li>
+<li><span class="k">Suggested ticket action</span> Still true in trunk. Clear the executable bit on all non-script files under modules/ (plotchart and the others listed) and commit. Then close as Fixed.
+</li></ul></div></details><details class="t" id="1167772fff" data-s="1167772fff code/block expansion tklib: ctext · patch reproduced (tk 9.1, 8.6). the bug reported in the mail still exists. the mail&#x27;s code (24 kb) was never attached, so there is no patch to apply." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1167772fff</span><span class="yr">2005</span><span class="ti">code/block expansion</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/1167772fff.patch">patch</a><span class="vd">REPRODUCED (Tk 9.1, 8.6). The bug reported in the mail still exists. The mail's code (24 KB) was never attached, so there is no patch to apply.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/1167772fff">Open ticket 1167772fff</a> · tklib: ctext · Patch · filed 2005-03-21</p><div class="lab">Full verdict</div><p>REPRODUCED (Tk 9.1, 8.6). The bug reported in the mail still exists. The mail's code (24 KB) was never attached, so there is no patch to apply.</p><ul>
+<li><span class="k">Module</span> ctext · Patch
+</li>
+<li><span class="k">Tested</span> Tk 9.1.1, 8.6.18. Inserted "hello world" with tag <code>mytag</code>, then <code>insert 1.5 X</code> or <code>delete 1.5</code>: all <code>mytag</code> ranges are removed.
+</li>
+<li><span class="k">Cause</span> ctext.tcl <code>instanceCmd</code> insert/delete removes every tag except <code>_cComment</code> in the affected range, so user tags are lost. The "code expansion" part is only the example in the mail, not a feature request.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/1167772fff.patch">1167772fff.patch</a> (about 21 code lines: the new <code>ctext::removeHighlightTags</code> removes only highlight-class tags; <code>deleteHighlightClass</code>/<code>clearHighlightClasses</code> now delete their tags; new modules/ctext/ctext.test, tests ctext-usertags-1.1..1.4). NOTE: the batch-01 prototype <a class="h" href="#3567463fff">3567463fff</a> also creates modules/ctext/ctext.test, so merge the two files.
+</li>
+<li><span class="k">Suggested ticket action</span> ctext still strips all user tags (except <code>_cComment</code>) around every insert/delete, so it cannot be used with application tags. Fix: remove only the tags of the highlight classes (prototype available). The original code from the mail was never attached.
+</li></ul></div></details></section>
+<section class="grp" data-cat="patch"><h2><span class="dot c-patch"></span>Patch still applies <span class="cnt">6</span></h2><details class="t" id="8bbf1faad0" data-s="8bbf1faad0 typo fix for license text in several tklib files controlwidget · patch patch-applies. all four files still have &quot;(gpl) ir the tcl bsd derived license&quot;." data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>8bbf1faad0</span><span class="yr">2017</span><span class="ti">Typo fix for license text in several tklib files</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/8bbf1faad0.patch">patch</a><span class="vd">PATCH-APPLIES. All four files still have "(GPL) ir the Tcl BSD derived license".</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/8bbf1faad0">Open ticket 8bbf1faad0</a> · controlwidget · Patch · filed 2017-07-12</p><div class="lab">Full verdict</div><p>PATCH-APPLIES. All four files still have "(GPL) ir the Tcl BSD derived license".</p><ul>
+<li><span class="k">Module</span> controlwidget · Patch
+</li>
+<li><span class="k">Tested</span> applied to trunk.
+</li>
+<li><span class="k">Cause</span> typo in header comments.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/8bbf1faad0.patch">8bbf1faad0.patch</a> (4 lines, the submitted patch). No test: the change is to comments only.
+</li>
+<li><span class="k">Suggested ticket action</span> Trivial and correct, apply and close as Fixed.
+</li></ul></div></details><details class="t" id="2a98e11189" data-s="2a98e11189 russian abbreviated names of days of the week in the calendar widget widget · patch patch-applies (trunk still has the lowercase three-letter forms &quot;вос пон вто …&quot;; the standard abbreviations are &quot;вс пн вт ср чт пт сб&quot;)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2a98e11189</span><span class="yr">2017</span><span class="ti">Russian abbreviated names of days of the week in the calendar widget</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/2a98e11189.patch">patch</a><span class="vd">PATCH-APPLIES (trunk still has the lowercase three-letter forms "вос пон вто …"; the standard abbreviations are "Вс Пн Вт Ср Чт Пт Сб")</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/2a98e11189">Open ticket 2a98e11189</a> · widget · Patch · filed 2017-01-20</p><div class="lab">Full verdict</div><p>PATCH-APPLIES (trunk still has the lowercase three-letter forms "вос пон вто …"; the standard abbreviations are "Вс Пн Вт Ср Чт Пт Сб")</p><ul>
+<li><span class="k">Module</span> widget (widget::calendar) · Patch
+</li>
+<li><span class="k">Tested</span> Tk 9.1.1, 8.6.18. Checked the weekday header items of <code>widget::calendar -language ru</code>.
+</li>
+<li><span class="k">Cause</span> calendar.tcl <code>LANGS(weekdays,ru)</code>
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/2a98e11189.patch">2a98e11189.patch</a> (2 code lines, same as the ticket's patch; new test file modules/widget/calendar.test, test calendar-language-1.1)
+</li>
+<li><span class="k">Suggested ticket action</span> Correct, and still needed. Apply it (prototype with test available) and bump widget::calendar to 1.0.3. Side finding: the <code>weekdays,gr</code> and <code>weekdays,he</code> entries in calendar.tcl are mojibake (double-encoded UTF-8 with "?"), so they need a separate fix.
+</li></ul></div></details><details class="t" id="42622db198" data-s="42622db198 patch to the swaplist default &lt;double-button-1&gt; binding that causes an error with -embed option swaplist · patch patch-applies (bug reproduced (tk 9.1, 8.6): double-click in an embedded swaplist raises `invalid command name &quot;.t.lr.right&quot;`/`&quot;.t.lr.left&quot;`, and nothing moves)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>42622db198</span><span class="yr">2015</span><span class="ti">Patch to the swaplist default &lt;Double-Button-1&gt; binding that causes an error with -embed option</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/42622db198.patch">patch</a><span class="vd">PATCH-APPLIES (bug REPRODUCED (Tk 9.1, 8.6): double-click in an embedded swaplist raises <code>invalid command name ".t.lr.right"</code>/<code>".t.lr.left"</code>, and n…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/42622db198">Open ticket 42622db198</a> · swaplist · Patch · filed 2015-09-10</p><div class="lab">Full verdict</div><p>PATCH-APPLIES (bug REPRODUCED (Tk 9.1, 8.6): double-click in an embedded swaplist raises <code>invalid command name ".t.lr.right"</code>/<code>".t.lr.left"</code>, and nothing moves)</p><ul>
+<li><span class="k">Module</span> swaplist · Patch
+</li>
+<li><span class="k">Tested</span> Tk 9.1 and 8.6, swaplist with <code>-embed</code> directly in a toplevel and inside a frame. Synthesized double clicks on both listboxes.
+</li>
+<li><span class="k">Cause</span> swaplist.tcl:Double derives the widget from <code>[winfo toplevel $w]</code>, which is only correct for the dialog form. The attachment itself (swaplist.tcl.patch) is not in the repository (SF migration), but the full diff is in the ticket description.
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/42622db198.patch">42622db198.patch</a> (about 10 code lines, the ticket's change, plus a new modules/swaplist/swaplist.test with tests swaplist-1.1 and swaplist-1.2. The tests install an <code>interp bgerror</code> handler so a regression doesn't hang on the error dialog). Remaining issue: with <code>-embed</code> the <code>&lt;Key-Up&gt;/&lt;Key-Down&gt;</code> bindings on <code>$w</code> (a frame) never fire, because the frame is not in the listboxes' bindtags.
+</li>
+<li><span class="k">Suggested ticket action</span> Confirmed. Passing the swaplist path and side to Double, as the ticket proposes, fixes double-click for embedded swaplists. Apply with the new test and close as Fixed.
+</li></ul></div></details><details class="t" id="4c28633e3a" data-s="4c28633e3a missing arg for ::plotchart::drawlogyaxis in plotaxis.tcl plotchart · patch patch-applies (bug reproduced (tk 9.1, 8.6): `yconfig` on xlogyplot/logxlogyplot whose y axis was given without a step, e.g. `{1 1000}`, fails with `wrong # args: should be &quot;drawlogyaxis w ymin ymax ydelt&quot;`)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>4c28633e3a</span><span class="yr">2015</span><span class="ti">Missing arg for ::Plotchart::DrawLogYaxis in plotaxis.tcl</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/4c28633e3a.patch">patch</a><span class="vd">PATCH-APPLIES (bug REPRODUCED (Tk 9.1, 8.6): <code>yconfig</code> on xlogyplot/logxlogyplot whose y axis was given without a step, e.g. <code>{1 1000}</code>, fails with…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/4c28633e3a">Open ticket 4c28633e3a</a> · plotchart · Patch · filed 2015-03-18</p><div class="lab">Full verdict</div><p>PATCH-APPLIES (bug REPRODUCED (Tk 9.1, 8.6): <code>yconfig</code> on xlogyplot/logxlogyplot whose y axis was given without a step, e.g. <code>{1 1000}</code>, fails with <code>wrong # args: should be "DrawLogYaxis w ymin ymax ydelt"</code>)</p><ul>
+<li><span class="k">Module</span> plotchart · Patch
+</li>
+<li><span class="k">Tested</span> Tk 9.1 and 8.6, createXLogYPlot and createLogXLogYPlot with y scale <code>{1 1000}</code>, then <code>yconfig -format %.2f</code>. With a 3-element scale it works, which is why plotdemos11 is needed to trigger it.
+</li>
+<li><span class="k">Cause</span> plotaxis.tcl:AxisConfig calls <code>$drawmethod $w $ymin $ymax {} -ylabels $ydelt</code> when ydelt is not a single number, but <code>DrawLogYaxis</code> has no <code>args</code> (unlike <code>DrawLogXaxis</code>).
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/4c28633e3a.patch">4c28633e3a.patch</a> (2 code lines + test, test Plotchart-6.2). This is the ticket's proposal: add <code>args</code> (ignored) to DrawLogYaxis.
+</li>
+<li><span class="k">Suggested ticket action</span> Confirmed with a log-Y axis specified without a step. Adding <code>args</code> to DrawLogYaxis, as already done for DrawLogXaxis, fixes it. Apply and close as Fixed.
+</li></ul></div></details><details class="t" id="38d95aee72" data-s="38d95aee72 syntax error prevents xconfig to work for log plots ( plotchart ) plotchart · patch patch-applies (bug reproduced (tk 9.1, 8.6): `$p xconfig ...` on an x-logy plot gives `invalid command name &quot;xconfigxlogy&quot;`)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>38d95aee72</span><span class="yr">2015</span><span class="ti">Syntax error prevents xconfig to work for log plots ( plotchart )</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/38d95aee72.patch">patch</a><span class="vd">PATCH-APPLIES (bug REPRODUCED (Tk 9.1, 8.6): <code>$p xconfig ...</code> on an X-logY plot gives <code>invalid command name "XConfigXlogY"</code>)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/38d95aee72">Open ticket 38d95aee72</a> · plotchart · Patch · filed 2015-03-15</p><div class="lab">Full verdict</div><p>PATCH-APPLIES (bug REPRODUCED (Tk 9.1, 8.6): <code>$p xconfig ...</code> on an X-logY plot gives <code>invalid command name "XConfigXlogY"</code>)</p><ul>
+<li><span class="k">Module</span> plotchart · Patch
+</li>
+<li><span class="k">Tested</span> Tk 9.1 and 8.6, createXLogYPlot + <code>xconfig -format %.2f</code>
+</li>
+<li><span class="k">Cause</span> plotchart.tcl:122 <code>set methodProc(xlogyplot,xconfig) XConfigXlogY</code> (the proc is <code>XConfigXLogY</code> in plotaxis.tcl)
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/38d95aee72.patch">38d95aee72.patch</a> (1 code line + test, test Plotchart-6.1). This is the ticket's proposed change.
+</li>
+<li><span class="k">Suggested ticket action</span> Confirmed: the method table refers to <code>XConfigXlogY</code>, but the proc is <code>XConfigXLogY</code>. Apply the one-character fix (with a test) and close as Fixed.
+</li></ul></div></details><details class="t" id="2829049fff" data-s="2829049fff &quot;failure&quot; or missing feature in &quot;getstring&quot; tklib · bug patch-applies (the code is unchanged since 2005; the attached patch still applies)" data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2829049fff</span><span class="yr">2009</span><span class="ti">"failure" or missing feature in "getstring"</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/2829049fff.patch">patch</a><span class="vd">PATCH-APPLIES (the code is unchanged since 2005; the attached patch still applies)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tklib/tktview/2829049fff">Open ticket 2829049fff</a> · tklib · Bug · filed 2009-07-29</p><div class="lab">Full verdict</div><p>PATCH-APPLIES (the code is unchanged since 2005; the attached patch still applies)</p><ul>
+<li><span class="k">Module</span> getstring · Bug (patch attached)
+</li>
+<li><span class="k">Tested</span> Tk 9.1.1, 8.6.18. Without the change, an existing value in the variable is ignored: the entry starts empty and the value is overwritten.
+</li>
+<li><span class="k">Cause</span> tk_getString.tcl never reads the variable before building the dialog. Also, <code>wm withdraw</code> comes after the widgets are built; this is harmless, as the 2009 comment says. The attached patch alone leaves OK disabled when the initial value is non-empty (with <code>-allowempty 0</code>).
+</li>
+<li><span class="k">Prototype</span> <a href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tklib-triage/prototypes/2829049fff.patch">2829049fff.patch</a> (about 9 code lines: the attached patch, plus enabling OK for a prefilled value and a man page sentence; new test file modules/getstring/getstring.test, tests getstring-initial-1.1..1.3)
+</li>
+<li><span class="k">Suggested ticket action</span> The patch still applies. Prefilling the entry from the variable is a useful feature. Apply it, together with enabling the OK button when the prefilled value is not empty, and document it in tk_getString.man (prototype available).
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch and of the Windows VM runs.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

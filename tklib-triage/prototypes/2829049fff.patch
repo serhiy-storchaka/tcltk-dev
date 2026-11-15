@@ -1,0 +1,126 @@
+ADDED    modules/getstring/getstring.test
+Index: modules/getstring/getstring.test
+==================================================================
+--- /dev/null
++++ modules/getstring/getstring.test
+@@ -0,0 +1,64 @@
++# -*- tcl -*-
++# Test cases of the getstring package
++
++if {![package vsatisfies [package provide Tcl] 8.5-]} {
++    puts "    Aborting the tests found in \"[file tail [info script]]\"."
++    puts "    Requiring Tcl 8.5, have [package present Tcl]"
++    return
++}
++
++if {[catch { package require Tk 8.5- } msg]} {
++    puts "    Aborting the tests found in \"[file tail [info script]]\"."
++    puts "    Requiring Tk 8.5, $msg"
++    return
++}
++
++package require tcltest 2.2
++namespace import ::tcltest::*
++
++source [file join [file dirname [info script]] tk_getString.tcl]
++
++# -------------------------------------------------------------------------
++
++test getstring-initial-1.1 {existing variable value is the initial entry contents} -setup {
++    set ::gsvalue "initial text"
++    set ::gsseen {}
++} -body {
++    after 50 {
++	set ::gsseen [list [.gs.entry get] [.gs.ok cget -state]]
++	set ::getstring::result 1
++    }
++    list [::getstring::tk_getString .gs ::gsvalue "Prompt:"] $::gsvalue $::gsseen
++} -cleanup {
++    unset -nocomplain ::gsvalue ::gsseen
++} -result {1 {initial text} {{initial text} normal}}
++
++test getstring-initial-1.2 {nonexistent variable gives an empty entry} -setup {
++    unset -nocomplain ::gsvalue
++    set ::gsseen {}
++} -body {
++    after 50 {
++	set ::gsseen [list [.gs.entry get] [.gs.ok cget -state]]
++	set ::getstring::result 0
++    }
++    list [::getstring::tk_getString .gs ::gsvalue "Prompt:"] $::gsvalue $::gsseen
++} -cleanup {
++    unset -nocomplain ::gsvalue ::gsseen
++} -result {0 {} {{} disabled}}
++
++test getstring-initial-1.3 {edited initial value is returned} -setup {
++    set ::gsvalue "abc"
++} -body {
++    after 50 {
++	.gs.entry insert end def
++	set ::getstring::result 1
++    }
++    list [::getstring::tk_getString .gs ::gsvalue "Prompt:"] $::gsvalue
++} -cleanup {
++    unset -nocomplain ::gsvalue
++} -result {1 abcdef}
++
++# -------------------------------------------------------------------------
++
++cleanupTests
++return
+
+Index: modules/getstring/tk_getString.man
+==================================================================
+--- modules/getstring/tk_getString.man
++++ modules/getstring/tk_getString.man
+@@ -19,11 +19,12 @@
+ [call [cmd ::getstring::tk_getString] [arg pathName] [arg variable] [arg text]\
+ [opt options]]
+ 
+ Creates a dialog which prompts the user with [arg text] to input a text string.
+ The contents of the entry are put in the [arg variable] upon closure of the
+-dialog. The command returns a boolean indicating if the user pressed OK or
++dialog. If [arg variable] already exists, its value is used as the initial
++contents of the entry. The command returns a boolean indicating if the user pressed OK or
+ not. If -geometry is not specified, the dialog is centered in its parent
+ toplevel unless its parent is . in which case the dialog is centered in the
+ screen.
+ 
+ Options:
+
+Index: modules/getstring/tk_getString.tcl
+==================================================================
+--- modules/getstring/tk_getString.tcl
++++ modules/getstring/tk_getString.tcl
+@@ -39,10 +39,11 @@
+     catch {destroy $w}
+     set focus [focus]
+     set grab [grab current .]
+ 
+     toplevel $w -relief raised -class TkSDialog
++    wm withdraw $w
+     wm title $w $options(-title)
+     wm iconname $w $options(-title)
+     wm protocol $w WM_DELETE_WINDOW {set ::getstring::result 0}
+     wm transient $w [winfo toplevel [winfo parent $w]]
+     wm resizable $w 1 0
+@@ -63,12 +64,17 @@
+     bind $w <Destroy> {set ::getstring::result 0}
+     if {!$options(-allowempty)} {
+         bind $w.entry <KeyPress> [list after idle [list ::getstring::getStringEnable $w]]
+         $w.ok configure -state disabled
+     }
++    if {[info exists result]} {
++        $w.entry insert end $result
++        if {!$options(-allowempty)} {
++            getStringEnable $w
++        }
++    }
+ 
+-    wm withdraw $w
+     update idletasks
+     focus -force $w.entry
+     if {[info exists options(-geometry)]} {
+         wm geometry $w $options(-geometry)
+     } elseif {[winfo parent $w] == "."} {
+

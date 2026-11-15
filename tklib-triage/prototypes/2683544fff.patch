@@ -1,0 +1,82 @@
+Index: modules/plotchart/plotaxis.tcl
+==================================================================
+--- modules/plotchart/plotaxis.tcl
++++ modules/plotchart/plotaxis.tcl
+@@ -831,12 +831,18 @@
+     variable config
+ 
+     set textcolor  $config($w,bottomaxis,textcolor)
+     set textfont   $config($w,bottomaxis,font)
+ 
++    #
++    # Put the text below the tick labels
++    #
++    set ticklength  $config($w,bottomaxis,ticklength)
++    set offtick     [expr {($ticklength > 0)? $ticklength+$config($w,leftaxis,labeloffset) : $config($w,leftaxis,labeloffset)}]
++
+     set xt [expr {($scaling($w,pxmin)+$scaling($w,pxmax))/2}]
+-    set yt [expr {$scaling($w,pymax)+$config($w,font,char_height)+4}]
++    set yt [expr {$scaling($w,pymax)+$offtick+[font metrics $textfont -linespace]}]
+ 
+     $w delete "xtext && $w"
+     if {$config($w,bottomaxis,render) eq "simple"} {
+         $w create text $xt $yt -text [lindex $args 0] -fill $textcolor -anchor n -font $textfont -tags [list xtext $w]
+     } elseif {$config($w,bottomaxis,render) eq "text"} {
+
+Index: modules/plotchart/plotchart.test
+==================================================================
+--- modules/plotchart/plotchart.test
++++ modules/plotchart/plotchart.test
+@@ -777,8 +777,27 @@
+ 
+     #set res [checkCanvasItems .c {data xaxis yaxis}]
+     destroy .c
+     set res
+ } -result 1 ;# {}
++
++test Plotchart-6.5 {x-axis text does not overlap the tick labels for a large font} -constraints tk -setup {
++    canvas .c -width 400 -height 300 -highlightthickness 0 -borderwidth 0
++    pack .c
++    font create PlotchartTestFont -family Helvetica -size -30
++    set oldfont [::Plotchart::plotconfig xyplot bottomaxis font]
++    ::Plotchart::plotconfig xyplot bottomaxis font PlotchartTestFont
++} -body {
++    set p [::Plotchart::createXYPlot .c {0 10 2} {0 10 2}]
++    $p xtext "X label"
++    set labels [.c bbox xaxis]
++    set text   [.c bbox xtext]
++    list [expr {[lindex $text 1] >= [lindex $labels 3] - 1}] \
++         [expr {[lindex $text 3] <= [winfo reqheight .c] + 1}]
++} -cleanup {
++    ::Plotchart::plotconfig xyplot bottomaxis font $oldfont
++    destroy .c
++    font delete PlotchartTestFont
++} -result {1 1}
+ 
+ # -------------------------------------------------------------------------
+ ::tcltest::cleanupTests
+
+Index: modules/plotchart/plotpriv.tcl
+==================================================================
+--- modules/plotchart/plotpriv.tcl
++++ modules/plotchart/plotpriv.tcl
+@@ -261,11 +261,17 @@
+     }
+     if { $config($w,rightaxis,usevsubtext) } {
+         set char_height [font metrics $config($w,rightaxis,vsubtextfont) -linespace]
+         set margin_right [expr {$margin_right + $char_height + 4}]
+     }
+-    set margin_bottom [expr {$char_height * 2 + 2}]
++    #
++    # Room for the tick labels and the text below the x-axis
++    #
++    set ticklength  $config($w,bottomaxis,ticklength)
++    set offtick     [expr {($ticklength > 0)? $ticklength+$config($w,leftaxis,labeloffset) : $config($w,leftaxis,labeloffset)}]
++    set linespace   [font metrics $config($w,bottomaxis,font) -linespace]
++    set margin_bottom [expr {max($char_height, $linespace) * 2 + $offtick}]
+     if { $margin_bottom < $config($w,margin,bottom) } {
+         set margin_bottom $config($w,margin,bottom)
+     }
+     if { $config($w,bottomaxis,usesubtext) } {
+         set char_height [font metrics $config($w,bottomaxis,subtextfont) -linespace]
+
