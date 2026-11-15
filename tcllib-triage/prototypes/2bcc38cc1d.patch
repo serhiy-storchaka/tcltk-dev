@@ -1,0 +1,51 @@
+Index: modules/yaml/yaml.tcl
+==================================================================
+--- modules/yaml/yaml.tcl
++++ modules/yaml/yaml.tcl
+@@ -1179,11 +1179,11 @@
+     }
+     set exploded [split $value "\n"]
+ 
+     set value [string trimright $value]
+     foreach {line} $exploded {
+-        set newValue "$newValue\n$offset[string trim $line]"
++        set newValue "$newValue\n$offset[string trimright $line]"
+     }
+     return $newValue
+ }
+ 
+ # Folds a string of text, if necessary
+
+Index: modules/yaml/yaml.test
+==================================================================
+--- modules/yaml/yaml.test
++++ modules/yaml/yaml.test
+@@ -775,10 +775,27 @@
+ test yaml-21.2 "explicit_tags float" -body {
+     set y {!!float 123=0}
+     yaml::yaml2dict $y
+ } -returnCodes error -result {expected floating-point number but got "123=0"}
+ 
++
++test yaml-35.1 "literal block keeps relative indentation, ticket 2bcc38cc1d" -body {
++    yaml::dict2yaml [dict create code "proc p {} {\n    if {1} {\n        x\n    }\n}\n" k z]
++} -result {---
++code: |
++  proc p {} {
++      if {1} {
++          x
++      }
++  }
++k: z
++}
++
++test yaml-35.2 "literal block indentation roundtrip, ticket 2bcc38cc1d" -body {
++    set d [dict create code "a\n  b\n    c\n" k z]
++    expr {[yaml::yaml2dict [yaml::dict2yaml $d]] eq $d}
++} -result 1
+ 
+ # ... Tests of addStrings ...
+ #     (Requires introspection of parser state)
+ 
+ 
+

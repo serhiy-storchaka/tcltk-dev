@@ -1,0 +1,64 @@
+Index: modules/ooutil/ooutil.tcl
+==================================================================
+--- modules/ooutil/ooutil.tcl
++++ modules/ooutil/ooutil.tcl
+@@ -100,18 +100,24 @@
+         if {[string match *.Delegate $name]} {
+             return [next $name {*}$args]
+         }
+         set delegate [oo::class create $name.Delegate]
+         set cls [next $name {*}$args]
+-        set superdelegates [list $delegate]
++        set superdelegates {}
+         foreach c [info class superclass $cls] {
+             set d $c.Delegate
+             if {[info object isa object $d] && [info object isa class $d]} {
+                 lappend superdelegates $d
+             }
+         }
+-        oo::objdefine $cls mixin {*}$superdelegates
++        # Let the delegate inherit from the delegates of the superclasses,
++        # so class methods are visible in all descendants, not only in
++        # direct subclasses.
++        if {[llength $superdelegates]} {
++            oo::define $delegate superclass {*}$superdelegates
++        }
++        oo::objdefine $cls mixin $delegate
+         return $cls
+     }
+ }
+ 
+ oo::define oo::class self mixin oo::class.Delegate
+
+Index: modules/ooutil/ooutil.test
+==================================================================
+--- modules/ooutil/ooutil.test
++++ modules/ooutil/ooutil.test
+@@ -73,10 +73,26 @@
+ } -body {
+     testns::Table find foo bar
+ } -cleanup {
+     namespace delete testns
+ } -output "::testns::Table called with arguments: foo bar\n"
++
++test ooutil-ticket-f990aa37bc {classmethod inherited by all descendants} -setup {
++    oo::class create MyClass {
++        classmethod clm {} { return "Hello [self]" }
++    }
++    oo::class create MySubclass {
++        superclass MyClass
++    }
++    oo::class create MySubSubclass {
++        superclass MySubclass
++    }
++} -body {
++    list [MySubclass clm] [MySubSubclass clm]
++} -cleanup {
++    MyClass destroy
++} -result {{Hello ::MySubclass} {Hello ::MySubSubclass}}
+ 
+ testsuiteCleanup
+ 
+ # Local variables:
+ # mode: tcl
+

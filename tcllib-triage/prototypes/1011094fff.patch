@@ -1,0 +1,75 @@
+Index: modules/counter/counter.man
+==================================================================
+--- modules/counter/counter.man
++++ modules/counter/counter.man
+@@ -18,11 +18,14 @@
+ 
+ [list_begin definitions]
+ 
+ [call [cmd ::counter::init] [arg {tag args}]]
+ 
+-This defines a counter with the name [arg tag].  The [arg args]
++This defines a counter with the name [arg tag].  The name is used
++to build the names of internal variables, so it must not contain
++namespace separators ([const ::]) and must not end with an array
++element reference like [const (x)].  The [arg args]
+ determines the characteristics of the counter.  The [arg args] are
+ 
+ [list_begin definitions]
+ [def "[option -group] [arg name]"]
+ 
+
+Index: modules/counter/counter.tcl
+==================================================================
+--- modules/counter/counter.tcl
++++ modules/counter/counter.tcl
+@@ -54,10 +54,15 @@
+ #
+ # Side Effects:
+ #   Initializes state about a counter.
+ 
+ proc ::counter::init {tag args} {
++    # The tag is used as part of variable names.
++    if {[string first :: $tag] >= 0 || [string match *(*) $tag]} {
++    return -code error "Invalid counter name \"$tag\":\
++        must not contain \"::\" or end with \"(...)\""
++    }
+     upvar #0 counter::T-$tag counter
+     if {[info exists counter]} {
+     unset counter
+     }
+     set counter(N) 0    ;# Number of samples
+
+Index: modules/counter/counter.test
+==================================================================
+--- modules/counter/counter.test
++++ modules/counter/counter.test
+@@ -34,10 +34,27 @@
+ # -------------------------------------------------------------------------
+ 
+ test counter-1.1 {counter::init} {
+     catch {counter::init} err
+ } {1}
++
++test counter-1.2 {counter::init, invalid names, ticket 1011094} {
++    list [catch {counter::init ::foo -hist 20} msg] $msg \
++	[catch {counter::init a(b)} msg] $msg
++} {1 {Invalid counter name "::foo": must not contain "::" or end with "(...)"} 1 {Invalid counter name "a(b)": must not contain "::" or end with "(...)"}}
++
++test counter-1.3 {counter::init, unusual but valid names} {
++    counter::init {a b}
++    counter::init a:
++    counter::init (x
++    counter::count {a b} 2
++    counter::count a: 3
++    counter::count (x 4
++    set res [list [counter::get {a b}] [counter::get a:] [counter::get (x]]
++    unset {::counter::T-a b} ::counter::T-a: ::counter::T-(x
++    set res
++} {2 3 4}
+ 
+ if 0 {
+     set x 0
+     puts "incr scaler [time {incr x} 100]"
+ 
+

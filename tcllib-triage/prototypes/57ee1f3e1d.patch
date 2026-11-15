@@ -1,0 +1,49 @@
+Index: modules/yaml/yaml.tcl
+==================================================================
+--- modules/yaml/yaml.tcl
++++ modules/yaml/yaml.tcl
+@@ -1158,10 +1158,15 @@
+         }
+     }
+ }
+ 
+ proc ::yaml::_dumpScalar {value offset} {
++    if {   [string first "\n" $value] < 0
++        && [regexp {^[][{}&*!|>'"%@`#,]} $value]} {
++        # A plain scalar cannot start with an indicator character.
++        return "\"[string map {\\ \\\\ \" \\\"} $value]\""
++    }
+     if {   [string first "\n" $value] >= 0
+         || [string first ": " $value] >= 0
+         || [string first "- " $value] >= 0} {
+         return [_doLiteralBlock $value $offset]
+     } else {
+
+Index: modules/yaml/yaml.test
+==================================================================
+--- modules/yaml/yaml.test
++++ modules/yaml/yaml.test
+@@ -775,10 +775,22 @@
+ test yaml-21.2 "explicit_tags float" -body {
+     set y {!!float 123=0}
+     yaml::yaml2dict $y
+ } -returnCodes error -result {expected floating-point number but got "123=0"}
+ 
++
++test yaml-36.1 "dict2yaml quotes values starting with an indicator, ticket 57ee1f3e1d" -body {
++    yaml::dict2yaml [dict create k "{val}" l {[a] "b"}]
++} -result {---
++k: "{val}"
++l: "[a] \"b\""
++}
++
++test yaml-36.2 "dict2yaml/yaml2dict roundtrip of values with braces, ticket 57ee1f3e1d" -body {
++    set d [dict create k "{val}" l {[a "b" \c]} m &x n *y o #z]
++    expr {[yaml::yaml2dict [yaml::dict2yaml $d]] eq $d}
++} -result 1
+ 
+ # ... Tests of addStrings ...
+ #     (Requires introspection of parser state)
+ 
+ 
+

@@ -1,0 +1,279 @@
+Index: modules/ftp/ftp.tcl
+==================================================================
+--- modules/ftp/ftp.tcl
++++ modules/ftp/ftp.tcl
+@@ -553,13 +553,13 @@
+                 1 -
+ 		2 {
+                     set ftp(State) list_close
+                 }
+                 default {  
+-                    if { [string equal $ftp(Mode) "passive"] } {
+-                        catch {unset ftp(state.data)}
+-                    }    
++                    # Do not wait for the data connection. In active mode the
++                    # server may have connected already. [Bug 744276]
++                    catch {unset ftp(state.data)}
+                     set errmsg "Error getting directory listing!"
+                     set complete_with 0
+ 		    Command $ftp(Command) error $errmsg
+                 }
+             }
+@@ -802,14 +802,13 @@
+                 1 -
+ 		2 {
+                     set ftp(State) put_close
+                 }
+                 default {
+-                    if { [string equal $ftp(Mode) "passive"] } {
+-                        # close already opened DataConnection
+-                        catch {unset ftp(state.data)}
+-                    }  
++                    # Do not wait for the data connection. In active mode the
++                    # server may have connected already. [Bug 744276]
++                    catch {unset ftp(state.data)}
+                     set errmsg "Error opening connection!"
+                     set complete_with 0
+ 		    Command $ftp(Command) error $errmsg
+                 }
+             }
+@@ -880,14 +879,13 @@
+             switch -exact -- $rc {
+                 1 {
+                     set ftp(State) append_close
+                 }
+                 default {
+-                    if { [string equal $ftp(Mode) "passive"] } {
+-                        # close already opened DataConnection
+-                        catch {unset ftp(state.data)}
+-                    }  
++                    # Do not wait for the data connection. In active mode the
++                    # server may have connected already. [Bug 744276]
++                    catch {unset ftp(state.data)}
+                     set errmsg "Error opening connection!"
+                     set complete_with 0
+ 		    Command $ftp(Command) error $errmsg
+                 }
+             }
+@@ -970,14 +968,13 @@
+             switch -exact -- $rc {
+                 1 {
+                     set ftp(State) reget_close
+                 }
+                 default {
+-                    if { [string equal $ftp(Mode) "passive"] } {
+-                        # close already opened DataConnection
+-                        catch {unset ftp(state.data)}
+-                    }  
++                    # Do not wait for the data connection. In active mode the
++                    # server may have connected already. [Bug 744276]
++                    catch {unset ftp(state.data)}
+                     set errmsg "Error retrieving file \"$ftp(RemoteFilename)\"!"
+                     set complete_with 0
+ 		    Command $ftp(Command) error $errmsg
+                 }
+             }
+@@ -1044,14 +1041,13 @@
+             switch -exact -- $rc {
+                 1 {
+                     set ftp(State) get_close
+                 }
+                 default {
+-                    if { [string equal $ftp(Mode) "passive"] } {
+-                        # close already opened DataConnection
+-                        catch {unset ftp(state.data)}
+-                    }  
++                    # Do not wait for the data connection. In active mode the
++                    # server may have connected already. [Bug 744276]
++                    catch {unset ftp(state.data)}
+                     set errmsg "Error retrieving file \"$ftp(RemoteFilename)\"!"
+                     set complete_with 0
+ 		    Command $ftp(Command) error $errmsg
+                 }
+             }
+@@ -2129,15 +2125,15 @@
+ 	# state does not contain local file information, so an error
+ 	# is thrown. Removing the catch here seems to fix it without
+ 	# adverse effects elsewhere. Maybe. We hope.
+         return 1
+     } else {
++        CloseDataConn $s
+         if {$ftp(inline)} {
+ 	    catch {unset ftp(get:channel)}
+             return ""
+ 	}
+-        CloseDataConn $s
+ 	catch {unset ftp(get:channel)}
+         return 0
+     }
+ }
+ 
+@@ -2874,10 +2870,12 @@
+ 
+     # If the new channel is accepted, the dummy channel will be closed
+ 
+     catch {close $ftp(DummySock); unset ftp(DummySock)}
+ 
++    # Remember the data channel, for CloseDataConn.
++    set ftp(DataSock) $sock
+     set ftp(state.data) 0
+ 
+     # Configure translation and blocking modes
+ 
+     set blocking 1
+
+ADDED    modules/ftp/ftp.test
+Index: modules/ftp/ftp.test
+==================================================================
+--- /dev/null
++++ modules/ftp/ftp.test
+@@ -0,0 +1,148 @@
++# -*- tcl -*-
++# ftp.test:  tests for the ftp client.
++#
++# The server side of the control connection is a programmed dialog
++# running in a separate process (devtools/dialog.tcl).
++
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 1.0
++
++support {
++    use           log/log.tcl   log
++    useTcllibFile devtools/coserv.tcl ; # loads comm, snit too!
++    useTcllibFile devtools/dialog.tcl
++}
++testing {
++    useLocal ftp.tcl ftp
++}
++
++# -------------------------------------------------------------------------
++# Server processes. Programmed dialogs, server side.
++
++dialog::setup server {Ftp Fake Server}
++
++# Silence the error messages of the package.
++proc ::ftp::DisplayMsg {s msg {state ""}} {}
++
++proc login {} {
++    dialog::crlf.
++    dialog::send.    {220 localhost fake FTP server ready.}
++    dialog::respond. {331 Password required.}
++    dialog::respond. {230 Logged in.}
++    dialog::respond. {200 Type set to I.}
++}
++
++proc ftpopen {args} {
++    ftp::Open 127.0.0.1 user pass -port [dialog::listener] {*}$args
++}
++
++# Server side: connect to the data port the client sent with PORT,
++# like servers which open the data connection before checking the
++# file, and keep the connection open.
++proc dataconnect {} {
++    dialog::geval. {
++	regexp {PORT (\d+),(\d+),(\d+),(\d+),(\d+),(\d+)} [lindex $received end] \
++	    -> ::ftptest(a) ::ftptest(b) ::ftptest(c) ::ftptest(d) ::ftptest(p1) ::ftptest(p2)
++	set ::ftptest(sock) [socket \
++	    $::ftptest(a).$::ftptest(b).$::ftptest(c).$::ftptest(d) \
++	    [expr {$::ftptest(p1) * 256 + $::ftptest(p2)}]]
++    }
++}
++proc dataclose {} {
++    dialog::geval. {catch {close $::ftptest(sock)}}
++}
++
++# Collects background errors, e.g. from a leaked data connection.
++proc bgerror {msg} {lappend ::bgerrors $msg}
++proc bgerrors {} {
++    after 300 {set ::pause 1} ; vwait ::pause
++    return $::bgerrors
++}
++
++# Guards against hanging forever in the nested vwait of WaitComplete.
++proc watchdog {h} {
++    set ::watchdog {}
++    set ::bgerrors {}
++    after 3000 [list apply {{h} {
++	set ::watchdog fired
++	unset -nocomplain ::ftp::ftp${h}(state.data)
++    }} $h]
++}
++
++# -------------------------------------------------------------------------
++
++test ftp-active-error-1.0 {Get of a nonexistent file in active mode, ticket 744276} -body {
++    dialog::dialog_set {
++	login
++	dialog::receive.
++	dataconnect
++	dialog::send. {200 PORT command successful.}
++	dialog::respond. {550 nonexistent: No such file or directory.}
++	dialog::respond. {221 Goodbye.}
++	dataclose
++    }
++    set h [ftpopen -timeout 10 -mode active]
++    watchdog $h
++    set res [ftp::Get $h nonexistent -variable data]
++    ftp::Close $h
++    dialog::waitdone
++    list $res $::watchdog [bgerrors]
++} -cleanup {
++    after cancel [after info]
++    unset -nocomplain h res data ::watchdog
++} -result {{} {} {}}
++
++test ftp-active-error-1.1 {Put into a nonexistent directory in active mode, ticket 1548418} -body {
++    dialog::dialog_set {
++	login
++	dialog::receive.
++	dataconnect
++	dialog::send. {200 PORT command successful.}
++	dialog::respond. {553 nodir/x.txt: No such file or directory.}
++	dialog::respond. {221 Goodbye.}
++	dataclose
++    }
++    set h [ftpopen -timeout 10 -mode active]
++    watchdog $h
++    set res [ftp::Put $h -data hello nodir/x.txt]
++    ftp::Close $h
++    dialog::waitdone
++    list $res $::watchdog [bgerrors]
++} -cleanup {
++    after cancel [after info]
++    unset -nocomplain h res ::watchdog
++} -result {0 {} {}}
++
++test ftp-passive-error-1.0 {Get of a nonexistent file in passive mode, ticket 744276} -setup {
++    set listen [socket -server {apply {{sock args} {set ::datasock $sock}}} -myaddr 127.0.0.1 0]
++    set dport  [lindex [fconfigure $listen -sockname] 2]
++    set pasv   "227 Entering Passive Mode (127,0,0,1,[expr {$dport / 256}],[expr {$dport % 256}])."
++} -body {
++    dialog::dialog_set {
++	login
++	dialog::respond. $pasv
++	dialog::respond. {550 nonexistent: No such file or directory.}
++	dialog::respond. {221 Goodbye.}
++    }
++    set h [ftpopen -timeout 10 -mode passive]
++    watchdog $h
++    set res [ftp::Get $h nonexistent -variable data]
++    ftp::Close $h
++    dialog::waitdone
++    list $res $::watchdog [bgerrors]
++} -cleanup {
++    after cancel [after info]
++    close $listen
++    catch {close $::datasock}
++    unset -nocomplain h res data listen dport pasv ::datasock ::watchdog
++} -result {{} {} {}}
++
++# -------------------------------------------------------------------------
++dialog::shutdown
++testsuiteCleanup
+

@@ -1,0 +1,102 @@
+Index: modules/yaml/yaml.tcl
+==================================================================
+--- modules/yaml/yaml.tcl
++++ modules/yaml/yaml.tcl
+@@ -1128,38 +1128,55 @@
+ 
+ proc ::yaml::_imp_huddle2yaml {data {offset ""}} {
+     variable _dumpIndent
+     set nextoff "$offset[string repeat { } $_dumpIndent]"
+     switch -- [huddle type $data] {
+-        "string" {
++        "string" -
++        "number" -
++        "boolean" -
++        "str" -
++        "plain" -
++        "int" -
++        "float" -
++        "timestamp" -
++        "binary" -
++        "true" -
++        "false" -
++        "null" {
+             set data [huddle get_stripped $data]
+             return [_dumpScalar $data $offset]
+         }
++        "sequence" -
+         "list" {
+             set inner {}
+             set len [huddle llength $data]
+             for {set i 0} {$i < $len} {incr i} {
+                 set sub [huddle get $data $i]
+-                set sep [expr {[huddle type $sub] eq "string" ? " " : "\n"}]
++                set sep [expr {[_isScalarNode $sub] ? " " : "\n"}]
+                 lappend inner [join [list $offset - $sep [_imp_huddle2yaml $sub $nextoff]] ""]
+             }
+             return [join $inner "\n"]
+         }
++        "mapping" -
+         "dict" {
+             set inner {}
+             foreach {key} [huddle keys $data] {
+                 set sub [huddle get $data $key]
+-                set sep [expr {[huddle type $sub] eq "string" ? " " : "\n"}]
++                set sep [expr {[_isScalarNode $sub] ? " " : "\n"}]
+                 lappend inner [join [list $offset $key: $sep [_imp_huddle2yaml $sub $nextoff]] ""]
+             }
+             return [join $inner "\n"]
+         }
+         default {
+             return $data
+         }
+     }
+ }
++
++proc ::yaml::_isScalarNode {data} {
++    return [expr {[huddle type $data] ni {list sequence dict mapping}}]
++}
+ 
+ proc ::yaml::_dumpScalar {value offset} {
+     if {   [string first "\n" $value] >= 0
+         || [string first ": " $value] >= 0
+         || [string first "- " $value] >= 0} {
+
+Index: modules/yaml/yaml.test
+==================================================================
+--- modules/yaml/yaml.test
++++ modules/yaml/yaml.test
+@@ -775,10 +775,32 @@
+ test yaml-21.2 "explicit_tags float" -body {
+     set y {!!float 123=0}
+     yaml::yaml2dict $y
+ } -returnCodes error -result {expected floating-point number but got "123=0"}
+ 
++
++test yaml-32.1 "yaml2huddle/huddle2yaml roundtrip, ticket d74e6561a2" -body {
++    yaml::huddle2yaml [yaml::yaml2huddle "a: 1\nb:\n  - x\n  - z\nc:\n  d: text\n  e: 2.5\n"]
++} -result {---
++a: 1
++b:
++  - x
++  - z
++c:
++  d: text
++  e: 2.5
++}
++
++test yaml-32.2 "huddle2yaml with huddle number and boolean, ticket d74e6561a2" -body {
++    yaml::huddle2yaml [huddle create a [huddle number 1] b [huddle true] c [huddle list x [huddle number 2]]]
++} -result {---
++a: 1
++b: true
++c:
++  - x
++  - 2
++}
+ 
+ # ... Tests of addStrings ...
+ #     (Requires introspection of parser state)
+ 
+ 
+

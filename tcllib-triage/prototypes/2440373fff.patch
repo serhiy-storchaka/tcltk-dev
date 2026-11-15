@@ -1,0 +1,76 @@
+Index: modules/ncgi/ncgi.tcl
+==================================================================
+--- modules/ncgi/ncgi.tcl
++++ modules/ncgi/ncgi.tcl
+@@ -1094,14 +1094,15 @@
+ #	Formats and stores the Set-Cookie header for the reply.
+ 
+ proc ::ncgi::setCookie {args} {
+     variable cookieOutput
+     array set opt $args
+-    set line "$opt(-name)=$opt(-value) ;"
++    # RFC 6265: cookie-pair *( ";" SP cookie-av ), no space before ";"
++    set line "$opt(-name)=$opt(-value)"
+     foreach extra {path domain} {
+ 	if {[info exists opt(-$extra)]} {
+-	    append line " $extra=$opt(-$extra) ;"
++	    append line "; $extra=$opt(-$extra)"
+ 	}
+     }
+     if {[info exists opt(-expires)]} {
+ 	switch -glob -- $opt(-expires) {
+ 	    *GMT {
+@@ -1110,12 +1111,12 @@
+ 	    default {
+ 		set expires [clock format [clock scan $opt(-expires)] \
+ 			-format "%A, %d-%b-%Y %H:%M:%S GMT" -gmt 1]
+ 	    }
+ 	}
+-	append line " expires=$expires ;"
++	append line "; expires=$expires"
+     }
+     if {[info exists opt(-secure)]} {
+-	append line " secure "
++	append line "; secure"
+     }
+     lappend cookieOutput $line
+ }
+
+Index: modules/ncgi/ncgi.test
+==================================================================
+--- modules/ncgi/ncgi.test
++++ modules/ncgi/ncgi.test
+@@ -335,11 +335,11 @@
+     set f [open "|[list $::tcltest::tcltest test1]" r+]
+     set res [read $f]
+     close $f
+     removeFile test1
+     set res
+-} "Content-Type: text/html\nLocation: $URL2\nSet-Cookie: CookieName=12345 ;\n\nPlease go to <a href=\"$URL2\">$URL2</a>\n"
++} "Content-Type: text/html\nLocation: $URL2\nSet-Cookie: CookieName=12345\n\nPlease go to <a href=\"$URL2\">$URL2</a>\n"
+ 
+ set URL foo.html
+ set URL2 http://www.scriptics.com/cgi-bin/foo.html
+ test ncgi-11.3 {ncgi::redirect} {
+     set env(REQUEST_URI) http://www.scriptics.com/cgi-bin/test.cgi
+@@ -554,11 +554,18 @@
+     set f [open "|[list $::tcltest::tcltest test1]" r+]
+     set res [read $f]
+     close $f
+     removeFile test1
+     set res
+-} "Content-Type: text/html\nSet-Cookie: Name=The+Value ;\n\n"
++} "Content-Type: text/html\nSet-Cookie: Name=The+Value\n\n"
++
++test ncgi-12.5 {ncgi::setCookie, attribute syntax, tkt 2440373} {
++    ncgi::reset
++    ncgi::setCookie -name SID -value foo -path / -domain example.com \
++	-expires "Fri, 01-Jan-2038 00:00:00 GMT" -secure 1
++    set ncgi::cookieOutput
++} {{SID=foo; path=/; domain=example.com; expires=Fri, 01-Jan-2038 00:00:00 GMT; secure}}
+ 
+ test ncgi-13.1 {ncgi::parseMimeValue} {
+     ncgi::parseMimeValue text/html
+ } text/html
+ 
+

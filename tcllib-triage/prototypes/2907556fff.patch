@@ -1,0 +1,78 @@
+Index: modules/ncgi/ncgi.tcl
+==================================================================
+--- modules/ncgi/ncgi.tcl
++++ modules/ncgi/ncgi.tcl
+@@ -818,25 +818,27 @@
+ #		value
+ #		{param value param2 value2 param3 value3}
+ #	}
+ 
+ proc ::ncgi::parseMimeValue {value} {
+-    set parts [split $value \;]
+-    set results [list [string trim [lindex $parts 0]]]
++    regexp -- {^[^;]*} $value part0 ;# always matches, possibly empty
++    set results [list [string trim $part0]]
+     set paramList [list]
+-    foreach sub [lrange $parts 1 end] {
+-	if {[regexp -- {([^=]+)=(.+)} $sub match key val]} {
+-            set key [string trim [string tolower $key]]
+-            set val [string trim $val]
+-            # Allow single as well as double quotes
+-            if {[regexp -- {^(['"])(.*)\1} $val x quote val2]} { ; # need a " for balance
+-               # Trim quotes and any extra crap after close quote
+-               # remove quoted quotation marks
+-               set val [string map {\\" "\"" \\' "\'"} $val2]
+-            }
+-            lappend paramList $key $val
+-	}
++    # A ";" inside a quoted parameter value does not end the parameter.
++    set re {;\s*([^=;\s]+)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^;]*)[^;]*}
++    foreach {match key val} [regexp -all -inline \
++	    -start [string length $part0] -- $re $value] {
++	set key [string tolower $key]
++	set val [string trim $val]
++	if {$val eq ""} continue
++	# Allow single as well as double quotes
++	if {[regexp -- {^(['"])(.*)\1} $val x quote val2]} { ; # need a " for balance
++	    # Trim quotes and any extra crap after close quote
++	    # remove quoted quotation marks
++	    set val [string map {\\" "\"" \\' "\'"} $val2]
++	}
++	lappend paramList $key $val
+     }
+     if {[llength $paramList]} {
+ 	lappend results $paramList
+     }
+     return $results
+
+Index: modules/ncgi/ncgi.test
+==================================================================
+--- modules/ncgi/ncgi.test
++++ modules/ncgi/ncgi.test
+@@ -587,10 +587,25 @@
+ } {test/test {foo bar\"baz\"}}
+ 
+ test ncgi-13.8 {ncgi::parseMimeValue} {
+     ncgi::parseMimeValue {test/test; foo=""}
+ } {test/test {foo {}}}
++
++test ncgi-13.9 {ncgi::parseMimeValue, semicolon in quoted value, tkt 2907556} {
++    ncgi::parseMimeValue {form-data; name="f"; filename="a;b.txt"}
++} {form-data {name f filename {a;b.txt}}}
++
++test ncgi-13.10 {ncgi::parseMimeValue, semicolon in quoted value, tkt 2907556} {
++    ncgi::parseMimeValue {form-data; filename='x;"y";z'; name=f}
++} {form-data {filename {x;"y";z} name f}}
++
++test ncgi-16.7 {ncgi::importFile -client, semicolon in filename, tkt 2907556} {
++    set q "--XX\r\nContent-Disposition: form-data; name=\"f\"; filename=\"a;b.txt\"\r\nContent-Type: text/plain\r\n\r\nhello\r\n--XX--\r\n"
++    ncgi::reset $q "multipart/form-data; boundary=XX"
++    ncgi::parse
++    list [ncgi::importFile -client f] [ncgi::importFile -data f]
++} {{a;b.txt} hello}
+ 
+ 
+ test ncgi-14.1 {ncgi::multipart} {
+     catch {ncgi::multipart "application/x-www-urlencoded" name=val+ue} err
+     set err
+

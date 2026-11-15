@@ -1,0 +1,105 @@
+Index: modules/zip/decode.tcl
+==================================================================
+--- modules/zip/decode.tcl
++++ modules/zip/decode.tcl
+@@ -203,12 +203,17 @@
+ proc ::zipfile::decode::CopyFile {src fdv dst} {
+     upvar 1 $fdv fd
+ 
+     file mkdir [file dirname $dst]
+ 
+-    if {[string match */ $src]} {
+-	# Entry is a directory. Just create.
++    if {[string match {*[/\\]} $src] ||
++	($fd(efattr) & 0x10) ||
++	((($fd(efattr) >> 16) & 0xf000) == 0x4000)
++    } {
++	# Entry is a directory. Just create. Recognized by a trailing
++	# separator, or by the MS-DOS directory attribute, or by the
++	# unix file type S_IFDIR.
+ 	file mkdir $dst
+ 	return
+     }
+ 
+     # Create files. Empty files are a special case, we have
+
+Index: modules/zip/encode.test
+==================================================================
+--- modules/zip/encode.test
++++ modules/zip/encode.test
+@@ -40,10 +40,40 @@
+ 
+ tcltest::removeDirectory foo
+ 
+ set externalZipFile [file join [file dirname [info script]] zipFileForTests.zip]
+ tcltest::testConstraint GotZipFile [file exists $externalZipFile]
++
++# -------------------------------------------------------------------------
++# Write a minimal zip archive (stored entries only) with full control
++# over the "version made by" and "external attributes" fields, to test
++# how zipfile::decode handles archives made by other tools.
++# entries = list of {name data vmb efattr}
++
++proc mkTestZip {path entries} {
++    set local {}
++    set central {}
++    foreach e $entries {
++        lassign $e name data vmb efattr
++        set crc [zlib crc32 $data]
++        set len [string length $data]
++        set offset [string length $local]
++        append local [binary format a4sssssiiiss PK\03\04 \
++                          20 0 0 0 0x21 $crc $len $len \
++                          [string length $name] 0] $name $data
++        append central [binary format a4ssssssiiisssssii PK\01\02 \
++                            $vmb 20 0 0 0 0x21 $crc $len $len \
++                            [string length $name] 0 0 0 0 $efattr $offset] $name
++    }
++    set n [llength $entries]
++    set ch [open $path wb]
++    puts -nonewline $ch $local$central
++    puts -nonewline $ch [binary format a4ssssiis PK\05\06 0 0 $n $n \
++                             [string length $central] [string length $local] 0]
++    close $ch
++    return
++}
+ 
+ # -------------------------------------------------------------------------
+ 
+ 
+ test zipfile-encode-encode-1.0 {encode, wrong args, not enough} -body {
+@@ -333,10 +363,33 @@
+     set adict [zipfile::decode::archive]
+     set date [zipfile::decode::filetime $adict foo/a/msg.txt]
+     zipfile::decode::close
+     set date
+ } -result [clock scan "2026-02-02 09:00:00" -format "%Y-%m-%d %H:%M:%S"]
++test zipfile-decode-unzip-7.0 {unzip, directory entry without trailing slash, MS-DOS attributes, ticket c976e4a85d} -setup {
++    mkTestZip dirattr.zip [list \
++        [list d/sub/f.txt hello 0x0014 0] \
++        [list d/sub       {}    0x0014 0x10]]
++} -cleanup {
++    tcltest::removeDirectory foo3
++    tcltest::removeFile dirattr.zip
++} -body {
++    zipfile::decode::unzipfile dirattr.zip foo3
++    list [file isdirectory foo3/d/sub] [tcltest::viewFile foo3/d/sub/f.txt]
++} -result {1 hello}
++
++test zipfile-decode-unzip-7.1 {unzip, directory entry without trailing slash, unix mode, ticket c976e4a85d} -setup {
++    mkTestZip dirmode.zip [list \
++        [list d/sub/f.txt hello 0x0314 [expr {0o100644 << 16}]] \
++        [list d/sub       {}    0x0314 [expr {0o040755 << 16}]]]
++} -cleanup {
++    tcltest::removeDirectory foo3
++    tcltest::removeFile dirmode.zip
++} -body {
++    zipfile::decode::unzipfile dirmode.zip foo3
++    list [file isdirectory foo3/d/sub] [tcltest::viewFile foo3/d/sub/f.txt]
++} -result {1 hello}
+ 
+ 
+ # -------------------------------------------------------------------------
+ 
+ tcltest::removeFile zipFileFromEncode.zip
+

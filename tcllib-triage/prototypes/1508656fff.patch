@@ -1,0 +1,92 @@
+--- modules/ftpd/ftpd.tcl
++++ modules/ftpd/ftpd.tcl
+@@ -256,20 +256,23 @@
+ proc ::ftpd::fileAuth {user path operation} {
+     # Standard authentication handler
+ 
+-    if {(![Fs exists $path]) && ([string equal $operation "write"])} {
+-        if {[Fs exists [file dirname $path]]} {
+-            set path [file dirname $path]
+-	}
+-    } elseif {(![Fs exists $path]) && ([string equal $operation "read"])} {
+-        return 0
++    if {![Fs exists $path]} {
++        # Not an existing file. It cannot be read. For writing
++        # (creating a file or directory, removing a directory)
++        # check the directory containing it. Note that 'Fs exists'
++        # is false for directories.
++        if {![string equal $operation "write"]} {
++            return 0
++        }
++        set path [file dirname $path]
+     }
+ 
+-    if {[Fs exists $path]} {
+-        set mode [Fs permissions $path]
+-        if {([string equal $operation "read"] && (($mode & 00004) > 0)) || \
+-                ([string equal $operation "write"] && (($mode & 00002) > 0))} {
+-            return 1
+-        }
++    if {[catch {Fs permissions $path} mode]} {
++        return 0
++    }
++    if {([string equal $operation "read"] && (($mode & 00004) > 0)) || \
++            ([string equal $operation "write"] && (($mode & 00002) > 0))} {
++        return 1
+     }
+     return 0
+ }
+--- modules/ftpd/ftpd.test
++++ modules/ftpd/ftpd.test
+@@ -27,5 +27,51 @@
+ } -result "$::tcl_platform(user)@[info hostname]"
+ 
+ # -------------------------------------------------------------------------
++## Default authFileCmd, ::ftpd::fileAuth. Access is decided by the
++## permission bits for "others".
++
++test ftpd-2.0 {fileAuth, write a new file, ticket 1508656fff} -constraints unix -setup {
++    set root [makeDirectory ftproot]
++    file attributes $root -permissions 0777
++    set oldroot [::ftpd::fsFile::docRoot]
++    ::ftpd::fsFile::docRoot $root
++    file mkdir [file join $root locked]
++    file attributes [file join $root locked] -permissions 0755
++    file mkdir [file join $root empty]
++} -body {
++    list \
++	[::ftpd::fileAuth anonymous new.txt write] \
++	[::ftpd::fileAuth anonymous newdir write] \
++	[::ftpd::fileAuth anonymous empty write] \
++	[::ftpd::fileAuth anonymous locked/new.txt write] \
++	[::ftpd::fileAuth anonymous new.txt read] \
++	[::ftpd::fileAuth anonymous nosuchdir/new.txt write]
++} -cleanup {
++    ::ftpd::fsFile::docRoot $oldroot
++    removeDirectory ftproot
++    unset -nocomplain root oldroot
++} -result {1 1 1 0 0 0}
++
++test ftpd-2.1 {fileAuth, existing file} -constraints unix -setup {
++    set root [makeDirectory ftproot]
++    set oldroot [::ftpd::fsFile::docRoot]
++    ::ftpd::fsFile::docRoot $root
++    close [open [file join $root public.txt] w]
++    file attributes [file join $root public.txt] -permissions 0666
++    close [open [file join $root private.txt] w]
++    file attributes [file join $root private.txt] -permissions 0600
++} -body {
++    list \
++	[::ftpd::fileAuth anonymous public.txt read] \
++	[::ftpd::fileAuth anonymous public.txt write] \
++	[::ftpd::fileAuth anonymous private.txt read] \
++	[::ftpd::fileAuth anonymous private.txt write]
++} -cleanup {
++    ::ftpd::fsFile::docRoot $oldroot
++    removeDirectory ftproot
++    unset -nocomplain root oldroot
++} -result {1 1 0 0}
++
++# -------------------------------------------------------------------------
+ testsuiteCleanup
+ return

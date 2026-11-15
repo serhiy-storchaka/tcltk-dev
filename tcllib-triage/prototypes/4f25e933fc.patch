@@ -1,0 +1,44 @@
+Index: modules/yaml/yaml.tcl
+==================================================================
+--- modules/yaml/yaml.tcl
++++ modules/yaml/yaml.tcl
+@@ -1286,11 +1286,12 @@
+ 
+ huddle addType [::yaml::_makeChildType str !!str]
+ huddle addType [::yaml::_makeChildType timestamp !!timestamp]
+ huddle addType [::yaml::_makeChildType float !!float]
+ huddle addType [::yaml::_makeChildType int !!int]
+-huddle addType [::yaml::_makeChildType null !!null]
++# Not "null": that would replace the null type of huddle itself.
++huddle addType [::yaml::_makeChildType yaml_null !!null]
+ huddle addType [::yaml::_makeChildType true !!true]
+ huddle addType [::yaml::_makeChildType false !!false]
+ huddle addType [::yaml::_makeChildType binary !!binary]
+ huddle addType [::yaml::_makeChildType plain !!plain]
+ 
+
+Index: modules/yaml/yaml.test
+==================================================================
+--- modules/yaml/yaml.test
++++ modules/yaml/yaml.test
+@@ -775,10 +775,19 @@
+ test yaml-21.2 "explicit_tags float" -body {
+     set y {!!float 123=0}
+     yaml::yaml2dict $y
+ } -returnCodes error -result {expected floating-point number but got "123=0"}
+ 
++
++test yaml-34.1 "huddle null works after loading yaml, ticket 4f25e933fc" -body {
++    set n [huddle null]
++    list [huddle type $n] [huddle jsondump [huddle create a $n] "" ""]
++} -result {null {{"a":null}}}
++
++test yaml-34.2 "yaml null values, ticket 4f25e933fc" -body {
++    yaml::yaml2dict "a: ~\nb: null\n"
++} -result {a {} b {}}
+ 
+ # ... Tests of addStrings ...
+ #     (Requires introspection of parser state)
+ 
+ 
+

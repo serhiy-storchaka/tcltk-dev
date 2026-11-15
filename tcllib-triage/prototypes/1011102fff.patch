@@ -1,0 +1,70 @@
+Index: modules/counter/counter.man
+==================================================================
+--- modules/counter/counter.man
++++ modules/counter/counter.man
+@@ -181,11 +181,13 @@
+ 
+ Returns a list of all counters defined.
+ 
+ [call [cmd ::counter::histHtmlDisplay] [arg {tag args}]]
+ 
+-Generate HTML to display a histogram for a counter.  The [arg args]
++Generate HTML to display a histogram for a counter.  This command
++loads the packages [package html] and [package ncgi] on demand.
++The [arg args]
+ control the format of the display.  They are:
+ 
+ [list_begin definitions]
+ [def "[option -title] [arg string]"]
+ 
+
+Index: modules/counter/counter.tcl
+==================================================================
+--- modules/counter/counter.tcl
++++ modules/counter/counter.tcl
+@@ -744,10 +744,13 @@
+ #
+ # Side Effects:
+ #   None.
+ 
+ proc ::counter::histHtmlDisplayRow {tag args} {
++    # The HTML generation needs these, load them on demand.
++    package require ncgi
++    package require html
+     upvar #0 counter::T-$tag counter
+     variable secsPerMinute
+     variable minuteBase
+     variable hourBase
+     variable dayBase
+
+Index: modules/counter/counter.test
+==================================================================
+--- modules/counter/counter.test
++++ modules/counter/counter.test
+@@ -202,10 +202,25 @@
+     #puts "timehist [time {counter::count hits} 100]"
+ 
+     set result
+ } {0 2 1 4 2 8}
+ 
++
++test counter-html-1.0 {histHtmlDisplay loads html and ncgi, ticket 1011102} -setup {
++    set ip [interp create]
++    $ip eval [list set auto_path [linsert $::auto_path 0 [file dirname [localDirectory]]]]
++    $ip eval [list source [localPath counter.tcl]]
++} -body {
++    $ip eval {
++	counter::init h -hist 10
++	counter::count h 5
++	string match *<table* [counter::histHtmlDisplay h]
++    }
++} -cleanup {
++    interp delete $ip
++    unset ip
++} -result 1
+ 
+ test counter-countNames {counter::names} {
+     counter::init simple
+     counter::init avg
+     counter::init lastn -lastn 4
+

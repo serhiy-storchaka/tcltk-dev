@@ -1,0 +1,18 @@
+Index: modules/processman/processman.man
+==================================================================
+--- modules/processman/processman.man
++++ modules/processman/processman.man
+@@ -3,11 +3,11 @@
+ [manpage_begin processman n [vset PACKAGE_VERSION]]
+ [keywords {processman}]
+ [keywords {odie}]
+ [copyright {2015 Sean Woods <yoda@etoyoc.com>}]
+ [moddesc   {processman}]
+-[titledesc {Tool for automating the period callback of commands}]
++[titledesc {Platform-independent management of child processes}]
+ [category  System]
+ [require Tcl "8.5 9"]
+ [require twapi 3.1]
+ [require cron 1.1]
+ [require processman [opt [vset PACKAGE_VERSION]]]
+

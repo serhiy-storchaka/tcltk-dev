@@ -1,0 +1,98 @@
+Index: modules/tar/tar.tcl
+==================================================================
+--- modules/tar/tar.tcl
++++ modules/tar/tar.tcl
+@@ -418,21 +418,29 @@
+     set ogid   [format %o $A(gid)]
+     set ouid   [format %o $A(uid)]
+     set omtime [format %o $A(mtime)]
+ 
+     set name [string trimleft $name /]
+-    if {[string length $name] > 255} {
+-	Err "path name over 255 chars" BAD PATH LENGTH
+-    } elseif {[string length $name] > 100} {
++    set longlink ""
++    set prefix ""
++    if {[string length $name] > 100} {
+ 	set common [string range $name end-99 154]
+-	if {[set splitpoint [string first / $common]] == -1} {
+-	    Err "path name cannot be split into prefix and name" BAD PATH UNSPLITTABLE
++	set splitpoint [string first / $common]
++	if {[string length $name] > 255 || $splitpoint == -1} {
++	    # The path cannot be represented by ustar prefix and name.
++	    # Precede the entry with a GNU tar @LongLink entry holding
++	    # the full name, and store a truncated name in the header.
++	    set data $name\x00
++	    set longlink [formatHeader ././@LongLink \
++			      [list type L mode 0 mtime 0 \
++				   size [string length $data]]]
++	    append longlink $data [string repeat \x00 [pad [string length $data]]]
++	    set name [string range $name 0 99]
++	} else {
++	    set prefix [string range $name 0 end-100][string range $common 0 $splitpoint-1]
++	    set name   [string range $common $splitpoint+1 end][string range $name 155 end]
+ 	}
+-	set prefix [string range $name 0 end-100][string range $common 0 $splitpoint-1]
+-	set name   [string range $common $splitpoint+1 end][string range $name 155 end]
+-    } else {
+-        set prefix ""
+     }
+ 
+     set header [binary format a100A8A8A8A12A12A8a1a100A6a2a32a32a8a8a155a12 \
+ 		    $name $A(mode)\x00 $ouid\x00 $ogid\x00\
+ 		    $osize\x00 $omtime\x00 {} $type \
+@@ -441,11 +449,11 @@
+ 
+     binary scan $header c* tmp
+     set cksum 0
+     foreach x $tmp {incr cksum $x}
+ 
+-    return [string replace $header 148 155 [binary format A8 [format %o $cksum]\x00]]
++    return $longlink[string replace $header 148 155 [binary format A8 [format %o $cksum]\x00]]
+ }
+ 
+ proc ::tar::recurseDirs {files followlinks} {
+     foreach x $files {
+         if {[file isdirectory $x] && ([file type $x] ne "link" || $followlinks)} {
+
+Index: modules/tar/tar.test
+==================================================================
+--- modules/tar/tar.test
++++ modules/tar/tar.test
+@@ -136,10 +136,35 @@
+     cleanup2
+ } -match glob -result [join [list \
+ 				 tartest/[large-path]/a \
+ 				 "* tartest/[large-path]/a" \
+ 				] \n]
++
++# -------------------------------------------------------------------------
++
++test tar-tkt-7446477f89 {Ticket 7446477f89, unsplittable long names} -setup {
++    setup2
++    set long1 [string repeat x 150].txt
++    set long2 [string repeat y 120]/[string repeat z 150]
++    tcltest::makeFile {} $tmpdir/$long1
++    tcltest::makeDirectory $tmpdir/[file dirname $long2]
++    tcltest::makeFile {} $tmpdir/$long2
++} -body {
++    tar::create $chan1 [list $tmpdir/$long1 $tmpdir/$long2] -chan
++    seek $chan1 0
++
++    # What the package sees.
++    lappend res {*}[tar::contents $chan1 -chan]
++    close $chan1
++
++    # What a regular tar package sees.
++    lappend res {*}[split [exec 2> $tmpfile.err tar tf $tmpfile] \n]
++    expr {$res eq [list $tmpdir/$long1 $tmpdir/$long2 $tmpdir/$long1 $tmpdir/$long2]}
++} -cleanup {
++    cleanup2
++    unset long1 long2
++} -result 1
+ 
+ # -------------------------------------------------------------------------
+ 
+ test tar-tkt-9f4c0e3e95-1.0 {Ticket 9f4c0e3e95, A} -setup {
+     set tarfile [setup-tkt-9f4c0e3e95]
+

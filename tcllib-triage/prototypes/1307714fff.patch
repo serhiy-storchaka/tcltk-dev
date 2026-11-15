@@ -1,0 +1,25 @@
+Index: modules/ftp/ftp.man
+==================================================================
+--- modules/ftp/ftp.man
++++ modules/ftp/ftp.man
+@@ -238,15 +238,17 @@
+ 
+ [para]
+ 
+ If the command fails an empty list is returned.
+ 
+-[call [cmd ::ftp::NList] [arg handle] [opt [arg directory]]]
++[call [cmd ::ftp::NList] [arg handle] [opt [arg pattern]]]
+ 
+ This command has the same behavior as the [cmd ::ftp::List] command,
+ except that it only retrieves an abbreviated listing. This means only
+-file names are returned in a sorted list.
++file names are returned in a sorted list. The names are returned as
++sent by the server, i.e. whether they are prefixed with the directory
++part of [arg pattern] depends on the server.
+ 
+ [call [cmd ::ftp::FileSize] [arg handle] [arg file]]
+ 
+ This command returns the size of the specified [arg file] on the ftp
+ server. If the command fails an empty string is returned.
+

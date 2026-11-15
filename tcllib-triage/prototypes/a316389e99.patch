@@ -1,0 +1,95 @@
+Index: modules/math/decimal.man
+==================================================================
+--- modules/math/decimal.man
++++ modules/math/decimal.man
+@@ -74,10 +74,14 @@
+ [section "API"]
+ [list_begin definitions]
+ 
+ [call [cmd ::math::decimal::fromstr] [arg string]]
+ Convert [emph string] into a decimal.
++The string must be a number in decimal notation, with an optional sign,
++fractional part and exponent, or one of [const Inf] and [const NaN].
++Underscores are allowed between digits, as in Tcl 9.
++Any other string is an error.
+ 
+ [call [cmd ::math::decimal::tostr] [arg decimal]]
+ Convert [emph decimal] into a string representing the number in base 10.
+ 
+ [call [cmd ::math::decimal::setVariable] [arg variable] [arg setting]]
+
+Index: modules/math/decimal.tcl
+==================================================================
+--- modules/math/decimal.tcl
++++ modules/math/decimal.tcl
+@@ -1194,10 +1194,19 @@
+ #
+ proc ::math::decimal::fromstr {string} {
+     variable extended
+ 
+     set string [string trim $string "'\""]
++
++    # Accept decimal notation only, with optional underscores between
++    # digits (TIP 551).
++    set re [string map [list D {\d(?:_*\d)*}] \
++		{^[-+]?(?:Inf|NaN|(?:D(?:\.(?:D)?)?|\.D)(?:[eE][-+]?D)?)$}]
++    if { ![regexp $re $string] } {
++	return -code error "expected a decimal number but got \"$string\""
++    }
++    set string [string map {_ ""} $string]
+ 
+     if { [string range $string 0 0] == "-" } {
+ 	set sign 1
+ 	set string [string trimleft $string -]
+ 	incr pos -1
+@@ -1231,11 +1240,12 @@
+ 	    set mantisse 0
+ 	    if { !$extended } {
+ 		set sign 0
+ 	    }
+ 	} else {
+-	    set mantisse $string
++	    # strip leading zeros to avoid octal interpretation in Tcl 8
++	    set mantisse [string trimleft $string 0]
+ 	}
+         set exponent 0
+     } else {
+ 	if { $string == "" } {
+ 	    return [list 0 0 0]
+
+Index: modules/math/decimal.test
+==================================================================
+--- modules/math/decimal.test
++++ modules/math/decimal.test
+@@ -42,10 +42,30 @@
+ # math::decimal::fromstr reports an error when the exponential part has leading zeros.
+ test decimal-fromstr-1.1 "Correct conversion" {
+     list [math::decimal::tostr [math::decimal::fromstr 1E-09]] \
+          [math::decimal::tostr [math::decimal::fromstr 1E-009]]
+ } {1E-9 1E-9}
++
++#
++# Ticket a316389e99: underscores in numbers (TIP 551) and invalid input.
++test decimal-fromstr-2.1 "Underscores between digits" {
++    list [math::decimal::compare [math::decimal::fromstr 1.000001] \
++	      [math::decimal::fromstr 1.000_001]] \
++	[math::decimal::tostr [math::decimal::fromstr 1_000]] \
++	[math::decimal::tostr [math::decimal::fromstr 1.5E1_0]]
++} {0 1000 1.5E+10}
++
++test decimal-fromstr-2.2 "Leading zeros are not octal" {
++    math::decimal::tostr [math::decimal::+ \
++	[math::decimal::fromstr 09] [math::decimal::fromstr 1]]
++} 10
++
++foreach {n str} {1 abc 2 0x10 3 1.2.3 4 12a 5 _1 6 1_ 7 1._5 8 {}} {
++    test decimal-fromstr-2.3.$n "Invalid input: \"$str\"" -body {
++	math::decimal::fromstr $str
++    } -returnCodes error -result "expected a decimal number but got \"$str\""
++}
+ 
+ # -------------------------------------------------------------------------
+ 
+ # End of test cases
+ testsuiteCleanup
+

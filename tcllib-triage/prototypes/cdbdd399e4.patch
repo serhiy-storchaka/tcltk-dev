@@ -1,0 +1,56 @@
+Index: modules/rest/pkgIndex.tcl
+==================================================================
+--- modules/rest/pkgIndex.tcl
++++ modules/rest/pkgIndex.tcl
+@@ -1,2 +1,2 @@
+ if {![package vsatisfies [package provide Tcl] 8.5 9]} {return}
+-package ifneeded rest 1.7 [list source [file join $dir rest.tcl]]
++package ifneeded rest 1.8 [list source [file join $dir rest.tcl]]
+
+Index: modules/rest/rest.man
+==================================================================
+--- modules/rest/rest.man
++++ modules/rest/rest.man
+@@ -1,7 +1,7 @@
+ [comment {-*- tcl -*- doctools manpage}]
+-[vset VERSION 1.7]
++[vset VERSION 1.8]
+ [manpage_begin rest n [vset VERSION]]
+ [moddesc   {A framework for RESTful web services}]
+ [titledesc {define REST web APIs and call them inline or asychronously}]
+ [require Tcl "8.5 9"]
+ [require rest [opt [vset VERSION]]]
+
+--- /dev/null
++++ modules/rest/rest.test
+@@ -0,0 +1,30 @@
++# -*- tcl -*-
++# rest.test:  tests for the rest package.
++#
++# -------------------------------------------------------------------------
++# See the file "license.terms" for information on usage and redistribution
++# of this file, and for a DISCLAIMER OF ALL WARRANTIES.
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 2.0
++
++# -------------------------------------------------------------------------
++
++test rest-0.1-tkt-cdbdd399e4 {package index and package provide agree} -body {
++    set fh [open [localPath pkgIndex.tcl]] ; set idx [read $fh] ; close $fh
++    set fh [open [localPath rest.tcl]]     ; set src [read $fh] ; close $fh
++    regexp {package ifneeded rest (\S+)} $idx -> indexed
++    regexp {\npackage provide rest (\S+)} $src -> provided
++    expr {$indexed eq $provided ? "ok" : "index $indexed, provided $provided"}
++} -cleanup {
++    unset -nocomplain fh idx src indexed provided
++} -result ok
++
++# -------------------------------------------------------------------------
++testsuiteCleanup
++return

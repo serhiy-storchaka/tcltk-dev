@@ -1,0 +1,41 @@
+Index: modules/nettool/nettool.test
+==================================================================
+--- modules/nettool/nettool.test
++++ modules/nettool/nettool.test
+@@ -94,8 +94,22 @@
+ 
+ ::tcltest::test port-allocate-0006 \
+     "Test allocate port returns the next address of an claimed spot and claims it" \
+     [list ::nettool::allocate_port 7790] 7792
+ 
++::tcltest::test pkgindex-0001 \
++    "pkgIndex.tcl loads the package from the right file (ticket 61e49798ee)" \
++    -setup {
++	set ip [interp create]
++	$ip eval [list set ::auto_path $::auto_path]
++    } -body {
++	$ip eval [list set dir [file dirname [file normalize [info script]]]]
++	$ip eval {source [file join $dir pkgIndex.tcl]}
++	$ip eval [list package require nettool [package present nettool]]
++    } -cleanup {
++	interp delete $ip
++	unset ip
++    } -result [package present nettool]
++
+ 
+ testsuiteCleanup
+ return
+
+Index: modules/nettool/pkgIndex.tcl
+==================================================================
+--- modules/nettool/pkgIndex.tcl
++++ modules/nettool/pkgIndex.tcl
+@@ -1,6 +1,6 @@
+ 
+ if {![package vsatisfies [package provide Tcl] 8.5 9]} {return}
+ # Backward compatible alias
+ package ifneeded nettool::available_ports 0.2 {package require nettool ; package provide nettool::available_ports 0.2}
+-package ifneeded nettool 0.5.4 [list source [file join $dir nexttool.tcl]]
++package ifneeded nettool 0.5.4 [list source [file join $dir nettool.tcl]]
+ 
+

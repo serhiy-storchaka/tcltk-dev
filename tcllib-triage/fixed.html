@@ -1,0 +1,969 @@
+<title>Tcllib Ticket Triage: Already fixed or done</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280; --out:#7C5E10; --rfe:#0F766E;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --out:#D6B454; --rfe:#5EEAD4;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --out:#D6B454; --rfe:#5EEAD4;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}.c-out{--c:var(--out)}.c-rfe{--c:var(--rfe)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Open tcllib tickets: Already fixed or done</h1>
+  <p class="sub">Triage of all 509 open and Pending tickets of <a href="https://core.tcl-lang.org/tcllib">tcllib</a> (bugs, patches and feature requests) on 2026-11-15. Each ticket was checked against tcllib trunk on Linux with Tcl 9.1, 9.0, 8.6 and 8.5, using local servers for the network modules and a Windows 11 VM for Windows-only tickets. Outdated, superseded, duplicate and misfiled tickets are listed separately. Rows marked <span class="patch">patch</span> link to a prototype fix with a regression test (147 in all, in <a href="https://github.com/serhiy-storchaka/tcltk-dev/tree/main/tcllib-triage/prototypes">tcllib-triage/prototypes</a>). Updated 2026-11-15.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">157</span> Reproduced</a><a class="navchip c-fixed cur" href="fixed.html" aria-current="page"><span class="n">70</span> Already fixed or done</a><a class="navchip c-out" href="outdated.html"><span class="n">80</span> Outdated, superseded, duplicate</a><a class="navchip c-rfe" href="rfe.html"><span class="n">129</span> Feature requests</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">23</span> Not a bug</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">23</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">22</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">5</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">70</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, module, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="fixed"><h2><span class="dot c-fixed"></span>Already fixed or done <span class="cnt">70</span></h2><details class="t" id="8fc5a9642e" data-s="8fc5a9642e MS-Win,tcl9.1b0,autoproxy package: package require registry version conflict http :: autoproxy FIXED in Tcl: on Windows Tcl 9.1.1, `package require registry` gives 1.4 and `package versions registry` lists only 1.4. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>8fc5a9642e</span><span class="yr">2026</span><span class="ti">MS-Win,tcl9.1b0,autoproxy package: package require registry version conflict</span><span class="vd">FIXED in Tcl: on Windows Tcl 9.1.1, <code>package require registry</code> gives 1.4 and <code>package versions registry</code> lists only 1.4.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/8fc5a9642e">Open ticket 8fc5a9642e</a> · Bug · http :: autoproxy · filed 2026-06-24</p><div class="lab">Full verdict</div><p>FIXED in Tcl: on Windows Tcl 9.1.1, <code>package require registry</code> gives 1.4 and <code>package versions registry</code> lists only 1.4.</p><ul>
+<li><span class="k">Module</span> autoproxy 1.8.1 (<code>package require registry 1.0</code>, autoproxy.tcl line 154)
+</li>
+<li><span class="k">Tested</span> read the Tcl trunk sources. NEEDS-WINDOWS for a live check.
+</li>
+<li><span class="k">Cause</span> Tcl 9.1b0rc0 provided registry with the Tcl version number.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (on the Tcl side)
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed in Tcl by <a class="h" href="https://core.tcl-lang.org/tcl/info/e81499de1b">e81499de1b</a>: registry is version 1.4 again in 9.1, so <code>package require registry 1.0</code> works.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Verdict</span> FIXED in Tcl: on Windows Tcl 9.1.1, <code>package require registry</code> gives 1.4 and <code>package versions registry</code> lists only 1.4.
+</li>
+<li><span class="k">Tested</span> tclsh91.
+</li></ul></div></div></details><details class="t" id="a6712c3f42" data-s="a6712c3f42 Failing me_tcl.test needs results update grammar_me FIXED since tcllib 2.0 (c87d543cef, 2024-09-13) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>a6712c3f42</span><span class="yr">2024</span><span class="ti">Failing me_tcl.test needs results update</span><span class="vd">FIXED since tcllib 2.0 (c87d543cef, 2024-09-13)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/a6712c3f42">Open ticket a6712c3f42</a> · Bug · grammar_me · filed 2024-03-25</p><div class="lab">Full verdict</div><p>FIXED since tcllib 2.0 (c87d543cef, 2024-09-13)</p><ul>
+<li><span class="k">Module</span> grammar::me::tcl (grammar_me)
+</li>
+<li><span class="k">Tested</span> me_tcl.test passes 104/104 on 9.1, 9.0 and 8.6.
+</li>
+<li><span class="k">Cause</span> Tcl 9 dropped the "unicode" class from <code>string is</code>. c87d543cef ("Tcl 8/9 adaptions in tests") removed it from the expected message.
+</li>
+<li><span class="k">Prototype</span> none (already fixed)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed by <a class="h" href="https://core.tcl-lang.org/tcllib/info/c87d543cef">c87d543cef</a> (in 2.0): the expected error message no longer lists "unicode". The tests pass on 9.0, 9.1 and 8.6.
+</li></ul></div></details><details class="t" id="935ac3b65b" data-s="935ac3b65b tcllibc 1.21 sha256 compile fails with MS C (unused) FIXED on trunk after 2.0 (cc4d362b78, 2026-08-04, &quot;Integrated pbrooks-2026-08-critcl-fixes&quot;; d69b5f3fd3 removed the conflicting SHA256Init/Update/Final declarations from sha256.h). NEEDS-WINDOWS to confirm. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>935ac3b65b</span><span class="yr">2022</span><span class="ti">tcllibc 1.21 sha256 compile fails with MS C</span><span class="vd">FIXED on trunk after 2.0 (cc4d362b78, 2026-08-04, "Integrated pbrooks-2026-08-critcl-fixes"; d69b5f3fd3 removed the conflicting SHA256Init/Update/F…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/935ac3b65b">Open ticket 935ac3b65b</a> · Bug · (unused) · filed 2022-06-10</p><div class="lab">Full verdict</div><p>FIXED on trunk after 2.0 (cc4d362b78, 2026-08-04, "Integrated pbrooks-2026-08-critcl-fixes"; d69b5f3fd3 removed the conflicting SHA256Init/Update/Final declarations from sha256.h). NEEDS-WINDOWS to confirm.</p><ul>
+<li><span class="k">Module</span> sha256c (sha256 1.0.6)
+</li>
+<li><span class="k">Tested</span> code inspection only. Current sha256.h no longer declares the functions, so only the stubs header (sha256cDecls.h) declares them. No critcl/MSVC here.
+</li>
+<li><span class="k">Cause</span> duplicate prototypes with different linkage in sha256.h vs the generated stubs declarations
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> confirm with an MSVC build of trunk, then close as Fixed. The old leaves sha256-vc-fix (3d04580503) and apn-vc-fixes (3b2ac7132c) can then be closed.
+</li>
+<li><span class="k">Suggested ticket comment</span> The conflicting declarations were removed from sha256.h on trunk in <a class="h" href="https://core.tcl-lang.org/tcllib/info/cc4d362b78">cc4d362b78</a>. Please confirm with an MSVC build of trunk. Branch sha256-vc-fix is then obsolete.
+</li></ul></div></details><details class="t" id="da67f546e2" data-s="da67f546e2 Tcllib vs Tcl 8.7aX - Testsuite: 6 failures across 5 modules Build System &amp; Testing FIXED (no failures on current Tcl) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>da67f546e2</span><span class="yr">2020</span><span class="ti">Tcllib vs Tcl 8.7aX - Testsuite: 6 failures across 5 modules</span><span class="vd">FIXED (no failures on current Tcl)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/da67f546e2">Open ticket da67f546e2</a> · Bug · Build System &amp; Testing · filed 2020-03-07</p><div class="lab">Full verdict</div><p>FIXED (no failures on current Tcl)</p><ul>
+<li><span class="k">Module</span> cmdline, fileutil, grammar_me, snit, tar tests
+</li>
+<li><span class="k">Tested</span> <code>sak test run</code> on cmdline fileutil grammar_me snit tar with 9.1, 9.0 and 8.6: 2025 passed, 0 failed out of 2103 (the rest skipped) on each
+</li>
+<li><span class="k">Cause</span> 8.7a-era differences, adapted since
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> These five modules pass on 8.6, 9.0 and 9.1 with no failures.
+</li></ul></div></details><details class="t" id="7733d51d63" data-s="7733d51d63 error building crc32 tcllibc code on Win crc FIXED since tcllib 2.0 (9a3a6d56be, 2024-01-11). The critcl code moved out of crc32.tcl into crc32c.tcl. In 1.20 crc32.tcl defined `Crc32_c` itself and was also pulled in again via yencode&#x27;s `package require crc32`, hence &quot;redefinition of tcl__crc_Crc32_c&quot;. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>7733d51d63</span><span class="yr">2019</span><span class="ti">error building crc32 tcllibc code on Win</span><span class="vd">FIXED since tcllib 2.0 (9a3a6d56be, 2024-01-11). The critcl code moved out of crc32.tcl into crc32c.tcl. In 1.20 crc32.tcl defined <code>Crc32_c</code> itself…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/7733d51d63">Open ticket 7733d51d63</a> · Bug · crc · filed 2019-12-24</p><div class="lab">Full verdict</div><p>FIXED since tcllib 2.0 (9a3a6d56be, 2024-01-11). The critcl code moved out of crc32.tcl into crc32c.tcl. In 1.20 crc32.tcl defined <code>Crc32_c</code> itself and was also pulled in again via yencode's <code>package require crc32</code>, hence "redefinition of tcl__crc_Crc32_c".</p><ul>
+<li><span class="k">Module</span> crc32 1.3.4 / crcc
+</li>
+<li><span class="k">Tested</span> code inspection of tcllib-1-20, tcllib-1-21 and trunk. No critcl here, so no build was tried.
+</li>
+<li><span class="k">Prototype</span> none (fixed)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Since tcllib 2.0 the critcl implementation lives only in crc32c.tcl, so crc32.tcl no longer carries C code and the double definition cannot happen.
+</li></ul></div></details><details class="t" id="c824f2425b" data-s="c824f2425b Default configure finds Tcl 9, fails (unused) FIXED since tcllib 2.0 (758418619e, 2023-11-14, Rolf&#x27;s Tcl 9 work integrated; installer now `package require Tcl 8.5 9`) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>c824f2425b</span><span class="yr">2019</span><span class="ti">Default configure finds Tcl 9, fails</span><span class="vd">FIXED since tcllib 2.0 (758418619e, 2023-11-14, Rolf's Tcl 9 work integrated; installer now <code>package require Tcl 8.5 9</code>)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/c824f2425b">Open ticket c824f2425b</a> · Bug · (unused) · filed 2019-12-02</p><div class="lab">Full verdict</div><p>FIXED since tcllib 2.0 (758418619e, 2023-11-14, Rolf's Tcl 9 work integrated; installer now <code>package require Tcl 8.5 9</code>)</p><ul>
+<li><span class="k">Module</span> installer.tcl / configure (trunk)
+</li>
+<li><span class="k">Tested</span> VPATH <code>configure</code> with Tcl 9 first on PATH (it picked /bin/tclsh9.0), then <code>make install-libraries</code>: completed and generated tcllib2.0/pkgIndex.tcl
+</li>
+<li><span class="k">Cause</span> installer.tcl required Tcl 8.2 (exact major)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Tcllib 2.0 supports Tcl 9, and the installer accepts 8.5–9. configure/make install with a Tcl 9 tclsh works on trunk.
+</li></ul></div></details><details class="t" id="4aeded587b" data-s="4aeded587b https://core.tcl.tk/tcllib/doc/trunk/embedded/www/tcllib/files/modules/asn/asn.html asn DONE on trunk ([8c56f46b22], 2026-01-30, mark: &quot;added an example to the asn package&#x27;s docs&quot;; after tcllib 2.0, not in a release yet). asn.man&#x27;s Examples section now has a full encode/decode example. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>4aeded587b</span><span class="yr">2018</span><span class="ti"><a href="https://core.tcl.tk/tcllib/doc/trunk/embedded/www/tcllib/files/modules/asn/asn.html">https://core.tcl.tk/tcllib/doc/trunk/embedded/www/tcllib/files/modules/asn/asn.html</a></span><span class="vd">DONE on trunk (<a class="h" href="https://core.tcl-lang.org/tcllib/info/8c56f46b22">8c56f46b22</a>, 2026-01-30, mark: "added an example to the asn package's docs"; after tcllib 2.0, not in a release yet). asn.man's Exa…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/4aeded587b">Open ticket 4aeded587b</a> · Bug · asn · filed 2018-06-29 · <strong>Pending</strong> (resolved, waiting for confirmation)</p><div class="lab">Full verdict</div><p>DONE on trunk (<a class="h" href="https://core.tcl-lang.org/tcllib/info/8c56f46b22">8c56f46b22</a>, 2026-01-30, mark: "added an example to the asn package's docs"; after tcllib 2.0, not in a release yet). asn.man's Examples section now has a full encode/decode example.</p><ul>
+<li><span class="k">Module</span> asn 0.8.5 (asn.man)
+</li>
+<li><span class="k">Tested</span> read asn.man on trunk
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (trunk, next release)
+</li>
+<li><span class="k">Suggested ticket comment</span> The asn manpage now has an inline encode/decode example (<a class="h" href="https://core.tcl-lang.org/tcllib/info/8c56f46b22">8c56f46b22</a>). Closing.
+</li></ul></div></details><details class="t" id="a7fb3a643c" data-s="a7fb3a643c math::exact relies on bad Tcl resolution behaviour revoked by TIP 278 - Tcl 9 math FIXED since tcllib 1.19 ([fb859d7803], 2018-01-24) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>a7fb3a643c</span><span class="yr">2017</span><span class="ti">math::exact relies on bad Tcl resolution behaviour revoked by TIP 278 - Tcl 9</span><span class="vd">FIXED since tcllib 1.19 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/fb859d7803">fb859d7803</a>, 2018-01-24)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/a7fb3a643c">Open ticket a7fb3a643c</a> · Bug · math · filed 2017-10-31</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.19 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/fb859d7803">fb859d7803</a>, 2018-01-24)</p><ul>
+<li><span class="k">Module</span> math, math::exact
+</li>
+<li><span class="k">Tested</span> exact.test on 9.1, 9.0, 8.6: 198/198 pass. No relative <code>$math::...</code> variable references are left. The remaining relative <code>math::exact::...</code> names are command names, which TIP 278 did not change.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed by <a class="h" href="https://core.tcl-lang.org/tcllib/info/fb859d7803">fb859d7803</a>. math::exact tests pass on Tcl 9.0 and 9.1.
+</li></ul></div></details><details class="t" id="4367201817" data-s="4367201817 yaml relies on bad Tcl resolution behaviour revoked by TIP 278 - Tcl 9 yaml FIXED since tcllib 1.19 ([d50864197b], 2018-01-24), plus the Tcl 9 port [22c749a4ef] (2023, in tcllib 2.0) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>4367201817</span><span class="yr">2017</span><span class="ti">yaml relies on bad Tcl resolution behaviour revoked by TIP 278 - Tcl 9</span><span class="vd">FIXED since tcllib 1.19 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/d50864197b">d50864197b</a>, 2018-01-24), plus the Tcl 9 port <a class="h" href="https://core.tcl-lang.org/tcllib/info/22c749a4ef">22c749a4ef</a> (2023, in tcllib 2.0)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/4367201817">Open ticket 4367201817</a> · Bug · yaml · filed 2017-10-31</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.19 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/d50864197b">d50864197b</a>, 2018-01-24), plus the Tcl 9 port <a class="h" href="https://core.tcl-lang.org/tcllib/info/22c749a4ef">22c749a4ef</a> (2023, in tcllib 2.0)</p><ul>
+<li><span class="k">Module</span> yaml 0.4.2
+</li>
+<li><span class="k">Tested</span> yaml module tests 156/156 on 9.1 and 8.6; no <code>$yaml::</code>-style relative variable references remain.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Relative <code>yaml::</code> variable references were removed in <a class="h" href="https://core.tcl-lang.org/tcllib/info/d50864197b">d50864197b</a>, and yaml passes its tests on Tcl 9.0/9.1. Closing.
+</li></ul></div></details><details class="t" id="a12bff914d" data-s="a12bff914d add smtp.tcl support direct TLS connection with backward compatible smtp DONE (657782a889 / 9073bd414a, 2018, ticket 83d674b2dd; option -tlsimport) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>a12bff914d</span><span class="yr">2017</span><span class="ti">add smtp.tcl support direct TLS connection with backward compatible</span><span class="vd">DONE (657782a889 / 9073bd414a, 2018, ticket 83d674b2dd; option -tlsimport)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/a12bff914d">Open ticket a12bff914d</a> · Patch · smtp · filed 2017-10-27</p><div class="lab">Full verdict</div><p>DONE (657782a889 / 9073bd414a, 2018, ticket 83d674b2dd; option -tlsimport)</p><ul>
+<li><span class="k">Module</span> mime / smtp 1.5.2
+</li>
+<li><span class="k">Tested</span> code and docs. <code>-tlsimport 1</code> does <code>tls::import</code> right after the socket opens (native TLS, e.g. port 465). The attached patch artifact is not in the repository.
+</li>
+<li><span class="k">Cause</span> -
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (superseded by -tlsimport)
+</li>
+<li><span class="k">Suggested ticket comment</span> Direct TLS is supported via <code>smtp::sendmessage -tlsimport 1</code> (ticket 83d674b2dd, tcllib 1.20). Closing.
+</li></ul></div></details><details class="t" id="0bd02c1bf8" data-s="0bd02c1bf8 websocket: sec-websocket-protocol is optional but checked in websocket::test websocket FIXED since tcllib 2.0 (25005159c5, merged a500ff9409, 2022-10-10). DUPLICATE of e23279c7d1 and 0dd2a66f08. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>0bd02c1bf8</span><span class="yr">2016</span><span class="ti">websocket: sec-websocket-protocol is optional but checked in websocket::test</span><span class="vd">FIXED since tcllib 2.0 (25005159c5, merged a500ff9409, 2022-10-10). DUPLICATE of <a class="h" href="#e23279c7d1">e23279c7d1</a> and 0dd2a66f08.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/0bd02c1bf8">Open ticket 0bd02c1bf8</a> · Bug · websocket · filed 2016-11-20</p><div class="lab">Full verdict</div><p>FIXED since tcllib 2.0 (25005159c5, merged a500ff9409, 2022-10-10). DUPLICATE of <a class="h" href="#e23279c7d1">e23279c7d1</a> and 0dd2a66f08.</p><ul>
+<li><span class="k">Module</span> websocket 1.6
+</li>
+<li><span class="k">Tested</span> 9.1, <code>websocket::test</code> without the protocol header.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed in tcllib 2.0 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/25005159c5">25005159c5</a>, from ticket 0dd2a66f08): <code>validate</code> now returns an empty protocol list when the header is absent.
+</li></ul></div></details><details class="t" id="c4947e1f35" data-s="c4947e1f35 Write manpages for http A Category Is Missing DONE (httpd.man added in 5dd3f483bf/df153cb3ea, 2018-02, tcllib 1.19; now generated from the sources by build/build.tcl) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>c4947e1f35</span><span class="yr">2016</span><span class="ti">Write manpages for http</span><span class="vd">DONE (httpd.man added in 5dd3f483bf/df153cb3ea, 2018-02, tcllib 1.19; now generated from the sources by build/build.tcl)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/c4947e1f35">Open ticket c4947e1f35</a> · Bug · A Category Is Missing · filed 2016-11-14</p><div class="lab">Full verdict</div><p>DONE (httpd.man added in 5dd3f483bf/df153cb3ea, 2018-02, tcllib 1.19; now generated from the sources by build/build.tcl)</p><ul>
+<li><span class="k">Module</span> httpd 4.3.x
+</li>
+<li><span class="k">Tested</span> modules/httpd/httpd.man exists and is in the generated docs
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> httpd has had a manpage since tcllib 1.19 (2018). It is now generated from the sources. Closing.
+</li></ul></div></details><details class="t" id="3bb067b667" data-s="3bb067b667 package load failure snit FIXED since tcllib 2.0 ([bb98482e6f], 2024-09-13, &quot;Tcl 9 portability fixes&quot;) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3bb067b667</span><span class="yr">2016</span><span class="ti">package load failure</span><span class="vd">FIXED since tcllib 2.0 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/bb98482e6f">bb98482e6f</a>, 2024-09-13, "Tcl 9 portability fixes")</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3bb067b667">Open ticket 3bb067b667</a> · Bug · snit · filed 2016-04-26</p><div class="lab">Full verdict</div><p>FIXED since tcllib 2.0 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/bb98482e6f">bb98482e6f</a>, 2024-09-13, "Tcl 9 portability fixes")</p><ul>
+<li><span class="k">Module</span> snit 2.3.4 / 1.4.3
+</li>
+<li><span class="k">Tested</span> <code>set library x; source snit2.tcl</code> on 9.1/8.6 now works, and ::library is untouched. Old artifacts up to 2023 still had <code>set library ...</code> inside <code>namespace eval ::snit::</code>, and that mechanism fails on 8.6 (<code>info exists ::snit::library</code> → 0).
+</li>
+<li><span class="k">Cause</span> <code>set</code> instead of <code>variable</code> in snit.tcl/snit2.tcl; now <code>variable library</code>.
+</li>
+<li><span class="k">Prototype</span> none (fixed)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed in tcllib 2.0 (snit 2.3.4/1.4.3, check-in bb98482e6f): the loaders now use <code>variable library</code>.
+</li></ul></div></details><details class="t" id="4842c9ce0b" data-s="4842c9ce0b ::uuid::uuid generate: couldn&#x27;t execute &quot;ifconfig&quot;: no such file or directory uuid FIXED since tcllib 1.20 (d5e2fcf04b, 2018-05-31: use /dev/urandom when it exists instead of nettool) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>4842c9ce0b</span><span class="yr">2016</span><span class="ti">::uuid::uuid generate: couldn't execute "ifconfig": no such file or directory</span><span class="vd">FIXED since tcllib 1.20 (d5e2fcf04b, 2018-05-31: use /dev/urandom when it exists instead of nettool)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/4842c9ce0b">Open ticket 4842c9ce0b</a> · Bug · uuid · filed 2016-02-18</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.20 (d5e2fcf04b, 2018-05-31: use /dev/urandom when it exists instead of nettool)</p><ul>
+<li><span class="k">Module</span> uuid 1.0.9
+</li>
+<li><span class="k">Tested</span> <code>env PATH=/bin tclsh</code> with <code>uuid::uuid generate</code> works on 9.1 and 8.6. Also, nettool cannot be loaded at all right now (see the pkgIndex typo above), so uuid never reaches nettool.
+</li>
+<li><span class="k">Cause</span> n/a. The remaining <code>exec ifconfig</code> in nettool (build/platform_unix_linux.tcl) is covered by tickets <a class="h" href="reproduced.html#d879576438">d879576438</a> and <a class="h" href="reproduced.html#9a21637273">9a21637273</a>.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Since 2018, uuid uses /dev/urandom when present and no longer calls nettool/ifconfig on Unix. Closing; the nettool ifconfig dependency is tracked in <a class="h" href="reproduced.html#d879576438">d879576438</a>.
+</li></ul></div></details><details class="t" id="e23279c7d1" data-s="e23279c7d1 Websocket: empty protocol list throws error websocket FIXED since tcllib 2.0 (25005159c5, ticket 0dd2a66f08; merged in a500ff9409, 2022-10-10). `validate` now always returns a `protocols` key. Also a DUPLICATE of 0bd02c1bf8. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>e23279c7d1</span><span class="yr">2015</span><span class="ti">Websocket: empty protocol list throws error</span><span class="vd">FIXED since tcllib 2.0 (25005159c5, ticket 0dd2a66f08; merged in a500ff9409, 2022-10-10). <code>validate</code> now always returns a <code>protocols</code> key. Also a D…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/e23279c7d1">Open ticket e23279c7d1</a> · Bug · websocket · filed 2015-06-15</p><div class="lab">Full verdict</div><p>FIXED since tcllib 2.0 (25005159c5, ticket 0dd2a66f08; merged in a500ff9409, 2022-10-10). <code>validate</code> now always returns a <code>protocols</code> key. Also a DUPLICATE of <a class="h" href="#0bd02c1bf8">0bd02c1bf8</a>.</p><ul>
+<li><span class="k">Module</span> websocket 1.6
+</li>
+<li><span class="k">Tested</span> 9.1, <code>websocket::test</code> with no Sec-WebSocket-Protocol header returns 1.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed in tcllib 2.0 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/25005159c5">25005159c5</a>): a missing Sec-WebSocket-Protocol header now gives an empty protocol list, and any handler matches.
+</li></ul></div></details><details class="t" id="c3478ceae2" data-s="c3478ceae2 New json to huddle parser huddle DONE ([02ec11eeba], 2015-11-24, Tcllib 1.18). It brought json2huddle.tcl, the number/boolean/null types, `combine_relaxed`, the `isContainer` setting and the matching yaml changes. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>c3478ceae2</span><span class="yr">2015</span><span class="ti">New json to huddle parser</span><span class="vd">DONE (<a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a>, 2015-11-24, Tcllib 1.18). It brought json2huddle.tcl, the number/boolean/null types, <code>combine_relaxed</code>, the <code>isContainer</code> setti…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/c3478ceae2">Open ticket c3478ceae2</a> · Bug · huddle · filed 2015-05-04</p><div class="lab">Full verdict</div><p>DONE (<a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a>, 2015-11-24, Tcllib 1.18). It brought json2huddle.tcl, the number/boolean/null types, <code>combine_relaxed</code>, the <code>isContainer</code> setting and the matching yaml changes.</p><ul>
+<li><span class="k">Module</span> yaml/huddle::json 0.2 (json2huddle.tcl), huddle 0.5
+</li>
+<li><span class="k">Tested</span> the files and features are present on trunk. json2huddle.test passes as part of the yaml module tests (9.1, 8.6).
+</li>
+<li><span class="k">Cause</span> -
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Merged with the huddle 0.2 / yaml 0.3.8 work in Tcllib 1.18 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a>), including huddle::json.
+</li></ul></div></details><details class="t" id="34cf417ffd" data-s="34cf417ffd comm-6.0 fails comm FIXED since tcllib 1.19 (2c24d9d9c1, 2018-01-08: comm-6.0 now uses -ssl2 0 -ssl3 0 -tls1 1) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>34cf417ffd</span><span class="yr">2015</span><span class="ti">comm-6.0 fails</span><span class="vd">FIXED since tcllib 1.19 (2c24d9d9c1, 2018-01-08: comm-6.0 now uses -ssl2 0 -ssl3 0 -tls1 1)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/34cf417ffd">Open ticket 34cf417ffd</a> · Bug · comm · filed 2015-04-30</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.19 (2c24d9d9c1, 2018-01-08: comm-6.0 now uses -ssl2 0 -ssl3 0 -tls1 1)</p><ul>
+<li><span class="k">Module</span> comm 4.7.3
+</li>
+<li><span class="k">Tested</span> CANNOT-TEST the tls test itself (no tls package installed for 9.1/9.0/8.6, test skipped); checked comm.test via annotate
+</li>
+<li><span class="k">Cause</span> test asked for SSLv2/v3 only, refused by modern OpenSSL
+</li>
+<li><span class="k">Prototype</span> none (fixed)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> comm-6.0 was changed to use TLS 1 instead of SSLv2/v3 in tcllib 1.19.
+</li></ul></div></details><details class="t" id="9cbe339d78" data-s="9cbe339d78 pop3-7.0 fails pop3 FIXED since tcllib 1.19 (c49c11b395 &quot;Do not use ssl2 or ssl3 in tests&quot;, patthoyts, 2017-10-27, merged 048189d3a6). The test server was SSLv3-only, which modern OpenSSL rejects. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>9cbe339d78</span><span class="yr">2015</span><span class="ti">pop3-7.0 fails</span><span class="vd">FIXED since tcllib 1.19 (c49c11b395 "Do not use ssl2 or ssl3 in tests", patthoyts, 2017-10-27, merged 048189d3a6). The test server was SSLv3-only, …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/9cbe339d78">Open ticket 9cbe339d78</a> · Bug · pop3 · filed 2015-04-30</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.19 (c49c11b395 "Do not use ssl2 or ssl3 in tests", patthoyts, 2017-10-27, merged 048189d3a6). The test server was SSLv3-only, which modern OpenSSL rejects.</p><ul>
+<li><span class="k">Module</span> pop3 1.11
+</li>
+<li><span class="k">Tested</span> CANNOT run pop3-7.0 here (no tcltls; the test is skipped on 9.1/8.6). Caveat: the test certificates in modules/devtools are 1024-bit RSA, which OpenSSL 3 at the default security level 2 may also reject. Whoever has tcltls should re-run it.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> The test used an SSLv3-only server; since 1.19 it uses TLS 1.x (c49c11b395). Please reopen if it still fails with a current tcltls.
+</li></ul></div></details><details class="t" id="b5092d5623" data-s="b5092d5623 (title is an e-mail address; ooutil tests fail) Website FIXED since tcllib 1.18 (f705e6446e, 2015-05-21, per aku&#x27;s comment) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>b5092d5623</span><span class="yr">2015</span><span class="ti">(title is an e-mail address; ooutil tests fail)</span><span class="vd">FIXED since tcllib 1.18 (f705e6446e, 2015-05-21, per aku's comment)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/b5092d5623">Open ticket b5092d5623</a> · Patch · Website · filed 2015-04-30</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.18 (f705e6446e, 2015-05-21, per aku's comment)</p><ul>
+<li><span class="k">Module</span> oo::util 1.2.3
+</li>
+<li><span class="k">Tested</span> sak test run modules/ooutil on 9.1 and 8.6: 4/4 pass.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed. The title contains an email address and there are three later anonymous spam comments with personal data; consider retitling to "ooutil tests: can't find package T" and hiding the spam comments.
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed by <a class="h" href="https://core.tcl-lang.org/tcllib/info/f705e6446e">f705e6446e</a> in 2015; ooutil tests pass on 8.6 and 9.x. Closing.
+</li></ul></div></details><details class="t" id="a753cade83" data-s="a753cade83 New improved huddle version huddle DONE ([02ec11eeba] &quot;Merged huddle/yaml work - Updated to huddle 0.2, yaml 0.3.8&quot;, 2015-11-24. It was developed on branch huddle-a753cade83 and later updated in [5a516799b4], 2015-12-10) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>a753cade83</span><span class="yr">2015</span><span class="ti">New improved huddle version</span><span class="vd">DONE (<a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a> "Merged huddle/yaml work - Updated to huddle 0.2, yaml 0.3.8", 2015-11-24. It was developed on branch huddle-<a class="h" href="#a753cade83">a753cade83</a> and late…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/a753cade83">Open ticket a753cade83</a> · Bug · huddle · filed 2015-04-23</p><div class="lab">Full verdict</div><p>DONE (<a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a> "Merged huddle/yaml work - Updated to huddle 0.2, yaml 0.3.8", 2015-11-24. It was developed on branch huddle-<a class="h" href="#a753cade83">a753cade83</a> and later updated in <a class="h" href="https://core.tcl-lang.org/tcllib/info/5a516799b4">5a516799b4</a>, 2015-12-10)</p><ul>
+<li><span class="k">Module</span> yaml/huddle 0.5
+</li>
+<li><span class="k">Tested</span> history review (fossil finfo modules/yaml/huddle.tcl)
+</li>
+<li><span class="k">Cause</span> -
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Integrated as huddle 0.2 in Tcllib 1.18 via branch huddle-<a class="h" href="#a753cade83">a753cade83</a> (<a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a>).
+</li></ul></div></details><details class="t" id="58eb8d4e84" data-s="58eb8d4e84 Boolean type and a bug huddle DONE ([02ec11eeba], 2015-11-24, Tcllib 1.18). It added `huddle true/false/boolean` (tag b) with JSON output `true`/`false`. `huddle create` now uses dict semantics for duplicate keys. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>58eb8d4e84</span><span class="yr">2015</span><span class="ti">Boolean type and a bug</span><span class="vd">DONE (<a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a>, 2015-11-24, Tcllib 1.18). It added <code>huddle true/false/boolean</code> (tag b) with JSON output <code>true</code>/<code>false</code>. <code>huddle create</code> now use…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/58eb8d4e84">Open ticket 58eb8d4e84</a> · Bug · huddle · filed 2015-04-16</p><div class="lab">Full verdict</div><p>DONE (<a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a>, 2015-11-24, Tcllib 1.18). It added <code>huddle true/false/boolean</code> (tag b) with JSON output <code>true</code>/<code>false</code>. <code>huddle create</code> now uses dict semantics for duplicate keys.</p><ul>
+<li><span class="k">Module</span> yaml/huddle 0.5
+</li>
+<li><span class="k">Tested</span> <code>huddle create a 1 a 2</code> gives <code>HUDDLE {D {a {s 2}}}</code> on trunk (1.17 gave <code>{a {s 1} a {s 2}}</code>). <code>huddle jsondump [huddle create a [huddle boolean true]]</code> gives <code>{"a":true}</code>. Checked on 9.1 and 8.6.
+</li>
+<li><span class="k">Cause</span> -
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Both points were done in the huddle 0.2 rewrite (Tcllib 1.18): there is a boolean type, and create keeps only the last value of a duplicate key.
+</li></ul></div></details><details class="t" id="071dbedcc8" data-s="071dbedcc8 Waiting on testcases for fix to mishandled token &quot;string&quot; and new feature &quot;casesensitivestrings&quot; bibtex DONE (cd1a3ac12d, tcllib 1.17). Only the test cases were missing, and they are now written. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>071dbedcc8</span><span class="yr">2015</span><span class="ti">Waiting on testcases for fix to mishandled token "string" and new feature "casesensitivestrings"</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcllib-triage/prototypes/071dbedcc8.patch">patch</a><span class="vd">DONE (cd1a3ac12d, tcllib 1.17). Only the test cases were missing, and they are now written.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/071dbedcc8">Open ticket 071dbedcc8</a> · Bug · bibtex · filed 2015-03-19</p><div class="lab">Full verdict</div><p>DONE (cd1a3ac12d, tcllib 1.17). Only the test cases were missing, and they are now written.</p><ul>
+<li><span class="k">Module</span> bibtex 0.8
+</li>
+<li><span class="k">Tested</span> new tests bibtex-6.0..6.3 pass on 9.1 and 8.6. bibtex-6.0 fails when the <code>^</code> anchor is removed.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> prototypes/071dbedcc8.patch (32 lines, tests only: bibtex-6.0 "string" inside a field, 6.1 case-insensitive default, 6.2 <code>-casesensitivestrings 1</code>, 6.3 quoted macro value)
+</li>
+<li><span class="k">Suggested action</span> apply the test patch and close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Added tests for the "string"-inside-field fix and for -casesensitivestrings. Closing.
+</li></ul></div></details><details class="t" id="c601e3dc6c" data-s="c601e3dc6c  String is double does not conform to JSON specification huddle FIXED since tcllib 1.18 ([02ec11eeba], 2015-11-24). This is the same issue as 3315620fff. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>c601e3dc6c</span><span class="yr">2014</span><span class="ti">String is double does not conform to JSON specification</span><span class="vd">FIXED since tcllib 1.18 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a>, 2015-11-24). This is the same issue as <a class="h" href="#3315620fff">3315620fff</a>.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/c601e3dc6c">Open ticket c601e3dc6c</a> · Patch · huddle · filed 2014-09-04</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.18 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a>, 2015-11-24). This is the same issue as <a class="h" href="#3315620fff">3315620fff</a>.</p><ul>
+<li><span class="k">Module</span> yaml/huddle 0.5
+</li>
+<li><span class="k">Tested</span> <code>huddle jsondump [huddle create a b c 00.34]</code> gives <code>{"a":"b","c":"00.34"}</code> on 9.1 and 8.6. The attached patch (artifact 73c511b240) is not in the local repo, so it could not be compared, but its stated result now matches the trunk output.
+</li>
+<li><span class="k">Cause</span> -
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (or as a duplicate of <a class="h" href="#3315620fff">3315620fff</a>)
+</li>
+<li><span class="k">Suggested ticket comment</span> Since huddle 0.2 (Tcllib 1.18) string values are always quoted, so 00.34 is dumped as "00.34". Numbers must be created with <code>huddle number</code>.
+</li></ul></div></details><details class="t" id="a01e30ff40" data-s="a01e30ff40 websocket documentation still lacking in places websocket DONE (a500ff9409, 2022-10-10, tcllib 2.0) for the example given: the `error` type is now documented in websocket.man together with connect, disconnect, close and timeout. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>a01e30ff40</span><span class="yr">2014</span><span class="ti">websocket documentation still lacking in places</span><span class="vd">DONE (a500ff9409, 2022-10-10, tcllib 2.0) for the example given: the <code>error</code> type is now documented in websocket.man together with connect, disconn…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/a01e30ff40">Open ticket a01e30ff40</a> · Bug · websocket · filed 2014-08-12</p><div class="lab">Full verdict</div><p>DONE (a500ff9409, 2022-10-10, tcllib 2.0) for the example given: the <code>error</code> type is now documented in websocket.man together with connect, disconnect, close and timeout.</p><ul>
+<li><span class="k">Module</span> websocket 1.6
+</li>
+<li><span class="k">Tested</span> read websocket.man.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed. Remaining gaps, such as the <code>test</code>/<code>upgrade</code> context (<a class="h" href="reproduced.html#577ed0d10b">577ed0d10b</a>), are tracked separately.
+</li>
+<li><span class="k">Suggested ticket comment</span> The <code>error</code> type and the other event types are documented now (since <a class="h" href="https://core.tcl-lang.org/tcllib/info/a500ff9409">a500ff9409</a>). Closing; specific gaps can get their own tickets.
+</li></ul></div></details><details class="t" id="fb97352ad9" data-s="fb97352ad9 chase compiler warnings pt (parsetools) DONE. Unused-variable/initialization parts went in with [5d35be9b3a] (2014-08-11). The pointer-cast parts were done differently: `(void*)(uintptr_t)` with `&lt;stdint.h&gt;` in [4bc853f186] (2020-05-15, &quot;Fixed all the warnings reported on Linux&quot;), then [022eea6e5b] (2024, Tcl 9) and [0b25980a00] (2026-10-02, Windows warnings). " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>fb97352ad9</span><span class="yr">2014</span><span class="ti">chase compiler warnings</span><span class="vd">DONE. Unused-variable/initialization parts went in with <a class="h" href="https://core.tcl-lang.org/tcllib/info/5d35be9b3a">5d35be9b3a</a> (2014-08-11). The pointer-cast parts were done differently: `(void*)(uintptr_t…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/fb97352ad9">Open ticket fb97352ad9</a> · Patch · pt (parsetools) · filed 2014-08-07</p><div class="lab">Full verdict</div><p>DONE. Unused-variable/initialization parts went in with <a class="h" href="https://core.tcl-lang.org/tcllib/info/5d35be9b3a">5d35be9b3a</a> (2014-08-11). The pointer-cast parts were done differently: <code>(void*)(uintptr_t)</code> with <code>&lt;stdint.h&gt;</code> in <a class="h" href="https://core.tcl-lang.org/tcllib/info/4bc853f186">4bc853f186</a> (2020-05-15, "Fixed all the warnings reported on Linux"), then <a class="h" href="https://core.tcl-lang.org/tcllib/info/022eea6e5b">022eea6e5b</a> (2024, Tcl 9) and <a class="h" href="https://core.tcl-lang.org/tcllib/info/0b25980a00">0b25980a00</a> (2026-10-02, Windows warnings).</p><ul>
+<li><span class="k">Module</span> pt rde_critcl (C accelerator)
+</li>
+<li><span class="k">Tested</span> compared the attached patch chunks with the current rde_critcl/param.c, p.c and tc.c. Every cast site now uses (u)intptr_t.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Unused variables were fixed in <a class="h" href="https://core.tcl-lang.org/tcllib/info/5d35be9b3a">5d35be9b3a</a>. The cast warnings were later fixed with (u)intptr_t casts in <a class="h" href="https://core.tcl-lang.org/tcllib/info/4bc853f186">4bc853f186</a> and the 2026 warning cleanup <a class="h" href="https://core.tcl-lang.org/tcllib/info/0b25980a00">0b25980a00</a>. Closing.
+</li></ul></div></details><details class="t" id="3536709fff" data-s="3536709fff huddle get does not accept non-scalar dict keys yaml FIXED since tcllib 1.18 (huddle 0.2 rewrite, [02ec11eeba], 2015-11-24) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3536709fff</span><span class="yr">2012</span><span class="ti">huddle get does not accept non-scalar dict keys</span><span class="vd">FIXED since tcllib 1.18 (huddle 0.2 rewrite, <a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a>, 2015-11-24)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3536709fff">Open ticket 3536709fff</a> · Patch · yaml · filed 2012-06-20</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.18 (huddle 0.2 rewrite, <a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a>, 2015-11-24)</p><ul>
+<li><span class="k">Module</span> huddle 0.5
+</li>
+<li><span class="k">Tested</span> <code>huddle get [huddle create {a a} b] {a a}</code> works on 9.1 and 8.6 trunk (also <code>get_stripped</code>, <code>exists</code>, nested paths). The tcllib-1-17 huddle.tcl (0.1.5) fails with <code>key "{a a}" not known in dictionary</code>.
+</li>
+<li><span class="k">Cause</span> n/a (old <code>_key_reflexive</code> is gone)
+</li>
+<li><span class="k">Prototype</span> none (no regression test exists for it; the reporter's test case could be added)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Since the huddle 0.2 rewrite (tcllib 1.18), <code>huddle get $h {a a}</code> works. Closing as fixed.
+</li></ul></div></details><details class="t" id="3513149fff" data-s="3513149fff exra bracket in nvlist command causes corrupt return value ncgi FIXED since tcllib 1.15 (2a9631a53b, 2012-03-30, ncgi 1.3.3). The ticket resolution is already &quot;Fixed&quot; but the status is still Open. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3513149fff</span><span class="yr">2012</span><span class="ti">exra bracket in nvlist command causes corrupt return value</span><span class="vd">FIXED since tcllib 1.15 (2a9631a53b, 2012-03-30, ncgi 1.3.3). The ticket resolution is already "Fixed" but the status is still Open.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3513149fff">Open ticket 3513149fff</a> · Bug · ncgi · filed 2012-03-30</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.15 (2a9631a53b, 2012-03-30, ncgi 1.3.3). The ticket resolution is already "Fixed" but the status is still Open.</p><ul>
+<li><span class="k">Module</span> ncgi 1.4.6
+</li>
+<li><span class="k">Tested</span> code reading; <code>ncgi::reset "=x"; ncgi::nvlist</code> gives <code>anonymous x</code>
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close (status Closed, resolution already Fixed)
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed in ncgi 1.3.3 (tcllib 1.15). Closing.
+</li></ul></div></details><details class="t" id="3315620fff" data-s="3315620fff Invalid JSON with values that begin with 0 huddle FIXED since tcllib 1.18 ([02ec11eeba], 2015-11-24). Plain values are huddle strings and are always quoted; numbers need an explicit `huddle number`. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3315620fff</span><span class="yr">2011</span><span class="ti">Invalid JSON with values that begin with 0</span><span class="vd">FIXED since tcllib 1.18 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a>, 2015-11-24). Plain values are huddle strings and are always quoted; numbers need an explicit <code>huddle number</code>.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3315620fff">Open ticket 3315620fff</a> · Bug · huddle · filed 2011-06-13</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.18 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a>, 2015-11-24). Plain values are huddle strings and are always quoted; numbers need an explicit <code>huddle number</code>.</p><ul>
+<li><span class="k">Module</span> yaml/huddle 0.5
+</li>
+<li><span class="k">Tested</span> <code>huddle jsondump [huddle create key 000000]</code> gives <code>{"key":"000000"}</code> on 9.1 and 8.6 (1.17 gave <code>000000</code>).
+</li>
+<li><span class="k">Cause</span> -
+</li>
+<li><span class="k">Prototype</span> none. Residual issue: <code>huddle number</code> / <code>huddle compile number</code> validate with <code>string is double</code>, so <code>huddle number 007</code> (also 0x10, Inf, " 12") still dumps invalid JSON. That is a different and narrower issue, left as is because yaml may rely on such tokens.
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Since huddle 0.2 (Tcllib 1.18) strings are always quoted in jsondump; numbers must be created explicitly with <code>huddle number</code>.
+</li></ul></div></details><details class="t" id="3065746fff" data-s="3065746fff formatted log::log for performence log DONE (log::logsubst, ea802e332b, 2018-05-18, log 1.4, tcllib 1.20. Implemented by the same reporter as RFE 19607f927b) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3065746fff</span><span class="yr">2010</span><span class="ti">formatted log::log for performence</span><span class="vd">DONE (log::logsubst, ea802e332b, 2018-05-18, log 1.4, tcllib 1.20. Implemented by the same reporter as RFE 19607f927b)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3065746fff">Open ticket 3065746fff</a> · RFE · log · filed 2010-09-14</p><div class="lab">Full verdict</div><p>DONE (log::logsubst, ea802e332b, 2018-05-18, log 1.4, tcllib 1.20. Implemented by the same reporter as RFE 19607f927b)</p><ul>
+<li><span class="k">Module</span> log 1.5
+</li>
+<li><span class="k">Tested</span> log.man documents <code>::log::logsubst level msg</code> with lazy substitution. Its tests check that suppressed levels do not substitute.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (superseded by 19607f927b).
+</li>
+<li><span class="k">Suggested ticket comment</span> Implemented as <code>log::logsubst</code> (subst-based, as suggested in the comments) via <a class="h" href="https://core.tcl-lang.org/tcllib/info/19607f927b">19607f927b</a>, log 1.4, tcllib 1.20.
+</li></ul></div></details><details class="t" id="3042811fff" data-s="3042811fff huddle bug in dicts with complex keys huddle FIXED since tcllib 1.18 ([02ec11eeba], 2015-11-24, huddle 0.2 rewrite) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3042811fff</span><span class="yr">2010</span><span class="ti">huddle bug in dicts with complex keys</span><span class="vd">FIXED since tcllib 1.18 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a>, 2015-11-24, huddle 0.2 rewrite)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3042811fff">Open ticket 3042811fff</a> · Bug · huddle · filed 2010-08-11</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.18 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/02ec11eeba">02ec11eeba</a>, 2015-11-24, huddle 0.2 rewrite)</p><ul>
+<li><span class="k">Module</span> yaml/huddle 0.5
+</li>
+<li><span class="k">Tested</span> <code>huddle jsondump [huddle create {a b} b c d]</code> gives <code>{"a b":"b","c":"d"}</code> on trunk with 9.1 and 8.6, and on the tcllib-1-18 huddle.tcl. The tcllib-1-17 huddle.tcl still fails with <code>key "{a b}" not known in dictionary</code>.
+</li>
+<li><span class="k">Cause</span> -
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed by the huddle 0.2 rewrite in Tcllib 1.18: keys with spaces now work in create/get/jsondump.
+</li></ul></div></details><details class="t" id="2979481fff" data-s="2979481fff string macro parsing is buggy bibtex FIXED since tcllib 1.17 (cd1a3ac12d, 2015-04-21; branch bibtex-071dbedcc8) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2979481fff</span><span class="yr">2010</span><span class="ti">string macro parsing is buggy</span><span class="vd">FIXED since tcllib 1.17 (cd1a3ac12d, 2015-04-21; branch bibtex-<a class="h" href="#071dbedcc8">071dbedcc8</a>)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2979481fff">Open ticket 2979481fff</a> · Bug · bibtex · filed 2010-03-30</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.17 (cd1a3ac12d, 2015-04-21; branch bibtex-<a class="h" href="#071dbedcc8">071dbedcc8</a>)</p><ul>
+<li><span class="k">Module</span> bibtex 0.8
+</li>
+<li><span class="k">Tested</span> <code>title = {A string {theory} test}</code> now parses as a normal record on 9.1 and 8.6
+</li>
+<li><span class="k">Cause</span> the regexp lacked a <code>^</code> anchor. ParseRecords now uses <code>{^\s*string[^\{]*\{(.*)\}[^\}]*}</code>.
+</li>
+<li><span class="k">Prototype</span> none. The regression test is in prototypes/071dbedcc8.patch (bibtex-6.0).
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (duplicate of <a class="h" href="#071dbedcc8">071dbedcc8</a>)
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed in tcllib 1.17 by the patch from <a class="h" href="https://core.tcl-lang.org/tcllib/info/071dbedcc8">071dbedcc8</a>. The string regexp is now anchored at the start of the entry.
+</li></ul></div></details><details class="t" id="2845453fff" data-s="2845453fff MessageReceiver fails to read sequence byte on empty socket ldap FIXED since tcllib 1.19 (8b8f10e2bb, 2017-11-01, ticket c247ed5db4, merged 0826350f8d 2018-01-24) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2845453fff</span><span class="yr">2009</span><span class="ti">MessageReceiver fails to read sequence byte on empty socket</span><span class="vd">FIXED since tcllib 1.19 (8b8f10e2bb, 2017-11-01, ticket c247ed5db4, merged 0826350f8d 2018-01-24)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2845453fff">Open ticket 2845453fff</a> · Bug · ldap · filed 2009-08-27</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.19 (8b8f10e2bb, 2017-11-01, ticket c247ed5db4, merged 0826350f8d 2018-01-24)</p><ul>
+<li><span class="k">Module</span> ldap 1.10.2
+</li>
+<li><span class="k">Tested</span> code review. <code>ldap::MessageReceiver</code> now has a <code>partial</code> branch for the sequence byte that just returns and waits for the next fileevent. It is present in tcllib-1-19 (ldap 1.9.2). CANNOT-TEST the original LDAPS server situation.
+</li>
+<li><span class="k">Cause</span> the old code sent a "partial" (zero-byte) non-blocking read to the <code>default</code> branch, which reported a protocol error.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (duplicate of c247ed5db4).
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed by <a class="h" href="https://core.tcl-lang.org/tcllib/info/8b8f10e2bb">8b8f10e2bb</a> for ticket <a class="h" href="https://core.tcl-lang.org/tcllib/info/c247ed5db4">c247ed5db4</a> (ldap 1.9.2, tcllib 1.19): a partial read of the sequence byte now waits for the next readable event instead of failing.
+</li></ul></div></details><details class="t" id="2680202fff" data-s="2680202fff memory leak md5 FIXED since tcllib 1.12 ([2ba9a8f7a5], 2009-05-06, &quot;md5c command was leaking a Tcl_Obj on each call&quot;) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2680202fff</span><span class="yr">2009</span><span class="ti">memory leak</span><span class="vd">FIXED since tcllib 1.12 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/2ba9a8f7a5">2ba9a8f7a5</a>, 2009-05-06, "md5c command was leaking a Tcl_Obj on each call")</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2680202fff">Open ticket 2680202fff</a> · Bug · md5 · filed 2009-03-10</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.12 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/2ba9a8f7a5">2ba9a8f7a5</a>, 2009-05-06, "md5c command was leaking a Tcl_Obj on each call")</p><ul>
+<li><span class="k">Module</span> md5 2.0.9 / md5c 0.12 (critcl)
+</li>
+<li><span class="k">Tested</span> no critcl available here, so I built md5c.tcl's C code by hand as a stubs extension (9.1, 8.6). Then ran 4×(20000 md5::md5 string + 300 md5 -file on 100 KB) with accel(critcl)=1: RSS flat (9212→9216 KB on 9.1, 6872→6876 KB on 8.6)
+</li>
+<li><span class="k">Cause</span> extra Tcl_IncrRefCount in md5c (reporter used tcllibc 0.3.4 from 1.11)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> The md5c refcount leak was fixed in <a class="h" href="https://core.tcl-lang.org/tcllib/info/2ba9a8f7a5">2ba9a8f7a5</a> (tcllib 1.12). The current md5c shows no growth over 80000 calls on Tcl 8.6 and 9.1.
+</li></ul></div></details><details class="t" id="2444762fff" data-s="2444762fff Mozilla 3.x breaks ncgi::nvlist ncgi FIXED since tcllib 1.9 (bd21455bc5, 2006-07-02, ncgi 1.3.1), the same fix as 1116123. The error message quoted (&quot;dont know how to handle ...&quot;) comes from tclhttpd, not ncgi, so the reporter probably had an older ncgi bundled with tclhttpd. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2444762fff</span><span class="yr">2008</span><span class="ti">Mozilla 3.x breaks ncgi::nvlist</span><span class="vd">FIXED since tcllib 1.9 (bd21455bc5, 2006-07-02, ncgi 1.3.1), the same fix as 1116123. The error message quoted ("dont know how to handle ...") come…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2444762fff">Open ticket 2444762fff</a> · Bug · ncgi · filed 2008-12-18</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.9 (bd21455bc5, 2006-07-02, ncgi 1.3.1), the same fix as 1116123. The error message quoted ("dont know how to handle ...") comes from tclhttpd, not ncgi, so the reporter probably had an older ncgi bundled with tclhttpd.</p><ul>
+<li><span class="k">Module</span> ncgi 1.4.6
+</li>
+<li><span class="k">Tested</span> urlencoded data with <code>Content-Type: application/x-www-form-urlencoded; charset=UTF-8</code> parses fine on 9.1 and 8.6
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (or as a duplicate of 1116123)
+</li>
+<li><span class="k">Suggested ticket comment</span> ncgi 1.3.1 and later accept "; charset=..." after the urlencoded content type. The quoted message comes from tclhttpd.
+</li></ul></div></details><details class="t" id="2414880fff" data-s="2414880fff fix installer.tcl to look for and handle tcllibc Build System &amp; Testing DONE (4b2ffb42f2, 2019-08-29, ticket 138d56dbaf, tcllib 1.20) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2414880fff</span><span class="yr">2008</span><span class="ti">fix installer.tcl to look for and handle tcllibc</span><span class="vd">DONE (4b2ffb42f2, 2019-08-29, ticket 138d56dbaf, tcllib 1.20)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2414880fff">Open ticket 2414880fff</a> · Bug · Build System &amp; Testing · filed 2008-12-10</p><div class="lab">Full verdict</div><p>DONE (4b2ffb42f2, 2019-08-29, ticket 138d56dbaf, tcllib 1.20)</p><ul>
+<li><span class="k">Module</span> installer.tcl / support/installation
+</li>
+<li><span class="k">Tested</span> code reading. support/installation/modules.tcl registers <code>tcllibc</code> when modules/tcllibc exists. <code>make install-binaries</code> (sak.tcl critcl) builds and installs it.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Done in 1.20 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/4b2ffb42f2">4b2ffb42f2</a>): the installer installs a tcllibc it finds, and <code>make install-binaries</code> builds and installs it via critcl.
+</li></ul></div></details><details class="t" id="2225148fff" data-s="2225148fff struct::list test suite problems against tcl 8.6 cvs head struct :: list FIXED since tcllib 1.12 (3846dac25c, 2009-09-24) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2225148fff</span><span class="yr">2008</span><span class="ti">struct::list test suite problems against tcl 8.6 cvs head</span><span class="vd">FIXED since tcllib 1.12 (3846dac25c, 2009-09-24)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2225148fff">Open ticket 2225148fff</a> · Bug · struct :: list · filed 2008-11-05</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.12 (3846dac25c, 2009-09-24)</p><ul>
+<li><span class="k">Module</span> struct::list 1.8.x (modules/struct/list.tcl)
+</li>
+<li><span class="k">Tested</span> sak test run modules/struct on 9.1 and 8.6: 0 failures. assign-4.4, repeat-4.2 and repeat-4.4 now carry the <code>tcl8.5only</code> constraint, and repeat-4.5 uses a per-version result.
+</li>
+<li><span class="k">Cause</span> TIP 323 changed the core lassign/lrepeat that struct::list aliases on 8.5+. The tests were adjusted in 3846dac25c under the duplicate SF bug 2557046 (Closed/Fixed).
+</li>
+<li><span class="k">Prototype</span> none (already fixed)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (duplicate of 2557046fff)
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed by <a class="h" href="https://core.tcl-lang.org/tcllib/info/3846dac25c">3846dac25c</a> (Bug 2557046, released in Tcllib 1.12). The tests that check the TIP 323 behaviour are now limited to Tcl 8.5 or get per-version results. The struct tests pass on Tcl 8.6 and 9.1.
+</li></ul></div></details><details class="t" id="2022905fff" data-s="2022905fff 74 test failures with Tcl HEAD (wrong # args) Build System &amp; Testing FIXED (the testsuite was adapted for 8.6&#x27;s wrong#args messages long ago; tcllib trunk tests run clean on 8.6 and 9.x) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2022905fff</span><span class="yr">2008</span><span class="ti">74 test failures with Tcl HEAD (wrong # args)</span><span class="vd">FIXED (the testsuite was adapted for 8.6's wrong#args messages long ago; tcllib trunk tests run clean on 8.6 and 9.x)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2022905fff">Open ticket 2022905fff</a> · Bug · Build System &amp; Testing · filed 2008-07-20</p><div class="lab">Full verdict</div><p>FIXED (the testsuite was adapted for 8.6's wrong#args messages long ago; tcllib trunk tests run clean on 8.6 and 9.x)</p><ul>
+<li><span class="k">Module</span> whole testsuite
+</li>
+<li><span class="k">Tested</span> full <code>sak test run</code> on trunk. 9.1: 26708 passed, 13 failed out of 27126. 8.6: 27038 passed, 4 failed out of 27445. None of the failures is a wrong#args message. The 9.1-only failures are crc (7, new <code>binary</code> "expected byte sequence" message), hook (2, changed -errorstack contents) and doctools2base msgcat-2.0, which fails on both versions; websocket (3) also fails on both.
+</li>
+<li><span class="k">Cause</span> 2008-era 8.6a message reform. The testutilities <code>tcltest::wrongNumArgs</code>/tcl-version helpers now handle it.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> The 2008 failures are long gone. The current suite passes on Tcl 8.6 and 9.x without wrong#args failures.
+</li></ul></div></details><details class="t" id="2002489fff" data-s="2002489fff tree-tcl test 4.4.17 in test suite - error msg difference treeql FIXED since tcllib 1.11 (stack traces moved into per-version files, ChangeLog 2008-09-02) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2002489fff</span><span class="yr">2008</span><span class="ti">tree-tcl test 4.4.17 in test suite - error msg difference</span><span class="vd">FIXED since tcllib 1.11 (stack traces moved into per-version files, ChangeLog 2008-09-02)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2002489fff">Open ticket 2002489fff</a> · Bug · treeql · filed 2008-06-25</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.11 (stack traces moved into per-version files, ChangeLog 2008-09-02)</p><ul>
+<li><span class="k">Module</span> struct::tree 2.1.3
+</li>
+<li><span class="k">Tested</span> sak test run modules/struct on 9.1, 8.6 and 8.5: 0 failures. tree-tcl-4.4.17 and 4.4.17.0-6 pass.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> tree-tcl-4.4.17 passes on Tcl 8.5, 8.6, 9.0 and 9.1 since the 2008 rework of the expected stack traces. Closing.
+</li></ul></div></details><details class="t" id="2001950fff" data-s="2001950fff encoding of ini file inifile DONE (1a2e9c5b7b, 2014-07-21, ticket c4b8162da5; inifile 0.3, in tcllib 1.17) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2001950fff</span><span class="yr">2008</span><span class="ti">encoding of ini file</span><span class="vd">DONE (1a2e9c5b7b, 2014-07-21, ticket c4b8162da5; inifile 0.3, in tcllib 1.17)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2001950fff">Open ticket 2001950fff</a> · RFE · inifile · filed 2008-06-24</p><div class="lab">Full verdict</div><p>DONE (1a2e9c5b7b, 2014-07-21, ticket c4b8162da5; inifile 0.3, in tcllib 1.17)</p><ul>
+<li><span class="k">Module</span> inifile 0.3.3
+</li>
+<li><span class="k">Tested</span> code read. <code>ini::open ?-encoding E? file ?mode?</code> exists. Tests inifile-4.x cover it. b09616777a (2018) added encoding handling to commit/revert.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (implemented)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (duplicate of c4b8162da5)
+</li>
+<li><span class="k">Suggested ticket comment</span> Implemented by <a class="h" href="https://core.tcl-lang.org/tcllib/info/1a2e9c5b7b">1a2e9c5b7b</a> (ticket c4b8162da5): ini::open accepts -encoding since inifile 0.3 (Tcllib 1.17).
+</li></ul></div></details><details class="t" id="1928856fff" data-s="1928856fff fsCmd list - no socket as parameter? ftpd FIXED since tcllib 1.14 (ftpd 1.2.6, [Bug 3357765] passive-mode fix with PasvCheckAndWait, ChangeLog 2011-08-09) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1928856fff</span><span class="yr">2008</span><span class="ti">fsCmd list - no socket as parameter?</span><span class="vd">FIXED since tcllib 1.14 (ftpd 1.2.6, [Bug 3357765] passive-mode fix with PasvCheckAndWait, ChangeLog 2011-08-09)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1928856fff">Open ticket 1928856fff</a> · Bug · ftpd · filed 2008-03-29</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.14 (ftpd 1.2.6, [Bug 3357765] passive-mode fix with PasvCheckAndWait, ChangeLog 2011-08-09)</p><ul>
+<li><span class="k">Module</span> ftpd 1.4.1
+</li>
+<li><span class="k">Tested</span> ftp::NList against ftpd, passive and active (9.1, 8.6). The listing arrives over the data socket, so <code>dlist</code> receives the channel. In 2008, <code>List</code> called <code>Fs dlist</code> right after PASV, before the client had connected, so the channel was still "". Remaining corner case: a LIST/NLST sent without any PORT/PASV still passes "" to fsCmd instead of replying 425.
+</li>
+<li><span class="k">Cause</span> was ftpd.tcl <code>::ftpd::List</code> not waiting for the passive connection
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed by the passive-mode rework in ftpd 1.2.6 (tcllib 1.14). List now waits for the data connection and passes its channel to <code>fsCmd dlist</code>.
+</li></ul></div></details><details class="t" id="1897841fff" data-s="1897841fff nameprep test 5 fails stringprep FIXED (by Tcl: passes on 9.1, 9.0, 8.6 tip; still fails on 8.5) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1897841fff</span><span class="yr">2008</span><span class="ti">nameprep test 5 fails</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcllib-triage/prototypes/1897841fff.patch">patch</a><span class="vd">FIXED (by Tcl: passes on 9.1, 9.0, 8.6 tip; still fails on 8.5)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1897841fff">Open ticket 1897841fff</a> · Bug · stringprep · filed 2008-02-20</p><div class="lab">Full verdict</div><p>FIXED (by Tcl: passes on 9.1, 9.0, 8.6 tip; still fails on 8.5)</p><ul>
+<li><span class="k">Module</span> stringprep 1.0.3
+</li>
+<li><span class="k">Tested</span> <code>stringprep.test -constraints knownBug</code> passes 25/25 on 9.1, 9.0 and 8.6. On 8.5 nameprep-5 still fails: no non-BMP characters (U+1D7BB).
+</li>
+<li><span class="k">Cause</span> Tcl versions without full Unicode could not represent U+1D7BB. The test is currently always skipped via <code>knownBug</code>.
+</li>
+<li><span class="k">Prototype</span> prototypes/1897841fff.patch (39 lines, test-only). It replaces <code>knownBug</code> with a <code>fullUnicode</code> constraint (true when <code>encoding convertfrom utf-8</code> yields U+1D7BB), so nameprep-5 runs on 8.6+/9.x and is skipped on 8.5. Passes on 9.1/8.6, skipped on 8.5.
+</li>
+<li><span class="k">Suggested action</span> apply prototype, close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Passes now on Tcl 8.6 and 9.x, which handle U+1D7BB; only 8.5 lacks it. Proposed test change: run nameprep-5 under a fullUnicode constraint instead of knownBug.
+</li></ul></div></details><details class="t" id="1843712fff" data-s="1843712fff Option to set client address smtp DONE (ChangeLog 2007-01-25, FR 1614860) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1843712fff</span><span class="yr">2007</span><span class="ti">Option to set client address</span><span class="vd">DONE (ChangeLog 2007-01-25, FR 1614860)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1843712fff">Open ticket 1843712fff</a> · RFE · smtp · filed 2007-12-03</p><div class="lab">Full verdict</div><p>DONE (ChangeLog 2007-01-25, FR 1614860)</p><ul>
+<li><span class="k">Module</span> mime / smtp 1.5.2
+</li>
+<li><span class="k">Tested</span> <code>-client</code> is in sendmessage and documented in smtp.man.
+</li>
+<li><span class="k">Cause</span> -
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> <code>smtp::sendmessage -client</code> exists and is documented. It was added in January 2007 (FR 1614860). Closing.
+</li></ul></div></details><details class="t" id="1826418fff" data-s="1826418fff Various syntax errors None FIXED since tcllib 1.11 (2008-03-15, per aku: spf, term, grammar_fa/fa_op, dns etc.; ChangeLogs cite SF 1826418). The other reports were artifacts of an outdated procheck. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1826418fff</span><span class="yr">2007</span><span class="ti">Various syntax errors</span><span class="vd">FIXED since tcllib 1.11 (2008-03-15, per aku: spf, term, grammar_fa/fa_op, dns etc.; ChangeLogs cite SF 1826418). The other reports were artifacts …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1826418fff">Open ticket 1826418fff</a> · Bug · None · filed 2007-11-05</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.11 (2008-03-15, per aku: spf, term, grammar_fa/fa_op, dns etc.; ChangeLogs cite SF 1826418). The other reports were artifacts of an outdated procheck.</p><ul>
+<li><span class="k">Module</span> various
+</li>
+<li><span class="k">Tested</span> ChangeLog greps (term, grammar_fa, dns reference 1826418). Trunk is checked with nagelfar (<code>##nagelfar</code> pragmas), and <code>sak validate</code> exists.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed.
+</li>
+<li><span class="k">Suggested ticket comment</span> The real errors were fixed in 2008. The rest were false positives of an old procheck. Closing.
+</li></ul></div></details><details class="t" id="1815519fff" data-s="1815519fff fileutil::find does not return symlinks fileutil FIXED since tcllib 1.11 (605bf758ee, 2007-10-24: &quot;Changed handling of broken symbolic links ... They are now recognized and returned&quot;, fileutil 1.13.4; tests find-1.10.x) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1815519fff</span><span class="yr">2007</span><span class="ti">fileutil::find does not return symlinks</span><span class="vd">FIXED since tcllib 1.11 (605bf758ee, 2007-10-24: "Changed handling of broken symbolic links ... They are now recognized and returned", fileutil 1.1…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1815519fff">Open ticket 1815519fff</a> · Bug · fileutil · filed 2007-10-18</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.11 (605bf758ee, 2007-10-24: "Changed handling of broken symbolic links ... They are now recognized and returned", fileutil 1.13.4; tests find-1.10.x)</p><ul>
+<li><span class="k">Module</span> fileutil 1.16.4, fileutil::traverse 0.7
+</li>
+<li><span class="k">Tested</span> a directory with a file, a good link, a dangling link and a dir link. fileutil::find and fileutil::traverse return all of them on 9.1, 8.6, 8.5.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed in 2007 (fileutil 1.13.4, Tcllib 1.11). Broken symlinks are now returned by find and traverse (tests find-1.10.*).
+</li></ul></div></details><details class="t" id="1720896fff" data-s="1720896fff test suite enhancement - bug report files general request DONE (mostly), otherwise OUTDATED " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1720896fff</span><span class="yr">2007</span><span class="ti">test suite enhancement - bug report files</span><span class="vd">DONE (mostly), otherwise OUTDATED</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1720896fff">Open ticket 1720896fff</a> · RFE · general request · filed 2007-05-17</p><div class="lab">Full verdict</div><p>DONE (mostly), otherwise OUTDATED</p><ul>
+<li><span class="k">Module</span> sak
+</li>
+<li><span class="k">Tested</span> <code>sak test run -l STEM</code> writes STEM.log, STEM.summary, STEM.failures, STEM.skipped and STEM.none. The part about submitting to sf.net no longer applies (tickets are in fossil).
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed/Out of date
+</li>
+<li><span class="k">Suggested ticket comment</span> <code>sak test run -l STEM</code> now writes the detailed log and a separate failures list, which can be attached to a ticket. Closing.
+</li></ul></div></details><details class="t" id="1695120fff" data-s="1695120fff doctools - add diagram support doctools DONE (doctools 1.4.7, 2010-06-08, added the `[image name ?label?]` markup. dtplite maps symbolic names to png/jpeg/pic/txt variants. Tcllib&#x27;s own docs, e.g. modules/pt/include/*.dia, keep diagrams as tklib `diagram` sources that are rendered to images.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1695120fff</span><span class="yr">2007</span><span class="ti">doctools - add diagram support</span><span class="vd">DONE (doctools 1.4.7, 2010-06-08, added the <code>[image name ?label?]</code> markup. dtplite maps symbolic names to png/jpeg/pic/txt variants. Tcllib's own d…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1695120fff">Open ticket 1695120fff</a> · RFE · doctools · filed 2007-04-05</p><div class="lab">Full verdict</div><p>DONE (doctools 1.4.7, 2010-06-08, added the <code>[image name ?label?]</code> markup. dtplite maps symbolic names to png/jpeg/pic/txt variants. Tcllib's own docs, e.g. modules/pt/include/*.dia, keep diagrams as tklib <code>diagram</code> sources that are rendered to images.)</p><ul>
+<li><span class="k">Module</span> doctools 1.6.1
+</li>
+<li><span class="k">Tested</span> code reading (checker.tcl <code>proc image</code>, ChangeLog 2010-06-08)
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> doctools has had the [image] markup since 1.4.7 (2010). Diagrams written with tklib's diagram package are rendered to images and embedded that way, as tcllib's pt docs do.
+</li></ul></div></details><details class="t" id="1627868fff" data-s="1627868fff RFE term::vt100 control sequences  term DONE (term::ansi::code::ctrl, added with the term module in [c45a25f68f] 2006-07-11, before this RFE) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1627868fff</span><span class="yr">2007</span><span class="ti">RFE term::vt100 control sequences</span><span class="vd">DONE (term::ansi::code::ctrl, added with the term module in <a class="h" href="https://core.tcl-lang.org/tcllib/info/c45a25f68f">c45a25f68f</a> 2006-07-11, before this RFE)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1627868fff">Open ticket 1627868fff</a> · RFE · term · filed 2007-01-04</p><div class="lab">Full verdict</div><p>DONE (term::ansi::code::ctrl, added with the term module in <a class="h" href="https://core.tcl-lang.org/tcllib/info/c45a25f68f">c45a25f68f</a> 2006-07-11, before this RFE)</p><ul>
+<li><span class="k">Module</span> term::ansi::code::ctrl 0.4 (term module)
+</li>
+<li><span class="k">Tested</span> compared the attached VT100 list (vt100.txt) with ansi_cctrl.man. Cursor movement and positioning, save/restore cursor (with attributes), scroll region, erase line/screen, tab set/clear, device/cursor status queries, reset, line wrap, G0/G1 charset selection, graphics charset and SGR attributes are all there.
+</li>
+<li><span class="k">Cause</span> n/a. Still missing are only rarely used modes: origin mode, cursor-key/keypad application mode, ESC D/M/E, double-height/width lines, printer control and reverse-screen. They can be built with term::ansi::code::define.
+</li>
+<li><span class="k">Prototype</span> none (RFE)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed/Done
+</li>
+<li><span class="k">Suggested ticket comment</span> The term module's term::ansi::code::ctrl package provides the VT100/ANSI control sequences: cursor movement, scroll regions, erase, tabs, charsets, queries and attributes. Anything still missing can be defined with term::ansi::code::define.
+</li></ul></div></details><details class="t" id="1584520fff" data-s="1584520fff add option to tcllib&#x27;s configure A Category Is Missing DONE (3ea92fe7fb, 2007-08-21: `make test` uses verbose batch mode when stdout is not a tty; `make test_batch` forces it) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1584520fff</span><span class="yr">2006</span><span class="ti">add option to tcllib's configure</span><span class="vd">DONE (3ea92fe7fb, 2007-08-21: <code>make test</code> uses verbose batch mode when stdout is not a tty; <code>make test_batch</code> forces it)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1584520fff">Open ticket 1584520fff</a> · Patch · A Category Is Missing · filed 2006-10-25</p><div class="lab">Full verdict</div><p>DONE (3ea92fe7fb, 2007-08-21: <code>make test</code> uses verbose batch mode when stdout is not a tty; <code>make test_batch</code> forces it)</p><ul>
+<li><span class="k">Module</span> Makefile.in
+</li>
+<li><span class="k">Tested</span> read Makefile.in test/test_batch/test_interactive targets
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed/Out of date
+</li>
+<li><span class="k">Suggested ticket comment</span> Since 2007 <code>make test</code> uses the plain log when output is not a terminal, and <code>make test_batch</code> forces it. No configure option is needed.
+</li></ul></div></details><details class="t" id="1492630fff" data-s="1492630fff Installer not creating tcllibc + related uuid issue Installer DONE (`make install` runs `install-binaries`, i.e. `sak.tcl critcl`, which builds and installs tcllibc. devdoc/tcllib_installer.man (&quot;Build &amp; Installation&quot;, parts/b_critcl.inc) documents building the accelerators.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1492630fff</span><span class="yr">2006</span><span class="ti">Installer not creating tcllibc + related uuid issue</span><span class="vd">DONE (<code>make install</code> runs <code>install-binaries</code>, i.e. <code>sak.tcl critcl</code>, which builds and installs tcllibc. devdoc/tcllib_installer.man ("Build &amp; Insta…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1492630fff">Open ticket 1492630fff</a> · Bug · Installer · filed 2006-05-21</p><div class="lab">Full verdict</div><p>DONE (<code>make install</code> runs <code>install-binaries</code>, i.e. <code>sak.tcl critcl</code>, which builds and installs tcllibc. devdoc/tcllib_installer.man ("Build &amp; Installation", parts/b_critcl.inc) documents building the accelerators.)</p><ul>
+<li><span class="k">Module</span> installer / Makefile.in / uuid 1.0.x
+</li>
+<li><span class="k">Tested</span> code/doc read (Makefile.in install target, devdoc/tcllib_installer.man).
+</li>
+<li><span class="k">Cause</span> n/a. uuid still uses <code>generate_c</code> only if critcl is already loaded, or through tcllibc, which is the intended design.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed/Out of date
+</li>
+<li><span class="k">Suggested ticket comment</span> <code>make install</code> now builds and installs tcllibc via critcl (install-binaries), and the installer guide documents how to build the accelerators. uuid picks up the C version from tcllibc.
+</li></ul></div></details><details class="t" id="1465066fff" data-s="1465066fff logger does not print correct args when passed multiple args logger FIXED since tcllib 1.12 (cff1860c31, 2008-12-17, logger 0.9, RFE 2381524) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1465066fff</span><span class="yr">2006</span><span class="ti">logger does not print correct args when passed multiple args</span><span class="vd">FIXED since tcllib 1.12 (cff1860c31, 2008-12-17, logger 0.9, RFE 2381524)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1465066fff">Open ticket 1465066fff</a> · Bug · logger · filed 2006-04-05</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.12 (cff1860c31, 2008-12-17, logger 0.9, RFE 2381524)</p><ul>
+<li><span class="k">Module</span> logger 0.9.5
+</li>
+<li><span class="k">Tested</span> <code>${f}::debug foo bar baz</code> printed <code>[bar] [debug] 'baz'</code> with tcllib 1.9, 1.10 and 1.11 (logger 0.7/0.8). With 1.12, 1.15, 1.19 and trunk on 8.6 and 9.1 it prints <code>[foo] [debug] 'foo bar baz'</code>.
+</li>
+<li><span class="k">Cause</span> the old service-name tracking took arguments as the service. The 0.9 rewrite only treats the <code>-_logger::service</code> marker that way.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed.
+</li>
+<li><span class="k">Suggested ticket comment</span> Works since logger 0.9 (tcllib 1.12, <a class="h" href="https://core.tcl-lang.org/tcllib/info/cff1860c31">cff1860c31</a>). Multiple arguments are now logged as one message.
+</li></ul></div></details><details class="t" id="1438365fff" data-s="1438365fff possible error condition when port in use comm FIXED since tcllib 1.11 (7b5c1024fa, 2008-02-29, comm 4.5.7, fix for SF 1861565) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1438365fff</span><span class="yr">2006</span><span class="ti">possible error condition when port in use</span><span class="vd">FIXED since tcllib 1.11 (7b5c1024fa, 2008-02-29, comm 4.5.7, fix for SF 1861565)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1438365fff">Open ticket 1438365fff</a> · Bug · comm · filed 2006-02-24</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.11 (7b5c1024fa, 2008-02-29, comm 4.5.7, fix for SF 1861565)</p><ul>
+<li><span class="k">Module</span> comm 4.7.3
+</li>
+<li><span class="k">Tested</span> 9.1, 8.6: <code>comm::comm new test -port &lt;busy&gt; -listen 1</code> and <code>comm::comm config -port &lt;busy&gt;</code> both give "couldn't open socket: address already in use"; test comm-5.0 covers it
+</li>
+<li><span class="k">Cause</span> commConfigure renamed $chan unconditionally; now guarded by <code>[info proc $chan]</code>
+</li>
+<li><span class="k">Prototype</span> none (fixed)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (duplicate of 1861565)
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed in comm 4.5.7 (tcllib 1.11) with the fix for <a class="h" href="https://core.tcl-lang.org/tcllib/info/1861565fff">1861565fff</a>: the error is now "address already in use"; test comm-5.0.
+</li></ul></div></details><details class="t" id="1430694fff" data-s="1430694fff smtp or socket issue causes error 400 in Windows XP Pro smtp FIXED since tcllib 1.21 (ce8dab3154, 2021-03-22) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1430694fff</span><span class="yr">2006</span><span class="ti">smtp or socket issue causes error 400 in Windows XP Pro</span><span class="vd">FIXED since tcllib 1.21 (ce8dab3154, 2021-03-22)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1430694fff">Open ticket 1430694fff</a> · Bug · smtp · filed 2006-02-13</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.21 (ce8dab3154, 2021-03-22)</p><ul>
+<li><span class="k">Module</span> mime / smtp 1.5.2
+</li>
+<li><span class="k">Tested</span> sent 10 KB+ messages with -usetls 0 to a local fake SMTP server on 9.1/8.6 (Trf not available, so the non-Trf path). OK.
+</li>
+<li><span class="k">Cause</span> The reports point at the Trf transform path with a non-blocking socket ("error writing sock: invalid argument", data cut off). Ticket 7849ff6729 fixed exactly this in ce8dab3154: the channel now runs blocking while the Trf transform is active, and no data is lost at the end. The rest is Windows XP / Tcl 8.4 era.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (or Out of Date)
+</li>
+<li><span class="k">Suggested ticket comment</span> The Trf path that cut off large messages was fixed in <a class="h" href="https://core.tcl-lang.org/tcllib/info/ce8dab3154">ce8dab3154</a> (ticket 7849ff6729, tcllib 1.21). Closing.
+</li></ul></div></details><details class="t" id="1328920fff" data-s="1328920fff Symbolic differentiation math DONE ([8437472089], 2010-10-20, kennykb) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1328920fff</span><span class="yr">2005</span><span class="ti">Symbolic differentiation</span><span class="vd">DONE (<a class="h" href="https://core.tcl-lang.org/tcllib/info/8437472089">8437472089</a>, 2010-10-20, kennykb)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1328920fff">Open ticket 1328920fff</a> · RFE · math · filed 2005-10-17</p><div class="lab">Full verdict</div><p>DONE (<a class="h" href="https://core.tcl-lang.org/tcllib/info/8437472089">8437472089</a>, 2010-10-20, kennykb)</p><ul>
+<li><span class="k">Module</span> math, math::calculus::symdiff 1.0.2
+</li>
+<li><span class="k">Tested</span> symdiff.tcl/.man/.test exist on trunk.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Added as math::calculus::symdiff in 2010 (tcllib 1.13).
+</li></ul></div></details><details class="t" id="1292966fff" data-s="1292966fff Performance: connection timeout ftp FIXED since tcllib 1.14 (52c11ba5ad, 2011-08-09, bug 3325112) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1292966fff</span><span class="yr">2005</span><span class="ti">Performance: connection timeout</span><span class="vd">FIXED since tcllib 1.14 (52c11ba5ad, 2011-08-09, bug 3325112)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1292966fff">Open ticket 1292966fff</a> · Bug · ftp · filed 2005-09-16</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.14 (52c11ba5ad, 2011-08-09, bug 3325112)</p><ul>
+<li><span class="k">Module</span> ftp 2.4.14
+</li>
+<li><span class="k">Tested</span> code read. The <code>fconfigure -peername</code> call in OpenControlConn was removed by that check-in, which is exactly the reporter's diagnosis.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> The slow -peername lookup in OpenControlConn was removed in ftp 2.4.11 (bug 3325112, tcllib 1.14).
+</li></ul></div></details><details class="t" id="1144466fff" data-s="1144466fff RFE: logger: customizable output format log DONE (logger::utils / logger::appender, 81c17070d3, 2005-09-28, tcllib 1.8) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1144466fff</span><span class="yr">2005</span><span class="ti">RFE: logger: customizable output format</span><span class="vd">DONE (logger::utils / logger::appender, 81c17070d3, 2005-09-28, tcllib 1.8)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1144466fff">Open ticket 1144466fff</a> · RFE · log · filed 2005-02-19</p><div class="lab">Full verdict</div><p>DONE (logger::utils / logger::appender, 81c17070d3, 2005-09-28, tcllib 1.8)</p><ul>
+<li><span class="k">Module</span> logger 0.9.5, logger::utils 1.3.2, logger::appender 1.4
+</li>
+<li><span class="k">Tested</span> <code>logger::utils::applyAppender -appender console -serviceCmd $log -appenderArgs {-conversionPattern {\[%d\] \[%c\] \[%M\] \[%p\] %m}}</code> prints <code>[2026/11/15 01:06:52] [foo] [myproc] [warn] hello</code> on 9.1 and 8.6. That includes the caller proc (%M), as the ticket asked. <code>fileAppend -outputChannel</code> covers the per-channel request in the comments.
+</li>
+<li><span class="k">Cause</span> n/a. The %d date format is fixed rather than configurable, which is a small gap.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed/Out of date.
+</li>
+<li><span class="k">Suggested ticket comment</span> Covered by logger::utils::applyAppender with -conversionPattern (%d %c %M %p %m ...) since tcllib 1.8. Output channels can be chosen with the fileAppend appender.
+</li></ul></div></details><details class="t" id="1116123fff" data-s="1116123fff ncgi.tcl: misunderstands Content-Type: (bug #547274) ncgi FIXED since tcllib 1.9 (bd21455bc5, 2006-07-02, ncgi 1.3.1 &quot;Fixed bug 547274&quot;: the nvlist content-type patterns became `application/x-www-form-urlencoded*` etc.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1116123fff</span><span class="yr">2005</span><span class="ti">ncgi.tcl: misunderstands Content-Type: (bug #547274)</span><span class="vd">FIXED since tcllib 1.9 (bd21455bc5, 2006-07-02, ncgi 1.3.1 "Fixed bug 547274": the nvlist content-type patterns became `application/x-www-form-urle…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1116123fff">Open ticket 1116123fff</a> · Patch · ncgi · filed 2005-02-04</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.9 (bd21455bc5, 2006-07-02, ncgi 1.3.1 "Fixed bug 547274": the nvlist content-type patterns became <code>application/x-www-form-urlencoded*</code> etc.)</p><ul>
+<li><span class="k">Module</span> ncgi 1.4.6
+</li>
+<li><span class="k">Tested</span> <code>ncgi::reset "a=b&amp;c=d" "application/x-www-form-urlencoded; charset=UTF-8"; ncgi::nvlist</code> gives <code>a b c d</code> on 9.1 and 8.6
+</li>
+<li><span class="k">Cause</span> was the exact match on the type in nvlist
+</li>
+<li><span class="k">Prototype</span> none. The attached diff is not applicable: it strips the parameters from <code>[type]</code>, so multipart would lose its boundary.
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed in ncgi 1.3.1 (tcllib 1.9). Content-Type parameters such as "; charset=..." are now accepted for urlencoded and text/xml data.
+</li></ul></div></details><details class="t" id="1104059fff" data-s="1104059fff Allow easy use of TLS with pop3 pop3 DONE (-socketcmd tls::socket for pop3s in 1e4e56a154, 2009-04-13, pop3 1.7; STLS via -stls/-tls-callback in 38c311e999, 2011-01-23, pop3 1.8) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1104059fff</span><span class="yr">2005</span><span class="ti">Allow easy use of TLS with pop3</span><span class="vd">DONE (-socketcmd tls::socket for pop3s in 1e4e56a154, 2009-04-13, pop3 1.7; STLS via -stls/-tls-callback in 38c311e999, 2011-01-23, pop3 1.8)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1104059fff">Open ticket 1104059fff</a> · RFE · pop3 · filed 2005-01-17</p><div class="lab">Full verdict</div><p>DONE (-socketcmd tls::socket for pop3s in 1e4e56a154, 2009-04-13, pop3 1.7; STLS via -stls/-tls-callback in 38c311e999, 2011-01-23, pop3 1.8)</p><ul>
+<li><span class="k">Module</span> pop3 1.11
+</li>
+<li><span class="k">Tested</span> code and docs read; cannot test TLS here (no tcltls package).
+</li>
+<li><span class="k">Cause</span> n/a. Follow-up worth a look: the STLS path calls <code>tls::import ... -ssl2 0 -ssl3 1 -tls1 1 -cipher SSLv3,TLSv1</code>, which is dated and may fail against modern TLS 1.2+-only servers with OpenSSL 3.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Implemented: use <code>-socketcmd tls::socket</code> for pop3s (pop3 1.7) or <code>-stls 1</code> for STARTTLS (pop3 1.8).
+</li></ul></div></details><details class="t" id="1008619fff" data-s="1008619fff htmlparse::2tree gets the HTML Doc structure wrong htmlparse FIXED since tcllib 1.9 (ab08ecbe1c, 2006-01-18) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1008619fff</span><span class="yr">2004</span><span class="ti">htmlparse::2tree gets the HTML Doc structure wrong</span><span class="vd">FIXED since tcllib 1.9 (ab08ecbe1c, 2006-01-18)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1008619fff">Open ticket 1008619fff</a> · Bug · htmlparse · filed 2004-08-13</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.9 (ab08ecbe1c, 2006-01-18)</p><ul>
+<li><span class="k">Module</span> htmlparse 1.2.3
+</li>
+<li><span class="k">Tested</span> the ticket's example on trunk (9.1, 8.6): <code>&lt;p&gt;</code> is now a sibling of <code>&lt;h1&gt;</code>. The htmlparse.tcl before ab08ecbe1c makes <code>&lt;p&gt;</code> a child of <code>&lt;h1&gt;</code>; the version from ab08ecbe1c gives the right tree.
+</li>
+<li><span class="k">Cause</span> the post-pass <code>Reorder</code> was too aggressive. ab08ecbe1c ("less aggressive", SF Patch 953854) fixed it.
+</li>
+<li><span class="k">Prototype</span> none (already fixed)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed by <a class="h" href="https://core.tcl-lang.org/tcllib/info/ab08ecbe1c">ab08ecbe1c</a> (SF patch 953854): <code>&lt;p&gt;</code> after <code>&lt;h1&gt;</code> is now its sibling.
+</li></ul></div></details><details class="t" id="991959ffff" data-s="991959ffff command to send headers ncgi DONE (`ncgi::header ?type? ?name value ...?` already existed in 2004, before this RFE was filed (it is in the 2004-05-04 revision 35934da2af); it prints Content-Type, extra headers and the pending Set-Cookie lines) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>991959ffff</span><span class="yr">2004</span><span class="ti">command to send headers</span><span class="vd">DONE (<code>ncgi::header ?type? ?name value ...?</code> already existed in 2004, before this RFE was filed (it is in the 2004-05-04 revision 35934da2af); it p…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/991959ffff">Open ticket 991959ffff</a> · RFE · ncgi · filed 2004-07-15</p><div class="lab">Full verdict</div><p>DONE (<code>ncgi::header ?type? ?name value ...?</code> already existed in 2004, before this RFE was filed (it is in the 2004-05-04 revision 35934da2af); it prints Content-Type, extra headers and the pending Set-Cookie lines)</p><ul>
+<li><span class="k">Module</span> ncgi 1.4.6
+</li>
+<li><span class="k">Tested</span> code reading; ncgi-12.x tests cover <code>ncgi::header</code>
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed / Works as designed
+</li>
+<li><span class="k">Suggested ticket comment</span> ncgi::header (and ncgi::redirect, which uses it) does exactly this. A compatibility layer for Rivet/tclhttpd can redefine it.
+</li></ul></div></details><details class="t" id="880692ffff" data-s="880692ffff ncgi - = in cgi value breaks parsing of variable/value pairs ncgi FIXED since tcllib 1.9 (6ad5a29080, 2006-07-02, ncgi 1.3.2; the greedy `(.*)=(.*)` regexp was replaced by `string first =`) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>880692ffff</span><span class="yr">2004</span><span class="ti">ncgi - = in cgi value breaks parsing of variable/value pairs</span><span class="vd">FIXED since tcllib 1.9 (6ad5a29080, 2006-07-02, ncgi 1.3.2; the greedy <code>(.*)=(.*)</code> regexp was replaced by <code>string first =</code>)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/880692ffff">Open ticket 880692ffff</a> · Patch · ncgi · filed 2004-01-20</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.9 (6ad5a29080, 2006-07-02, ncgi 1.3.2; the greedy <code>(.*)=(.*)</code> regexp was replaced by <code>string first =</code>)</p><ul>
+<li><span class="k">Module</span> ncgi 1.4.6
+</li>
+<li><span class="k">Tested</span> <code>ncgi::reset "a=b=c&amp;d==&amp;=x&amp;e=1" ""; ncgi::nvlist</code> gives <code>a b=c d = anonymous x e 1</code> on 9.1 and 8.6
+</li>
+<li><span class="k">Cause</span> was ncgi.tcl:nvlist greedy regexp, which split at the last <code>=</code>
+</li>
+<li><span class="k">Prototype</span> none (already fixed)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed in ncgi 1.3.2 (tcllib 1.9): nvlist now splits at the first "=", so "a=b=c" gives name a, value "b=c".
+</li></ul></div></details><details class="t" id="858218ffff" data-s="858218ffff errors thrown with no explanation ftp FIXED since tcllib 1.6 (9bd4ab9e64, 2003-12-01) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>858218ffff</span><span class="yr">2003</span><span class="ti">errors thrown with no explanation</span><span class="vd">FIXED since tcllib 1.6 (9bd4ab9e64, 2003-12-01)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/858218ffff">Open ticket 858218ffff</a> · Bug · ftp · filed 2003-12-11</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.6 (9bd4ab9e64, 2003-12-01)</p><ul>
+<li><span class="k">Module</span> ftp 2.4.14
+</li>
+<li><span class="k">Tested</span> code read. The regexp is now <code>^-?([0-9]+)( |-)?(.*)$</code> with the missing negation fixed, and the message (which includes the line) is only shown in VERBOSE mode. Normal servers (ftpd) parse fine.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed in December 2003 (ftp ChangeLog: wrong condition and an extra caret in the regexp). This was released in tcllib 1.6.
+</li></ul></div></details><details class="t" id="772489ffff" data-s="772489ffff doctools: latex, add document internal cross-referencing doctools DONE (doctools 1.3.4, 2008-05-15: (sub)section ids plus `[sectref id]`. fmt.latex emits `\label{id}` after each `\section` and `\ref{label}` for sectref.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>772489ffff</span><span class="yr">2003</span><span class="ti">doctools: latex, add document internal cross-referencing</span><span class="vd">DONE (doctools 1.3.4, 2008-05-15: (sub)section ids plus <code>[sectref id]</code>. fmt.latex emits <code>\label{id}</code> after each <code>\section</code> and <code>\ref{label}</code> for se…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/772489ffff">Open ticket 772489ffff</a> · RFE · doctools · filed 2003-07-16</p><div class="lab">Full verdict</div><p>DONE (doctools 1.3.4, 2008-05-15: (sub)section ids plus <code>[sectref id]</code>. fmt.latex emits <code>\label{id}</code> after each <code>\section</code> and <code>\ref{label}</code> for sectref.)</p><ul>
+<li><span class="k">Module</span> doctools 1.6.1 fmt.latex
+</li>
+<li><span class="k">Tested</span> code reading, fmt.latex lines 147-148 and 337-339
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Since doctools 1.3.4 sections and subsections can have ids, and [sectref] refers to them. The LaTeX engine renders these as \label and \ref.
+</li></ul></div></details><details class="t" id="747674ffff" data-s="747674ffff ftp_lib.tcl ftp FIXED since tcllib 1.10 (cc984c045f, 2006-11-09, bug 1191607) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>747674ffff</span><span class="yr">2003</span><span class="ti">ftp_lib.tcl</span><span class="vd">FIXED since tcllib 1.10 (cc984c045f, 2006-11-09, bug 1191607)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/747674ffff">Open ticket 747674ffff</a> · RFE · ftp · filed 2003-06-02</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.10 (cc984c045f, 2006-11-09, bug 1191607)</p><ul>
+<li><span class="k">Module</span> ftp 2.4.14
+</li>
+<li><span class="k">Tested</span> <code>ftp::Quote $h HELP</code> against ftpd returns the whole 214 multi-line reply (9.1).
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Since ftp 2.4.7 (bug 1191607), ftp::Quote returns the complete multi-line reply.
+</li></ul></div></details><details class="t" id="732597ffff" data-s="732597ffff move tcllib doc generation to build step general request DONE ([3286b5637f] 2013-02-15 &quot;installer uses the embedded documentation instead of generating&quot;, then [888d8ab7b9]/[46a48af79f] which moved the installed docs to idoc/; first release tcllib 1.16) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>732597ffff</span><span class="yr">2003</span><span class="ti">move tcllib doc generation to build step</span><span class="vd">DONE (<a class="h" href="https://core.tcl-lang.org/tcllib/info/3286b5637f">3286b5637f</a> 2013-02-15 "installer uses the embedded documentation instead of generating", then <a class="h" href="https://core.tcl-lang.org/tcllib/info/888d8ab7b9">888d8ab7b9</a>/<a class="h" href="https://core.tcl-lang.org/tcllib/info/46a48af79f">46a48af79f</a> which moved the ins…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/732597ffff">Open ticket 732597ffff</a> · RFE · general request · filed 2003-05-05</p><div class="lab">Full verdict</div><p>DONE (<a class="h" href="https://core.tcl-lang.org/tcllib/info/3286b5637f">3286b5637f</a> 2013-02-15 "installer uses the embedded documentation instead of generating", then <a class="h" href="https://core.tcl-lang.org/tcllib/info/888d8ab7b9">888d8ab7b9</a>/<a class="h" href="https://core.tcl-lang.org/tcllib/info/46a48af79f">46a48af79f</a> which moved the installed docs to idoc/; first release tcllib 1.16)</p><ul>
+<li><span class="k">Module</span> installer / sak
+</li>
+<li><span class="k">Tested</span> installer.tcl now copies pregenerated nroff/html from idoc/; nothing is generated at install time.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Done: since tcllib 1.16 the documentation is pregenerated in idoc/ and the installer only copies it.
+</li></ul></div></details><details class="t" id="704219ffff" data-s="704219ffff doctools - HTML customization features doctools DONE (mostly). Since doctools 1.3.x (2008-05, ChangeLog &quot;_html.tcl ... divisions a CSS can lock onto&quot;) the HTML output puts every part in a `div`/`span` with a `doctools_*` class. The engine parameters `meta`, `header`, `footer`, `xref` and `raw` let you add your own CSS. Section headings are now &quot;Name&quot;/&quot;Description&quot; in initial caps. You still cannot drop the Name/Description sections or change the tags. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>704219ffff</span><span class="yr">2003</span><span class="ti">doctools - HTML customization features</span><span class="vd">DONE (mostly). Since doctools 1.3.x (2008-05, ChangeLog "_html.tcl ... divisions a CSS can lock onto") the HTML output puts every part in a <code>div</code>/`…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/704219ffff">Open ticket 704219ffff</a> · RFE · doctools · filed 2003-03-15</p><div class="lab">Full verdict</div><p>DONE (mostly). Since doctools 1.3.x (2008-05, ChangeLog "_html.tcl ... divisions a CSS can lock onto") the HTML output puts every part in a <code>div</code>/<code>span</code> with a <code>doctools_*</code> class. The engine parameters <code>meta</code>, <code>header</code>, <code>footer</code>, <code>xref</code> and <code>raw</code> let you add your own CSS. Section headings are now "Name"/"Description" in initial caps. You still cannot drop the Name/Description sections or change the tags.</p><ul>
+<li><span class="k">Module</span> doctools 1.6.1 fmt.html
+</li>
+<li><span class="k">Tested</span> generated HTML on 9.1, checked for <code>class="doctools_section"</code> etc. Read fmt.html <code>__var</code>.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> The HTML engine now emits classed divs/spans (doctools_section, doctools_synopsis, ...), and a stylesheet can be injected through the <code>meta</code> parameter, so fonts, colors and heading styles are customizable with CSS. Further structural changes need a custom engine.
+</li></ul></div></details><details class="t" id="672957ffff" data-s="672957ffff New submodule: optimisation math DONE ([e69e86b94f], 2003-04-18, Arjen&#x27;s optimisation procs; solveLinearProgram followed) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>672957ffff</span><span class="yr">2003</span><span class="ti">New submodule: optimisation</span><span class="vd">DONE (<a class="h" href="https://core.tcl-lang.org/tcllib/info/e69e86b94f">e69e86b94f</a>, 2003-04-18, Arjen's optimisation procs; solveLinearProgram followed)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/672957ffff">Open ticket 672957ffff</a> · RFE · math · filed 2003-01-23</p><div class="lab">Full verdict</div><p>DONE (<a class="h" href="https://core.tcl-lang.org/tcllib/info/e69e86b94f">e69e86b94f</a>, 2003-04-18, Arjen's optimisation procs; solveLinearProgram followed)</p><ul>
+<li><span class="k">Module</span> math, math::optimize 1.0.2
+</li>
+<li><span class="k">Tested</span> the package exists with docs and tests.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Included as math::optimize in 2003, including solveLinearProgram.
+</li></ul></div></details><details class="t" id="618241ffff" data-s="618241ffff ftp::Get &lt;source&gt; -variable &lt;var&gt; bombs ftp FIXED since tcllib 1.4 (0515c88443, 2002-08-06, SF bug 582668) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>618241ffff</span><span class="yr">2002</span><span class="ti">ftp::Get &lt;source&gt; -variable &lt;var&gt; bombs</span><span class="vd">FIXED since tcllib 1.4 (0515c88443, 2002-08-06, SF bug 582668)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/618241ffff">Open ticket 618241ffff</a> · Bug · ftp · filed 2002-10-03</p><div class="lab">Full verdict</div><p>FIXED since tcllib 1.4 (0515c88443, 2002-08-06, SF bug 582668)</p><ul>
+<li><span class="k">Module</span> ftp 2.4.14
+</li>
+<li><span class="k">Tested</span> ftpd on 127.0.0.1. <code>ftp::Get $h a.txt -variable v</code> returns 1 with correct content in active and passive mode, on 9.1 and 8.6. The <code>$dest</code> check is now <code>if {$ftp(inline) == 0}</code>, exactly the fix suggested in the ticket.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (duplicate of 582668)
+</li>
+<li><span class="k">Suggested ticket comment</span> This was fixed as SF bug 582668 in 2002 (ftp 2.4, tcllib 1.4); Get -variable works on current trunk.
+</li></ul></div></details><details class="t" id="516723ffff" data-s="516723ffff doctools - javadoc like application doctools DONE (`mkdoc` module + app added in tcllib 1.21, [8defde4552], 2022-04-28; also `tepam::doc_gen` for TEPAM procs) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>516723ffff</span><span class="yr">2002</span><span class="ti">doctools - javadoc like application</span><span class="vd">DONE (<code>mkdoc</code> module + app added in tcllib 1.21, <a class="h" href="https://core.tcl-lang.org/tcllib/info/8defde4552">8defde4552</a>, 2022-04-28; also <code>tepam::doc_gen</code> for TEPAM procs)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/516723ffff">Open ticket 516723ffff</a> · RFE · doctools · filed 2002-02-12</p><div class="lab">Full verdict</div><p>DONE (<code>mkdoc</code> module + app added in tcllib 1.21, <a class="h" href="https://core.tcl-lang.org/tcllib/info/8defde4552">8defde4552</a>, 2022-04-28; also <code>tepam::doc_gen</code> for TEPAM procs)</p><ul>
+<li><span class="k">Module</span> none (RFE for new app)
+</li>
+<li><span class="k">Tested</span> checked that modules/mkdoc and apps/mkdoc exist on trunk
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (RFE)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Tcllib 1.21 added the mkdoc package and application. They extract documentation comments from Tcl source files (Markdown, not doctools). For TEPAM procedures there is also tepam::doc_gen.
+</li></ul></div></details><details class="t" id="486547ffff" data-s="486547ffff note for future struct::graph developmen struct :: graph DONE (a C implementation of struct::graph, the main topic of the discussion, is in tcllib: modules/struct/graph/*.c, graph_c.tcl. Graph I/O formats are not part of struct.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>486547ffff</span><span class="yr">2001</span><span class="ti">note for future struct::graph developmen</span><span class="vd">DONE (a C implementation of struct::graph, the main topic of the discussion, is in tcllib: modules/struct/graph/*.c, graph_c.tcl. Graph I/O formats…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/486547ffff">Open ticket 486547ffff</a> · RFE · struct :: graph · filed 2001-11-28</p><div class="lab">Full verdict</div><p>DONE (a C implementation of struct::graph, the main topic of the discussion, is in tcllib: modules/struct/graph/*.c, graph_c.tcl. Graph I/O formats are not part of struct.)</p><ul>
+<li><span class="k">Module</span> struct::graph 2.4.4
+</li>
+<li><span class="k">Tested</span> code inspection
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed / Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> struct::graph now has a critcl C implementation, and the external cgraph link is dead. The CPAN pointer is just a note. Closing.
+</li></ul></div></details><details class="t" id="473656ffff" data-s="473656ffff pop3::retrieve blocking forever pop3 FIXED since ~tcllib 1.1/1.6 (the -retr-mode/size handling of 2001-07-31 and the binary/dot-unstuffing rework of 2003-11-18, see pop3 ChangeLog). The report was against pop3 1.2. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>473656ffff</span><span class="yr">2001</span><span class="ti">pop3::retrieve blocking forever</span><span class="vd">FIXED since ~tcllib 1.1/1.6 (the -retr-mode/size handling of 2001-07-31 and the binary/dot-unstuffing rework of 2003-11-18, see pop3 ChangeLog). Th…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/473656ffff">Open ticket 473656ffff</a> · Bug · pop3 · filed 2001-10-22</p><div class="lab">Full verdict</div><p>FIXED since ~tcllib 1.1/1.6 (the -retr-mode/size handling of 2001-07-31 and the binary/dot-unstuffing rework of 2003-11-18, see pop3 ChangeLog). The report was against pop3 1.2.</p><ul>
+<li><span class="k">Module</span> pop3 1.11
+</li>
+<li><span class="k">Tested</span> 9.1, 8.6, tclsh and wish (Xvfb :117): retrieve against a local fake POP3 server. Dot-stuffed lines are unstuffed, and a short read (more data than announced) completes. A server announcing *more* octets than it sends still blocks in <code>read</code> (RetrFast); <code>-retr-mode slow</code> is the workaround. The pop3 test suite passes (44/45, the 1 skip is TLS).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (out of date)
+</li>
+<li><span class="k">Suggested ticket comment</span> Both problems (blocking read of the announced size, and missing dot-unstuffing) were fixed in later pop3 versions (2001/2003); this report was about pop3 1.2.
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

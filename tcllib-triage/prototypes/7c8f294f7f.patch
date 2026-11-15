@@ -1,0 +1,228 @@
+Index: modules/clay/build/test.tcl
+==================================================================
+--- modules/clay/build/test.tcl
++++ modules/clay/build/test.tcl
+@@ -2499,32 +2499,32 @@
+     return [dict get $id $field]
+   }
+ }
+ 
+ set obj [tip479class new]
+-test tip479-001 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-001 {dictargs method accepts all arguments} {
+   $obj newitem id 1 color orange shape round
+ } {id 1 color orange shape round}
+ 
+ # Fail because we left off a mandatory argument
+-test tip479-002 {Test that a later ensemble definition trumps a more primitive one} \
++test tip479-002 {dictargs method fails on missing mandatory argument} \
+   -errorCode NONE -body {
+   $obj newitem id 2
+ } -result {shape is required}
+ 
+ ###
+ # Leave off a value that has a default
+ # note: Method had special handling for color, but not flavor
+ ###
+-test tip479-003 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-003 {dictargs method fills in default value} {
+   $obj newitem id 3 shape round
+ } {id 3 shape round color green}
+ 
+ ###
+ # Add extra arguments
+ ###
+-test tip479-004 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-004 {dictargs method accepts extra arguments} {
+   $obj newitem id 4 shape round trim leather
+ } {id 4 shape round trim leather color green}
+ 
+ clay::define tip479classE {
+ 
+@@ -2550,32 +2550,32 @@
+   }
+ }
+ 
+ 
+ set obj [tip479classE new]
+-test tip479-001 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-005 {dictargs Ensemble accepts all arguments} {
+   $obj item new id 1 color orange shape round
+ } {id 1 color orange shape round}
+ 
+ # Fail because we left off a mandatory argument
+-test tip479-002 {Test that a later ensemble definition trumps a more primitive one} \
++test tip479-006 {dictargs Ensemble fails on missing mandatory argument} \
+   -errorCode NONE -body {
+   $obj item new id 2
+ } -result {shape is required}
+ 
+ ###
+ # Leave off a value that has a default
+ # note: Method had special handling for color, but not flavor
+ ###
+-test tip479-003 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-007 {dictargs Ensemble fills in default value} {
+   $obj item new id 3 shape round
+ } {id 3 shape round color green}
+ 
+ ###
+ # Add extra arguments
+ ###
+-test tip479-004 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-008 {dictargs Ensemble accepts extra arguments} {
+   $obj item new id 4 shape round trim leather
+ } {id 4 shape round trim leather color green}
+ 
+ }
+ 
+
+Index: modules/clay/clay.test
+==================================================================
+--- modules/clay/clay.test
++++ modules/clay/clay.test
+@@ -3050,31 +3050,31 @@
+     return [dict get $id $field]
+   }
+ }
+ 
+ set obj [tip479class new]
+-test tip479-001 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-001 {dictargs method accepts all arguments} {
+   $obj newitem id 1 color orange shape round
+ } {id 1 color orange shape round}
+ 
+ # Fail because we left off a mandatory argument
+-test tip479-002 {Test that a later ensemble definition trumps a more primitive one} -body {
++test tip479-002 {dictargs method fails on missing mandatory argument} -body {
+   $obj newitem id 2
+ } -result {shape is required} -returnCodes error
+ 
+ ###
+ # Leave off a value that has a default
+ # note: Method had special handling for color, but not flavor
+ ###
+-test tip479-003 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-003 {dictargs method fills in default value} {
+   $obj newitem id 3 shape round
+ } {id 3 shape round color green}
+ 
+ ###
+ # Add extra arguments
+ ###
+-test tip479-004 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-004 {dictargs method accepts extra arguments} {
+   $obj newitem id 4 shape round trim leather
+ } {id 4 shape round trim leather color green}
+ 
+ clay::define tip479classE {
+ 
+@@ -3100,31 +3100,31 @@
+   }
+ }
+ 
+ 
+ set obj [tip479classE new]
+-test tip479-001 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-005 {dictargs Ensemble accepts all arguments} {
+   $obj item new id 1 color orange shape round
+ } {id 1 color orange shape round}
+ 
+ # Fail because we left off a mandatory argument
+-test tip479-002 {Test that a later ensemble definition trumps a more primitive one} -body {
++test tip479-006 {dictargs Ensemble fails on missing mandatory argument} -body {
+   $obj item new id 2
+ } -result {shape is required} -returnCodes error
+ 
+ ###
+ # Leave off a value that has a default
+ # note: Method had special handling for color, but not flavor
+ ###
+-test tip479-003 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-007 {dictargs Ensemble fills in default value} {
+   $obj item new id 3 shape round
+ } {id 3 shape round color green}
+ 
+ ###
+ # Add extra arguments
+ ###
+-test tip479-004 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-008 {dictargs Ensemble accepts extra arguments} {
+   $obj item new id 4 shape round trim leather
+ } {id 4 shape round trim leather color green}
+ 
+ testsuiteCleanup
+ 
+@@ -6187,31 +6187,31 @@
+     return [dict get $id $field]
+   }
+ }
+ 
+ set obj [tip479class new]
+-test tip479-001 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-001 {dictargs method accepts all arguments} {
+   $obj newitem id 1 color orange shape round
+ } {id 1 color orange shape round}
+ 
+ # Fail because we left off a mandatory argument
+-test tip479-002 {Test that a later ensemble definition trumps a more primitive one} -body {
++test tip479-002 {dictargs method fails on missing mandatory argument} -body {
+   $obj newitem id 2
+ } -result {shape is required} -returnCodes error
+ 
+ ###
+ # Leave off a value that has a default
+ # note: Method had special handling for color, but not flavor
+ ###
+-test tip479-003 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-003 {dictargs method fills in default value} {
+   $obj newitem id 3 shape round
+ } {id 3 shape round color green}
+ 
+ ###
+ # Add extra arguments
+ ###
+-test tip479-004 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-004 {dictargs method accepts extra arguments} {
+   $obj newitem id 4 shape round trim leather
+ } {id 4 shape round trim leather color green}
+ 
+ clay::define tip479classE {
+ 
+@@ -6237,31 +6237,31 @@
+   }
+ }
+ 
+ 
+ set obj [tip479classE new]
+-test tip479-001 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-005 {dictargs Ensemble accepts all arguments} {
+   $obj item new id 1 color orange shape round
+ } {id 1 color orange shape round}
+ 
+ # Fail because we left off a mandatory argument
+-test tip479-002 {Test that a later ensemble definition trumps a more primitive one} -body {
++test tip479-006 {dictargs Ensemble fails on missing mandatory argument} -body {
+   $obj item new id 2
+ } -result {shape is required} -returnCodes error
+ 
+ ###
+ # Leave off a value that has a default
+ # note: Method had special handling for color, but not flavor
+ ###
+-test tip479-003 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-007 {dictargs Ensemble fills in default value} {
+   $obj item new id 3 shape round
+ } {id 3 shape round color green}
+ 
+ ###
+ # Add extra arguments
+ ###
+-test tip479-004 {Test that a later ensemble definition trumps a more primitive one} {
++test tip479-008 {dictargs Ensemble accepts extra arguments} {
+   $obj item new id 4 shape round trim leather
+ } {id 4 shape round trim leather color green}
+ 
+ 
+ 
+

@@ -1,0 +1,82 @@
+Index: modules/tepam/bug_fixes.test
+==================================================================
+--- modules/tepam/bug_fixes.test
++++ modules/tepam/bug_fixes.test
+@@ -140,10 +140,32 @@
+          {      bug::tproc subproc5}
+          {         desc 5.}
+          {} {}
+       } "\n"]
+    
++######## Bug e4d95d4ea0: -default and -multiple: provided values replace the default ########
++
++   tepam::procedure Procedure_multiple_default_named {
++      -args {{-Arg -default Def -multiple}}
++   } {return $Arg}
++
++   tepam::procedure Procedure_multiple_default_unnamed {
++      -named_arguments_first 0
++      -args {{Arg -default Def -multiple}}
++   } {return $Arg}
++
++   test tepam-bug_fixes.bug-e4d95d4ea0.1 "Bug fixes, e4d95d4ea0, named, no value"  \
++      -body {Procedure_multiple_default_named} -result {Def}
++   test tepam-bug_fixes.bug-e4d95d4ea0.2 "Bug fixes, e4d95d4ea0, named, one value"  \
++      -body {Procedure_multiple_default_named -Arg a} -result {a}
++   test tepam-bug_fixes.bug-e4d95d4ea0.3 "Bug fixes, e4d95d4ea0, named, two values"  \
++      -body {Procedure_multiple_default_named -Arg a -Arg {b c}} -result {a {b c}}
++   test tepam-bug_fixes.bug-e4d95d4ea0.4 "Bug fixes, e4d95d4ea0, unnamed, no value"  \
++      -body {Procedure_multiple_default_unnamed} -result {Def}
++   test tepam-bug_fixes.bug-e4d95d4ea0.5 "Bug fixes, e4d95d4ea0, unnamed, two values"  \
++      -body {Procedure_multiple_default_unnamed a {b c}} -result {a {b c}}
++
+ ######## That's all ########
+ 
+ ::tcltest::cleanupTests
+ return
+ 
+
+Index: modules/tepam/tepam.tcl
+==================================================================
+--- modules/tepam/tepam.tcl
++++ modules/tepam/tepam.tcl
+@@ -873,11 +873,17 @@
+ 
+                   # If the argument can have multiple values: Don't update the unnamed argument 
+                   # counter to attribute the next values to the same argument. Declare the next
+                   # values also as optional
+                   if {$ProcDef($ProcName,Arg,$Var,-multiple)} {
+-                     lappend Variable__$Var $arg
++                     # The first provided value replaces an eventual default value:
++                     if {[info exists MultipleValueProvided($Var)]} {
++                        lappend Variable__$Var $arg
++                     } else {
++                        set Variable__$Var [list $arg]
++                        set MultipleValueProvided($Var) 1
++                     }
+                      set IsOptional 1
+ 
+                   # Otherwise (the argument cannot have multiple values), assign the value to the
+                   # variable. Exit the unnamed argument loop when the last declared argument has
+                   # been read:
+@@ -971,12 +977,18 @@
+                   set Value [lindex $args [incr ArgPos]]
+                }
+ 
+                # Define the argument variable. Append the new value to the existing value of the
+                # variable, if the '-multiple' attribute is set for the argument:
++               # The first provided value replaces an eventual default value.
+                if {$ProcDef($ProcName,Arg,$Var,-multiple)} {
+-                  lappend Variable__$Var $Value
++                  if {[info exists MultipleValueProvided($Var)]} {
++                     lappend Variable__$Var $Value
++                  } else {
++                     set Variable__$Var [list $Value]
++                     set MultipleValueProvided($Var) 1
++                  }
+                } else {
+                   set Variable__$Var $Value
+                }
+             }
+ 
+

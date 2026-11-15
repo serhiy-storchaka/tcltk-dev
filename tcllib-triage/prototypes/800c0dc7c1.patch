@@ -1,0 +1,44 @@
+Index: modules/yaml/yaml.tcl
+==================================================================
+--- modules/yaml/yaml.tcl
++++ modules/yaml/yaml.tcl
+@@ -899,10 +899,14 @@
+ proc ::yaml::_parseDoubleQuoted {} {
+     # capture quoted string with backslash sequences
+     set reStr {(?:(?:\")(?:[^\\\"]*(?:\\.[^\\\"]*)*)(?:\"))}
+     set result [_getFoldedString $reStr]
+     if {$result eq ""} { error [_getErrorMessage MALFORM_D_QUOTE] }
++
++    # Escaped line break: drop it and the leading white space of the
++    # next line.
++    regsub -all {(\\\\)|\\\n[ \t]*} $result {\1} result
+ 
+     # [116] nb-double-multi-line
+     regsub -all {[ \t]*\n[\t ]*} $result "\r" result
+     regsub -all {([^\r])\r} $result {\1 } result
+     regsub -all { ?\r} $result "\n" result
+
+Index: modules/yaml/yaml.test
+==================================================================
+--- modules/yaml/yaml.test
++++ modules/yaml/yaml.test
+@@ -775,10 +775,18 @@
+ test yaml-21.2 "explicit_tags float" -body {
+     set y {!!float 123=0}
+     yaml::yaml2dict $y
+ } -returnCodes error -result {expected floating-point number but got "123=0"}
+ 
++
++test yaml-37.1 "escaped line break in double quoted scalar, ticket 800c0dc7c1" -body {
++    yaml::yaml2dict "alphabet:\n  \"abcdefghi\\\n  jklmnopqr\\\n  stuvwxyz\"\n"
++} -result {alphabet abcdefghijklmnopqrstuvwxyz}
++
++test yaml-37.2 "escaped backslash at end of line in double quoted scalar, ticket 800c0dc7c1" -body {
++    yaml::yaml2dict "a: \"x\\\\\n  y\"\n"
++} -result {a {x\ y}}
+ 
+ # ... Tests of addStrings ...
+ #     (Requires introspection of parser state)
+ 
+ 
+

@@ -1,0 +1,101 @@
+Index: modules/log/logger.man
+==================================================================
+--- modules/log/logger.man
++++ modules/log/logger.man
+@@ -163,14 +163,14 @@
+ [call [cmd \${log}::logproc] [arg level] [arg command]]
+ [call [cmd \${log}::logproc] [arg level] [arg argname] [arg body]]
+ 
+ This command comes in three forms - the third, older one is deprecated
+ and may be removed from future versions of the logger package.
+-The current set version takes one argument, a command to be executed when the
+-level is called.  The callback command takes on argument, the text to
+-be logged. If called only with a valid level [cmd logproc] returns the name of the command
+-currently registered as callback command.
++The current set version takes one argument, a command prefix to be executed when the
++level is called.  The text to be logged is appended to the command prefix
++as one argument. If called only with a valid level [cmd logproc] returns the command
++prefix currently registered as callback command.
+ 
+ [cmd logproc] specifies which command will perform the actual logging
+ for a given level.  The logger package ships with default commands for
+ all log levels, but with [cmd logproc] it is possible to replace them
+ with custom code.  This would let you send your logs over the network,
+
+Index: modules/log/logger.tcl
+==================================================================
+--- modules/log/logger.tcl
++++ modules/log/logger.tcl
+@@ -416,14 +416,18 @@
+ 		    return $lvlcmds($lv)
+ 		}
+ 		1  {
+ 		    set cmd [lindex $args 0]
+ 		    if {[string equal "[namespace current]::${lv}cmd" $cmd]} {return}
+-		    if {[llength [::info commands $cmd]]} {
++		    # cmd is a command prefix
++		    if {[llength [::info commands [lindex $cmd 0]]]} {
+ 			proc ${lv}cmd args [format {
+-			    uplevel 1 [list %s [expr {[llength $args]==1 ? [lindex $args end] : $args}]]
+-			} $cmd]
++			    _setservicename args
++			    set val [uplevel 1 [linsert %s end [expr {[llength $args]==1 ? [lindex $args end] : $args}]]]
++			    _restoreservice
++			    set val
++			} [list $cmd]]
+ 		    } else {
+ 			return -code error \
+ 			    -errorcode [list LOGGER INVALID_CMD] \
+ 			    [::logger::mc "Invalid cmd '%s' - does not exist" $cmd]
+ 		    }
+
+Index: modules/log/logger.test
+==================================================================
+--- modules/log/logger.test
++++ modules/log/logger.test
+@@ -436,10 +436,44 @@
+     ${log}::error "second error"
+     ${log}::delete 
+     rename errorlogproc ""
+     list $msg $::INFO
+ } {errorlogproc {{Error Message: error} {Error Message: second error}}}
++
++test logger-8.2.1 {logproc with command prefix, ticket 751707e0ae} -setup {
++    set ::INFO ""
++    set log [logger::init global]
++    proc errorlogproc {prefix txt} {
++        lappend ::INFO "$prefix: $txt"
++    }
++} -body {
++    ${log}::logproc error [list errorlogproc "Error Message"]
++    ${log}::error "error"
++    ${log}::error "second error"
++    list [${log}::logproc error] $::INFO
++} -cleanup {
++    ${log}::delete
++    rename errorlogproc ""
++    unset -nocomplain log ::INFO
++} -result {{errorlogproc {Error Message}} {{Error Message: error} {Error Message: second error}}}
++
++test logger-8.2.2 {logproc command inherited by child service} -setup {
++    set ::INFO ""
++    set log [logger::init global]
++    proc errorlogproc {txt} {
++        lappend ::INFO $txt
++    }
++    ${log}::logproc error errorlogproc
++    set child [logger::init global::child]
++} -body {
++    ${child}::error "child error"
++    set ::INFO
++} -cleanup {
++    ${log}::delete
++    rename errorlogproc ""
++    unset -nocomplain log child ::INFO
++} -result {{child error}}
+ 
+ test logger-8.3 {logproc with args and body} {
+     set ::INFO ""
+     set log [logger::init global]
+     ${log}::logproc error txt {lappend ::INFO "Error Message: $txt"}
+

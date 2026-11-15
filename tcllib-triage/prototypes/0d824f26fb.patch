@@ -1,0 +1,78 @@
+Index: modules/markdown/markdown.tcl
+==================================================================
+--- modules/markdown/markdown.tcl
++++ modules/markdown/markdown.tcl
+@@ -612,10 +612,16 @@
+             }
+         }
+ 
+         return $result
+     }
++
++    ## \private
++    # Remove the backslash from escaped characters, as parse_inline does.
++    proc unescape {text} {
++        return [regsub -all {\\([\\`*_{}\[\]()#+.!>|-])} $text {\1}]
++    }
+ 
+     ## \private
+     proc parse_inline {text} {
+         set text [regsub -all -lineanchor {[ ]{2,}$} $text <br/>]
+ 
+@@ -648,11 +654,11 @@
+                     if {[regexp $re_whitespace [string index $result end]] &&
+                         [regexp $re_whitespace [string index $text $index+1]]
+ 		    } {
+                         #do nothing
+                     } elseif {[regexp -start $index \
+-				   "\\A(\\$chr{1,3})((?:\[^\\$chr\\\\]|\\\\\\$chr)*)\\1" \
++				   "\\A(\\$chr{1,3})((?:\[^\\$chr\\\\]|\\\\.)*)\\1" \
+ 				   $text \
+ 				   m del sub]
+ 		    } {
+                         switch [string length $del] {
+                             1 {
+@@ -698,11 +704,12 @@
+ 
+                     if {[regexp -start $index $re_inlinelink $text m txt url ign del title]} {
+                         # INLINE
+                         incr index [string length $m]
+ 
+-                        set url [html_escape [string trim $url {<> }]]
++                        set url [unescape [string trim $url {<> }]]
++                        set url [html_escape $url]
+                         set txt [parse_inline $txt]
+                         set title [parse_inline $title]
+ 
+                         set match_found 1
+                     } elseif {[regexp -start $index $re_reflink $text m txt lbl]} {
+
+Index: modules/markdown/markdown.test
+==================================================================
+--- modules/markdown/markdown.test
++++ modules/markdown/markdown.test
+@@ -187,19 +187,19 @@
+ foreach {k input result notes} {
+     5  {_____}               {<strong></strong>_}		.
+     6  {__\___}              {<strong>_</strong>}		.
+     7  {_\_\_\__}            {<em>___</em>}			.
+     8  {__.__}               {<strong>.</strong>}		.
+-    9  {__\.__}              {<strong>.</strong>}		.FAIL
++    9  {__\.__}              {<strong>.</strong>}		.
+     10 {__*__}               {<strong>*</strong>}		.
+-    11 {__\*__}              {<strong>*</strong>}		.FAIL
++    11 {__\*__}              {<strong>*</strong>}		.
+     12 {. \.}                {. .}				.
+     13 {_ \_}                {_ _}				.
+     14 {[foo_bar](sna_fu)}   {<a href="sna_fu">foo_bar</a>}	.
+     15 {[foo\_bar](sna_fu)}  {<a href="sna_fu">foo_bar</a>}	.
+-    16 {[foo_bar](sna\_fu)}  {<a href="sna_fu">foo_bar</a>}	.FAIL
+-    17 {[foo\_bar](sna\_fu)} {<a href="sna_fu">foo_bar</a>}	.FAIL
++    16 {[foo_bar](sna\_fu)}  {<a href="sna_fu">foo_bar</a>}	.
++    17 {[foo\_bar](sna\_fu)} {<a href="sna_fu">foo_bar</a>}	.
+ } {
+     # skipping knownbugs
+     if {$notes eq ".FAIL"} continue
+     
+     test basic-1.$k "escaped characters: ($input)" -body {
+

@@ -1,0 +1,101 @@
+Index: modules/ftp/ftp.tcl
+==================================================================
+--- modules/ftp/ftp.tcl
++++ modules/ftp/ftp.tcl
+@@ -121,11 +121,11 @@
+     variable VERBOSE
+ 
+     if {$VERBOSE} { DisplayMsg $s Waiting|Timeout! }
+ 
+     after cancel $ftp(Wait)
+-    set ftp(state.control) 1
++    set ftp(state.control) 0
+ 
+     DisplayMsg "" "Timeout of control connection after $ftp(Timeout) sec.!" error
+     Command $ftp(Command) timeout
+     return
+ }
+
+ADDED    modules/ftp/ftp.test
+Index: modules/ftp/ftp.test
+==================================================================
+--- /dev/null
++++ modules/ftp/ftp.test
+@@ -0,0 +1,76 @@
++# -*- tcl -*-
++# ftp.test:  tests for the ftp client.
++#
++# The server side of the control connection is a programmed dialog
++# running in a separate process (devtools/dialog.tcl).
++
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 1.0
++
++support {
++    use           log/log.tcl   log
++    useTcllibFile devtools/coserv.tcl ; # loads comm, snit too!
++    useTcllibFile devtools/dialog.tcl
++}
++testing {
++    useLocal ftp.tcl ftp
++}
++
++# -------------------------------------------------------------------------
++# Server processes. Programmed dialogs, server side.
++
++dialog::setup server {Ftp Fake Server}
++
++# Silence the error messages of the package.
++proc ::ftp::DisplayMsg {s msg {state ""}} {}
++
++proc login {} {
++    dialog::crlf.
++    dialog::send.    {220 localhost fake FTP server ready.}
++    dialog::respond. {331 Password required.}
++    dialog::respond. {230 Logged in.}
++    dialog::respond. {200 Type set to I.}
++}
++
++proc ftpopen {args} {
++    ftp::Open 127.0.0.1 user pass -port [dialog::listener] {*}$args
++}
++
++# -------------------------------------------------------------------------
++
++test ftp-timeout-1.0 {Timeout of the control connection is a failure, ticket 548540} -body {
++    dialog::dialog_set {
++	login
++	dialog::receive.
++	dialog::respond. {221 Goodbye.}
++    }
++    set h [ftpopen -timeout 1]
++    set res [ftp::Delete $h a.txt]
++    ftp::Close $h
++    dialog::waitdone
++    set res
++} -result 0
++
++test ftp-timeout-1.1 {Timeout during Get is a failure, ticket 548540} -body {
++    dialog::dialog_set {
++	login
++	dialog::respond. {200 PORT command successful.}
++	dialog::receive.
++	dialog::respond. {221 Goodbye.}
++    }
++    set h [ftpopen -timeout 1 -mode active]
++    set res [ftp::Get $h a.txt -variable data]
++    ftp::Close $h
++    dialog::waitdone
++    list $res [info exists data]
++} -result {{} 0}
++
++# -------------------------------------------------------------------------
++dialog::shutdown
++testsuiteCleanup
+

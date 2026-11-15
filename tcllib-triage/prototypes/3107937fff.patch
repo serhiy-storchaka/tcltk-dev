@@ -1,0 +1,35 @@
+Index: modules/http/autoproxy.man
+==================================================================
+--- modules/http/autoproxy.man
++++ modules/http/autoproxy.man
+@@ -42,16 +42,28 @@
+ 
+ [section "COMMANDS"]
+ 
+ [list_begin definitions]
+ 
+-[call [cmd ::autoproxy::init]]
++[call [cmd ::autoproxy::init] [opt [arg httpproxy]] [opt [arg no_proxy]]]
+ 
+ Initialize the autoproxy package from system resources. Under unix
+ this means we look for environment variables. Under windows we look
+ for the same environment variables but also look at the registry
+ settings used by Internet Explorer.
++[para]
++If [arg httpproxy] is not empty it is used instead of the system
++settings. It is a proxy URL like [const http://user:password@host:port]
++or just [const host:port]. [arg no_proxy] is then a list of host
++patterns, separated by commas, semicolons or spaces, which are
++accessed without proxy.
++[para]
++If a proxy was found the command installs [cmd ::autoproxy::filter]
++as proxy filter of the [package http] package, see the option
++[option -proxyfilter] of [cmd http::config]. Proxy settings made
++with [cmd ::autoproxy::configure] alone do not install it. The
++command returns the proxy URL found, or the empty string.
+ 
+ [call [cmd ::autoproxy::cget] [arg "-option"]]
+ 
+ Retrieve individual package configuration options. See [sectref OPTIONS].
+ 
+

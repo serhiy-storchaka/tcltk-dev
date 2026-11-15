@@ -1,0 +1,72 @@
+Index: modules/csv/csv.tcl
+==================================================================
+--- modules/csv/csv.tcl
++++ modules/csv/csv.tcl
+@@ -459,20 +459,37 @@
+ 
+ 	    ## puts "\t*= $state\t>>$token<<"
+ 	    switch -exact -- $state {
+ 		base {
+ 		    if {[string equal $token "${delChar}"]} {
+-			set state qvalue
++			if {[string equal $val ""]} {
++			    set state qvalue
++			} else {
++			    # Inside an unquoted value, may be a doubled "
++			    set state bdouble
++			}
+ 			continue
+ 		    }
+ 		    if {[string equal $token $sepChar]} {
+ 			lappend res $val
+ 			set val ""
+ 			continue
+ 		    }
+ 		    append val $token
+ 		}
++		bdouble {
++		    if {[string equal $token "${delChar}"]} {
++			# Doubled " in unquoted value, append to current value
++			append val ${delChar}
++			set state base
++			continue
++		    }
++		    # Undoubled " in middle of text. As before, assume
++		    # that the remainder is quoted.
++		    append val $token
++		    set state qvalue
++		}
+ 		qvalue {
+ 		    if {[string equal $token "${delChar}"]} {
+ 			# May end value, may be a doubled "
+ 			set state endordouble
+ 			continue
+
+Index: modules/csv/csv.test
+==================================================================
+--- modules/csv/csv.test
++++ modules/csv/csv.test
+@@ -784,10 +784,22 @@
+ } {xx\"x yyy}
+ 
+ test csv-92.1.2 {split} {
+     csv::split -alternate {"xx""x",yyy}
+ } {xx\"x yyy}
++
++test csv-92.2.1 {split, doubled quote in unquoted value, ticket 387599b3d8} {
++    csv::split {a;b""b;c} \;
++} {a b\"b c}
++
++test csv-92.2.2 {split, doubled quote in unquoted value, ticket 387599b3d8} {
++    csv::split -alternate {a;b""b;c} \;
++} {a b\"b c}
++
++test csv-92.2.3 {split, doubled quotes in unquoted value} {
++    csv::split -alternate {a,b"""",c""}
++} {a b\"\" c\"}
+ 
+ # -------------------------------------------------------------------------
+ 
+ 
+ test csv-100.1 {custom delimiter, split} {
+

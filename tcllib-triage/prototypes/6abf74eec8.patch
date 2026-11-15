@@ -1,0 +1,65 @@
+Index: modules/md5crypt/md5crypt.tcl
+==================================================================
+--- modules/md5crypt/md5crypt.tcl
++++ modules/md5crypt/md5crypt.tcl
+@@ -59,10 +59,15 @@
+     }
+     set end [string first $ $salt $start]
+     if {$end < 0} {set end [string length $salt]} else {incr end -1}
+     if {$end - $start > 7} {set end [expr {$start + 7}]}
+     set salt [string range $salt $start $end]
++    set result "${magic}${salt}\$"
++
++    # Hash the UTF-8 representation, like the C implementation does.
++    set pw   [encoding convertto utf-8 $pw]
++    set salt [encoding convertto utf-8 $salt]
+ 
+     set ctx [MD5Init]
+     MD5Update $ctx $pw
+     MD5Update $ctx $magic
+     MD5Update $ctx $salt
+@@ -85,12 +90,10 @@
+             set c [string index $pw 0]
+         }
+         MD5Update $ctx $c
+     }
+     
+-    set result "${magic}${salt}\$"
+-    
+     set H [MD5Final $ctx]
+ 
+     for {set i 0} {$i < 1000} {incr i} {
+         set ctx [MD5Init]
+         if {$i & 1} {
+
+Index: modules/md5crypt/md5crypt.test
+--- modules/md5crypt/md5crypt.test
++++ modules/md5crypt/md5crypt.test
+@@ -140,6 +140,27 @@
+ }
+ 
+ # -------------------------------------------------------------------------
++## Non-ASCII passwords are hashed as UTF-8 (results from openssl passwd).
++
++foreach {n magic passwd expected} [list \
++    1 {$1$}    "\u043f\u0430\u0440\u043e\u043b\u044c" {$1$abcdefgh$QfFdDZYjOC5k44ZZ.ueGu0} \
++    2 {$apr1$} "\u043f\u0430\u0440\u043e\u043b\u044c" {$apr1$abcdefgh$bGw12bsJudNfTmc4FpOJo.} \
++    3 {$1$}    "p\u00e4ssw\u00f6rd"                     {$1$abcdefgh$xYuxUFvxUOR4Pd6a7EeUS0} \
++] {
++    test md5passwd-8.${n} {md5crypt non-ASCII passwd} {
++        if {$magic eq {$1$}} {
++            ::md5crypt::md5crypt $passwd abcdefgh
++        } else {
++            ::md5crypt::aprcrypt $passwd abcdefgh
++        }
++    } $expected
++
++    test md5passwd-9.${n}_tcl {md5crypt (pure-Tcl) non-ASCII passwd} {md5crypt_c} {
++        ::md5crypt::md5crypt_tcl $magic $passwd abcdefgh
++    } $expected
++}
++
++# -------------------------------------------------------------------------
+ # -------------------------------------------------------------------------
+ ## Non-standard salt, out of ASCII.
+ ## Known bug, fails for 9 with UTF error `expected byte sequence but character 12 was ...`

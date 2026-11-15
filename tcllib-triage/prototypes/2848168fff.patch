@@ -1,0 +1,98 @@
+Index: modules/crc/crc16.tcl
+==================================================================
+--- modules/crc/crc16.tcl
++++ modules/crc/crc16.tcl
+@@ -174,12 +174,10 @@
+ #  reflected - a boolean indicating that the bit order is reversed.
+ #              For hardware optimised CRC checks, the bits are handled
+ #              in transmission order (ie: bit0, bit1, ..., bit7)
+ proc ::crc::Crc {s width table {init 0} {xorout 0} {reflected 0}} {
+     upvar $table tbl
+-    variable signbit
+-    set signmask [expr {~$signbit>>7}]
+ 
+     if {$width < 32} {
+         set mask   [expr {(1 << $width) - 1}]
+         set rot    [expr {$width - 8}]
+     } else {
+@@ -191,15 +189,15 @@
+     binary scan $s c* data
+     foreach {datum} $data {
+         if {$reflected} {
+             set ndx [expr {($crc ^ $datum) & 0xFF}]
+             set lkp [lindex $tbl $ndx]
+-            set crc [expr {($lkp ^ ($crc >> 8 & $signmask)) & $mask}]
++            set crc [expr {($lkp ^ ($crc >> 8)) & $mask}]
+         } else {
+             set ndx [expr {(($crc >> $rot) ^ $datum) & 0xFF}]
+             set lkp [lindex $tbl $ndx]
+-            set crc [expr {($lkp ^ ($crc << 8 & $signmask)) & $mask}]
++            set crc [expr {($lkp ^ ($crc << 8)) & $mask}]
+         }
+     }
+ 
+     return [expr {$crc ^ $xorout}]
+ }
+
+Index: modules/crc/crc16.test
+==================================================================
+--- modules/crc/crc16.test
++++ modules/crc/crc16.test
+@@ -279,10 +279,30 @@
+ } {
+     test crc16-9.$n "$cmd CRC as hexadecimal string" {
+         list [catch {::crc::$cmd -format 0x%X "123456789"} res] $res
+     } [list 0 $expected]
+ }
++
++# Ticket 2848168: the 32-bit sign mask cleared bit 24 of non-reflected
++# 32-bit CRCs where tcl_platform(wordSize) is 4 (Windows). Emulate it.
++test crc16-10.0 {non-reflected 32-bit CRC (CRC-32/BZIP2), 32-bit signbit} -setup {
++    set savedsignbit $::crc::signbit
++    set ::crc::signbit 2147483648
++} -body {
++    set tbl [::crc::Crc_table 32 0x04C11DB7 0]
++    format %08X [::crc::Crc "123456789" 32 tbl 0xFFFFFFFF 0xFFFFFFFF 0]
++} -cleanup {
++    set ::crc::signbit $savedsignbit
++    unset savedsignbit tbl
++} -result FC891918
++
++test crc16-10.1 {non-reflected 32-bit CRC (CRC-32/BZIP2)} -body {
++    set tbl [::crc::Crc_table 32 0x04C11DB7 0]
++    format %08X [::crc::Crc "123456789" 32 tbl 0xFFFFFFFF 0xFFFFFFFF 0]
++} -cleanup {
++    unset tbl
++} -result FC891918
+ 
+ # -------------------------------------------------------------------------
+ catch {unset crc::filename}
+ testsuiteCleanup
+ 
+
+Index: modules/crc/crc32.tcl
+==================================================================
+--- modules/crc/crc32.tcl
++++ modules/crc/crc32.tcl
+@@ -186,19 +186,17 @@
+ #	successive chunks of data the seed should be set to the result
+ #	of the last chunk.
+ #
+ proc ::crc::Crc32_tcl {data {seed 0xFFFFFFFF}} {
+     variable crc32_tbl
+-    variable signbit
+-    set signmask [expr {~$signbit>>7}]
+     set crcval $seed
+ 
+     binary scan $data c* nums
+     foreach {n} $nums {
+         set ndx [expr {($crcval ^ $n) & 0xFF}]
+         set lkp [lindex $crc32_tbl $ndx]
+-        set crcval [expr {($lkp ^ ($crcval >> 8 & $signmask)) & 0xFFFFFFFF}]
++        set crcval [expr {($lkp ^ ($crcval >> 8)) & 0xFFFFFFFF}]
+     }
+     
+     return [expr {$crcval ^ 0xFFFFFFFF}]
+ }
+ 
+

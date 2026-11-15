@@ -1,0 +1,204 @@
+Index: modules/snit/main1.tcl
+==================================================================
+--- modules/snit/main1.tcl
++++ modules/snit/main1.tcl
+@@ -2088,11 +2088,16 @@
+         global errorInfo
+         global errorCode
+ 
+         set theInfo $errorInfo
+         set theCode $errorCode
+-        ::snit::RT.DestroyObject $type $selfns $name
++        # An error in the destructor must not hide the error in
++        # the constructor; add it to the error info instead.
++        if {[catch {::snit::RT.DestroyObject $type $selfns $name} dresult]} {
++            append theInfo "\n    (while destroying the object\n" \
++                "    after the error in the constructor):\n" $::errorInfo
++        }
+         error "Error in constructor: $result" $theInfo $theCode
+     }
+ 
+     # NEXT, return the object's name.
+     return $name
+@@ -2190,11 +2195,16 @@
+         global errorInfo
+         global errorCode
+ 
+         set theInfo $errorInfo
+         set theCode $errorCode
+-        ::snit::RT.DestroyObject $type $selfns $name
++        # An error in the destructor must not hide the error in
++        # the constructor; add it to the error info instead.
++        if {[catch {::snit::RT.DestroyObject $type $selfns $name} dresult]} {
++            append theInfo "\n    (while destroying the object\n" \
++                "    after the error in the constructor):\n" $::errorInfo
++        }
+         error "Error in constructor: $result" $theInfo $theCode
+     }
+ 
+     # NEXT, return the object's name.
+     return $name
+@@ -2435,12 +2445,15 @@
+ 
+         # First, remove the trace on the instance name, so that we
+         # don't call RT.DestroyObject recursively.
+         RT.RemoveInstanceTrace $type $selfns $win $instance
+ 
+-        # Next, call the user's destructor
+-        ${type}::Snit_destructor $type $selfns $win $instance
++        # Next, call the user's destructor.  If it fails, finish
++        # the cleanup anyway and rethrow the error at the end.
++        set dcode [catch {
++            ${type}::Snit_destructor $type $selfns $win $instance
++        } dresult dopts]
+ 
+         # Next, if this isn't a widget, delete the instance command.
+         # If it is a widget, get the hull component's name, and rename
+         # it back to the widget name
+ 
+@@ -2471,10 +2484,13 @@
+ 
+     # Next, delete the instance's namespace.  This kills any
+     # instance variables.
+     namespace delete $selfns
+ 
++    if {[info exists dcode] && $dcode} {
++        return -options $dopts $dresult
++    }
+     return
+ }
+ 
+ # Remove instance trace
+ #
+
+Index: modules/snit/main2.tcl
+==================================================================
+--- modules/snit/main2.tcl
++++ modules/snit/main2.tcl
+@@ -1895,11 +1895,16 @@
+         global errorCode
+         
+         set theInfo $errorInfo
+         set theCode $errorCode
+ 
+-        ::snit::RT.DestroyObject $type $selfns $name
++        # An error in the destructor must not hide the error in
++        # the constructor; add it to the error info instead.
++        if {[catch {::snit::RT.DestroyObject $type $selfns $name} dresult]} {
++            append theInfo "\n    (while destroying the object\n" \
++                "    after the error in the constructor):\n" $::errorInfo
++        }
+         error "Error in constructor: $result" $theInfo $theCode
+     }
+ 
+     # NEXT, return the object's name.
+     return $name
+@@ -1998,11 +2003,16 @@
+         global errorInfo
+         global errorCode
+ 
+         set theInfo $errorInfo
+         set theCode $errorCode
+-        ::snit::RT.DestroyObject $type $selfns $name
++        # An error in the destructor must not hide the error in
++        # the constructor; add it to the error info instead.
++        if {[catch {::snit::RT.DestroyObject $type $selfns $name} dresult]} {
++            append theInfo "\n    (while destroying the object\n" \
++                "    after the error in the constructor):\n" $::errorInfo
++        }
+         error "Error in constructor: $result" $theInfo $theCode
+     }
+ 
+     # NEXT, return the object's name.
+     return $name
+@@ -2244,12 +2254,15 @@
+             
+         # First, remove the trace on the instance name, so that we
+         # don't call RT.DestroyObject recursively.
+         RT.RemoveInstanceTrace $type $selfns $win $instance
+             
+-        # Next, call the user's destructor
+-        ${type}::Snit_destructor $type $selfns $win $instance
++        # Next, call the user's destructor.  If it fails, finish
++        # the cleanup anyway and rethrow the error at the end.
++        set dcode [catch {
++            ${type}::Snit_destructor $type $selfns $win $instance
++        } dresult dopts]
+ 
+         # Next, if this isn't a widget, delete the instance command.
+         # If it is a widget, get the hull component's name, and rename
+         # it back to the widget name
+                 
+@@ -2280,10 +2293,13 @@
+ 
+     # Next, delete the instance's namespace.  This kills any
+     # instance variables.
+     namespace delete $selfns
+ 
++    if {[info exists dcode] && $dcode} {
++        return -options $dopts $dresult
++    }
+     return
+ }
+ 
+ # Remove instance trace
+ # 
+
+Index: modules/snit/snit.test
+==================================================================
+--- modules/snit/snit.test
++++ modules/snit/snit.test
+@@ -6392,10 +6392,52 @@
+ 
+     list $result [string match "*bogusInfo*" $errorInfo] $errorCode
+ } -cleanup {
+     dog destroy
+ } -result {{Error in constructor: bogusError} 1 bogusCode}
++
++test error-1.3a {destructor error does not hide constructor error} -body {
++    type dog {
++        constructor {} {
++            error bogusError bogusInfo bogusCode
++        }
++        destructor {
++            error dtorError
++        }
++    }
++
++    catch {dog fido} result
++
++    global errorInfo errorCode
++
++    list $result [string match "*bogusInfo*dtorError*" $errorInfo] $errorCode \
++        [info commands ::fido] [dog info instances]
++} -cleanup {
++    dog destroy
++} -result {{Error in constructor: bogusError} 1 bogusCode {} {}}
++
++test error-1.3b {destructor error does not hide widget constructor error} -constraints {
++    tk
++} -body {
++    widget dog {
++        constructor {args} {
++            error bogusError bogusInfo bogusCode
++        }
++        destructor {
++            error dtorError
++        }
++    }
++
++    catch {dog .fido} result
++
++    global errorInfo errorCode
++
++    list $result [string match "*bogusInfo*dtorError*" $errorInfo] $errorCode \
++        [winfo exists .fido] [info commands .fido] [dog info instances]
++} -cleanup {
++    dog destroy
++} -result {{Error in constructor: bogusError} 1 bogusCode 0 {} {}}
+ 
+ test error-1.4 {method errors propagate properly} -body {
+     type dog {
+         method generr {} {
+             error bogusError bogusInfo bogusCode
+

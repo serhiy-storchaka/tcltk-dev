@@ -1,0 +1,43 @@
+Index: modules/counter/counter.tcl
+==================================================================
+--- modules/counter/counter.tcl
++++ modules/counter/counter.tcl
+@@ -351,11 +351,11 @@
+         set vector($counter(index)) $delta
+         set counter(index) [expr {($counter(index) +1)%$counter(lastn)}]
+         }
+         -hist {
+         upvar #0 counter::H-$tag histogram
+-        set bucket [expr {int($delta / $counter(bucketsize))}]
++        set bucket [expr {int(floor($delta / $counter(bucketsize)))}]
+         if {![info exists histogram($bucket)]} {
+             set histogram($bucket) 0
+         }
+         incr histogram($bucket)
+         }
+
+Index: modules/counter/counter.test
+==================================================================
+--- modules/counter/counter.test
++++ modules/counter/counter.test
+@@ -126,10 +126,19 @@
+     counter::count hist 23.3
+     counter::count hist 53.3
+     format %13.10f [counter::get hist -avg]
+ } {22.6857142857}
+ #puts "hist [time {counter::count hist 2.4} 100]"
++test counter-hist-1.2 {histogram with negative reals, ticket 1123327} {
++    counter::init hist -hist 10
++    counter::count hist 9.1
++    counter::count hist -9.2
++    counter::count hist -0.5
++    counter::count hist -10.5
++    counter::count hist -20
++    counter::get hist -hist
++} {-2 2 -1 2 0 1}
+ 
+ test counter-hist2x {counter::count} {
+     counter::init hist -hist2x 10
+     counter::count hist 8
+     counter::count hist 18
+

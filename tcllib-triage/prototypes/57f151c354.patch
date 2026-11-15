@@ -1,0 +1,134 @@
+Index: modules/markdown/markdown.tcl
+==================================================================
+--- modules/markdown/markdown.tcl
++++ modules/markdown/markdown.tcl
+@@ -559,10 +559,11 @@
+                 }
+                 default {
+                     # PARAGRAPHS AND SETEXT STYLE HEADERS
+                     set p_type p
+                     set p_result {}
++                    set p_sep {}
+ 
+                     while {($index < $no_lines) && ![is_empty_line $line]} {
+                         incr index
+ 
+                         switch -regexp $line {
+@@ -587,10 +588,16 @@
+                             {^[ ]{0,3}\*[ ]*\*[ ]*\*[\* ]*$} -
+                             {^[ ]{0,3}#{1,6}} {
+                                 incr index -1
+                                 break
+                             }
++                            {^<(?:p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|form|fieldset|iframe|math)(?:[\s/>]|$)} {
++                                # HTML block interrupts the paragraph
++                                incr index -1
++                                set p_sep "\n\n"
++                                break
++                            }
+                             default {
+                                 lappend p_result $line
+                             }
+                         }
+ 
+@@ -604,11 +611,11 @@
+ 
+                     if {[is_empty_line [regsub -all {<!--.*?-->} $p_result {}]]} {
+                         # Do not make a new paragraph for just comments.
+                         append result $p_result
+                     } else {
+-                        append result "<$p_type>$p_result</$p_type>"
++                        append result "<$p_type>$p_result</$p_type>" $p_sep
+                     }
+                 }
+             }
+         }
+ 
+@@ -624,11 +631,11 @@
+ 
+         set re_backticks   {\A`+}
+         set re_whitespace  {\s}
+         set re_inlinelink  {\A!?\[([^\]]*)\]\(\s*((?:[^\s\)]+|\([^\s\)]+\))+)?(\s+([\"'])(.*)?\4)?\s*\)}
+         set re_reflink     {\A\!?\[((?:[^\]]|\[[^\]]*?\])+)\](?:\s*\[((?:[^\]]|\[[^\]]*?\])*)\])?}
+-        set re_htmltag     {\A</?\w+\s*>|\A<\w+(?:\s+\w+=(?:\"[^\"]+\"|\'[^\']+\'))*\s*/?>}
++        set re_htmltag     {\A</?\w+\s*>|\A<\w+(?:\s+\w+(?:=(?:\"[^\"]+\"|\'[^\']+\'))?)*\s*/?>}
+         set re_autolink    {\A<(?:(\S+@\S+)|(\S+://\S+))>}
+         set re_comment     {\A<!--.*?-->}
+         set re_entity      {\A\&\S+;}
+ 
+         while {[set chr [string index $text $index]] ne {}} {
+
+Index: modules/markdown/markdown.test
+==================================================================
+--- modules/markdown/markdown.test
++++ modules/markdown/markdown.test
+@@ -510,47 +510,57 @@
+ 
+     <p>hello again</p>
+ }
+ 
+ #-------------------------------------------------------------------------
+-# known bugs in div handling - Ticket [57f151c354]
++# div handling - Ticket [57f151c354]
+ 
+ test div-1.3 {[57f151c354] embedded div on a line in a paragraph} -body {
+     convert {
+         hello
+         <div allowfullscreen></div>
+         hello again
+     }
+-} -constraints knownbug -result {
++} -result {
+     <p>hello</p>
+ 
+     <div allowfullscreen></div>
+ 
+     <p>hello again</p>
+ }
+-# actual result:
+-# <p>hello
+-# &lt;div allowfullscreen&gt;</div>
+-# hello again</p>
+ 
+ test div-1.4 {[57f151c354] embedded div with attribute on a line in a paragraph} -body {
+     convert {
+         hello
+         <div allowfullscreen="1"></div>
+         hello again
+     }
+-} -constraints knownbug -result {
++} -result {
+     <p>hello</p>
+ 
+     <div allowfullscreen="1"></div>
+ 
+     <p>hello again</p>
+ }
+-# actual result:
+-# <p>hello
+-# <div allowfullscreen="1"></div>
+-# hello again</p>
++
++test div-1.5 {[57f151c354] html tag with attribute without value inside paragraph} -body {
++    convert {
++        hello <span hidden>world</span>
++    }
++} -result {
++    <p>hello <span hidden>world</span></p>
++}
++
++test div-1.6 {[57f151c354] inline tag at start of line does not break paragraph} -body {
++    convert {
++        hello
++        <span>world</span>
++    }
++} -result {
++    <p>hello
++    <span>world</span></p>
++}
+ 
+ #-------------------------------------------------------------------------
+ # Tests with texts from the original markdown page at daringfireball.net
+ 
+ test gruber-1.1 {a sample text} -body {
+

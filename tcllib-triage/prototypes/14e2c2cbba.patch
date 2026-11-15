@@ -1,0 +1,69 @@
+Index: modules/grammar_aycock/aycock.man
+==================================================================
+--- modules/grammar_aycock/aycock.man
++++ modules/grammar_aycock/aycock.man
+@@ -26,11 +26,11 @@
+ [section "PROCEDURES"]
+ 
+ The [package grammar::aycock] package exports the single procedure:
+ 
+ [list_begin definitions]
+-[call [cmd ::aycock::parser] [arg grammar] [opt [option -verbose]]]
++[call [cmd ::grammar::aycock::parser] [arg grammar] [opt [option -verbose]]]
+ 
+ Generates a parser for the given [arg grammar], and returns its
+ name.  If the optional [option -verbose] flag is given, dumps verbose
+ information relating to the generated parser to the standard output.
+ The returned parser is an object that accepts commands as shown in
+@@ -115,25 +115,47 @@
+ only [const +], [const *] and parentheses as its operators.  It also
+ shows the format in which the lexical analyzer is expected to present
+ terminal symbols to the parser.
+ 
+ [example {
+-set p [aycock::parser {
++proc lex {expression} {
++    set tokens {}
++    set values {}
++    while {$expression ne {}} {
++        if {[regexp {^([+*()])(.*)} $expression -> token rest]} {
++            # Operators and parentheses
++            lappend tokens $token
++            lappend values {}
++        } elseif {[regexp {^([[:digit:]]+)(.*)} $expression -> token rest]} {
++            # Numbers
++            lappend tokens NUMBER
++            lappend values $token
++        } elseif {[regexp {^[[:space:]]+(.*)} $expression -> rest]} {
++            # Whitespace is skipped
++        } else {
++            return -code error "invalid character \"[string index $expression 0]\""
++        }
++        set expression $rest
++    }
++    return [list $tokens $values]
++}
++
++set p [grammar::aycock::parser {
+     start ::= E {}
+     E ::= E + T {expr {[lindex $_ 0] + [lindex $_ 2]}}
+     E ::= T {}
+     T ::= T * F {expr {[lindex $_ 0] * [lindex $_ 2]}}
+     T ::= F {}
+     F ::= NUMBER {}
+     F ::= ( E ) {lindex $_ 1}
+ }]
+-puts [$p parse {(  NUMBER +  NUMBER )  *  ( NUMBER +  NUMBER ) } \
+-	       {{} 2      {} 3      {} {} {} 7     {} 1      {}}]
++lassign [lex {(2 + 3) * (7 + 1)}] tokens values
++puts [$p parse $tokens $values]
+ $p destroy
+ }]
+ 
+ The example, when run, prints [const 40].
+ 
+ [section KEYWORDS]
+ 
+ Aycock, Earley, Horspool, parser, compiler
+ [manpage_end]
+

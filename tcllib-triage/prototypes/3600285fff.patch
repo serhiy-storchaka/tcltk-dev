@@ -1,0 +1,42 @@
+Index: modules/smtpd/smtpd.man
+==================================================================
+--- modules/smtpd/smtpd.man
++++ modules/smtpd/smtpd.man
+@@ -123,10 +123,36 @@
+ 
+ Text of a custom banner message. The default banner is "tcllib smtpd 1.6".
+ Note that changing the banner does not affect the bracketing text
+ in the full greeting, printing status 220, server-address, and timestamp.
+ 
++[def "[option -usetls] [arg boolean]"]
++
++If true and the [package tls] package is available, the server offers
++the [const STARTTLS] extension (RFC 3207) to its clients. A client
++issuing [const STARTTLS] switches the session to TLS, using the TLS
++options described below. If the [package tls] package cannot be loaded
++the option is silently ignored. The default is [const false].
++
++[def "[option -cadir] [arg dir]"]
++[def "[option -cafile] [arg file]"]
++[def "[option -certfile] [arg file]"]
++[def "[option -cipher] [arg string]"]
++[def "[option -command] [arg cmd]"]
++[def "[option -keyfile] [arg file]"]
++[def "[option -password] [arg cmd]"]
++[def "[option -request] [arg boolean]"]
++[def "[option -require] [arg boolean]"]
++[def "[option -ssl2] [arg boolean]"]
++[def "[option -ssl3] [arg boolean]"]
++[def "[option -tls1] [arg boolean]"]
++
++These options are passed unchanged to [cmd tls::import] when a client
++issues [const STARTTLS]. See the documentation of the [package tls]
++package for their meaning. A server certificate and key (options
++[option -certfile] and [option -keyfile]) are normally required.
++
+ [def "[option -validate_host] [arg proc]"]
+ 
+ Callback to authenticate new connections based on the ip-address of
+ the client.
+ 
+

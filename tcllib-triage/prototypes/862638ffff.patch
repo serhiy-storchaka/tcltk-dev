@@ -1,0 +1,143 @@
+Index: modules/ftp/ftp.tcl
+==================================================================
+--- modules/ftp/ftp.tcl
++++ modules/ftp/ftp.tcl
+@@ -117,10 +117,15 @@
+ #  -
+ #
+ proc ::ftp::Timeout {s} {
+     upvar ::ftp::ftp$s ftp
+     variable VERBOSE
++
++    if {![info exists ftp(Wait)]} {
++	# The connection was closed already.
++	return
++    }
+ 
+     if {$VERBOSE} { DisplayMsg $s Waiting|Timeout! }
+ 
+     after cancel $ftp(Wait)
+     set ftp(state.control) 1
+@@ -2589,11 +2594,17 @@
+     }
+ 
+     # setup new timeout handler
+ 
+     catch {after cancel $ftp(Wait)}
+-    set ftp(Wait) [after [expr {$ftp(Timeout) * 1000}] [namespace current]::Timeout $s]
++    if {![string length $ftp(Command)] ||
++	(($error == "") && ![eof $ftp(SourceCI)] && ($blocksize > 0))} {
++	# In asynchronous mode (Open -command) nothing cancels the
++	# timer after the transfer is done. Re-arm it only while
++	# data is still to be copied.
++	set ftp(Wait) [after [expr {$ftp(Timeout) * 1000}] [namespace current]::Timeout $s]
++    }
+ 
+     if { $DEBUG } {
+         DisplayMsg $s "-> $ftp(Total) bytes $ftp(SourceCI) -> $ftp(DestCI)" 
+     }
+ 
+
+ADDED    modules/ftp/ftp.test
+Index: modules/ftp/ftp.test
+==================================================================
+--- /dev/null
++++ modules/ftp/ftp.test
+@@ -0,0 +1,96 @@
++# -*- tcl -*-
++# ftp.test:  tests for the ftp client.
++#
++# The server side of the control connection is a programmed dialog
++# running in a separate process (devtools/dialog.tcl).
++
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 1.0
++
++support {
++    use           log/log.tcl   log
++    useTcllibFile devtools/coserv.tcl ; # loads comm, snit too!
++    useTcllibFile devtools/dialog.tcl
++}
++testing {
++    useLocal ftp.tcl ftp
++}
++
++# -------------------------------------------------------------------------
++# Server processes. Programmed dialogs, server side.
++
++dialog::setup server {Ftp Fake Server}
++
++# Silence the error messages of the package.
++proc ::ftp::DisplayMsg {s msg {state ""}} {}
++
++proc login {} {
++    dialog::crlf.
++    dialog::send.    {220 localhost fake FTP server ready.}
++    dialog::respond. {331 Password required.}
++    dialog::respond. {230 Logged in.}
++    dialog::respond. {200 Type set to I.}
++}
++
++proc ftpopen {args} {
++    ftp::Open 127.0.0.1 user pass -port [dialog::listener] {*}$args
++}
++
++# -------------------------------------------------------------------------
++
++test ftp-async-timeout-1.0 {No stray timeout after an async Get, ticket 862638} -setup {
++    proc dataAccept {sock args} {
++	# Send the data, close the data connection only after the
++	# client got the final reply on the control connection.
++	puts -nonewline $sock hello
++	flush $sock
++	set ::datasock $sock
++    }
++    set listen [socket -server dataAccept -myaddr 127.0.0.1 0]
++    set dport  [lindex [fconfigure $listen -sockname] 2]
++    set pasv   "227 Entering Passive Mode (127,0,0,1,[expr {$dport / 256}],[expr {$dport % 256}])."
++    set events {}
++    set cbdone {}
++    proc cb {args} {
++	lappend ::events [lindex $args 0]
++	set ::cbdone [lindex $args 0]
++    }
++    proc bgerror {msg} {lappend ::events [list bgerror $msg]}
++    set out [makeFile {} ftp-async.out]
++} -body {
++    dialog::dialog_set {
++	login
++	dialog::respond. $pasv
++	dialog::receive.
++	dialog::send. {150 Opening BINARY mode data connection.}
++	dialog::send. {226 Transfer complete.}
++	dialog::respond. {221 Goodbye.}
++    }
++    set h [ftpopen -timeout 1 -mode passive -command cb]
++    while {$cbdone ne "connect"} {vwait ::cbdone}
++    ftp::Get $h a.txt $out
++    while {$cbdone ne "get"} {vwait ::cbdone}
++    close $::datasock
++    after 300 {set ::pause 1} ; vwait ::pause
++    ftp::Close $h
++    after 1500 {set ::pause 1} ; vwait ::pause
++    dialog::waitdone
++    lrange $events 4 end
++} -cleanup {
++    close $listen
++    removeFile ftp-async.out
++    rename dataAccept {}
++    rename cb {}
++    rename bgerror {}
++    unset -nocomplain listen dport pasv events out h ::datasock ::cbdone ::pause
++} -result {get}
++
++# -------------------------------------------------------------------------
++dialog::shutdown
++testsuiteCleanup
+

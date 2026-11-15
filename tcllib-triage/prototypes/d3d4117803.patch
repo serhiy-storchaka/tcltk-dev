@@ -1,0 +1,73 @@
+Index: modules/practcl/build/class/module.tcl
+==================================================================
+--- modules/practcl/build/class/module.tcl
++++ modules/practcl/build/class/module.tcl
+@@ -290,15 +290,15 @@
+     ::practcl::cputs result  "
+ extern int DLLEXPORT [my define get initfunc]( Tcl_Interp *interp ) \{"
+     ::practcl::cputs result  {
+   /* Initialise the stubs tables. */
+   #ifdef USE_TCL_STUBS
+-    if (Tcl_InitStubs(interp, "8.6", 0)==NULL) return TCL_ERROR;
++    if (Tcl_InitStubs(interp, "8.6-", 0)==NULL) return TCL_ERROR;
+     if (TclOOInitializeStubs(interp, "1.0") == NULL) return TCL_ERROR;
+ }
+     if {[my define get tk 0]} {
+-      ::practcl::cputs result  {    if (Tk_InitStubs(interp, "8.6", 0)==NULL) return TCL_ERROR;}
++      ::practcl::cputs result  {    if (Tk_InitStubs(interp, "8.6-", 0)==NULL) return TCL_ERROR;}
+     }
+     ::practcl::cputs result {  #endif}
+     set TCLINIT [my generate-tcl-pre]
+     if {[string length [string trim $TCLINIT]]} {
+       ::practcl::cputs result "  if(interp) {\nif(Tcl_Eval(interp,[::practcl::tcl_to_c $TCLINIT])) return TCL_ERROR;\n  }"
+
+Index: modules/practcl/practcl.tcl
+==================================================================
+--- modules/practcl/practcl.tcl
++++ modules/practcl/practcl.tcl
+@@ -6514,15 +6514,15 @@
+     ::practcl::cputs result  "
+ extern int DLLEXPORT [my define get initfunc]( Tcl_Interp *interp ) \{"
+     ::practcl::cputs result  {
+   /* Initialise the stubs tables. */
+   #ifdef USE_TCL_STUBS
+-    if (Tcl_InitStubs(interp, "8.6", 0)==NULL) return TCL_ERROR;
++    if (Tcl_InitStubs(interp, "8.6-", 0)==NULL) return TCL_ERROR;
+     if (TclOOInitializeStubs(interp, "1.0") == NULL) return TCL_ERROR;
+ }
+     if {[my define get tk 0]} {
+-      ::practcl::cputs result  {    if (Tk_InitStubs(interp, "8.6", 0)==NULL) return TCL_ERROR;}
++      ::practcl::cputs result  {    if (Tk_InitStubs(interp, "8.6-", 0)==NULL) return TCL_ERROR;}
+     }
+     ::practcl::cputs result {  #endif}
+     set TCLINIT [my generate-tcl-pre]
+     if {[string length [string trim $TCLINIT]]} {
+       ::practcl::cputs result "  if(interp) {\nif(Tcl_Eval(interp,[::practcl::tcl_to_c $TCLINIT])) return TCL_ERROR;\n  }"
+
+Index: modules/practcl/practcl.test
+==================================================================
+--- modules/practcl/practcl.test
++++ modules/practcl/practcl.test
+@@ -34,5 +34,21 @@
+   ::practcl::findByPattern test *.tcl
+ } {test/one.tcl test/sub/two.tcl test/sub/sub/three.tcl}
+ 
+ file delete -force test
+ 
++
++test practcl-loader-001 {Generated stubs init accepts Tcl/Tk 9, ticket d3d4117803} -setup {
++  oo::object create ::practcl_test_parent
++  oo::objdefine ::practcl_test_parent method child x {return {}}
++  set obj [::practcl::module new ::practcl_test_parent initfunc Foo_Init tk 1]
++} -body {
++  set code [$obj generate-loader]
++  list [regexp {Tcl_InitStubs\(interp, "8.6-", 0\)} $code] \
++      [regexp {Tk_InitStubs\(interp, "8.6-", 0\)} $code]
++} -cleanup {
++  $obj destroy
++  ::practcl_test_parent destroy
++  unset obj code
++} -result {1 1}
++
++testsuiteCleanup
+

@@ -1,0 +1,78 @@
+Index: modules/ooutil/ooutil.man
+==================================================================
+--- modules/ooutil/ooutil.man
++++ modules/ooutil/ooutil.man
+@@ -143,11 +143,11 @@
+ [para] Syntax and results are like for [cmd oo::class].
+ 
+ [para] Example:
+ [example {
+ % oo::class create example {
+-   self mixin singleton
++   self mixin ooutil::singleton
+    method foo {} {self}
+ }
+ ::example
+ % [example new] foo
+ ::oo::Obj22
+
+Index: modules/ooutil/ooutil.tcl
+==================================================================
+--- modules/ooutil/ooutil.tcl
++++ modules/ooutil/ooutil.tcl
+@@ -107,11 +107,13 @@
+             set d $c.Delegate
+             if {[info object isa object $d] && [info object isa class $d]} {
+                 lappend superdelegates $d
+             }
+         }
+-        oo::objdefine $cls mixin {*}$superdelegates
++        # Keep any mixins set up by the class definition script itself,
++        # e.g. "self mixin ooutil::singleton".
++        oo::objdefine $cls mixin {*}$superdelegates {*}[info object mixins $cls]
+         return $cls
+     }
+ }
+ 
+ oo::define oo::class self mixin oo::class.Delegate
+@@ -154,11 +156,11 @@
+ 
+ # ======
+ # Demonstration
+ # ======
+ # % oo::class create example {
+-#    self mixin singleton
++#    self mixin ooutil::singleton
+ #    method foo {} {self}
+ # }
+ # ::example
+ # % [example new] foo
+ # ::oo::Obj22
+
+Index: modules/ooutil/ooutil.test
+==================================================================
+--- modules/ooutil/ooutil.test
++++ modules/ooutil/ooutil.test
+@@ -73,10 +73,21 @@
+ } -body {
+     testns::Table find foo bar
+ } -cleanup {
+     namespace delete testns
+ } -output "::testns::Table called with arguments: foo bar\n"
++
++test ooutil-ticket-3609183fff {singleton used as mixin of a class} -setup {
++    oo::class create example {
++        self mixin ooutil::singleton
++        method foo {} {self}
++    }
++} -body {
++    expr {[[example new] foo] eq [[example new] foo]}
++} -cleanup {
++    example destroy
++} -result 1
+ 
+ testsuiteCleanup
+ 
+ # Local variables:
+ # mode: tcl
+

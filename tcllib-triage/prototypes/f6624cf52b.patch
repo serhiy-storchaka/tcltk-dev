@@ -1,0 +1,108 @@
+Index: modules/dns/dns.tcl
+==================================================================
+--- modules/dns/dns.tcl
++++ modules/dns/dns.tcl
+@@ -261,32 +261,38 @@
+             -inv* { set state(opcode) 1 }
+             -status {set state(opcode) 2}
+             -data { set state(qdata) [Pop args 1] }
+             default {
+                 set opts [join [lsort [array names state -*]] ", "]
++                unset state
+                 return -code error "bad option [lindex $args 0]: \
+                         must be $opts"
+             }
+         }
+         Pop args
+     }
+ 
+     if {$state(-nameserver) == {}} {
++        unset state
+         return -code error "no nameserver specified"
+     }
+ 
+     if {$state(-usetls)} {
+-        package require tls
++        if {[catch {package require tls} msg]} {
++            unset state
++            return -code error $msg
++        }
+         set state(-protocol) "tcp"
+         if {$state(-port) == $options(port)} {
+             set state(-port) 853
+         }
+     }
+ 
+     if {$state(-protocol) == "udp"} {
+         if {[llength [package provide ceptcl]] == 0 \
+                 && [llength [package provide udp]] == 0} {
++            unset state
+             return -code error "udp support is not available,\
+                 get ceptcl or tcludp"
+         }
+     }
+ 
+
+Index: modules/dns/dns.test
+==================================================================
+--- modules/dns/dns.test
++++ modules/dns/dns.test
+@@ -60,10 +60,57 @@
+         catch {eval [list uri::join] $check} result
+         set result
+     } $url
+ }
+ 
++
++# Ticket f6624cf52b: dns::resolve leaked its state array on errors.
++proc dnsTokens {} {
++    lsort [info vars ::dns::\[0-9\]*]
++}
++tcltest::testConstraint noudp [expr {
++    [catch {package require udp}] && [catch {package require ceptcl}]
++}]
++tcltest::testConstraint notls [catch {package require tls}]
++
++test dns-3.1 {resolve, bad option, no leak} -setup {
++    set before [dnsTokens]
++} -body {
++    list [catch {dns::resolve www.example.org -nameserver 127.0.0.1 -bogus 1} msg] \
++        [string match {bad option -bogus:*must be -cadir, -cafile, *} $msg] \
++        [expr {[dnsTokens] eq $before}]
++} -cleanup {
++    unset before msg
++} -result {1 1 1}
++
++test dns-3.2 {resolve, udp not available, no leak} -constraints noudp -setup {
++    set before [dnsTokens]
++} -body {
++    list [catch {dns::resolve www.example.org -nameserver 127.0.0.1 -protocol udp} msg] \
++        $msg [expr {[dnsTokens] eq $before}]
++} -cleanup {
++    unset before msg
++} -result {1 {udp support is not available, get ceptcl or tcludp} 1}
++
++test dns-3.3 {resolve, tls not available, no leak} -constraints notls -setup {
++    set before [dnsTokens]
++} -body {
++    list [catch {dns::resolve www.example.org -nameserver 127.0.0.1 -usetls 1}] \
++        [expr {[dnsTokens] eq $before}]
++} -cleanup {
++    unset before
++} -result {1 1}
++
++test dns-3.4 {resolve, no nameserver, no leak} -setup {
++    set before [dnsTokens]
++} -body {
++    list [catch {dns::resolve www.example.org -nameserver {}} msg] \
++        $msg [expr {[dnsTokens] eq $before}]
++} -cleanup {
++    unset before msg
++} -result {1 {no nameserver specified} 1}
++
+ 
+ # -------------------------------------------------------------------------
+ testsuiteCleanup
+ 
+ # Local Variables:
+

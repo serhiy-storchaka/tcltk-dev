@@ -1,0 +1,209 @@
+Index: modules/ftp/ftp.tcl
+==================================================================
+--- modules/ftp/ftp.tcl
++++ modules/ftp/ftp.tcl
+@@ -1812,29 +1812,32 @@
+ 
+     set ftp(inline) 0
+     set flags 1
+     set source ""
+     set dest ""
++    set nargs 0
+     foreach arg $args {
+         if {[string equal $arg "--"]} {
+             set flags 0
+         } elseif {($flags) && ([string equal $arg "-data"])} {
+             set ftp(inline) 1
+             set ftp(filebuffer) ""
+         } elseif {($flags) && ([string equal $arg "-channel"])} {
+             set ftp(inline) 2
+-	} elseif {$source == ""} {
++	} elseif {$nargs == 0} {
+             set source $arg
+-	} elseif {$dest == ""} {
++            incr nargs
++	} elseif {$nargs == 1} {
+             set dest $arg
++            incr nargs
+ 	} else {
+             DisplayMsg $s "wrong # args: should be \"ftp::Put handle (-data \"data\" | -channel chan | localFilename) remoteFilename\"" error
+ 	    return 0
+         }
+     }
+ 
+-    if {($source == "")} {
++    if {($nargs == 0) || (($ftp(inline) != 1) && ($source == ""))} {
+         DisplayMsg $s "Must specify a valid data source to Put" error
+         return 0
+     }        
+ 
+     set ftp(RemoteFilename) $dest
+@@ -1927,29 +1930,32 @@
+ 
+     set ftp(inline) 0
+     set flags 1
+     set source ""
+     set dest ""
++    set nargs 0
+     foreach arg $args {
+         if {[string equal $arg "--"]} {
+             set flags 0
+         } elseif {($flags) && ([string equal $arg "-data"])} {
+             set ftp(inline) 1
+             set ftp(filebuffer) ""
+         } elseif {($flags) && ([string equal $arg "-channel"])} {
+             set ftp(inline) 2
+-        } elseif {$source == ""} {
++        } elseif {$nargs == 0} {
+             set source $arg
+-        } elseif {$dest == ""} {
++            incr nargs
++        } elseif {$nargs == 1} {
+             set dest $arg
++            incr nargs
+         } else {
+             DisplayMsg $s "wrong # args: should be \"ftp::Append handle (-data \"data\" | -channel chan | localFilename) remoteFilename\"" error
+             return 0
+         }
+     }
+ 
+-    if {($source == "")} {
++    if {($nargs == 0) || (($ftp(inline) != 1) && ($source == ""))} {
+         DisplayMsg $s "Must specify a valid data source to Append" error
+         return 0
+     }   
+ 
+     set ftp(RemoteFilename) $dest
+
+--- /dev/null
++++ modules/ftp/ftp.test
+@@ -0,0 +1,129 @@
++# -*- tcl -*-
++# ftp.test:  tests for the ftp client.
++#
++# The tests run the client against a local ftpd (tcllib) server
++# started in a child process, listening on 127.0.0.1 only.
++#
++# Sourcing this file into Tcl runs the tests and generates output for
++# errors.  No output means no errors were found.
++
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 2.0
++
++support {
++    use log/log.tcl log
++}
++testing {
++    useLocal ftp.tcl ftp
++}
++
++# -------------------------------------------------------------------------
++## Server. A tcllib ftpd running in a child process. Accepts every
++## login and grants access to all files, except those whose names
++## contain "denied". The document root is a
++## temporary directory.
++
++set rootDir [makeDirectory ftproot]
++set serverScript [makeFile {
++    lassign $argv modules docroot
++    lappend auto_path $modules
++    namespace eval ::ftpd {variable contact test@localhost}
++    package require ftpd
++    set ::ftpd::port 0
++    ::ftpd::fsFile::docRoot $docroot
++    ::ftpd::config -logCmd {apply {{s t} {}}} \
++	-authUsrCmd  {apply {{u p} {return 1}}} \
++	-authFileCmd {apply {{u p o} {expr {![string match *denied* $p]}}}}
++    ::ftpd::server 127.0.0.1
++    puts $::ftpd::port
++    flush stdout
++    fileevent stdin readable exit
++    vwait forever
++} ftpserver.tcl]
++
++set server [open |[list [info nameofexecutable] $serverScript \
++	[file dirname [localDirectory]] $rootDir] r+]
++gets $server serverPort
++
++proc open_session {mode} {
++    ftp::Open 127.0.0.1 user pass -port $::serverPort -mode $mode -timeout 5
++}
++proc rootfile {name} {
++    file join $::rootDir $name
++}
++proc readroot {name} {
++    set f [open [rootfile $name] rb]
++    set data [read $f]
++    close $f
++    return $data
++}
++proc writeroot {name data} {
++    set f [open [rootfile $name] wb]
++    puts -nonewline $f $data
++    close $f
++}
++
++# Keep the error messages of the package out of the test output.
++log::lvSuppress error
++
++# -------------------------------------------------------------------------
++
++foreach mode {passive active} {
++    test ftp-1.0-$mode {Get -variable} -setup {
++	writeroot get.txt hello
++	set h [open_session $mode]
++    } -body {
++	list [ftp::Get $h get.txt -variable data] $data
++    } -cleanup {
++	ftp::Close $h
++	file delete [rootfile get.txt]
++	unset -nocomplain h data
++    } -result {1 hello}
++
++    test ftp-2.0-$mode {Put -data} -setup {
++	set h [open_session $mode]
++    } -body {
++	list [ftp::Put $h -data abc put.txt] [readroot put.txt]
++    } -cleanup {
++	ftp::Close $h
++	file delete [rootfile put.txt]
++	unset -nocomplain h
++    } -result {1 abc}
++
++    test ftp-2.1-$mode {Put -data {}, ticket 2eb11228fb} -setup {
++	writeroot put.txt abc
++	set h [open_session $mode]
++    } -body {
++	list [ftp::Put $h -data {} put.txt] [readroot put.txt] \
++	    [file exists [rootfile ftp.tmp]]
++    } -cleanup {
++	ftp::Close $h
++	file delete [rootfile put.txt] [rootfile ftp.tmp]
++	unset -nocomplain h
++    } -result {1 {} 0}
++
++    test ftp-2.2-$mode {Append -data {}, ticket 2eb11228fb} -setup {
++	writeroot append.txt abc
++	set h [open_session $mode]
++    } -body {
++	list [ftp::Append $h -data {} append.txt] [readroot append.txt] \
++	    [file exists [rootfile ftp.tmp]]
++    } -cleanup {
++	ftp::Close $h
++	file delete [rootfile append.txt] [rootfile ftp.tmp]
++	unset -nocomplain h
++    } -result {1 abc 0}
++}
++
++# -------------------------------------------------------------------------
++close $server
++removeFile ftpserver.tcl
++removeDirectory ftproot
++testsuiteCleanup
++return

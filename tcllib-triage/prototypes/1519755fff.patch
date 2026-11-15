@@ -1,0 +1,55 @@
+Index: modules/struct/record.tcl
+==================================================================
+--- modules/struct/record.tcl
++++ modules/struct/record.tcl
+@@ -705,16 +705,19 @@
+ 		# Reverting here causes the next auto to fail, claiming
+ 		# that the instance exists.
+                 # incr _count($ns) -1
+ 
+             } else {
+-                #error "$item_ is not a instance"
++                error "$item_ is not an instance"
+             }
+         }
+         record  -
+         records   {
+ 	    # puts .record
++            if {![Exists record $item_]} {
++                error "$item_ is not a record"
++            }
+             ##
+             ##  Delete the instances for this
+             ##  record
+             ##
+ 	    # puts .get-instances
+
+Index: modules/struct/record.test
+==================================================================
+--- modules/struct/record.test
++++ modules/struct/record.test
+@@ -502,9 +502,23 @@
+     set res [record show values $fitXYInputData]
+ 
+     record delete instance $fitXYInputData
+     set res
+ } {-silent true -verbose true -macro aMacro -confidence 0.9 -input {-reps 30 -sdev 0.1 -seed 12345 -params {-amp {} -unmod {} -jcoup {} -t2star {}} -data {-delays {} -values {}}}}
++
++test record-9.0-tkt-1519755fff {delete a non-existent instance is an error} {
++    record define r9 {a b}
++    r9 i9
++    set r [list [catch {record delete instance i9.a} msg] $msg]
++    lappend r [catch {record delete instance junk} msg] $msg
++    lappend r [record show values i9]
++    record delete record r9
++    set r
++} {1 {::i9.a is not an instance} 1 {::junk is not an instance} {-a {} -b {}}}
++
++test record-9.1-tkt-1519755fff {delete a non-existent record is an error} {
++    list [catch {record delete record junk} msg] $msg
++} {1 {::junk is not a record}}
+ 
+ #----------------------------------------------------------------------
+ testsuiteCleanup
+ return
+

@@ -1,0 +1,95 @@
+Index: modules/mime/mime.tcl
+==================================================================
+--- modules/mime/mime.tcl
++++ modules/mime/mime.tcl
+@@ -1448,11 +1448,13 @@
+ 
+ proc ::mime::getTransferEncoding token {
+     variable $token
+     upvar 0 $token state
+     set res {}
+-    if {[set encoding $state(encoding)] eq {}} {
++    # Only a canonical body is encoded on output. A parsed body is
++    # copied as is, so report only the encoding it was received with.
++    if {[set encoding $state(encoding)] eq {} && $state(canonicalP)} {
+ 	set encoding [encoding $token]
+     }
+     if {$encoding ne {}} {
+ 	set res $encoding
+     }
+@@ -2241,11 +2243,11 @@
+         }
+     }
+     if {
+ 	[set r [string first \r $line]] < 0
+ 	||
+-	$r == {[string length $line] - 1}
++	$r == [string length $line] - 1
+     } {
+         return 1
+     }
+ 
+     return 0
+
+Index: modules/mime/mime.test
+==================================================================
+--- modules/mime/mime.test
++++ modules/mime/mime.test
+@@ -669,10 +669,56 @@
+     set restore [mime::initialize -string $str]
+ } -cleanup {
+     mime::finalize $restore
+     unset part whole saved stm str
+ } -match glob -result "::mime::*"
++
++# -------------------------------------------------------------------------
++
++test mime-16.1 {ticket f44bcbf068: encodingasciiP accepts \r at end of line} {
++    list [mime::encodingasciiP "Simple line\r"] \
++	[mime::encodingasciiP "Simple line"] \
++	[mime::encodingasciiP "Simple\rline"]
++} {1 1 0}
++
++test mime-16.2 {ticket f44bcbf068: no Content-Transfer-Encoding invented for a parsed body} -setup {
++    set token [mime::initialize -string [join {
++	{Subject: test}
++	{Content-Type: text/plain; charset=Cp1252}
++	{}
++	{Simple line}
++	{Another line}
++	{}
++    } \r\n]]
++} -body {
++    set msg [mime::buildmessage $token]
++    list [regexp -nocase {Content-Transfer-Encoding} $msg] \
++	[mime::getheader $token Content-Transfer-Encoding] \
++	[string first "\r\n\r\nSimple line" $msg]
++} -cleanup {
++    mime::finalize $token
++    unset token msg
++} -match glob -result {0 {} [1-9]*}
++
++test mime-16.3 {ticket f44bcbf068: received Content-Transfer-Encoding is kept} -setup {
++    set token [mime::initialize -string [join {
++	{Subject: test}
++	{Content-Type: text/plain}
++	{Content-Transfer-Encoding: quoted-printable}
++	{}
++	{a=3Db}
++	{}
++    } \r\n]]
++} -body {
++    set msg [mime::buildmessage $token]
++    list [llength [regexp -all -inline -line -nocase \
++		       {^Content-Transfer-Encoding: quoted-printable} $msg]] \
++	[mime::getbody $token]
++} -cleanup {
++    mime::finalize $token
++    unset token msg
++} -result [list 1 "a=b\r\n"]
+ 
+ # -------------------------------------------------------------------------
+ 
+ testsuiteCleanup
+ return
+

@@ -1,0 +1,68 @@
+Index: modules/httpd/build/file.tcl
+==================================================================
+--- modules/httpd/build/file.tcl
++++ modules/httpd/build/file.tcl
+@@ -67,11 +67,11 @@
+     if {$local_file eq {} || ![file exist $local_file]} {
+       my log httpNotFound [my request get REQUEST_PATH]
+       my error 404 {File Not Found}
+       tailcall my DoOutput
+     }
+-    if {[file isdirectory $local_file] || [file tail $local_file] in {index index.html index.tml index.md}} {
++    if {[file isdirectory $local_file]} {
+       my request set PREFIX_URI [my request get REQUEST_PATH]
+       my request set LOCAL_DIR $local_file
+       ###
+       # Produce an index page
+       ###
+
+Index: modules/httpd/httpd.tcl
+==================================================================
+--- modules/httpd/httpd.tcl
++++ modules/httpd/httpd.tcl
+@@ -1208,11 +1208,11 @@
+     if {$local_file eq {} || ![file exist $local_file]} {
+       my log httpNotFound [my request get REQUEST_PATH]
+       my error 404 {File Not Found}
+       tailcall my DoOutput
+     }
+-    if {[file isdirectory $local_file] || [file tail $local_file] in {index index.html index.tml index.md}} {
++    if {[file isdirectory $local_file]} {
+       my request set PREFIX_URI [my request get REQUEST_PATH]
+       my request set LOCAL_DIR $local_file
+       ###
+       # Produce an index page
+       ###
+
+Index: modules/httpd/httpd.test
+==================================================================
+--- modules/httpd/httpd.test
++++ modules/httpd/httpd.test
+@@ -373,10 +373,26 @@
+ 
+ ::DEBUG puts httpd-client-0008
+ test httpd-client-0008 {Pull a constant string} -body {
+     ::httpd::test::send 10001 {GET /string HTTP/1.0} {} {}
+ } -match glob -result [200 apple]
++::DEBUG puts httpd-client-0010
++test httpd-client-0010 {Serve an index file from a subdirectory, ticket c0e70192dd} -setup {
++    set docs [makeDirectory httpd-docs]
++    file mkdir [file join $docs sub]
++    set f [open [file join $docs sub index.md] w]
++    puts -nonewline $f {sub index}
++    close $f
++    TESTAPP uri add * /docs* [list mixin {reply ::httpd::content.file} path $docs]
++} -body {
++    set r [::httpd::test::send 10001 {GET /docs/sub/index.md HTTP/1.0} {} {}]
++    list [string match {*<p>sub index</p>*} $r] [string match {*Listing*} $r]
++} -cleanup {
++    removeDirectory httpd-docs
++    unset -nocomplain docs f r
++} -result {1 0}
++
+ # -------------------------------------------------------------------------
+ # Test proxies
+ 
+ clay::define ::test::content.proxy {
+     superclass ::httpd::content.proxy
+

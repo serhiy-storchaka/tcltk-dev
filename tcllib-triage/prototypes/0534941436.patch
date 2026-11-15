@@ -1,0 +1,373 @@
+Index: modules/mime/mime.tcl
+==================================================================
+--- modules/mime/mime.tcl
++++ modules/mime/mime.tcl
+@@ -373,12 +373,10 @@
+ #
+ # Results:
+ #    An initialized mime token.
+ 
+ proc ::mime::initialize args {
+-    global errorCode errorInfo
+-
+     variable mime
+ 
+     set token [namespace current]::[incr mime(uid)]
+     # FRINK: nocheck
+     variable $token
+@@ -407,11 +405,10 @@
+ #
+ # Results:
+ #       Either configures the mime token, or throws an error.
+ 
+ proc ::mime::initializeaux {token args} {
+-    global errorCode errorInfo
+     # FRINK: nocheck
+     variable $token
+     upvar 0 $token state
+ 
+     array set params [set state(params) {}]
+@@ -618,23 +615,21 @@
+ 
+             fconfigure $state(fd) -translation binary
+         }
+     }
+ 
+-    set code [catch {mime::parsepart $token} result]
+-    set ecode $errorCode
+-    set einfo $errorInfo
++    set code [catch {mime::parsepart $token} result opts]
+ 
+     if {$fileP} {
+         if {!$openP} {
+             unset state(root)
+             catch {close $state(fd)}
+         }
+         unset state(fd)
+     }
+ 
+-    return -code $code -errorinfo $einfo -errorcode $ecode $result
++    return -options $opts $result
+ }
+ 
+ # ::mime::parsepart --
+ #
+ #       Parses the MIME headers and attempts to break up the message
+@@ -1013,11 +1008,10 @@
+ # Results:
+ #       Returns the content and params for the string as a two element
+ #       tcl list.
+ 
+ proc ::mime::parsetype {token string} {
+-    global errorCode errorInfo
+     # FRINK: nocheck
+     variable $token
+     upvar 0 $token state
+ 
+     variable typetokenL
+@@ -1028,13 +1022,11 @@
+     set state(lastC)   LX_END
+     set state(comment) {}
+     set state(tokenL)  $typetokenL
+     set state(lexemeL) $typelexemeL
+ 
+-    set code [catch {mime::parsetypeaux $token $string} result]
+-    set ecode $errorCode
+-    set einfo $errorInfo
++    set code [catch {mime::parsetypeaux $token $string} result opts]
+ 
+     unset {*}{
+ 	state(input)
+ 	state(buffer)
+ 	state(lastC)
+@@ -1041,11 +1033,11 @@
+ 	state(comment)
+ 	state(tokenL)
+ 	state(lexemeL)
+     }
+ 
+-    return -code $code -errorinfo $einfo -errorcode $ecode $result
++    return -options $opts $result
+ }
+ 
+ # ::mime::parsetypeaux --
+ #
+ #       A helper function for mime::parsetype.  Parses the specified
+@@ -1603,11 +1595,10 @@
+ #       Returns a string containing the MIME part's entire body, or
+ #       if '-command' is specified, the return value of the command
+ #       is returned.
+ 
+ proc ::mime::getbody {token args} {
+-    global errorCode errorInfo
+     # FRINK: nocheck
+     variable $token
+     upvar 0 $token state
+ 
+     set decode 0
+@@ -1622,12 +1613,10 @@
+     if {$options(-blocksize) < 1} {
+         error "-blocksize expects a positive integer, not $options(-blocksize)"
+     }
+ 
+     set code 0
+-    set ecode {}
+-    set einfo {}
+ 
+     switch -- $state(value)/$state(canonicalP) {
+         file/0 {
+             set fd [open $state(file) RDONLY]
+ 
+@@ -1676,13 +1665,11 @@
+                     }
+                 }
+                 if {[string length $fragment] > 0} {
+                     uplevel #0 $options(-command) [list data $fragment]
+                 }
+-            } result]
+-            set ecode $errorCode
+-            set einfo $errorInfo
++            } result opts]
+ 
+             catch {close $fd}
+         }
+ 
+         file/1 {
+@@ -1693,13 +1680,11 @@
+ 
+                 while {[string length [
+                     set fragment [read $fd $options(-blocksize)]]] > 0} {
+                         uplevel #0 $options(-command) [list data $fragment]
+                     }
+-            } result]
+-            set ecode $errorCode
+-            set einfo $errorInfo
++            } result opts]
+ 
+             catch {close $fd}
+         }
+ 
+         parts/0
+@@ -1736,13 +1721,11 @@
+                         string range $fragment $options(-blocksize) end]
+                 }
+                 if {[string length $fragment] > 0} {
+                     uplevel #0 $options(-command) [list data $fragment]
+                 }
+-            } result]
+-            set ecode $errorCode
+-            set einfo $errorInfo
++            } result opts]
+         }
+         default {
+             error "Unknown combination \"$state(value)/$state(canonicalP)\""
+         }
+     }
+@@ -1751,16 +1734,14 @@
+         if {$code} {
+             uplevel #0 $options(-command) [list error $result]
+         } else {
+             uplevel #0 $options(-command) [list end]
+         }
+-    } result]
+-    set ecode $errorCode
+-    set einfo $errorInfo
++    } result opts]
+ 
+     if {$code} {
+-        return -code $code -errorinfo $einfo -errorcode $ecode $result
++        return -options $opts $result
+     }
+ 
+     if {$decode} {
+         array set params [mime::getproperty $token params]
+ 
+@@ -1845,29 +1826,26 @@
+ # Results:
+ #       Returns nothing unless an error is thrown while the message
+ #       is being written to the channel.
+ 
+ proc ::mime::copymessage {token channel} {
+-    global errorCode errorInfo
+     # FRINK: nocheck
+     variable $token
+     upvar 0 $token state
+ 
+     set openP [info exists state(fd)]
+ 
+-    set code [catch {mime::copymessageaux $token $channel} result]
+-    set ecode $errorCode
+-    set einfo $errorInfo
++    set code [catch {mime::copymessageaux $token $channel} result opts]
+ 
+     if {!$openP && [info exists state(fd)]} {
+         if {![info exists state(root)]} {
+             catch {close $state(fd)}
+         }
+         unset state(fd)
+     }
+ 
+-    return -code $code -errorinfo $einfo -errorcode $ecode $result
++    return -options $opts $result
+ }
+ 
+ # ::mime::copymessageaux --
+ #
+ #    mime::copymessageaux copies the MIME part to the specified channel.
+@@ -2065,33 +2043,26 @@
+ #
+ # Results:
+ #       The message.
+ 
+ proc ::mime::buildmessage token {
+-    global errorCode errorInfo
+     # FRINK: nocheck
+     variable $token
+     upvar 0 $token state
+ 
+     set openP [info exists state(fd)]
+ 
+-    set code [catch {mime::buildmessageaux $token} result]
+-    if {![info exists errorCode]} {
+-        set ecode {}
+-    } else {
+-        set ecode $errorCode
+-    }
+-    set einfo $errorInfo
++    set code [catch {mime::buildmessageaux $token} result opts]
+ 
+     if {!$openP && [info exists state(fd)]} {
+         if {![info exists state(root)]} {
+             catch {close $state(fd)}
+         }
+         unset state(fd)
+     }
+ 
+-    return -code $code -errorinfo $einfo -errorcode $ecode $result
++    return -options $opts $result
+ }
+ 
+ 
+ proc ::mime::buildmessageaux token {
+ 	set chan [tcl::chan::memchan]
+@@ -2498,30 +2469,26 @@
+ # Results:
+ #    Returns a list of dictionaries, one element for each address
+ #       specified in the argument.
+ 
+ proc ::mime::parseaddress {string} {
+-    global errorCode errorInfo
+-
+     variable mime
+ 
+     set token [namespace current]::[incr mime(uid)]
+     # FRINK: nocheck
+     variable $token
+     upvar 0 $token state
+ 
+-    set code [catch {mime::parseaddressaux $token $string} result]
+-    set ecode $errorCode
+-    set einfo $errorInfo
++    set code [catch {mime::parseaddressaux $token $string} result opts]
+ 
+     foreach name [array names state] {
+         unset state($name)
+     }
+     # FRINK: nocheck
+     catch {unset $token}
+ 
+-    return -code $code -errorinfo $einfo -errorcode $ecode $result
++    return -options $opts $result
+ }
+ 
+ # ::mime::parseaddressaux --
+ #
+ #       This was originally written circa 1982 in C. we're still using it
+@@ -2675,19 +2642,18 @@
+ #
+ # Results:
+ #    Returns 1 if there is another address, and 0 if there is not.
+ 
+ proc ::mime::addr_next {token} {
+-    global errorCode errorInfo
+     # FRINK: nocheck
+     variable $token
+     upvar 0 $token state
+     foreach prop {comment domain error group local memberP phrase route} {
+         unset -nocomplain state($prop)
+     }
+ 
+-    switch -- [set code [catch {mime::addr_specification $token} result]] {
++    switch -- [set code [catch {mime::addr_specification $token} result opts]] {
+         0 {
+             if {!$result} {
+                 return 0
+             }
+ 
+@@ -2722,14 +2688,11 @@
+                 }
+             }
+         }
+ 
+         default {
+-            set ecode $errorCode
+-            set einfo $errorInfo
+-
+-            return -code $code -errorinfo $einfo -errorcode $ecode $result
++            return -options $opts $result
+         }
+     }
+ 
+     foreach prop {comment domain error group local memberP phrase route} {
+         if {![info exists state($prop)]} {
+
+Index: modules/mime/mime.test
+==================================================================
+--- modules/mime/mime.test
++++ modules/mime/mime.test
+@@ -669,10 +669,44 @@
+     set restore [mime::initialize -string $str]
+ } -cleanup {
+     mime::finalize $restore
+     unset part whole saved stm str
+ } -match glob -result "::mime::*"
++
++test mime-15.0 {parse without ::errorCode/::errorInfo, ticket 0534941436} -setup {
++    set msg "From: a@example.com\nMIME-Version: 1.0\nContent-Type: multipart/mixed; boundary=SEP\n\n--SEP\nContent-Type: text/plain\n\nbody\n--SEP--\n"
++} -body {
++    unset -nocomplain ::errorCode ::errorInfo
++    set tok [mime::initialize -string $msg]
++    list [mime::getproperty $tok content] [llength [mime::getproperty $tok parts]]
++} -cleanup {
++    mime::finalize $tok
++    unset msg tok
++} -result {multipart/mixed 1}
++
++test mime-15.1 {other API without ::errorCode/::errorInfo, ticket 0534941436} -setup {
++    set tok [mime::initialize -canonical text/plain -string body]
++    set chan [tcl::chan::memchan]
++    proc ::mime15cb {args} {}
++} -body {
++    set res {}
++    foreach cmd {
++	{mime::parseaddress a@example.com}
++	{mime::buildmessage $tok}
++	{mime::copymessage $tok $chan}
++	{mime::getbody $tok -command ::mime15cb}
++    } {
++	unset -nocomplain ::errorCode ::errorInfo
++	lappend res [catch $cmd]
++    }
++    set res
++} -cleanup {
++    mime::finalize $tok
++    close $chan
++    rename ::mime15cb {}
++    unset tok chan res cmd
++} -result {0 0 0 0}
+ 
+ # -------------------------------------------------------------------------
+ 
+ testsuiteCleanup
+ return
+

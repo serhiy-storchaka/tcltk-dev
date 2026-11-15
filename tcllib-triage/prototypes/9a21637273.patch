@@ -1,0 +1,268 @@
+Index: modules/nettool/build/core.tcl
+==================================================================
+--- modules/nettool/build/core.tcl
++++ modules/nettool/build/core.tcl
+@@ -21,10 +21,22 @@
+       if {$item in $var} continue
+       lappend var $item
+     }
+     return $var
+   }
++}
++if {[info commands ::ldelete] eq {}} {
++  proc ::ldelete {varname args} {
++    upvar 1 $varname var
++    if ![info exists var] {
++        set var {}
++    }
++    foreach item $args {
++      set var [lsearch -all -inline -not -exact $var $item]
++    }
++    return $var
++  }
+ }
+ if {[info commands ::get] eq {}} {
+   proc ::get varname {
+     upvar 1 $varname var
+     if {[info exists var]} {
+
+Index: modules/nettool/build/platform_unix_linux.tcl
+==================================================================
+--- modules/nettool/build/platform_unix_linux.tcl
++++ modules/nettool/build/platform_unix_linux.tcl
+@@ -90,38 +90,69 @@
+ ###
+ # topic: aa8eda4fb59296a1a34d8d600ca54e28
+ # description: Dump interfaces
+ ###
+ proc ::nettool::dump {} {
+-  set data [exec ifconfig]
++  return [ifconfig_parse [exec ifconfig]]
++}
++
++###
++# description: Parse the output of ifconfig (both the old and the new
++# net-tools formats). The new format is normalized to the old keys.
++###
++proc ::nettool::ifconfig_parse {data} {
+   set iface {}
+   set result {}
+   foreach line [split $data \n] {
++    if {[string trim $line] eq {}} continue
+     if {[string index $line 0] in {" " "\t"} } {
+       # Indented line appends the prior iface
+       switch [lindex $line 0] {
+         inet {
++          if {![string match *:* [lindex $line 1]]} {
++            # New format: inet ADDR netmask MASK broadcast BCAST
++            dict set result $iface ipv4 addr: [lindex $line 1]
++            foreach {field value} [lrange $line 2 end] {
++              switch $field {
++                netmask     {dict set result $iface ipv4 Mask: $value}
++                broadcast   {dict set result $iface ipv4 Bcast: $value}
++                destination {dict set result $iface ipv4 P-t-P: $value}
++              }
++            }
++            continue
++          }
+           foreach tuple [lrange $line 1 end] {
+ 	    set idx [string first : $tuple]
+             set field [string trim [string range $tuple 0 $idx]]
+             set value [string trim [string range $tuple $idx+1 end]]
+             dict set result $iface ipv4 [string trim $field] [string trim $value]
+           }
+         }
+         inet6 {
++          if {[lindex $line 1] ne "addr:"} {
++            # New format: inet6 ADDR prefixlen N scopeid ID
++            dict set result $iface ipv6 addr: [lindex $line 1]
++            foreach {field value} [lrange $line 2 end] {
++              dict set result $iface ipv6 $field: $value
++            }
++            continue
++          }
+           dict set result $iface ipv6 addr: [lindex $line 2]
+           foreach tuple [lrange $line 3 end] {
+ 	    set idx [string first : $tuple]
+             set field [string trim [string range $tuple 0 $idx]]
+             set value [string trim [string range $tuple $idx+1 end]]
+             dict set result $iface ipv6 [string trim $field] [string trim $value]
+           }
+ 	}
++        ether {
++          dict set result $iface ether: [lindex $line 1]
++        }
+       }
+     } else {
+       # Non-intended line - new iface
+-      set iface [lindex $line 0]
++      set iface [string trimright [lindex $line 0] :]
+       set idx [lsearch $line HWaddr]
+       if {$idx >= 0 } {
+         dict set result $iface ether: [lindex $line $idx+1]
+       }
+     }
+
+Index: modules/nettool/nettool.tcl
+==================================================================
+--- modules/nettool/nettool.tcl
++++ modules/nettool/nettool.tcl
+@@ -34,10 +34,22 @@
+       if {$item in $var} continue
+       lappend var $item
+     }
+     return $var
+   }
++}
++if {[info commands ::ldelete] eq {}} {
++  proc ::ldelete {varname args} {
++    upvar 1 $varname var
++    if ![info exists var] {
++        set var {}
++    }
++    foreach item $args {
++      set var [lsearch -all -inline -not -exact $var $item]
++    }
++    return $var
++  }
+ }
+ if {[info commands ::get] eq {}} {
+   proc ::get varname {
+     upvar 1 $varname var
+     if {[info exists var]} {
+@@ -1151,38 +1163,69 @@
+ ###
+ # topic: aa8eda4fb59296a1a34d8d600ca54e28
+ # description: Dump interfaces
+ ###
+ proc ::nettool::dump {} {
+-  set data [exec ifconfig]
++  return [ifconfig_parse [exec ifconfig]]
++}
++
++###
++# description: Parse the output of ifconfig (both the old and the new
++# net-tools formats). The new format is normalized to the old keys.
++###
++proc ::nettool::ifconfig_parse {data} {
+   set iface {}
+   set result {}
+   foreach line [split $data \n] {
++    if {[string trim $line] eq {}} continue
+     if {[string index $line 0] in {" " "\t"} } {
+       # Indented line appends the prior iface
+       switch [lindex $line 0] {
+         inet {
++          if {![string match *:* [lindex $line 1]]} {
++            # New format: inet ADDR netmask MASK broadcast BCAST
++            dict set result $iface ipv4 addr: [lindex $line 1]
++            foreach {field value} [lrange $line 2 end] {
++              switch $field {
++                netmask     {dict set result $iface ipv4 Mask: $value}
++                broadcast   {dict set result $iface ipv4 Bcast: $value}
++                destination {dict set result $iface ipv4 P-t-P: $value}
++              }
++            }
++            continue
++          }
+           foreach tuple [lrange $line 1 end] {
+ 	    set idx [string first : $tuple]
+             set field [string trim [string range $tuple 0 $idx]]
+             set value [string trim [string range $tuple $idx+1 end]]
+             dict set result $iface ipv4 [string trim $field] [string trim $value]
+           }
+         }
+         inet6 {
++          if {[lindex $line 1] ne "addr:"} {
++            # New format: inet6 ADDR prefixlen N scopeid ID
++            dict set result $iface ipv6 addr: [lindex $line 1]
++            foreach {field value} [lrange $line 2 end] {
++              dict set result $iface ipv6 $field: $value
++            }
++            continue
++          }
+           dict set result $iface ipv6 addr: [lindex $line 2]
+           foreach tuple [lrange $line 3 end] {
+ 	    set idx [string first : $tuple]
+             set field [string trim [string range $tuple 0 $idx]]
+             set value [string trim [string range $tuple $idx+1 end]]
+             dict set result $iface ipv6 [string trim $field] [string trim $value]
+           }
+ 	}
++        ether {
++          dict set result $iface ether: [lindex $line 1]
++        }
+       }
+     } else {
+       # Non-intended line - new iface
+-      set iface [lindex $line 0]
++      set iface [string trimright [lindex $line 0] :]
+       set idx [lsearch $line HWaddr]
+       if {$idx >= 0 } {
+         dict set result $iface ether: [lindex $line $idx+1]
+       }
+     }
+
+Index: modules/nettool/nettool.test
+==================================================================
+--- modules/nettool/nettool.test
++++ modules/nettool/nettool.test
+@@ -93,9 +93,57 @@
+     [list ::nettool::allocate_port 7790] 7791
+ 
+ ::tcltest::test port-allocate-0006 \
+     "Test allocate port returns the next address of an claimed spot and claims it" \
+     [list ::nettool::allocate_port 7790] 7792
++
++::tcltest::testConstraint linux \
++    [expr {$::tcl_platform(os) eq "Linux"}]
++
++# Ticket 9a21637273: old and new net-tools ifconfig output formats
++::tcltest::test ifconfig-parse-old {Parse old ifconfig output format} \
++    -constraints linux -body {
++	::nettool::ifconfig_parse {eth0      Link encap:Ethernet  HWaddr 00:11:22:33:44:55  
++          inet addr:192.168.1.5  Bcast:192.168.1.255  Mask:255.255.255.0
++          inet6 addr: fe80::211:22ff:fe33:4455/64 Scope:Link
++          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
++
++lo        Link encap:Local Loopback  
++          inet addr:127.0.0.1  Mask:255.0.0.0
++          inet6 addr: ::1/128 Scope:Host
++}
++    } -result {eth0 {ether: 00:11:22:33:44:55 ipv4 {addr: 192.168.1.5 Bcast: 192.168.1.255 Mask: 255.255.255.0} ipv6 {addr: fe80::211:22ff:fe33:4455/64 Scope: Link}} lo {ipv4 {addr: 127.0.0.1 Mask: 255.0.0.0} ipv6 {addr: ::1/128 Scope: Host}}}
++
++::tcltest::test ifconfig-parse-new {Parse new ifconfig output format} \
++    -constraints linux -body {
++	::nettool::ifconfig_parse {eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
++        inet 192.168.1.5  netmask 255.255.255.0  broadcast 192.168.1.255
++        inet6 fe80::211:22ff:fe33:4455  prefixlen 64  scopeid 0x20<link>
++        ether 00:11:22:33:44:55  txqueuelen 1000  (Ethernet)
++
++lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
++        inet 127.0.0.1  netmask 255.0.0.0
++        inet6 ::1  prefixlen 128  scopeid 0x10<host>
++        loop  txqueuelen 1000  (Local Loopback)
++}
++    } -result {eth0 {ipv4 {addr: 192.168.1.5 Mask: 255.255.255.0 Bcast: 192.168.1.255} ipv6 {addr: fe80::211:22ff:fe33:4455 prefixlen: 64 scopeid: 0x20<link>} ether: 00:11:22:33:44:55} lo {ipv4 {addr: 127.0.0.1 Mask: 255.0.0.0} ipv6 {addr: ::1 prefixlen: 128 scopeid: 0x10<host>}}}
++
++::tcltest::test ip-list-ldelete {ip_list drops the loopback address} \
++    -constraints linux -setup {
++	rename ::nettool::dump ::nettool::dump_saved
++	proc ::nettool::dump {} {
++	    ::nettool::ifconfig_parse {lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
++        inet 127.0.0.1  netmask 255.0.0.0
++eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
++        inet 192.168.1.5  netmask 255.255.255.0  broadcast 192.168.1.255
++}
++	}
++    } -body {
++	::nettool::ip_list
++    } -cleanup {
++	rename ::nettool::dump {}
++	rename ::nettool::dump_saved ::nettool::dump
++    } -result 192.168.1.5
+ 
+ 
+ testsuiteCleanup
+ return
+

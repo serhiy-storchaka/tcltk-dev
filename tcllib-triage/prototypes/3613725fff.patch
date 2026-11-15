@@ -1,0 +1,115 @@
+Index: modules/rest/rest.tcl
+==================================================================
+--- modules/rest/rest.tcl
++++ modules/rest/rest.tcl
+@@ -82,12 +82,15 @@
+     }
+ 
+     set result [::rest::_call {} $headers $url $query $body $error_body]
+ 
+     # if a format was specified then convert the data, but dont do any auto formatting
++    # Tkt [3613725fff] "format" is documented as a synonym of "result".
+     if {[dict exists $config result]} {
+         set result [::rest::format_[dict get $config result] $result]
++    } elseif {[dict exists $config format]} {
++        set result [::rest::format_[dict get $config format] $result]
+     }
+ 
+     return $result
+ }
+ 
+
+--- /dev/null
++++ modules/rest/rest.test
+@@ -0,0 +1,91 @@
++# -*- tcl -*-
++# rest.test:  tests for the rest package.
++#
++# -------------------------------------------------------------------------
++# See the file "license.terms" for information on usage and redistribution
++# of this file, and for a DISCLAIMER OF ALL WARRANTIES.
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 2.0
++
++support {
++    use json/json.tcl     json
++    use base64/base64.tcl base64
++    # tdom is only needed for XML results, which these tests do not use.
++    if {[catch {package require tdom}]} {package provide tdom 0}
++}
++testing {
++    useLocal rest.tcl rest
++}
++
++# -------------------------------------------------------------------------
++# A minimal local HTTP server. It records the request header lines of
++# the last request in ::lastRequest and answers with a fixed JSON body.
++
++proc httpServer {} {
++    set ::lastRequest {}
++    set srv [socket -server httpAccept -myaddr 127.0.0.1 0]
++    return [list $srv [lindex [fconfigure $srv -sockname] 2]]
++}
++
++proc httpAccept {sock addr port} {
++    fconfigure $sock -translation crlf -blocking 0
++    set ::req($sock) {}
++    fileevent $sock readable [list httpRead $sock]
++}
++
++proc httpRead {sock} {
++    while {[gets $sock line] >= 0} {
++	if {$line ne ""} {lappend ::req($sock) $line ; continue}
++	# End of the request header, answer.
++	set ::lastRequest $::req($sock)
++	unset ::req($sock)
++	set body {{"a": 1}}
++	puts $sock "HTTP/1.0 200 OK"
++	puts $sock "Content-Type: application/json"
++	puts $sock "Content-Length: [string length $body]"
++	puts $sock ""
++	fconfigure $sock -translation binary -blocking 1
++	puts -nonewline $sock $body
++	close $sock
++	return
++    }
++    if {[eof $sock]} {close $sock ; unset -nocomplain ::req($sock)}
++}
++
++proc requestHeader {name} {
++    foreach line $::lastRequest {
++	if {[string match -nocase "$name: *" $line]} {
++	    return [string range $line [string length "$name: "] end]
++	}
++    }
++    return {}
++}
++
++# -------------------------------------------------------------------------
++test rest-1.0-tkt-3613725fff {simple, format key converts the result} -setup {
++    lassign [httpServer] srv port
++} -body {
++    rest::get http://127.0.0.1:$port/ {} {format json}
++} -cleanup {
++    close $srv
++    unset -nocomplain srv port
++} -result {a 1}
++
++test rest-1.1-tkt-3613725fff {simple, result key converts the result} -setup {
++    lassign [httpServer] srv port
++} -body {
++    rest::get http://127.0.0.1:$port/ {} {result json}
++} -cleanup {
++    close $srv
++    unset -nocomplain srv port
++} -result {a 1}
++
++# -------------------------------------------------------------------------
++testsuiteCleanup
++return

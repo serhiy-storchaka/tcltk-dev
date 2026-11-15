@@ -1,0 +1,31 @@
+Index: modules/ncgi/ncgi.man
+==================================================================
+--- modules/ncgi/ncgi.man
++++ modules/ncgi/ncgi.man
+@@ -276,10 +276,25 @@
+ The second element is the form value.
+ 
+ [list_end]
+ 
+ [section EXAMPLES]
++
++Reading form values and replying
++[example {
++#!/usr/bin/env tclsh
++package require ncgi
++package require html
++
++::ncgi::parse
++set name [::ncgi::value name "world"]
++set tags [::ncgi::valueList tag]   ;# e.g. checkboxes, all values
++
++::ncgi::header text/html
++puts "<html><body>Hello, [html::quoteFormValue $name]!"
++puts "<br>[llength $tags] tag(s) selected.</body></html>"
++}]
+ 
+ Uploading a file
+ [example {
+ HTML:
+ <html>
+

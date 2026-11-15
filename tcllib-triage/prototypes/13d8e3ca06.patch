@@ -1,0 +1,106 @@
+Index: modules/websocket/websocket.tcl
+==================================================================
+--- modules/websocket/websocket.tcl
++++ modules/websocket/websocket.tcl
+@@ -133,19 +133,21 @@
+ 	${log}::warn "$sock is not a WebSocket connection anymore"
+ 	ThrowError "$sock is not a WebSocket"
+     }
+     upvar \#0 $varname Connection
+ 
+-    if { $Connection(state) eq "CLOSED" } {
++    if { $Connection(state) in {CLOSING CLOSED} } {
+ 	${log}::notice "Connection already closed"
+ 	return
+     }
+-    set Connection(state) CLOSED
++    # Allow [send] to send the close frame, but nothing else.
++    set Connection(state) CLOSING
+ 
+     ##nagelfar ignore
+     if { $code == "" || ![string is integer $code] } {
+ 	send $sock 8
++	set Connection(state) CLOSED
+ 	${log}::info "Closing web socket"
+ 	Push $sock close {}
+     } else {
+ 	if { $reason eq "" } {
+ 	    set reason [string map \
+@@ -163,10 +165,11 @@
+ 	}
+ 	set msg [binary format Su $code]
+ 	append msg [encoding convertto utf-8 $reason]
+ 	set msg [string range $msg 0 124];  # Cut answer to make sure it fits!
+ 	send $sock 8 $msg
++	set Connection(state) CLOSED
+ 	${log}::info "Closing web socket: $code ($reason)"
+ 	Push $sock close [list $code $reason]
+     }
+ 
+     Disconnect $sock
+@@ -664,12 +667,14 @@
+ 	${log}::warn "$sock is not a WebSocket connection anymore"
+ 	ThrowError "$sock is not a WebSocket"
+     }
+     upvar \#0 $varname Connection
+ 
+-    # Refuse to send if not connected
+-    if { $Connection(state) ne "CONNECTED" } {
++    # Refuse to send if not connected, except for the close frame
++    # sent by ::websocket::close.
++    if { $Connection(state) ne "CONNECTED"
++	 && !($Connection(state) eq "CLOSING" && $type eq "8") } {
+ 	${log}::warn "Cannot send along WS $sock, not connected"
+ 	return -1
+     }
+ 
+     # Determine opcode from type, i.e. text, binary or ping. Accept
+
+Index: modules/websocket/websocket.test
+==================================================================
+--- modules/websocket/websocket.test
++++ modules/websocket/websocket.test
+@@ -188,15 +188,41 @@
+     wsResetSleep
+     wsResetHandler
+ } -match exact -result {SOCKET text {Hello this is message NUMBER}
+ }
+ 
++# Local tests, no network needed.
++
++proc wsLocalPair {} {
++    set ::wsSrvSock {}
++    set listen [socket -server {apply {{s a p} {set ::wsSrvSock $s}}} \
++                    -myaddr 127.0.0.1 0]
++    set cli [socket 127.0.0.1 [lindex [fconfigure $listen -sockname] 2]]
++    vwait ::wsSrvSock
++    close $listen
++    fconfigure $cli -translation binary
++    return [list $::wsSrvSock $cli]
++}
++
++test websocket-close-1.0 {close sends a close frame [13d8e3ca06]} -setup {
++    lassign [wsLocalPair] srv cli
++    ::websocket::takeover $srv {apply {args {}}} 1
++} -body {
++    ::websocket::close $srv 1000
++    # The server side is closed now, so this reads up to EOF.
++    binary scan [read $cli] H* hex
++    set hex
++} -cleanup {
++    close $cli
++    unset -nocomplain srv cli hex ::wsSrvSock
++} -result 881003e8[binary encode hex "Normal closure"]
++
+ testsuiteCleanup
+ unset -nocomplain wsNum wsMsgCounter wsOutput wsMsgMax wsWAITER wsUrl expectNum ws1 ws2 newMessage
+ foreach pr {
+     wsResetHandler wsExpectHandler wsOutputHandler
+-    wsSleep wsResetSleep wsStopSleep
++    wsSleep wsResetSleep wsStopSleep wsLocalPair
+ } {
+     rename $pr {}
+ }
+ 
+ 
+

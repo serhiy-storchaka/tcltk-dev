@@ -1,0 +1,38 @@
+Index: modules/aes/aes.man
+==================================================================
+--- modules/aes/aes.man
++++ modules/aes/aes.man
+@@ -135,11 +135,11 @@
+ [list_end]
+ 
+ [section "EXAMPLES"]
+ 
+ [example {
+-% set nil_block [string repeat \\0 16]
++% set nil_block [string repeat \0 16]
+ % aes::aes -hex -mode cbc -dir encrypt -key $nil_block $nil_block
+ 66e94bd4ef8a2c3b884cfa59ca342b2e
+ }]
+ 
+ [example {
+
+Index: modules/des/des.man
+==================================================================
+--- modules/des/des.man
++++ modules/des/des.man
+@@ -170,12 +170,12 @@
+ % set ciphertext [DES::des -mode cbc -dir encrypt -key $secret $plaintext]
+ % set plaintext [DES::des -mode cbc -dir decrypt -key $secret $ciphertext]
+ }]
+ 
+ [example {
+-set iv [string repeat \\0 8]
+-set Key [DES::Init cbc \\0\\1\\2\\3\\4\\5\\6\\7 $iv]
++set iv [string repeat \0 8]
++set Key [DES::Init cbc \0\1\2\3\4\5\6\7 $iv]
+ set ciphertext [DES::Encrypt $Key "somedata"]
+ append ciphertext [DES::Encrypt $Key "moredata"]
+ DES::Reset $Key $iv
+ set plaintext [DES::Decrypt $Key $ciphertext]
+ DES::Final $Key
+

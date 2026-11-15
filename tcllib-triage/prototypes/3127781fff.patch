@@ -1,0 +1,148 @@
+Index: modules/term/receive.tcl
+==================================================================
+--- modules/term/receive.tcl
++++ modules/term/receive.tcl
+@@ -15,18 +15,28 @@
+ proc ::term::receive::getch {{chan stdin}} {
+     return [read $chan 1]
+ }
+ 
+ proc ::term::receive::listen {cmd {chan stdin}} {
++    variable blocking
++    if {![info exists blocking($chan)]} {
++	set blocking($chan) [fconfigure $chan -blocking]
++    }
+     fconfigure $chan -blocking 0
+     fileevent  $chan readable \
+ 	    [list ::term::receive::Foreach $chan $cmd]
+     return
+ }
+ 
+ proc ::term::receive::unlisten {{chan stdin}} {
++    variable blocking
+     fileevent $chan readable {}
++    # Restore the blocking mode the channel had before listening.
++    if {[info exists blocking($chan)]} {
++	fconfigure $chan -blocking $blocking($chan)
++	unset blocking($chan)
++    }
+     return
+ }
+ 
+ # ### ### ### ######### ######### #########
+ ## Internals
+@@ -36,10 +46,12 @@
+     if {[string length $string]} {
+ 	#puts stderr "F($string)"
+ 	uplevel #0 [linsert $cmd end process $string]
+     }
+     if {[eof $chan]} {
++	variable blocking
++	unset -nocomplain blocking($chan)
+ 	close $chan
+ 	uplevel #0 [linsert $cmd end eof]
+     }
+     return
+ }
+@@ -46,10 +58,13 @@
+ 
+ # ### ### ### ######### ######### #########
+ ## Initialization
+ 
+ namespace eval ::term::receive {
++    # Blocking mode of listened channels before 'listen', per channel.
++    variable  blocking
++    array set blocking {}
+     namespace export getch listen
+ }
+ 
+ # ### ### ### ######### ######### #########
+ ## Ready
+
+ADDED    modules/term/receive.test
+Index: modules/term/receive.test
+==================================================================
+--- /dev/null
++++ modules/term/receive.test
+@@ -0,0 +1,80 @@
++# -*- tcl -*-
++# receive.test:  tests for term::receive and term::interact::menu
++#
++# This file contains a collection of tests for one or more of the Tcllib
++# procedures.  Sourcing this file into Tcl runs the tests and
++# generates output for errors.  No output means no errors were found.
++
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.6
++testsNeedTcltest 2
++
++support {
++    use      snit/snit.tcl            snit
++    use      textutil/repeat.tcl      textutil::repeat
++    use      textutil/tabify.tcl      textutil::tabify
++    useLocal ansi/code.tcl            term::ansi::code
++    useLocal ansi/code/attr.tcl       term::ansi::code::attr
++    useLocal ansi/code/ctrl.tcl       term::ansi::code::ctrl
++    useLocal send.tcl                 term::send
++    useLocal ansi/send.tcl            term::ansi::send
++    useLocal receive.tcl              term::receive
++    useLocal bind.tcl                 term::receive::bind
++}
++testing {
++    useLocal imenu.tcl                term::interact::menu
++}
++
++# -------------------------------------------------------------------------
++
++# Ticket 3127781: listen/unlisten must not leave the channel non-blocking,
++# or later reads of stdin spin instead of waiting.
++
++test term-receive-1.0 {unlisten restores blocking mode} -setup {
++    lassign [chan pipe] r w
++} -body {
++    term::receive::listen {apply {args {}}} $r
++    set res [fconfigure $r -blocking]
++    term::receive::unlisten $r
++    lappend res [fconfigure $r -blocking]
++} -cleanup {
++    close $r
++    close $w
++} -result {0 1}
++
++test term-receive-1.1 {unlisten keeps non-blocking mode} -setup {
++    lassign [chan pipe] r w
++    fconfigure $r -blocking 0
++} -body {
++    term::receive::listen {apply {args {}}} $r
++    term::receive::unlisten $r
++    fconfigure $r -blocking
++} -cleanup {
++    close $r
++    close $w
++} -result 0
++
++test term-interact-menu-1.0 {interact restores blocking mode} -setup {
++    lassign [chan pipe] r w
++    fconfigure $w -buffering none
++    set null [open /dev/null w]
++    set m [term::interact::menu M {a A b B} -in $r -out $null]
++} -constraints unix -body {
++    after 10 [list puts -nonewline $w \n]
++    list [$m interact] [fconfigure $r -blocking]
++} -cleanup {
++    $m destroy
++    close $null
++    close $r
++    close $w
++    unset m null
++} -result {A 1}
++
++# -------------------------------------------------------------------------
++testsuiteCleanup
++return
+

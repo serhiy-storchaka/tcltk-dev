@@ -1,0 +1,99 @@
+Index: modules/yaml/yaml.tcl
+==================================================================
+--- modules/yaml/yaml.tcl
++++ modules/yaml/yaml.tcl
+@@ -612,20 +612,26 @@
+     _getLine
+     return [list $explicit $chomping]
+ }
+ 
+ # [162]    ns-plain-multi(n,c)
+-proc ::yaml::_parsePlainScalarInBlock {base {loop 0}} {
+-    if {$loop == 5} { return }
++proc ::yaml::_parsePlainScalarInBlock {base} {
+     variable data
+-    set start $data(start)
+     set reStr {(?:[^:#\t \n]*(?::[^\t \n]+)*(?:#[^\t \n]+)* *)*[^:#\t \n]*}
+-    set result [_getFoldedString $reStr]
+-
+-    set result [string trim $result]
+-    set c [_getc 0]
+-    if {$c eq "\n" || $c eq "#"} { ; # multi-line
++    set result ""
++    set lb ""
++    while {1} {
++        set start $data(start)
++        set part [string trim [_getFoldedString $reStr]]
++        if {$lb eq ""} {
++            set result $part
++        } elseif {$part ne ""} {
++            append result $lb$part
++        }
++        set c [_getc 0]
++        if {$c ne "\n" && $c ne "#"} {break}
++        # multi-line
+         set lb ""
+         while {1} {
+             set fpos [_getpos]
+             foreach {indent nop line} [_getLine] break
+             if {[_eof]} {break}
+@@ -637,21 +643,15 @@
+         }
+         set lb [string range $lb 1 end]
+         if {!$data(finished)} {
+             _setpos $fpos
+         }
+-        if {$start == $data(start)} {
+-            return $result
+-        }
+-        if {$base <= $indent} {
+-            if {$lb eq ""} {
+-                set lb " "
+-            }
+-            set subs [_parsePlainScalarInBlock $base [expr {$loop+1}]]
+-           if {$subs ne ""} {
+-                append result "$lb$subs"
+-            }
++        if {$start == $data(start) || $base > $indent} {
++            break
++        }
++        if {$lb eq ""} {
++            set lb " "
+         }
+     }
+     return $result
+ }
+ 
+
+Index: modules/yaml/yaml.test
+==================================================================
+--- modules/yaml/yaml.test
++++ modules/yaml/yaml.test
+@@ -775,10 +775,26 @@
+ test yaml-21.2 "explicit_tags float" -body {
+     set y {!!float 123=0}
+     yaml::yaml2dict $y
+ } -returnCodes error -result {expected floating-point number but got "123=0"}
+ 
++
++test yaml-30.1 "plain multi-line scalar longer than 5 lines, ticket a23348be0b" -body {
++    yaml::yaml2dict "my_thing:\n  one\n  two\n  three\n  four\n  five\n  six\n  seven\nnext: x\n"
++} -result {my_thing {one two three four five six seven} next x}
++
++test yaml-30.2 "very long plain multi-line scalar, ticket a23348be0b" -body {
++    set y "k:\n"
++    for {set i 0} {$i < 1500} {incr i} {append y "  w$i\n"}
++    set v [dict get [yaml::yaml2dict $y] k]
++    list [llength $v] [lindex $v end]
++} -result {1500 w1499}
++
++test yaml-30.3 "plain multi-line scalar with empty line" -body {
++    yaml::yaml2dict "k:\n  one\n  two\n\n  three\n  four\nnext: x\n"
++} -result {k {one two
++three four} next x}
+ 
+ # ... Tests of addStrings ...
+ #     (Requires introspection of parser state)
+ 
+ 
+

@@ -1,0 +1,79 @@
+Index: modules/dns/ip.tcl
+==================================================================
+--- modules/dns/ip.tcl
++++ modules/dns/ip.tcl
+@@ -61,15 +61,31 @@
+ }
+ 
+ proc ::ip::version {ip} {
+     set version -1
+     if {[string equal $ip {}]} { return $version}
+-    foreach {addr mask} [split $ip /] break
++    set parts [split $ip /]
++    if {[llength $parts] > 2} { return $version }
++    foreach {addr mask} $parts break
+     if {[IPv4? $addr]} {
+         set version 4
++        set maxbits 32
+     } elseif {[IPv6? $addr]} {
+         set version 6
++        set maxbits 128
++    } else {
++        return $version
++    }
++    # Validate the mask, if any: a number of bits or an address mask
++    if {[llength $parts] == 2} {
++        if {[string is digit -strict $mask]} {
++            if {[scan $mask %d bits] != 1 || $bits > $maxbits} {
++                return -1
++            }
++        } elseif {![IPv${version}? $mask]} {
++            return -1
++        }
+     }
+     return $version
+ }
+ 
+ proc ::ip::equal {lhs rhs} {
+
+Index: modules/dns/ip.test
+==================================================================
+--- modules/dns/ip.test
++++ modules/dns/ip.test
+@@ -52,10 +52,35 @@
+ foreach {addr result} $Data {
+     test ip-1.[incr n] [list ip version $addr] {
+         list [catch {ip::version $addr} msg] $addr $msg
+     } [list 0 $addr $result]
+ }
++
++# version with a mask, ticket b1c2d07148
++set n 0
++foreach {addr result} {
++    10.0.0.1/24               4
++    10.0.0.1/0                4
++    10.0.0.1/32               4
++    10.0.0.1/255.255.255.0    4
++    10.0.0.1/33              -1
++    10.0.0.1/64              -1
++    10.0.0.1/                -1
++    10.0.0.1/dsffds          -1
++    10.0.0.1/dsffds/44       -1
++    10.0.0.1/24/24           -1
++    10.0.0.1/ffff::          -1
++    fec0::1/64                6
++    fec0::1/128               6
++    fec0::1/ffff:ffff::       6
++    fec0::1/129              -1
++    fec0::1/255.255.255.0    -1
++} {
++    test ip-1.mask.[incr n] [list ip version $addr] {
++        list [catch {ip::version $addr} msg] $addr $msg
++    } [list 0 $addr $result]
++}
+ 
+ # is
+ set n 0
+ foreach {addr result} $Data {
+     if {$result != 4} {set result 0}
+

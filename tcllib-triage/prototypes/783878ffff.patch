@@ -1,0 +1,124 @@
+Index: modules/ftp/ftp.tcl
+==================================================================
+--- modules/ftp/ftp.tcl
++++ modules/ftp/ftp.tcl
+@@ -3081,11 +3081,37 @@
+     variable DEBUG
+     variable VERBOSE
+ 
+     # open a control channel
+ 
+-    set rc [catch {set ftp(CtrlSock) [socket $ftp(RemoteHost) $ftp(Port)]} msg]
++    if {![string length $ftp(Command)]} {
++	# Synchronous mode. Honor the timeout while connecting, a
++	# blocking connect may hang for minutes. [Bug 783878]
++	set rc [catch {set ftp(CtrlSock) [socket -async $ftp(RemoteHost) $ftp(Port)]} msg]
++	if {$rc == 0} {
++	    set var ::ftp::ftp${s}(connect)
++	    fileevent $ftp(CtrlSock) writable [list set $var ok]
++	    set id [after [expr {$ftp(Timeout) * 1000}] [list set $var timeout]]
++	    vwait $var
++	    after cancel $id
++	    fileevent $ftp(CtrlSock) writable {}
++	    if {[string equal $ftp(connect) "timeout"]} {
++		set rc 1
++		set msg "Timeout while connecting after $ftp(Timeout) sec."
++	    } else {
++		set msg [fconfigure $ftp(CtrlSock) -error]
++		set rc [string length $msg]
++	    }
++	    unset ftp(connect)
++	    if {$rc} {
++		catch {close $ftp(CtrlSock)}
++		unset ftp(CtrlSock)
++	    }
++	}
++    } else {
++	set rc [catch {set ftp(CtrlSock) [socket $ftp(RemoteHost) $ftp(Port)]} msg]
++    }
+     if { $rc != 0 } {
+         if { $VERBOSE } {
+             DisplayMsg $s "C: No connection to server!" error
+         }
+         if { $DEBUG } {
+
+ADDED    modules/ftp/ftp.test
+Index: modules/ftp/ftp.test
+==================================================================
+--- /dev/null
++++ modules/ftp/ftp.test
+@@ -0,0 +1,73 @@
++# -*- tcl -*-
++# ftp.test:  tests for the ftp client.
++#
++# The server side of the control connection is a programmed dialog
++# running in a separate process (devtools/dialog.tcl).
++
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 1.0
++
++support {
++    use           log/log.tcl   log
++    useTcllibFile devtools/coserv.tcl ; # loads comm, snit too!
++    useTcllibFile devtools/dialog.tcl
++}
++testing {
++    useLocal ftp.tcl ftp
++}
++
++# -------------------------------------------------------------------------
++# Server processes. Programmed dialogs, server side.
++
++dialog::setup server {Ftp Fake Server}
++
++tcltest::testConstraint backlog [expr {![catch {
++    close [socket -server {} -backlog 1 -myaddr 127.0.0.1 0]
++}]}]
++
++# Silence the error messages of the package.
++proc ::ftp::DisplayMsg {s msg {state ""}} {}
++
++proc login {} {
++    dialog::crlf.
++    dialog::send.    {220 localhost fake FTP server ready.}
++    dialog::respond. {331 Password required.}
++    dialog::respond. {230 Logged in.}
++    dialog::respond. {200 Type set to I.}
++}
++
++proc ftpopen {args} {
++    ftp::Open 127.0.0.1 user pass -port [dialog::listener] {*}$args
++}
++
++# -------------------------------------------------------------------------
++
++test ftp-open-timeout-1.0 {Open honors -timeout while connecting, ticket 783878} -constraints backlog -setup {
++    # A listener which never accepts. Once its backlog is full, further
++    # connection attempts hang.
++    set listen [socket -server {} -backlog 1 -myaddr 127.0.0.1 0]
++    set lport  [lindex [fconfigure $listen -sockname] 2]
++    set fill {}
++    for {set i 0} {$i < 4} {incr i} {
++	lappend fill [socket -async 127.0.0.1 $lport]
++    }
++    after 300
++} -body {
++    set start [clock seconds]
++    set res [ftp::Open 127.0.0.1 user pass -port $lport -timeout 1]
++    list $res [expr {[clock seconds] - $start < 5}]
++} -cleanup {
++    foreach c $fill {close $c}
++    close $listen
++    unset -nocomplain listen lport fill i c start res
++} -result {-1 1}
++
++# -------------------------------------------------------------------------
++dialog::shutdown
++testsuiteCleanup
+

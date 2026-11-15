@@ -1,0 +1,462 @@
+Index: modules/snit/main1.tcl
+==================================================================
+--- modules/snit/main1.tcl
++++ modules/snit/main1.tcl
+@@ -1143,15 +1143,15 @@
+         set methodInfo($method) {0 "%t::Snit_method%m %t %n %w %s" ""}
+         Mappend compile(defs) {
+             proc %TYPE%::Snit_method%METHOD% %ARGLIST% %BODY%
+         } %METHOD% $method %ARGLIST% [list $arglist] %BODY% [list $body]
+     } else {
+-        set methodInfo($method) {0 "%t::Snit_hmethod%j %t %n %w %s" ""}
++        set methodInfo($method) {0 "%t::Snit_hmethod%J %t %n %w %s" ""}
+ 
+         Mappend compile(defs) {
+             proc %TYPE%::Snit_hmethod%JMETHOD% %ARGLIST% %BODY%
+-        } %JMETHOD% [join $method _] %ARGLIST% [list $arglist] \
++        } %JMETHOD% [RT.MangleMethod $method] %ARGLIST% [list $arglist] \
+             %BODY% [list $body]
+     }
+ }
+ 
+ # Check for name collisions; save prefix information.
+@@ -1231,15 +1231,15 @@
+ 
+         Mappend compile(defs) {
+             proc %TYPE%::Snit_typemethod%METHOD% %ARGLIST% %BODY%
+         } %METHOD% $method %ARGLIST% [list $arglist] %BODY% [list $body]
+     } else {
+-        set typemethodInfo($method) {0 "%t::Snit_htypemethod%j %t" ""}
++        set typemethodInfo($method) {0 "%t::Snit_htypemethod%J %t" ""}
+ 
+         Mappend compile(defs) {
+             proc %TYPE%::Snit_htypemethod%JMETHOD% %ARGLIST% %BODY%
+-        } %JMETHOD% [join $method _] \
++        } %JMETHOD% [RT.MangleMethod $method] \
+             %ARGLIST% [list $arglist] %BODY% [list $body]
+     }
+ }
+ 
+ 
+@@ -1896,12 +1896,12 @@
+     # Next, define it.
+     if {[llength $method] == 1} {
+         set Snit_typemethodInfo($method) {0 "%t::Snit_typemethod%m %t" ""}
+         uplevel 1 [list proc ${type}::Snit_typemethod$method $arglist $body]
+     } else {
+-        set Snit_typemethodInfo($method) {0 "%t::Snit_htypemethod%j %t" ""}
+-        set suffix [join $method _]
++        set Snit_typemethodInfo($method) {0 "%t::Snit_htypemethod%J %t" ""}
++        set suffix [RT.MangleMethod $method]
+         uplevel 1 [list proc ${type}::Snit_htypemethod$suffix $arglist $body]
+     }
+ }
+ 
+ proc ::snit::method {type method arglist body} {
+@@ -1930,13 +1930,13 @@
+     # Next, define it.
+     if {[llength $method] == 1} {
+         set Snit_methodInfo($method) {0 "%t::Snit_method%m %t %n %w %s" ""}
+         uplevel 1 [list proc ${type}::Snit_method$method $arglist $body]
+     } else {
+-        set Snit_methodInfo($method) {0 "%t::Snit_hmethod%j %t %n %w %s" ""}
++        set Snit_methodInfo($method) {0 "%t::Snit_hmethod%J %t %n %w %s" ""}
+ 
+-        set suffix [join $method _]
++        set suffix [RT.MangleMethod $method]
+         uplevel 1 [list proc ${type}::Snit_hmethod$suffix $arglist $body]
+     }
+ }
+ 
+ # Defines a proc within the compiler; this proc can call other
+@@ -2590,11 +2590,11 @@
+     set subList [list \
+                      %% % \
+                      %t $type \
+                      %M $method \
+                      %m [lindex $method end] \
+-                     %j [join $method _]]
++                     %j [join $method _] %J [RT.MangleMethod $method]]
+ 
+     if {"" != $compName} {
+         if {![info exists Snit_typecomponents($compName)]} {
+             error "$type delegates typemethod \"$method\" to undefined typecomponent \"$compName\""
+         }
+@@ -2711,11 +2711,11 @@
+     set subList [list \
+                      %% % \
+                      %t $type \
+                      %M $method \
+                      %m [lindex $method end] \
+-                     %j [join $method _] \
++                     %j [join $method _] %J [RT.MangleMethod $method] \
+                      %n [list $selfns] \
+                      %w [list $win] \
+                      %s [list $self]]
+ 
+     if {"" != $compName} {
+@@ -3060,10 +3060,25 @@
+ 
+ proc ::snit::RT.mymethod {args} {
+     upvar selfns selfns
+     return [linsert $args 0 ::snit::RT.CallInstance ${selfns}]
+ }
++
++# Returns the proc name suffix for a hierarchical method or typemethod.
++# The tokens are joined by underscores; underscores and percent signs
++# within the tokens are escaped so that distinct method names always
++# give distinct proc names, e.g. {a_b c} and {a b_c}.
++#
++# method		The method name, a list of tokens
++
++proc ::snit::RT.MangleMethod {method} {
++    set result {}
++    foreach token $method {
++        lappend result [string map {% %25 _ %5f} $token]
++    }
++    return [join $result _]
++}
+ 
+ # Calls an instance method for an object given its
+ # instance namespace and remaining arguments (the first of which
+ # will be the method name.
+ #
+@@ -3605,11 +3620,11 @@
+     }
+     if {$component != ""} {
+ 	return -code error "Delegated typemethod \"$method\""
+     }
+ 
+-    set map     [list %m $method %j [join $method _] %t $type]
++    set map     [list %m $method %j [join $method _] %J [RT.MangleMethod $method] %t $type]
+     set theproc [lindex [string map $map $cmd] 0]
+     return [lrange [::info args $theproc] 1 end]
+ }
+ 
+ # $type info body
+@@ -3642,11 +3657,11 @@
+     }
+     if {$component != ""} {
+ 	return -code error "Delegated typemethod \"$method\""
+     }
+ 
+-    set map     [list %m $method %j [join $method _] %t $type]
++    set map     [list %m $method %j [join $method _] %J [RT.MangleMethod $method] %t $type]
+     set theproc [lindex [string map $map $cmd] 0]
+     return [RT.body [::info body $theproc]]
+ }
+ 
+ # $type info default
+@@ -3680,11 +3695,11 @@
+     }
+     if {$component != ""} {
+ 	return -code error "Delegated typemethod \"$method\""
+     }
+ 
+-    set map     [list %m $method %j [join $method _] %t $type]
++    set map     [list %m $method %j [join $method _] %J [RT.MangleMethod $method] %t $type]
+     set theproc [lindex [string map $map $cmd] 0]
+     return [::info default $theproc $aname def]
+ }
+ 
+ # Returns a list of the type's instances whose names match
+@@ -3846,11 +3861,11 @@
+     }
+     if {$component != ""} {
+ 	return -code error "Delegated method \"$method\""
+     }
+ 
+-    set map     [list %m $method %j [join $method _] %t $type %n $selfns %w $win %s $self]
++    set map     [list %m $method %j [join $method _] %J [RT.MangleMethod $method] %t $type %n $selfns %w $win %s $self]
+     set theproc [lindex [string map $map $cmd] 0]
+     return [lrange [::info args $theproc] 4 end]
+ }
+ 
+ # $self info body
+@@ -3884,11 +3899,11 @@
+     }
+     if {$component != ""} {
+ 	return -code error "Delegated method \"$method\""
+     }
+ 
+-    set map     [list %m $method %j [join $method _] %t $type %n $selfns %w $win %s $self]
++    set map     [list %m $method %j [join $method _] %J [RT.MangleMethod $method] %t $type %n $selfns %w $win %s $self]
+     set theproc [lindex [string map $map $cmd] 0]
+     return [RT.body [::info body $theproc]]
+ }
+ 
+ # $self info default
+@@ -3920,11 +3935,11 @@
+     }
+     if {$component != ""} {
+ 	return -code error "Delegated method \"$method\""
+     }
+ 
+-    set map     [list %m $method %j [join $method _] %t $type %n $selfns %w $win %s $self]
++    set map     [list %m $method %j [join $method _] %J [RT.MangleMethod $method] %t $type %n $selfns %w $win %s $self]
+     set theproc [lindex [string map $map $cmd] 0]
+     return [::info default $theproc $aname def]
+ }
+ 
+ # $self info vars
+
+Index: modules/snit/main2.tcl
+==================================================================
+--- modules/snit/main2.tcl
++++ modules/snit/main2.tcl
+@@ -958,15 +958,15 @@
+         set methodInfo($method) {0 "%t::Snit_method%m %t %n %w %s" ""}
+         Mappend compile(defs) {
+             proc %TYPE%::Snit_method%METHOD% %ARGLIST% %BODY% 
+         } %METHOD% $method %ARGLIST% [list $arglist] %BODY% [list $body] 
+     } else {
+-        set methodInfo($method) {0 "%t::Snit_hmethod%j %t %n %w %s" ""}
++        set methodInfo($method) {0 "%t::Snit_hmethod%J %t %n %w %s" ""}
+ 
+         Mappend compile(defs) {
+             proc %TYPE%::Snit_hmethod%JMETHOD% %ARGLIST% %BODY% 
+-        } %JMETHOD% [join $method _] %ARGLIST% [list $arglist] \
++        } %JMETHOD% [RT.MangleMethod $method] %ARGLIST% [list $arglist] \
+             %BODY% [list $body] 
+     }
+ } 
+ 
+ # Check for name collisions; save prefix information.
+@@ -1046,15 +1046,15 @@
+ 
+         Mappend compile(defs) {
+             proc %TYPE%::Snit_typemethod%METHOD% %ARGLIST% %BODY%
+         } %METHOD% $method %ARGLIST% [list $arglist] %BODY% [list $body]
+     } else {
+-        set typemethodInfo($method) {0 "%t::Snit_htypemethod%j %t" ""}
++        set typemethodInfo($method) {0 "%t::Snit_htypemethod%J %t" ""}
+ 
+         Mappend compile(defs) {
+             proc %TYPE%::Snit_htypemethod%JMETHOD% %ARGLIST% %BODY%
+-        } %JMETHOD% [join $method _] \
++        } %JMETHOD% [RT.MangleMethod $method] \
+             %ARGLIST% [list $arglist] %BODY% [list $body]
+     }
+ } 
+ 
+ 
+@@ -1724,12 +1724,12 @@
+     # Next, define it.
+     if {[llength $method] == 1} {
+         set Snit_typemethodInfo($method) {0 "%t::Snit_typemethod%m %t" ""}
+         uplevel 1 [list proc ${type}::Snit_typemethod$method $arglist $body]
+     } else {
+-        set Snit_typemethodInfo($method) {0 "%t::Snit_htypemethod%j %t" ""}
+-        set suffix [join $method _]
++        set Snit_typemethodInfo($method) {0 "%t::Snit_htypemethod%J %t" ""}
++        set suffix [RT.MangleMethod $method]
+         uplevel 1 [list proc ${type}::Snit_htypemethod$suffix $arglist $body]
+     }
+ }
+ 
+ proc ::snit::method {type method arglist body} {
+@@ -1758,13 +1758,13 @@
+     # Next, define it.
+     if {[llength $method] == 1} {
+         set Snit_methodInfo($method) {0 "%t::Snit_method%m %t %n %w %s" ""}
+         uplevel 1 [list proc ${type}::Snit_method$method $arglist $body]
+     } else {
+-        set Snit_methodInfo($method) {0 "%t::Snit_hmethod%j %t %n %w %s" ""}
++        set Snit_methodInfo($method) {0 "%t::Snit_hmethod%J %t %n %w %s" ""}
+ 
+-        set suffix [join $method _]
++        set suffix [RT.MangleMethod $method]
+         uplevel 1 [list proc ${type}::Snit_hmethod$suffix $arglist $body]
+     }
+ }
+ 
+ # Defines a proc within the compiler; this proc can call other
+@@ -2436,11 +2436,11 @@
+     set subList [list \
+                      %% % \
+                      %t $type \
+                      %M $fullMethod \
+                      %m [lindex $fullMethod end] \
+-                     %j [join $fullMethod _]]
++                     %j [join $fullMethod _] %J [RT.MangleMethod $fullMethod]]
+     
+     if {$compName ne ""} {
+         if {![info exists Snit_typecomponents($compName)]} {
+             error "$type delegates typemethod \"$method\" to undefined typecomponent \"$compName\""
+         }
+@@ -2605,11 +2605,11 @@
+     set subList [list \
+                      %% % \
+                      %t $type \
+                      %M $fullMethod \
+                      %m [lindex $fullMethod end] \
+-                     %j [join $fullMethod _] \
++                     %j [join $fullMethod _] %J [RT.MangleMethod $fullMethod] \
+                      %n [list $selfns] \
+                      %w [list $win] \
+                      %s [list $self]]
+ 
+     if {$compName ne ""} {
+@@ -2949,10 +2949,25 @@
+ 
+ proc ::snit::RT.mymethod {args} {
+     upvar 1 selfns selfns
+     return [linsert $args 0 ::snit::RT.CallInstance ${selfns}]
+ }
++
++# Returns the proc name suffix for a hierarchical method or typemethod.
++# The tokens are joined by underscores; underscores and percent signs
++# within the tokens are escaped so that distinct method names always
++# give distinct proc names, e.g. {a_b c} and {a b_c}.
++#
++# method		The method name, a list of tokens
++
++proc ::snit::RT.MangleMethod {method} {
++    set result {}
++    foreach token $method {
++        lappend result [string map {% %25 _ %5f} $token]
++    }
++    return [join $result _]
++}
+ 
+ # Calls an instance method for an object given its
+ # instance namespace and remaining arguments (the first of which
+ # will be the method name.
+ #
+@@ -3498,11 +3513,11 @@
+     }
+     if {$component != ""} {
+ 	return -code error "Delegated typemethod \"$method\""
+     }
+ 
+-    set map     [list %m $method %j [join $method _] %t $type]
++    set map     [list %m $method %j [join $method _] %J [RT.MangleMethod $method] %t $type]
+     set theproc [lindex [string map $map $cmd] 0]
+     return [lrange [::info args $theproc] 1 end]
+ }
+ 
+ # $type info body
+@@ -3535,11 +3550,11 @@
+     }
+     if {$component != ""} {
+ 	return -code error "Delegated typemethod \"$method\""
+     }
+ 
+-    set map     [list %m $method %j [join $method _] %t $type]
++    set map     [list %m $method %j [join $method _] %J [RT.MangleMethod $method] %t $type]
+     set theproc [lindex [string map $map $cmd] 0]
+     return [RT.body [::info body $theproc]]
+ }
+ 
+ # $type info default
+@@ -3573,11 +3588,11 @@
+     }
+     if {$component != ""} {
+ 	return -code error "Delegated typemethod \"$method\""
+     }
+ 
+-    set map     [list %m $method %j [join $method _] %t $type]
++    set map     [list %m $method %j [join $method _] %J [RT.MangleMethod $method] %t $type]
+     set theproc [lindex [string map $map $cmd] 0]
+     return [::info default $theproc $aname def]
+ }
+ 
+ # Returns a list of the type's instances whose names match
+@@ -3746,11 +3761,11 @@
+     }
+     if {$component != ""} {
+ 	return -code error "Delegated method \"$method\""
+     }
+ 
+-    set map     [list %m $method %j [join $method _] %t $type %n $selfns %w $win %s $self]
++    set map     [list %m $method %j [join $method _] %J [RT.MangleMethod $method] %t $type %n $selfns %w $win %s $self]
+     set theproc [lindex [string map $map $cmd] 0]
+     return [lrange [::info args $theproc] 4 end]
+ }
+ 
+ # $self info body
+@@ -3784,11 +3799,11 @@
+     }
+     if {$component != ""} {
+ 	return -code error "Delegated method \"$method\""
+     }
+ 
+-    set map     [list %m $method %j [join $method _] %t $type %n $selfns %w $win %s $self]
++    set map     [list %m $method %j [join $method _] %J [RT.MangleMethod $method] %t $type %n $selfns %w $win %s $self]
+     set theproc [lindex [string map $map $cmd] 0]
+     return [RT.body [::info body $theproc]]
+ }
+ 
+ # $self info default
+@@ -3820,11 +3835,11 @@
+     }
+     if {$component != ""} {
+ 	return -code error "Delegated method \"$method\""
+     }
+ 
+-    set map     [list %m $method %j [join $method _] %t $type %n $selfns %w $win %s $self]
++    set map     [list %m $method %j [join $method _] %J [RT.MangleMethod $method] %t $type %n $selfns %w $win %s $self]
+     set theproc [lindex [string map $map $cmd] 0]
+     return [::info default $theproc $aname def]
+ }
+ 
+ # $self info vars
+
+Index: modules/snit/snit.test
+==================================================================
+--- modules/snit/snit.test
++++ modules/snit/snit.test
+@@ -545,10 +545,25 @@
+ 
+     dog wag tail really high
+ } -cleanup {
+     dog destroy
+ } -result {wags tail really high}
++
++test htypemethod-1.4a {underscores in tokens, ticket 2063144fff} -body {
++    type dog {
++        typemethod {a_b c} {} { return 1 }
++        typemethod {a b_c} {} { return 2 }
++        typemethod {a b%5fc} {} { return 3 }
++    }
++    snit::typemethod ::dog {x_y z} {} { return 4 }
++    snit::typemethod ::dog {x y_z} {} { return 5 }
++
++    list [dog a_b c] [dog a b_c] [dog a b%5fc] [dog x_y z] [dog x y_z] \
++        [dog info args {a b_c}] [dog info body {a_b c}]
++} -cleanup {
++    dog destroy
++} -result {1 2 3 4 5 {} { return 1 }}
+ 
+ test htypemethod-1.4 {redefinition is OK} -body {
+     type dog {
+         typemethod {wag tail} {} {
+             return "wags tail"
+@@ -1653,10 +1668,26 @@
+     dog spot
+     spot wag tail really high
+ } -cleanup {
+     dog destroy
+ } -result {::spot wags tail really high.}
++
++test hmethod-1.4a {underscores in tokens, ticket 2063144fff} -body {
++    type dog {
++        method {a_b c} {} { return 1 }
++        method {a b_c} {} { return 2 }
++        method {a b%5fc} {} { return 3 }
++    }
++    snit::method ::dog {x_y z} {} { return 4 }
++    snit::method ::dog {x y_z} {} { return 5 }
++
++    dog spot
++    list [spot a_b c] [spot a b_c] [spot a b%5fc] [spot x_y z] [spot x y_z] \
++        [spot info args {a b_c}] [spot info body {a_b c}]
++} -cleanup {
++    dog destroy
++} -result {1 2 3 4 5 {} { return 1 }}
+ 
+ test hmethod-1.4 {redefinition is OK} -body {
+     type dog {
+         method {wag tail} {} {
+             return "$self wags tail."
+

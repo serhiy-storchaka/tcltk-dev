@@ -1,0 +1,61 @@
+Index: modules/yaml/yaml.tcl
+==================================================================
+--- modules/yaml/yaml.tcl
++++ modules/yaml/yaml.tcl
+@@ -1021,11 +1021,12 @@
+     if {$line eq "..." && $data(current) == 0} {
+         set data(finished) 1
+     }
+     regexp {^( *)(.*)} $line nop space result
+     if {$scrolled} {
+-        set data(start) [expr {$pos + 1}]
++        # Do not move beyond the end of a buffer without final newline.
++        set data(start) [expr {min($pos + 1, $data(length))}]
+         set data(current) 0
+     }
+     if {$line == "" && $data(start) == $data(length)} {
+         set data(finished) 1
+     }
+
+Index: modules/yaml/yaml.test
+==================================================================
+--- modules/yaml/yaml.test
++++ modules/yaml/yaml.test
+@@ -775,10 +775,36 @@
+ test yaml-21.2 "explicit_tags float" -body {
+     set y {!!float 123=0}
+     yaml::yaml2dict $y
+ } -returnCodes error -result {expected floating-point number but got "123=0"}
+ 
++
++# Run a script in a child interpreter with a command limit, to catch
++# infinite loops.
++proc yamlLimited {script} {
++    set i [interp create]
++    try {
++	$i eval [list set auto_path $::auto_path]
++	$i eval {package require cmdline}
++	$i eval [list source [localPath huddle.tcl]]
++	$i eval [list source [localPath yaml.tcl]]
++	interp limit $i commands -value [expr {[$i eval info cmdcount] + 100000}]
++	$i eval $script
++    } finally {
++	interp delete $i
++    }
++}
++
++test yaml-40.1 "block scalar without final newline, ticket 3434579fff" -body {
++    yamlLimited {yaml::yaml2dict "a: |\n  x\n  y"}
++} -result {a {x
++y
++}}
++
++test yaml-40.2 "trailing comment without final newline, ticket 3434579fff" -body {
++    yamlLimited {yaml::yaml2dict "a: x # c"}
++} -result {a x}
+ 
+ # ... Tests of addStrings ...
+ #     (Requires introspection of parser state)
+ 
+ 
+

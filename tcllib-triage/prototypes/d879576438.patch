@@ -1,0 +1,228 @@
+Index: modules/nettool/build/core.tcl
+==================================================================
+--- modules/nettool/build/core.tcl
++++ modules/nettool/build/core.tcl
+@@ -44,10 +44,30 @@
+ 
+ 
+ set here [file dirname [file normalize [info script]]]
+ 
+ ::namespace eval ::nettool {}
++
++###
++# Run a system tool which may live in an sbin directory that is
++# not in the PATH of ordinary users (ifconfig, arp).
++###
++proc ::nettool::sbin_exec {cmd args} {
++  set path [auto_execok $cmd]
++  if {$path eq {}} {
++    foreach dir {/sbin /usr/sbin /usr/local/sbin} {
++      if {[file executable [file join $dir $cmd]]} {
++        set path [list [file join $dir $cmd]]
++        break
++      }
++    }
++  }
++  if {$path eq {}} {
++    set path [list $cmd]
++  }
++  return [exec {*}$path {*}$args]
++}
+ 
+ set genus [lindex [split [::platform::generic] -] 0]
+ dict set ::nettool::platform tcl_os  $::tcl_platform(os)
+ dict set ::nettool::platform odie_class   $::tcl_platform(platform)
+ dict set ::nettool::platform odie_genus   $genus
+
+Index: modules/nettool/build/platform_unix.tcl
+==================================================================
+--- modules/nettool/build/platform_unix.tcl
++++ modules/nettool/build/platform_unix.tcl
+@@ -8,11 +8,11 @@
+ # title: Return pairings of MAC numbers to IP addresses on the local network
+ # description: Under unix, we call the arp command for arp table resolution
+ ###
+ proc ::nettool::arp_table {} {
+   set result {}
+-  set dat [exec arp -a]
++  set dat [sbin_exec arp -a]
+   foreach line [split $dat \n] {
+     set host [lindex $line 0]
+     set ip [lindex $line 1]
+     set macid [lindex $line 3]
+     lappend result $macid [string range $ip 1 end-1]
+
+Index: modules/nettool/build/platform_unix_linux.tcl
+==================================================================
+--- modules/nettool/build/platform_unix_linux.tcl
++++ modules/nettool/build/platform_unix_linux.tcl
+@@ -90,11 +90,11 @@
+ ###
+ # topic: aa8eda4fb59296a1a34d8d600ca54e28
+ # description: Dump interfaces
+ ###
+ proc ::nettool::dump {} {
+-  set data [exec ifconfig]
++  set data [sbin_exec ifconfig]
+   set iface {}
+   set result {}
+   foreach line [split $data \n] {
+     if {[string index $line 0] in {" " "\t"} } {
+       # Indented line appends the prior iface
+
+Index: modules/nettool/build/platform_unix_macosx.tcl
+==================================================================
+--- modules/nettool/build/platform_unix_macosx.tcl
++++ modules/nettool/build/platform_unix_macosx.tcl
+@@ -5,11 +5,11 @@
+ # title: Return pairings of MAC numbers to IP addresses on the local network
+ # description: Under macosx, we call the arp command for arp table resolution
+ ###
+ proc ::nettool::arp_table {} {
+   set result {}
+-  set dat [exec arp -a]
++  set dat [sbin_exec arp -a]
+   foreach line [split $dat \n] {
+     set host [lindex $line 0]
+     set ip [lindex $line 1]
+     set macid [lindex $line 3]
+     lappend result $macid [string range $ip 1 end-1]
+@@ -79,11 +79,11 @@
+ ###
+ # topic: aa8eda4fb59296a1a34d8d600ca54e28
+ # description: Dump interfaces
+ ###
+ proc ::nettool::dump {} {
+-  set data [exec ifconfig]
++  set data [sbin_exec ifconfig]
+   set iface {}
+   set result {}
+   foreach line [split $data \n] {
+     if {[string index $line 0] in {" " "\t"} } {
+       # Indented line appends the prior iface
+
+Index: modules/nettool/nettool.tcl
+==================================================================
+--- modules/nettool/nettool.tcl
++++ modules/nettool/nettool.tcl
+@@ -57,10 +57,30 @@
+ 
+ 
+ set here [file dirname [file normalize [info script]]]
+ 
+ ::namespace eval ::nettool {}
++
++###
++# Run a system tool which may live in an sbin directory that is
++# not in the PATH of ordinary users (ifconfig, arp).
++###
++proc ::nettool::sbin_exec {cmd args} {
++  set path [auto_execok $cmd]
++  if {$path eq {}} {
++    foreach dir {/sbin /usr/sbin /usr/local/sbin} {
++      if {[file executable [file join $dir $cmd]]} {
++        set path [list [file join $dir $cmd]]
++        break
++      }
++    }
++  }
++  if {$path eq {}} {
++    set path [list $cmd]
++  }
++  return [exec {*}$path {*}$args]
++}
+ 
+ set genus [lindex [split [::platform::generic] -] 0]
+ dict set ::nettool::platform tcl_os  $::tcl_platform(os)
+ dict set ::nettool::platform odie_class   $::tcl_platform(platform)
+ dict set ::nettool::platform odie_genus   $genus
+@@ -1040,11 +1060,11 @@
+ # title: Return pairings of MAC numbers to IP addresses on the local network
+ # description: Under unix, we call the arp command for arp table resolution
+ ###
+ proc ::nettool::arp_table {} {
+   set result {}
+-  set dat [exec arp -a]
++  set dat [sbin_exec arp -a]
+   foreach line [split $dat \n] {
+     set host [lindex $line 0]
+     set ip [lindex $line 1]
+     set macid [lindex $line 3]
+     lappend result $macid [string range $ip 1 end-1]
+@@ -1151,11 +1171,11 @@
+ ###
+ # topic: aa8eda4fb59296a1a34d8d600ca54e28
+ # description: Dump interfaces
+ ###
+ proc ::nettool::dump {} {
+-  set data [exec ifconfig]
++  set data [sbin_exec ifconfig]
+   set iface {}
+   set result {}
+   foreach line [split $data \n] {
+     if {[string index $line 0] in {" " "\t"} } {
+       # Indented line appends the prior iface
+@@ -1297,11 +1317,11 @@
+ # title: Return pairings of MAC numbers to IP addresses on the local network
+ # description: Under macosx, we call the arp command for arp table resolution
+ ###
+ proc ::nettool::arp_table {} {
+   set result {}
+-  set dat [exec arp -a]
++  set dat [sbin_exec arp -a]
+   foreach line [split $dat \n] {
+     set host [lindex $line 0]
+     set ip [lindex $line 1]
+     set macid [lindex $line 3]
+     lappend result $macid [string range $ip 1 end-1]
+@@ -1371,11 +1391,11 @@
+ ###
+ # topic: aa8eda4fb59296a1a34d8d600ca54e28
+ # description: Dump interfaces
+ ###
+ proc ::nettool::dump {} {
+-  set data [exec ifconfig]
++  set data [sbin_exec ifconfig]
+   set iface {}
+   set result {}
+   foreach line [split $data \n] {
+     if {[string index $line 0] in {" " "\t"} } {
+       # Indented line appends the prior iface
+
+Index: modules/nettool/nettool.test
+==================================================================
+--- modules/nettool/nettool.test
++++ modules/nettool/nettool.test
+@@ -93,9 +93,31 @@
+     [list ::nettool::allocate_port 7790] 7791
+ 
+ ::tcltest::test port-allocate-0006 \
+     "Test allocate port returns the next address of an claimed spot and claims it" \
+     [list ::nettool::allocate_port 7790] 7792
++
++# Ticket d879576438: ifconfig lives in /sbin or /usr/sbin, which is not
++# in the PATH of ordinary users on many systems.
++::tcltest::testConstraint sbinIfconfig [expr {
++    $::tcl_platform(os) eq "Linux"
++    && ([file executable /sbin/ifconfig] || [file executable /usr/sbin/ifconfig])
++    && ![file executable /usr/bin/ifconfig]
++}]
++
++::tcltest::test dump-sbin-path {dump finds ifconfig outside of PATH} \
++    -constraints sbinIfconfig -setup {
++	set savedpath $::env(PATH)
++	set ::env(PATH) /usr/bin:/bin
++	array unset ::auto_execs ifconfig
++    } -body {
++	catch {::nettool::dump} msg
++	string match {*couldn't execute*} $msg
++    } -cleanup {
++	set ::env(PATH) $savedpath
++	array unset ::auto_execs ifconfig
++	unset savedpath msg
++    } -result 0
+ 
+ 
+ testsuiteCleanup
+ return
+

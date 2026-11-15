@@ -1,0 +1,78 @@
+Index: modules/base64/yencode.tcl
+==================================================================
+--- modules/base64/yencode.tcl
++++ modules/base64/yencode.tcl
+@@ -241,18 +241,18 @@
+             -f* { set opts(filename) [Pop args 1] }
+             -- { Pop args ; break; }
+             default {
+                 set options [join [lsort [array names opts]] ", -"]
+                 return -code error "bad option [lindex $args 0]:\
+-                      must be -$opts"
++                      must be -$options"
+             }
+         }
+         Pop args
+     }
+ 
+     if {$opts(filename) != {}} {
+-        set f [open $opts(filename) r]
++        set f [open $opts(filename) rb]
+         set data [read $f]
+         close $f
+     } else {
+         if {[llength $args] != 1} {
+             return -code error "wrong \# args: should be\
+@@ -269,11 +269,11 @@
+         switch -exact -- $state {
+             false {
+                 if {[string match "=ybegin*" $line]} {
+                     regexp {line=(\d+)} $line -> opts(line)
+                     regexp {size=(\d+)} $line -> opts(size)
+-                    regexp {name=(\d+)} $line -> opts(name)
++                    regexp {name=(.*)$} $line -> opts(name)
+ 
+                     if {$opts(name) == {}} {
+                         set opts(name) default.bin
+                     }
+ 
+
+Index: modules/base64/yencode.test
+==================================================================
+--- modules/base64/yencode.test
++++ modules/base64/yencode.test
+@@ -96,10 +96,33 @@
+ } -result $text ; # {}
+ 
+ unset text encoded
+ 
+ # -------------------------------------------------------------------------
++## ydecode: name and -file handling
++
++test yencode-6.0 {ydecode returns the name from the =ybegin line} -body {
++    ::yencode::ydecode [::yencode::yencode -name {test file.y} Abc123]
++} -result {{{test file.y} 6 Abc123}}
++
++test yencode-6.1 {ydecode -file reads the file in binary mode} -setup {
++    set data "\x00\x01\x99\x7f\xd6\xe0\xe3\r\n\xff"
++    set path [makeFile {} yencode6.1.y]
++    set f [open $path wb]
++    puts -nonewline $f [::yencode::yencode -name data.bin $data]
++    close $f
++} -body {
++    string equal [::yencode::ydecode -file $path] [list [list data.bin 10 $data]]
++} -cleanup {
++    removeFile yencode6.1.y
++    unset data path f
++} -result 1
++
++test yencode-6.2 {ydecode, bad option} -body {
++    ::yencode::ydecode -bogus x
++} -returnCodes error -result {bad option -bogus: must be -filename, -mode, -name}
++
+ 
+ catch {
+     unset datafile
+     rename ::yencode::loaddata {}
+ }
+

@@ -1,0 +1,135 @@
+Index: modules/pop3d/pop3d.tcl
+==================================================================
+--- modules/pop3d/pop3d.tcl
++++ modules/pop3d/pop3d.tcl
+@@ -857,15 +857,12 @@
+     } elseif {$nlines == {}} {
+ 	Respond2Client $name $sock -ERR "missing argument: #lines to read"
+     } elseif {$nlines < 0} {
+ 	Respond2Client $name $sock -ERR \
+ 		"number of lines has to be greater than or equal to zero."
+-    } elseif {$nlines == 0} {
+-	# nlines == 0, no limit, same as H_retr
+-	Transfer $name $sock $msgid
+     } else {
+-	# nlines > 0
++	# nlines >= 0, headers plus that many lines of the body (RFC 1939)
+ 	Transfer $name $sock $msgid $nlines
+     }
+     return
+ }
+ 
+@@ -1098,13 +1095,17 @@
+ 
+ 	log::log debug "pop3d $name Transfer $msgid /full"
+ 
+ 	# We do "."-stuffing here. This is not in the scope of the
+ 	# MIME library we use, but a transport dependent thing.
++
++	# mime::buildmessage returns CRLF line endings, while the
++	# socket is configured for crlf translation. Normalize to LF
++	# to avoid sending CR CR LF.
+ 
+ 	set msg [string trimright [string map [list "\n." "\n.."] \
+-				       [mime::buildmessage $token]] \n]
++		   [string map [list \r\n \n] [mime::buildmessage $token]]] \n]
+ 	log::log debug "($msg)"
+ 	puts $sock $msg
+ 	puts $sock .
+ 
+     } else {
+@@ -1115,13 +1116,12 @@
+ 	# too. Using regsub we make sure that it is not present and
+ 	# reattach during the transfer. Otherwise we would have to use
+ 	# a regexp/if combo to decide wether to attach the terminator
+ 	# not.
+ 
+-	set msg [split [mime::buildmessage $token] \n]
++	set msg [split [string map [list \r\n \n] [mime::buildmessage $token]] \n]
+ 	set i 0
+-	incr limit -1
+ 	while {[lindex $msg $i] != {}} {
+ 	    incr i
+ 	    incr limit
+ 	}
+ 	# i now refers to the line separating header and body
+
+Index: modules/pop3d/pop3d.test
+==================================================================
+--- modules/pop3d/pop3d.test
++++ modules/pop3d/pop3d.test
+@@ -764,9 +764,73 @@
+ 	set res [talk traceonly]
+ 	delfsrv
+ 	set res
+     } $log($lidx) ; # {}
+ }
++
++# ----------------------------------------------------------------------
++# Raw transfer checks: line endings and TOP line counts.
++
++proc rawsrv {} {
++    global srv udb dbox
++    newsrv
++    $srv configure \
++	    -auth    [set udb  [::pop3d::udb::new]] \
++	    -storage [set dbox [::pop3d::dbox::new]]
++    makeDirectory __dbox__
++    $dbox base __dbox__
++    $dbox add  usr0
++    $udb  add ak smash usr0
++    makeFile "Subject: hi\nFrom: a@b\n\nline1\nline2\n" \
++	[file join __dbox__ usr0 10]
++    return
++}
++
++proc rawtalk {cmd} {
++    # Returns the server response to cmd as raw bytes.
++    global srv rawdata
++    set s [socket 127.0.0.1 [$srv cget -port]]
++    fconfigure $s -translation binary -blocking 0
++    set rawdata {}
++    fileevent $s readable [list rawread $s]
++    foreach c [list {} "USER ak" "PASS smash" $cmd] {
++	if {$c ne {}} {puts -nonewline $s "$c\r\n" ; flush $s}
++	set id [after 5000 {set rawdata timeout}]
++	vwait rawdata
++	after cancel $id
++    }
++    while {![string match "*\r\n.\r\n" $rawdata] &&
++	   ![string match timeout* $rawdata]} {
++	set id [after 5000 {append rawdata timeout}]
++	vwait rawdata
++	after cancel $id
++    }
++    close $s
++    return $rawdata
++}
++
++proc rawread {s} {
++    global rawdata
++    if {[eof $s]} {fileevent $s readable {} ; return}
++    set data [read $s]
++    if {[string match +OK* $data]} {set rawdata $data} else {append rawdata $data}
++}
++
++foreach {n cmd tail} {
++    0 {RETR 1}   {\r\n\r\nline1\r\nline2\r\n.\r\n}
++    1 {TOP 1 0}  {"us-ascii"\r\n\r\n.\r\n}
++    2 {TOP 1 1}  {\r\n\r\nline1\r\n.\r\n}
++} {
++    test pop3-srv-8.0.$n "raw transfer, $cmd, no CR CR LF, line count" {
++	rawsrv
++	set data [rawtalk $cmd]
++	delfsrv
++	set tail [subst -nocommands -novariables $tail]
++	list [string equal $tail \
++		  [string range $data end-[expr {[string length $tail]-1}] end]] \
++	    [string first \r\r $data]
++    } {1 -1}
++}
+ 
+ # ----------------------------------------------------------------------
+ dialog::shutdown
+ testsuiteCleanup
+

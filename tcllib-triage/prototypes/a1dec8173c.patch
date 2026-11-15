@@ -1,0 +1,137 @@
+Index: modules/des/des.tcl
+==================================================================
+--- modules/des/des.tcl
++++ modules/des/des.tcl
+@@ -143,10 +143,46 @@
+ 
+ proc ::DES::Hex {data} {
+     binary scan $data H* r
+     return $r 
+ }
++
++# Fileevent handler used to process data from a channel (-in option).
++# Data is processed in multiples of the block size, the remainder is
++# kept for the next chunk. Only the final block is padded.
++proc ::DES::Chunk {Key in {out {}} {chunksize 4096}} {
++    upvar #0 $Key state
++
++    if {[eof $in]} {
++        fileevent $in readable {}
++        set state(reading) 0
++        set data $state(remainder)
++        if {[string length $data] > 0} {
++            set data [Pad $data 8]
++        }
++    } else {
++        set data $state(remainder)[read $in $chunksize]
++        set pagedlen [expr {([string length $data] / 8) * 8}]
++        set state(remainder) [string range $data $pagedlen end]
++        set data [string range $data 0 [expr {$pagedlen - 1}]]
++    }
++
++    if {![string length $data]} return
++
++    if {[catch {set cipher [$state(cmd) $Key $data]} msg]} {
++        fileevent $in readable {}
++        set state(err) $msg
++        set state(reading) 0
++        return
++    }
++
++    if {$out == {}} {
++        append state(output) $cipher
++    } else {
++        puts -nonewline $out $cipher
++    }
++}
+ 
+ proc ::DES::des {args} {
+     array set opts {
+         -dir encrypt -mode cbc -key {} -in {} -out {} -chunksize 4096 -hex 0 -weak 0 old 0
+     }
+@@ -237,17 +273,23 @@
+             set state(cmd) Encrypt
+         } else {
+             set state(cmd) Decrypt
+         }
+         set state(output) ""
++        set state(remainder) ""
+         fileevent $opts(-in) readable \
+             [list [namespace origin Chunk] \
+                  $Key $opts(-in) $opts(-out) $opts(-chunksize)]
+         if {[info commands ::tkwait] != {}} {
+             tkwait variable [subst $Key](reading)
+         } else {
+             vwait [subst $Key](reading)
++        }
++        if {[info exists state(err)]} {
++            set msg $state(err)
++            Final $Key
++            return -code error $msg
+         }
+         if {$opts(-out) == {}} {
+             set r $state(output)
+         }
+         Final $Key
+
+Index: modules/des/des.test
+==================================================================
+--- modules/des/des.test
++++ modules/des/des.test
+@@ -398,10 +398,55 @@
+ } {0 7669422b7cce615fe4cae65c4e25eb36}
+ 
+ # -------------------------------------------------------------------------
+ 
+ #catch {unset in out key}
++# Ticket a1dec8173c: the -in option called the missing Chunk command.
++test des-10.1 {des -in channel, encrypt} -setup {
++    set f [makeFile {} des-in.bin]
++    set ch [open $f wb]
++    puts -nonewline $ch "The quick brown fox jumps"
++    close $ch
++    set ch [open $f rb]
++} -body {
++    set key [binary format H* 0123456789abcdef]
++    set iv  [binary format H* fedcba9876543210]
++    string equal \
++        [DES::des -mode cbc -dir encrypt -key $key -iv $iv -hex \
++             -chunksize 5 -in $ch] \
++        [DES::des -mode cbc -dir encrypt -key $key -iv $iv -hex \
++             "The quick brown fox jumps"]
++} -cleanup {
++    close $ch
++    removeFile des-in.bin
++    unset f ch key iv
++} -result 1
++
++test des-10.2 {des -in channel, decrypt to -out channel} -setup {
++    set key [binary format H* 0123456789abcdef]
++    set f [makeFile {} des-in.bin]
++    set ch [open $f wb]
++    puts -nonewline $ch [DES::des -mode ecb -dir encrypt -key $key \
++                             "0123456789abcdefXYZ"]
++    close $ch
++    set ch [open $f rb]
++    set g [makeFile {} des-out.bin]
++    set out [open $g wb]
++} -body {
++    set r [DES::des -mode ecb -dir decrypt -key $key -chunksize 3 \
++               -in $ch -out $out]
++    close $out
++    set out [open $g rb]
++    list $r [read $out]
++} -cleanup {
++    close $ch
++    close $out
++    removeFile des-in.bin
++    removeFile des-out.bin
++    unset f g ch out key r
++} -result [list {} "0123456789abcdefXYZ\0\0\0\0\0"]
++
+ testsuiteCleanup
+ 
+ # Local Variables:
+ #  mode: tcl
+ #  indent-tabs-mode: nil
+

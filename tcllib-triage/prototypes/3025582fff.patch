@@ -1,0 +1,261 @@
+Index: modules/inifile/ini.tcl
+==================================================================
+--- modules/inifile/ini.tcl
++++ modules/inifile/ini.tcl
+@@ -57,10 +57,13 @@
+     ::set tmp [::open $ini $mode]
+     namespace eval ::ini::$fh {
+         variable data;     array set data     {}
+         variable comments; array set comments {}
+         variable sections; array set sections {}
++        variable order;    array set order    {}
++        variable seq      0
++        variable trailer  {}
+     }
+     fconfigure $tmp -translation crlf
+     if {[info exists enc]} {
+ 	::ini::_setfileenc $tmp $enc
+ 	::set ::ini::${fh}::enc     $enc
+@@ -98,10 +101,12 @@
+     variable ::ini::${fh}::sections
+     variable ::ini::${fh}::channel
+     variable ::ini::${fh}::file
+     variable ::ini::${fh}::mode
+     variable ::ini::${fh}::enc
++    variable ::ini::${fh}::order
++    variable ::ini::${fh}::trailer
+     variable commentchar
+ 
+     if { $mode == "r" } {
+ 	return -code error \
+ 	    -errorcode {INIFILE READ-ONLY} \
+@@ -112,18 +117,21 @@
+     if {[info exists enc]} {
+ 	::ini::_setfileenc $channel $enc
+     }
+     ::set char $commentchar
+     #seek $channel 0 start
+-    foreach sec [array names sections] {
+-	variable ::ini::${fh}::enc
++    # Write sections and keys in their original (file or creation) order.
++    foreach sec [_ordered [array get sections]] {
+ 	if { [info exists comments($sec)] } {
+ 	    puts $channel "$char [join $comments($sec) "\n$char "]\n"
+ 	}
+ 	puts $channel "\[$sec\]"
+-	foreach key [lsort -dictionary [array names data [_globescape $sec]\000*]] {
+-	    ::set key [lindex [split $key \000] 1]
++	::set keys {}
++	foreach key [array names data [_globescape $sec]\000*] {
++	    lappend keys [lindex [split $key \000] 1] $order($key)
++	}
++	foreach key [_ordered $keys] {
+ 	    if {[info exists comments($sec\000$key)]} {
+ 		puts $channel "$char [join $comments($sec\000$key) "\n$char "]"
+ 	    }
+ 	    if {[info exists enc]} {
+ 		::ini::_setfileenc $channel $enc
+@@ -130,10 +138,13 @@
+ 	    }
+ 	    puts $channel "$key=$data($sec\000$key)"
+ 	}
+ 	puts $channel ""
+     }
++    if { [llength $trailer] } {
++	puts $channel "$char [join $trailer "\n$char "]"
++    }
+     ::close $channel
+     ::set channel [::open $file r+]
+     if {[info exists enc]} {
+ 	::ini::_setfileenc $channel $enc
+     }
+@@ -148,10 +159,11 @@
+     variable ::ini::${fh}::comments
+     variable ::ini::${fh}::sections
+     variable ::ini::${fh}::channel
+     variable ::ini::${fh}::file
+     variable ::ini::${fh}::mode
++    variable ::ini::${fh}::trailer
+     variable commentchar
+ 
+     ::set cur {}
+     ::set com {}
+ 
+@@ -165,11 +177,11 @@
+ 	if { [string match "$char*" $line] } {
+ 	    lappend com [string trim [string range $line [string length $char] end]]
+ 	} elseif { [string match {\[*\]} $line] } {
+ 	    ::set cur [string range $line 1 end-1]
+ 	    if { $cur == "" } { continue }
+-	    ::set sections($cur) 1
++	    _addsection $fh $cur
+ 	    if { $com != "" } {
+ 		::set comments($cur) $com
+ 		::set com {}
+ 	    }
+ 	} elseif { [string match {*=*} $line] } {
+@@ -179,19 +191,51 @@
+ 	    ::set value [string trim [join [lrange $line 1 end] =]]
+ 	    if { [regexp "^(\".*\")\s+${char}(.*)$" $value -> 1 2] } {
+ 		::set value $1
+ 		lappend com $2
+ 	    }
+-	    ::set data($cur\000$key) $value
++	    _addkey $fh $cur $key $value
+ 	    if { $com != "" } {
+ 		::set comments($cur\000$key) $com
+ 		::set com {}
+ 	    }
+ 	}
+     }
++    # Comments after the last key are kept for the end of the file.
++    ::set trailer $com
+     return
+ }
++
++# internal commands to record sections and keys in creation order
++
++proc ::ini::_addsection {fh sec} {
++    variable ::ini::${fh}::sections
++    variable ::ini::${fh}::seq
++    if { ![info exists sections($sec)] } {
++	::set sections($sec) [incr seq]
++    }
++}
++
++proc ::ini::_addkey {fh sec key value} {
++    variable ::ini::${fh}::data
++    variable ::ini::${fh}::order
++    variable ::ini::${fh}::seq
++    if { ![info exists order($sec\000$key)] } {
++	::set order($sec\000$key) [incr seq]
++    }
++    ::set data($sec\000$key) $value
++}
++
++# internal command, returns the names of a name/ordinal list, sorted by ordinal
++
++proc ::ini::_ordered {pairs} {
++    ::set l {}
++    foreach {name n} $pairs { lappend l [list $n $name] }
++    ::set r {}
++    foreach p [lsort -integer -index 0 $l] { lappend r [lindex $p 1] }
++    return $r
++}
+ 
+ # internal command to escape glob special characters
+ 
+ proc ::ini::_globescape {string} {
+     return [string map {* \\* ? \\? \\ \\\\ \[ \\\[ \] \\\]} $string]
+@@ -348,12 +392,12 @@
+     if { $sec == "" || $key == "" } {
+         return -code error \
+ 	    -errorcode {INIFILE SYNTAX} \
+ 	    "section or key may not be empty"
+     }
+-    ::set data($sec\000$key) $value
+-    ::set sections($sec) 1
++    _addsection $fh $sec
++    _addkey $fh $sec $key $value
+     return $value
+ }
+ 
+ # delete a key or an entire section
+ # may delete nonexistant keys and sections
+@@ -360,16 +404,19 @@
+ 
+ proc ::ini::delete {fh sec {key {}}} {
+     _valid_ns $fh
+     variable ::ini::${fh}::sections
+     variable ::ini::${fh}::data
++    variable ::ini::${fh}::order
+ 
+     if { $key == "" } {
+         array unset data     [_globescape $sec]\000*
++        array unset order    [_globescape $sec]\000*
+         array unset sections [_globescape $sec]
+     }
+     catch {unset data($sec\000$key)}
++    catch {unset order($sec\000$key)}
+ }
+ 
+ # read and set comments for sections and keys
+ # may comment nonexistant sections and keys
+ 
+@@ -408,10 +455,14 @@
+     _valid_ns $fh
+     namespace eval ::ini::$fh {
+         array set data     {}
+         array set comments {}
+         array set sections {}
++        array unset order
++        array set order    {}
++        ::set seq     0
++        ::set trailer {}
+     }
+     variable ::ini::${fh}::enc
+     if {[info exists enc]} {
+ 	::ini::_setfileenc $fh $enc
+     }
+
+Index: modules/inifile/inifile.test
+==================================================================
+--- modules/inifile/inifile.test
++++ modules/inifile/inifile.test
+@@ -232,10 +232,55 @@
+ test inifile-5.4 {ini::revert} {
+     set res [ini::open $testini r]
+     ini::revert $res
+     ini::close $res
+ } {}
++
++#---------------------------------------------------------------------
++
++test inifile-6.0 {bug 3025582 - commit keeps order and comments} -setup {
++    set f [makeFile {; top comment
++
++[zeta]
++a=1
++; after zeta
++
++[alpha]
++z=1
++b=2
++[mid]
++x=1
++; trailing comment} order.ini]
++} -body {
++    set fh [ini::open $f]
++    ini::set $fh alpha a 3
++    ini::set $fh new k v
++    ini::commit $fh
++    ini::close $fh
++    viewFile $f
++} -cleanup {
++    removeFile order.ini
++    unset f fh
++} -result {; top comment
++
++[zeta]
++a=1
++
++; after zeta
++
++[alpha]
++z=1
++b=2
++a=3
++
++[mid]
++x=1
++
++[new]
++k=v
++
++; trailing comment}
+ 
+ #---------------------------------------------------------------------
+ # Clean up
+ unset res
+ testsuiteCleanup
+

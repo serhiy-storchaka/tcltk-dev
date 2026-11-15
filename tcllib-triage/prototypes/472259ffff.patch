@@ -1,0 +1,144 @@
+Index: modules/cmdline/cmdline.man
+==================================================================
+--- modules/cmdline/cmdline.man
++++ modules/cmdline/cmdline.man
+@@ -155,10 +155,21 @@
+ 
+ Starting with version 1.5 all errors thrown by the package have a
+ proper [var ::errorCode] for use with Tcl's [cmd try] command. This
+ code always has the word [const CMDLINE] as its first element.
+ 
++[para]
++
++The usage error thrown by [cmd ::cmdline::getoptions],
++[cmd ::cmdline::getKnownOptions] and [cmd ::cmdline::typedGetoptions]
++has the error code [const {CMDLINE USAGE}] when the help was explicitly
++requested via [option -?] or [option -help]. When the error is caused
++by an unknown option, a missing option argument, or an argument of the
++wrong type, the error code is [const {CMDLINE USAGE INVALID}] followed
++by a message describing the problem. A [cmd try] handler trapping
++[const {CMDLINE USAGE}] catches both.
++
+ [section EXAMPLES]
+ 
+ [subsection cmdline::getoptions]
+ 
+ This example, taken from the package [package fileutil] and slightly
+
+Index: modules/cmdline/cmdline.tcl
+==================================================================
+--- modules/cmdline/cmdline.tcl
++++ modules/cmdline/cmdline.tcl
+@@ -201,12 +201,12 @@
+     set opts [GetOptionDefaults $optlist result]
+ 
+     set argc [llength $argv]
+     while {[set err [getopt argv $opts opt arg]]} {
+ 	if {$err < 0} {
+-            set result(?) ""
+-            break
++            # Invalid option, or missing argument.
++            Error [usage $optlist $usage] USAGE INVALID $arg
+ 	}
+ 	set result($opt) $arg
+     }
+     if {[info exist result(?)] || [info exists result(help)]} {
+ 	Error [usage $optlist $usage] USAGE
+@@ -266,11 +266,12 @@
+                     && ![string match "-*" [lindex $argv 0]]} {
+                 lappend unknownOptions [lindex $argv 0]
+                 set argv [lrange $argv 1 end]
+             }
+ 	} elseif {$err == -2} {
+-            set result(?) ""
++            # Known option missing its argument.
++            set invalid $arg
+             break
+         } else {
+             set result($opt) $arg
+         }
+     }
+@@ -277,10 +278,13 @@
+ 
+     # Before returning, prepend the any unknown args back onto the
+     # argList so that the application doesn't lose them.
+     set argv [concat $unknownOptions $argv]
+ 
++    if {[info exists invalid]} {
++	Error [usage $optlist $usage] USAGE INVALID $invalid
++    }
+     if {[info exist result(?)] || [info exists result(help)]} {
+ 	Error [usage $optlist $usage] USAGE
+     }
+     return [array get result]
+ }
+@@ -810,13 +814,13 @@
+                 }
+             } else {
+                 set result($opt) "$arg"
+             }
+         } elseif {($err == -1) || ($err == -3)} {
+-            Error [typedUsage $optlist $usage] USAGE
++            Error [typedUsage $optlist $usage] USAGE INVALID $arg
+         } elseif {$err == -2 && ![info exists defaults($opt)]} {
+-            Error [typedUsage $optlist $usage] USAGE
++            Error [typedUsage $optlist $usage] USAGE INVALID $arg
+         }
+     }
+     if {[info exists result(?)] || [info exists result(help)]} {
+         Error [typedUsage $optlist $usage] USAGE
+     }
+
+Index: modules/cmdline/cmdline.test
+==================================================================
+--- modules/cmdline/cmdline.test
++++ modules/cmdline/cmdline.test
+@@ -559,7 +559,25 @@
+  --                   Forcibly stop option processing
+  -help                Print this message
+  -?                   Print this message
+ " {}]
+ 
++test cmdline-8.1 {cmdline::getoptions, help vs invalid option, ticket 472259} {
++    set res {}
++    foreach argList {{-?} {-help} {-bogus} {-foo}} {
++	catch {cmdline::getoptions argList {{foo.arg blat} a}} msg opts
++	lappend res [dict get $opts -errorcode]
++    }
++    set res
++} {{CMDLINE USAGE} {CMDLINE USAGE} {CMDLINE USAGE INVALID {Illegal option "-bogus"}} {CMDLINE USAGE INVALID {Option "foo" requires an argument}}}
++
++test cmdline-8.2 {cmdline::getKnownOptions, help vs invalid option, ticket 472259} {
++    set res {}
++    foreach argList {{-?} {-help} {-x -foo}} {
++	catch {cmdline::getKnownOptions argList {{foo.arg blat} a}} msg opts
++	lappend res [dict get $opts -errorcode] $argList
++    }
++    set res
++} {{CMDLINE USAGE} {} {CMDLINE USAGE} {} {CMDLINE USAGE INVALID {Option "foo" requires an argument}} -x}
++
+ testsuiteCleanup
+ return
+
+Index: modules/cmdline/typedCmdline.test
+==================================================================
+--- modules/cmdline/typedCmdline.test
++++ modules/cmdline/typedCmdline.test
+@@ -474,7 +474,16 @@
+ test typed-cmdline-7.33 {cmdline::typedGetoptions, multiple boolean flag} {
+     set argList {-foo -foo -foo}
+     list [cmdline::typedGetoptions argList {{foo.multi}}] $argList
+ } {{foo {}} {}}
+ 
++test typed-cmdline-8.1 {cmdline::typedGetoptions, help vs invalid option, ticket 472259} {
++    set res {}
++    foreach argList {{-?} {-bogus} {-n abc} {-n}} {
++	catch {cmdline::typedGetoptions argList {{n.integer {} num}}} msg opts
++	lappend res [dict get $opts -errorcode]
++    }
++    set res
++} {{CMDLINE USAGE} {CMDLINE USAGE INVALID {Illegal option -- bogus}} {CMDLINE USAGE INVALID {Option requires integer argument -- n}} {CMDLINE USAGE INVALID {Option requires integer argument -- n}}}
++
+ testsuiteCleanup
+ return
+

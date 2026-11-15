@@ -1,0 +1,96 @@
+Index: modules/fileutil/fileutil.tcl
+==================================================================
+--- modules/fileutil/fileutil.tcl
++++ modules/fileutil/fileutil.tcl
+@@ -494,12 +494,17 @@
+     } else {
+ 	# The path is relative, consider it as outside
+ 	# implicitly. Normalize it lexically! to prevent escapes, then
+ 	# put the jail in front, use PWD to ensure absoluteness.
+ 
+-	return [eval [linsert [file split [lexnormalize $filename]] 0 \
+-		file join [pwd] $jail]]
++	# Leading ..'s are kept by lexnormalize, drop them.
++
++	set np [file split [lexnormalize $filename]]
++	while {[string equal [lindex $np 0] ".."]} {
++	    set np [lrange $np 1 end]
++	}
++	return [eval [linsert $np 0 file join [pwd] $jail]]
+     }
+ }
+ 
+ 
+ # ::fileutil::test --
+@@ -1873,15 +1878,20 @@
+ 	set islast [expr {[llength $sp] == 0}]
+ 
+ 	if {[string equal $ele ".."]} {
+ 	    if {
+ 		($absolute  && ([llength $np] >  1)) ||
+-		(!$absolute && ([llength $np] >= 1))
++		(!$absolute && ([llength $np] >= 1) &&
++		 ![string equal [lindex $np end] ".."])
+ 	    } {
+ 		# .. : Remove the previous element added to the
+ 		# new path, if there actually is enough to remove.
+ 		set np [lrange $np 0 end-1]
++	    } elseif {!$absolute} {
++		# A relative path cannot go above its start, keep
++		# the leading ..'s.
++		lappend np $ele
+ 	    }
+ 	} elseif {[string equal $ele "."]} {
+ 	    # Ignore .'s, they stay at the current location
+ 	    continue
+ 	} else {
+
+Index: modules/fileutil/pathops.test
+==================================================================
+--- modules/fileutil/pathops.test
++++ modules/fileutil/pathops.test
+@@ -66,10 +66,14 @@
+ } {/var/www/a/b/c d}
+ 
+ test jail-2.3 {try to escape from jail} {
+     ::fileutil::jail /var/www ../../etc/passwd
+ } /var/www/etc/passwd
++
++test jail-2.3.1 {try to escape from jail, embedded ..} {
++    ::fileutil::jail /var/www a/../../../etc/passwd
++} /var/www/etc/passwd
+ 
+ test jail-2.4 {jail is relative itself} {
+     ::fileutil::jail a b
+ } [file join $dir a b]
+ 
+@@ -505,11 +509,28 @@
+ 	test fu-lexnormalize-1.$n "fileutil::LexNormalize $base" {
+ 	    fileutil::LexNormalize $base
+ 	} $dst
+     }
+ }
++
++foreach {n base dst} {
++    0 a/../b      b
++    1 a/./b       a/b
++    2 ./a         a
++    3 ../a        ../a
++    4 ../../a     ../../a
++    5 .././.././a ../../a
++    6 a/../../b   ../b
++    7 ../a/../b   ../b
++    8 /../a       /a
++    9 /a/../b     /b
++} {
++    test fu-lexnormalize-2.$n "fileutil::lexnormalize $base" {
++	fileutil::lexnormalize $base
++    } $dst
++}
+ 
+ # -------------------------------------------------------------------------
+ 
+ unset dir
+ testsuiteCleanup
+ return
+

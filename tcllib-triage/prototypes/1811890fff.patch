@@ -1,0 +1,182 @@
+Index: modules/inifile/ini.tcl
+==================================================================
+--- modules/inifile/ini.tcl
++++ modules/inifile/ini.tcl
+@@ -57,10 +57,11 @@
+     ::set tmp [::open $ini $mode]
+     namespace eval ::ini::$fh {
+         variable data;     array set data     {}
+         variable comments; array set comments {}
+         variable sections; array set sections {}
++        variable solo;     array set solo     {}
+     }
+     fconfigure $tmp -translation crlf
+     if {[info exists enc]} {
+ 	::ini::_setfileenc $tmp $enc
+ 	::set ::ini::${fh}::enc     $enc
+@@ -98,10 +99,11 @@
+     variable ::ini::${fh}::sections
+     variable ::ini::${fh}::channel
+     variable ::ini::${fh}::file
+     variable ::ini::${fh}::mode
+     variable ::ini::${fh}::enc
++    variable ::ini::${fh}::solo
+     variable commentchar
+ 
+     if { $mode == "r" } {
+ 	return -code error \
+ 	    -errorcode {INIFILE READ-ONLY} \
+@@ -126,11 +128,16 @@
+ 		puts $channel "$char [join $comments($sec\000$key) "\n$char "]"
+ 	    }
+ 	    if {[info exists enc]} {
+ 		::ini::_setfileenc $channel $enc
+ 	    }
+-	    puts $channel "$key=$data($sec\000$key)"
++	    if {[info exists solo($sec\000$key)]} {
++		# Key without assignment.
++		puts $channel $key
++	    } else {
++		puts $channel "$key=$data($sec\000$key)"
++	    }
+ 	}
+ 	puts $channel ""
+     }
+     ::close $channel
+     ::set channel [::open $file r+]
+@@ -148,10 +155,11 @@
+     variable ::ini::${fh}::comments
+     variable ::ini::${fh}::sections
+     variable ::ini::${fh}::channel
+     variable ::ini::${fh}::file
+     variable ::ini::${fh}::mode
++    variable ::ini::${fh}::solo
+     variable commentchar
+ 
+     ::set cur {}
+     ::set com {}
+ 
+@@ -183,10 +191,18 @@
+ 	    }
+ 	    ::set data($cur\000$key) $value
+ 	    if { $com != "" } {
+ 		::set comments($cur\000$key) $com
+ 		::set com {}
++	    }
++	} elseif { $line != "" && $cur != "" } {
++	    # Key without assignment, i.e. no "=" sign.
++	    ::set data($cur\000$line) ""
++	    ::set solo($cur\000$line) 1
++	    if { $com != "" } {
++		::set comments($cur\000$line) $com
++		::set com {}
+ 	    }
+ 	}
+     }
+     return
+ }
+@@ -320,17 +336,20 @@
+     }
+     return $r
+ }
+ 
+ # return the value of a key
+-# return default value if key or section is nonexistant otherwise error
++# return default value if key or section is nonexistant, or if the key
++# has no assignment, otherwise error
+ 
+ proc ::ini::value {fh sec key {default {}}} {
+     _valid_ns $fh
+     variable ::ini::${fh}::data
++    variable ::ini::${fh}::solo
+ 
+-    if {$default != "" && ![info exists data($sec\000$key)]} {
++    if {$default != "" && (![info exists data($sec\000$key)] ||
++			   [info exists solo($sec\000$key)])} {
+         return $default
+     }
+     _exists $fh $sec $key
+     return [::set data($sec\000$key)]
+ }
+@@ -350,10 +369,11 @@
+ 	    -errorcode {INIFILE SYNTAX} \
+ 	    "section or key may not be empty"
+     }
+     ::set data($sec\000$key) $value
+     ::set sections($sec) 1
++    unset -nocomplain ::ini::${fh}::solo($sec\000$key)
+     return $value
+ }
+ 
+ # delete a key or an entire section
+ # may delete nonexistant keys and sections
+@@ -363,13 +383,15 @@
+     variable ::ini::${fh}::sections
+     variable ::ini::${fh}::data
+ 
+     if { $key == "" } {
+         array unset data     [_globescape $sec]\000*
++        array unset ::ini::${fh}::solo [_globescape $sec]\000*
+         array unset sections [_globescape $sec]
+     }
+     catch {unset data($sec\000$key)}
++    catch {unset ::ini::${fh}::solo($sec\000$key)}
+ }
+ 
+ # read and set comments for sections and keys
+ # may comment nonexistant sections and keys
+ 
+@@ -408,10 +430,12 @@
+     _valid_ns $fh
+     namespace eval ::ini::$fh {
+         array set data     {}
+         array set comments {}
+         array set sections {}
++        array unset solo
++        array set solo     {}
+     }
+     variable ::ini::${fh}::enc
+     if {[info exists enc]} {
+ 	::ini::_setfileenc $fh $enc
+     }
+
+Index: modules/inifile/inifile.test
+==================================================================
+--- modules/inifile/inifile.test
++++ modules/inifile/inifile.test
+@@ -233,10 +233,34 @@
+     set res [ini::open $testini r]
+     ini::revert $res
+     ini::close $res
+ } {}
+ 
++#---------------------------------------------------------------------
++
++test inifile-6.1 {bug 1811890 - keys without assignment} -setup {
++    set f [makeFile {[suffixes]
++.txt
++.tcl
++a=
++b=1} solo.ini]
++} -body {
++    set fh [ini::open $f]
++    set res [list [lsort [ini::keys $fh suffixes]] \
++		 [ini::exists $fh suffixes .tcl] \
++		 [ini::value $fh suffixes .tcl] \
++		 [ini::value $fh suffixes .tcl dflt] \
++		 [ini::value $fh suffixes a dflt]]
++    ini::set $fh suffixes .txt x
++    ini::commit $fh
++    ini::close $fh
++    lappend res [lsort [split [string trim [viewFile $f]] \n]]
++} -cleanup {
++    removeFile solo.ini
++    unset f fh
++} -result {{.tcl .txt a b} 1 {} dflt {} {.tcl .txt=x {[suffixes]} a= b=1}}
++
+ #---------------------------------------------------------------------
+ # Clean up
+ unset res
+ testsuiteCleanup
+ return
+

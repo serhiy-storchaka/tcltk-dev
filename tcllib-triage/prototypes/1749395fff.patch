@@ -1,0 +1,51 @@
+Index: modules/pop3d/pop3d_dbox.tcl
+==================================================================
+--- modules/pop3d/pop3d_dbox.tcl
++++ modules/pop3d/pop3d_dbox.tcl
+@@ -290,11 +290,12 @@
+     # Compute a list of message files residing in the mailbox directory
+ 
+     upvar ::pop3d::dbox::dbox::${name}::state  state
+     upvar ::pop3d::dbox::dbox::${name}::locked locked
+ 
+-    set  state($dir)  [lsort [glob -nocomplain [file join $dir *]]]
++    # Only plain files are messages, ignore subdirectories (CVS, ...).
++    set  state($dir)  [lsort [glob -nocomplain -types f -directory $dir *]]
+     set locked($dir) 1
+     return 1
+ }
+ 
+ 
+
+Index: modules/pop3d/pop3d_dbox.test
+==================================================================
+--- modules/pop3d/pop3d_dbox.test
++++ modules/pop3d/pop3d_dbox.test
+@@ -376,10 +376,26 @@
+     $dbox remove usr0
+     $dbox destroy
+     removeDirectory __dbox__
+     set res
+ } 3
++
++test pop3-dbox-8.4 {stat, subdirectories are ignored} {
++    set dbox [::pop3d::dbox::new]
++    makeDirectory __dbox__
++    $dbox base __dbox__
++    $dbox add usr0
++    makeFile {abc} [file join __dbox__ usr0 a]
++    makeDirectory  [file join __dbox__ usr0 CVS]
++    $dbox lock usr0
++    set res [$dbox stat usr0]
++    $dbox unlock usr0
++    $dbox remove usr0
++    $dbox destroy
++    removeDirectory __dbox__
++    set res
++} 1
+ 
+ 
+ test pop3-dbox-9.0 {size} {
+     set dbox [::pop3d::dbox::new]
+     catch {$dbox size known 0} res
+

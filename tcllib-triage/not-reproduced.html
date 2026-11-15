@@ -1,0 +1,413 @@
+<title>Tcllib Ticket Triage: Not reproduced</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280; --out:#7C5E10; --rfe:#0F766E;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --out:#D6B454; --rfe:#5EEAD4;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --out:#D6B454; --rfe:#5EEAD4;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}.c-out{--c:var(--out)}.c-rfe{--c:var(--rfe)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Open tcllib tickets: Not reproduced</h1>
+  <p class="sub">Triage of all 509 open and Pending tickets of <a href="https://core.tcl-lang.org/tcllib">tcllib</a> (bugs, patches and feature requests) on 2026-11-15. Each ticket was checked against tcllib trunk on Linux with Tcl 9.1, 9.0, 8.6 and 8.5, using local servers for the network modules and a Windows 11 VM for Windows-only tickets. Outdated, superseded, duplicate and misfiled tickets are listed separately. Rows marked <span class="patch">patch</span> link to a prototype fix with a regression test (147 in all, in <a href="https://github.com/serhiy-storchaka/tcltk-dev/tree/main/tcllib-triage/prototypes">tcllib-triage/prototypes</a>). Updated 2026-11-15.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">157</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">70</span> Already fixed or done</a><a class="navchip c-out" href="outdated.html"><span class="n">80</span> Outdated, superseded, duplicate</a><a class="navchip c-rfe" href="rfe.html"><span class="n">129</span> Feature requests</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">23</span> Not a bug</a><a class="navchip c-notrep cur" href="not-reproduced.html" aria-current="page"><span class="n">23</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">22</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">5</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">23</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, module, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="notrep"><h2><span class="dot c-notrep"></span>Not reproduced <span class="cnt">23</span></h2><details class="t" id="f4efd0f591" data-s="f4efd0f591 websocket testsuite is broken websocket NOT-REPRODUCED (all 5 tests pass on 9.1 and 8.6 against a local websocket server); the real remaining problem is that the testsuite depends on the external server ws.ifelse.io " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>f4efd0f591</span><span class="yr">2023</span><span class="ti">websocket testsuite is broken</span><span class="vd">NOT-REPRODUCED (all 5 tests pass on 9.1 and 8.6 against a local websocket server); the real remaining problem is that the testsuite depends on the …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/f4efd0f591">Open ticket f4efd0f591</a> · Bug · websocket · filed 2023-01-30</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (all 5 tests pass on 9.1 and 8.6 against a local websocket server); the real remaining problem is that the testsuite depends on the external server ws.ifelse.io</p><ul>
+<li><span class="k">Module</span> websocket 1.6
+</li>
+<li><span class="k">Tested</span> copied websocket.test with <code>wsUrl</code> pointed at a local tcllib <code>websocket::server</code> that answers "Request served by local". 9.1.1 (http 2.10.3) and 8.6.18 (http 2.9.9) both gave 5/5. Socket reuse (tests 1.3/1.4) no longer happens: http ≥ 2.9.8 opens a fresh socket for upgrade requests (websocket.tcl ~1203).
+</li>
+<li><span class="k">Cause</span> the failures came from http &lt; 2.9.8 reusing the kept-alive socket. Today the tests fail only when ws.ifelse.io is unreachable or changes its reply.
+</li>
+<li><span class="k">Prototype</span> none (better fix: make the tests use a local server, or add a network constraint; bigger than a quick fix)
+</li>
+<li><span class="k">Suggested action</span> close the original issue as Fixed (http 2.9.8+). Consider converting websocket.test to a local in-process server so <code>sak test run</code> does not contact external hosts.
+</li>
+<li><span class="k">Suggested ticket comment</span> With http 2.9.8+ the upgrade uses a fresh socket, and all five tests pass on 8.6 and 9.1 against a local server. Remaining failures depend only on reaching ws.ifelse.io; the tests should use a local server.
+</li></ul></div></details><details class="t" id="9e2bb6d60f" data-s="9e2bb6d60f zipfile::mkzip zip NOT-REPRODUCED (round trip of PDF-like binary data, with CR/LF, ^Z and high bytes, small (deflate in one chunk) and &gt;2 MB (stream), is byte-identical) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>9e2bb6d60f</span><span class="yr">2020</span><span class="ti">zipfile::mkzip</span><span class="vd">NOT-REPRODUCED (round trip of PDF-like binary data, with CR/LF, ^Z and high bytes, small (deflate in one chunk) and &gt;2 MB (stream), is byte-identical)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/9e2bb6d60f">Open ticket 9e2bb6d60f</a> · Bug · zip · filed 2020-05-11 · <strong>Pending</strong> (resolved, waiting for confirmation)</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (round trip of PDF-like binary data, with CR/LF, ^Z and high bytes, small (deflate in one chunk) and &gt;2 MB (stream), is byte-identical)</p><ul>
+<li><span class="k">Module</span> zipfile::mkzip 1.2.4
+</li>
+<li><span class="k">Tested</span> mkzip then zipfile::decode::unzipfile and <code>cmp</code>, plus <code>unzip -t</code>, on 9.1 and 8.6. Both files were identical and the archive was OK.
+</li>
+<li><span class="k">Cause</span> unknown. The report only shows that a PDF 1.7 file has no <code>trailer</code> keyword. That is normal for PDF 1.5+ with cross-reference streams, so the "trailer not found" message comes from the PDF reader, not from tcllib. aku asked for a reproducer in 2021 and got no reply.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works For Me / insufficient information.
+</li>
+<li><span class="k">Suggested ticket comment</span> mkzip round-trips binary PDF data exactly. PDF 1.5+ files with cross-reference streams have no "trailer" keyword, so the message comes from the PDF tool. No reproducer since 2021, so closing.
+</li></ul></div></details><details class="t" id="c27da654f8" data-s="c27da654f8 websocket 1.4.1 closed sockets Ping websocket NOT-REPRODUCED. I tried a server-side connection with `-keepalive 1` and the peer either sending a close frame or closing abruptly, waiting 3 s. There was no bgerror and no pending `after` afterwards, on 9.1 and 8.6. `Disconnect` cancels `Connection(liveness)`. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>c27da654f8</span><span class="yr">2018</span><span class="ti">websocket 1.4.1 closed sockets Ping</span><span class="vd">NOT-REPRODUCED. I tried a server-side connection with <code>-keepalive 1</code> and the peer either sending a close frame or closing abruptly, waiting 3 s. Th…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/c27da654f8">Open ticket c27da654f8</a> · Bug · websocket · filed 2018-05-25</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED. I tried a server-side connection with <code>-keepalive 1</code> and the peer either sending a close frame or closing abruptly, waiting 3 s. There was no bgerror and no pending <code>after</code> afterwards, on 9.1 and 8.6. <code>Disconnect</code> cancels <code>Connection(liveness)</code>.</p><ul>
+<li><span class="k">Module</span> websocket 1.6
+</li>
+<li><span class="k">Tested</span> local 127.0.0.1 socket pair, as above.
+</li>
+<li><span class="k">Cause</span> unknown. One plausible path: <code>::websocket::New</code> resets <code>Connection(liveness)</code> to "" without cancelling an already scheduled ping, e.g. when <code>takeover</code> runs twice on the same socket. That would leave an orphan timer, and since Windows reuses socket names, it could fire later. Unconfirmed.
+</li>
+<li><span class="k">Prototype</span> none (no reproducer)
+</li>
+<li><span class="k">Suggested action</span> close as Works for me unless the reporter can give steps (Windows, 1.6)
+</li>
+<li><span class="k">Suggested ticket comment</span> I could not reproduce this with 1.6: closing the connection cancels the keepalive timer. If it still happens, please attach a small script.
+</li></ul></div></details><details class="t" id="f084c0dc03" data-s="f084c0dc03 memory leak in tcllib autoproxy http :: autoproxy NOT-REPRODUCED (9.1, 8.6; plain-http proxy path) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>f084c0dc03</span><span class="yr">2015</span><span class="ti">memory leak in tcllib autoproxy</span><span class="vd">NOT-REPRODUCED (9.1, 8.6; plain-http proxy path)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/f084c0dc03">Open ticket f084c0dc03</a> · Bug · http :: autoproxy · filed 2015-09-29</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1, 8.6; plain-http proxy path)</p><ul>
+<li><span class="k">Module</span> autoproxy 1.8.1
+</li>
+<li><span class="k">Tested</span> 6000 <code>geturl</code>+<code>cleanup</code> calls through <code>autoproxy::init 127.0.0.1:port</code> with a local proxy: RSS and the number of <code>::http::*</code> vars stay flat on 9.1 and 8.6. The HTTPS/CONNECT path could not be tested with a real TLS proxy (no tls package here). aku could not reproduce it in 2019 either.
+</li>
+<li><span class="k">Cause</span> the errors reported in 2016 (<code>state(sock)</code> missing in http::Finish/reset) come from the Tcl 8.5/8.6 http package. That package was rewritten in Tcl 9.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works for me / Outdated
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible with current Tcl and tcllib (no growth over 6000 proxied requests). The 2016 traces point at old Tcl http internals.
+</li></ul></div></details><details class="t" id="9a38890c98" data-s="9a38890c98 cron&#x27;s self-tests may fail sometimes cron NOT-REPRODUCED (20 concurrent runs, 10 on 9.1 and 10 on 8.6, all 48/48 passed). The suite was rewritten for cron 2.0 (d9b48225d8, 2016-07) and the 10/11-second &quot;elapsed&quot; tests the ticket describes are commented out (&quot;Test removed - Was too unstable on a busy computer&quot;). " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>9a38890c98</span><span class="yr">2015</span><span class="ti">cron's self-tests may fail sometimes</span><span class="vd">NOT-REPRODUCED (20 concurrent runs, 10 on 9.1 and 10 on 8.6, all 48/48 passed). The suite was rewritten for cron 2.0 (d9b48225d8, 2016-07) and the …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/9a38890c98">Open ticket 9a38890c98</a> · Bug · cron · filed 2015-05-27</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (20 concurrent runs, 10 on 9.1 and 10 on 8.6, all 48/48 passed). The suite was rewritten for cron 2.0 (d9b48225d8, 2016-07) and the 10/11-second "elapsed" tests the ticket describes are commented out ("Test removed - Was too unstable on a busy computer").</p><ul>
+<li><span class="k">Module</span> cron 2.2
+</li>
+<li><span class="k">Tested</span> <code>sak test run modules/cron</code>, 20 runs in parallel
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed / Out of date
+</li>
+<li><span class="k">Suggested ticket comment</span> The timing-sensitive elapsed-time checks were removed when the cron tests were rewritten for 2.x. 20 parallel runs on 9.1 and 8.6 all pass.
+</li></ul></div></details><details class="t" id="299cf8e367" data-s="299cf8e367 yaml can&#x27;t parse some files properly yaml NOT-REPRODUCED (the attached s21SOIImVi parses correctly on 9.1 and 8.6, same as PyYAML); the other file (s21BwGvY4m) is lost with the paste site " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>299cf8e367</span><span class="yr">2013</span><span class="ti">yaml can't parse some files properly</span><span class="vd">NOT-REPRODUCED (the attached s21SOIImVi parses correctly on 9.1 and 8.6, same as PyYAML); the other file (s21BwGvY4m) is lost with the paste site</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/299cf8e367">Open ticket 299cf8e367</a> · Bug · yaml · filed 2013-11-03</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (the attached s21SOIImVi parses correctly on 9.1 and 8.6, same as PyYAML); the other file (s21BwGvY4m) is lost with the paste site</p><ul>
+<li><span class="k">Module</span> yaml 0.4.2
+</li>
+<li><span class="k">Tested</span> parsed the attachment with <code>yaml2dict</code> and compared key sections with PyYAML; they match.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works for me / cannot reproduce
+</li>
+<li><span class="k">Suggested ticket comment</span> The attached file now parses correctly on Tcl 8.6 and 9.1. The other file is no longer available; please reopen with an attachment if it still fails.
+</li></ul></div></details><details class="t" id="4f9147ded4" data-s="4f9147ded4 autoproxy HTTPS support should handle authentication http :: autoproxy NOT-REPRODUCED (CONNECT already sends basic auth) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>4f9147ded4</span><span class="yr">2013</span><span class="ti">autoproxy HTTPS support should handle authentication</span><span class="vd">NOT-REPRODUCED (CONNECT already sends basic auth)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/4f9147ded4">Open ticket 4f9147ded4</a> · Bug · http :: autoproxy · filed 2013-10-25</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (CONNECT already sends basic auth)</p><ul>
+<li><span class="k">Module</span> autoproxy 1.8.1
+</li>
+<li><span class="k">Tested</span> 8.6, with a local fake proxy on 127.0.0.1 and a tls stub: after <code>init 127.0.0.1:port</code> + <code>configure -basic -username me -password secret</code>, the CONNECT request carries <code>Proxy-Authorization: Basic bWU6c2VjcmV0</code>. On 9.x it fails earlier because of <a class="h" href="reproduced.html#29ff5c3abd">29ff5c3abd</a>.
+</li>
+<li><span class="k">Cause</span> tunnel_write has sent <code>options(basic)</code> since 4d9dbdb9fd (2008). Only Basic is supported, no Digest/NTLM, as for plain http.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works for me (or ask the reporter what failed)
+</li>
+<li><span class="k">Suggested ticket comment</span> The CONNECT request sends the configured Basic credentials (since 2008), tested against a local proxy. Digest/NTLM are not supported for http either. Please reopen with details if it still fails.
+</li></ul></div></details><details class="t" id="3428262fff" data-s="3428262fff JSON: Trailing spaces added to number value json NOT-REPRODUCED (Tcl implementation, 9.1 and 8.6: `{ &quot;a&quot; : 0 }` gives `a 0`). The C lexer was rewritten in 2014 (11390a7baa, bison parser). It now uses strtod&#x27;s end pointer, so no whitespace can end up in a number. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3428262fff</span><span class="yr">2011</span><span class="ti">JSON: Trailing spaces added to number value</span><span class="vd">NOT-REPRODUCED (Tcl implementation, 9.1 and 8.6: <code>{ "a" : 0 }</code> gives <code>a 0</code>). The C lexer was rewritten in 2014 (11390a7baa, bison parser). It now u…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3428262fff">Open ticket 3428262fff</a> · Bug · json · filed 2011-10-25 · <strong>Pending</strong> (resolved, waiting for confirmation)</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (Tcl implementation, 9.1 and 8.6: <code>{ "a" : 0 }</code> gives <code>a 0</code>). The C lexer was rewritten in 2014 (11390a7baa, bison parser). It now uses strtod's end pointer, so no whitespace can end up in a number.</p><ul>
+<li><span class="k">Module</span> json 1.3.6 / jsonc 1.1.2
+</li>
+<li><span class="k">Tested</span> 9.1, 8.6 (Tcl impl; tcllibc/critcl not available here, C code read)
+</li>
+<li><span class="k">Cause</span> n/a (old C code)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works for me (ticket already Pending/Invalid)
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible; the C parser was rewritten in 2014 and numbers no longer include trailing whitespace.
+</li></ul></div></details><details class="t" id="3427030fff" data-s="3427030fff Memory leak in md5crypt::aprcrypt in tcllib 1.13 md5crypt NOT-REPRODUCED (aku could not confirm in 2011 with a memory-debug build; ticket is Pending/Invalid since then) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3427030fff</span><span class="yr">2011</span><span class="ti">Memory leak in md5crypt::aprcrypt in tcllib 1.13</span><span class="vd">NOT-REPRODUCED (aku could not confirm in 2011 with a memory-debug build; ticket is Pending/Invalid since then)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3427030fff">Open ticket 3427030fff</a> · Bug · md5crypt · filed 2011-10-21 · <strong>Pending</strong> (resolved, waiting for confirmation)</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (aku could not confirm in 2011 with a memory-debug build; ticket is Pending/Invalid since then)</p><ul>
+<li><span class="k">Module</span> md5crypt 1.1.0
+</li>
+<li><span class="k">Tested</span> none beyond code review; the pure-Tcl path has no allocations that persist, and the C path (md5cryptc) returns a static buffer
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Invalid (already Pending/Invalid for 15 years)
+</li>
+<li><span class="k">Suggested ticket comment</span> Could not be confirmed in 2011, and the reporter never followed up. Closing.
+</li></ul></div></details><details class="t" id="3035986fff" data-s="3035986fff determineSVD gives wrong dimensions in U for m&lt;n math :: linearalgebra NOT-REPRODUCED (Arjen&#x27;s 2015 analysis holds) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3035986fff</span><span class="yr">2010</span><span class="ti">determineSVD gives wrong dimensions in U for m&lt;n</span><span class="vd">NOT-REPRODUCED (Arjen's 2015 analysis holds)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3035986fff">Open ticket 3035986fff</a> · Bug · math :: linearalgebra · filed 2010-07-28 · <strong>Pending</strong> (resolved, waiting for confirmation)</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (Arjen's 2015 analysis holds)</p><ul>
+<li><span class="k">Module</span> math, math::linearalgebra 1.1.7
+</li>
+<li><span class="k">Tested</span> 9.1, 8.6. For a 2×4 A, U is 2×2, S has 4 values and V is 4×4. For a 3×2 A, U is 3×2 (thin), S has 2 and V is 2×2. U is never m×n for m&lt;n. The wish for a full U when m&gt;n is an RFE.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works For Me (Pending since 2015, no reply)
+</li>
+<li><span class="k">Suggested ticket comment</span> U is m×m for m&lt;n, as Arjen showed. A full (non-thin) U for m&gt;n would be a separate feature request.
+</li></ul></div></details><details class="t" id="2906306fff" data-s="2906306fff md5::md5 -file option error on close md5 NOT-REPRODUCED (normal use, and nested md5 -file calls from `after` handlers during md5&#x27;s internal vwait, 20+20 runs on 9.1/8.6: correct hashes, no leaked or missing channels) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2906306fff</span><span class="yr">2009</span><span class="ti">md5::md5 -file option error on close</span><span class="vd">NOT-REPRODUCED (normal use, and nested md5 -file calls from <code>after</code> handlers during md5's internal vwait, 20+20 runs on 9.1/8.6: correct hashes, no…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2906306fff">Open ticket 2906306fff</a> · Bug · md5 · filed 2009-11-30</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (normal use, and nested md5 -file calls from <code>after</code> handlers during md5's internal vwait, 20+20 runs on 9.1/8.6: correct hashes, no leaked or missing channels)</p><ul>
+<li><span class="k">Module</span> md5 2.0.9 (md5x.tcl)
+</li>
+<li><span class="k">Tested</span> nested-event-loop script on 9.1 and 8.6
+</li>
+<li><span class="k">Cause</span> unknown. md5 -file reads through fileevent + vwait (md5x.tcl ::md5::md5), so it runs a nested event loop. In an event-driven server (Wub) other handlers run inside it and could close the channel, e.g. a handler that closes channels by name. md4, sha1, sha256, ripemd use the same pattern.
+</li>
+<li><span class="k">Prototype</span> none (not reproducible; a robust change would be to read the file synchronously in a loop instead of vwait, but that's a design change in 6 modules)
+</li>
+<li><span class="k">Suggested action</span> close as Works-for-me, or keep as an RFE to drop the vwait in the -file/-channel paths of the hash modules
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce with md5 2.0.9 on Tcl 8.6/9.1, even with nested md5 -file calls. md5 -file runs a nested vwait, so in an event-driven server another handler can close the channel meanwhile. Reading synchronously would avoid that.
+</li></ul></div></details><details class="t" id="2824771fff" data-s="2824771fff doctools test case 50.0.1 fails doctools NOT-REPRODUCED (`sak test run modules/doctools2idx`: 955/955 pass on 9.1 and 8.6; test doctools-idx-50.* exists and passes) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2824771fff</span><span class="yr">2009</span><span class="ti">doctools test case 50.0.1 fails</span><span class="vd">NOT-REPRODUCED (<code>sak test run modules/doctools2idx</code>: 955/955 pass on 9.1 and 8.6; test doctools-idx-50.* exists and passes)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2824771fff">Open ticket 2824771fff</a> · Bug · doctools · filed 2009-07-21</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (<code>sak test run modules/doctools2idx</code>: 955/955 pass on 9.1 and 8.6; test doctools-idx-50.* exists and passes)</p><ul>
+<li><span class="k">Module</span> doctools2idx (doctools::idx 2.x, pluginmgr)
+</li>
+<li><span class="k">Tested</span> full doctools2idx test suite on 9.1 and 8.6 (Linux)
+</li>
+<li><span class="k">Cause</span> 2009 Solaris + Tcl 8.6 CVS head: <code>can not find channel named "stdout"</code> in the plugin's safe interp. This came from early 8.6 std-channel changes and no longer happens.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date / Works for me
+</li>
+<li><span class="k">Suggested ticket comment</span> The doctools2idx suite (including doctools-idx-50.*) passes on Tcl 8.6 and 9.1. The 2009 stdout-in-plugin-interp failure no longer occurs.
+</li></ul></div></details><details class="t" id="1779348fff" data-s="1779348fff profiler test suite peculiar behavior profiler NOT-REPRODUCED (`sak test run modules/profiler` on 9.1: all progress output stays on one CR-overwritten line and the output is 7 lines in total; 18 passed, 1 skipped) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1779348fff</span><span class="yr">2007</span><span class="ti">profiler test suite peculiar behavior</span><span class="vd">NOT-REPRODUCED (<code>sak test run modules/profiler</code> on 9.1: all progress output stays on one CR-overwritten line and the output is 7 lines in total; 18…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1779348fff">Open ticket 1779348fff</a> · Bug · profiler · filed 2007-08-22</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (<code>sak test run modules/profiler</code> on 9.1: all progress output stays on one CR-overwritten line and the output is 7 lines in total; 18 passed, 1 skipped)</p><ul>
+<li><span class="k">Module</span> profiler 0.7 / sak test runner
+</li>
+<li><span class="k">Tested</span> sak test run on Linux, Tcl 9.1. The 2007 report came from a Solaris xterm displayed through Exceed; AK suspected the terminal mangling CR.
+</li>
+<li><span class="k">Cause</span> likely the terminal/X setup, not tcllib.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works For Me / Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce with current sak: the profiler progress lines overwrite each other like those of other modules. Most likely the terminal setup of the time; closing.
+</li></ul></div></details><details class="t" id="1709334fff" data-s="1709334fff Missing trailing newline hangs sendmessage smtp NOT-REPRODUCED (9.1, 8.6; local fake SMTP server, bodies with and without a trailing newline) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1709334fff</span><span class="yr">2007</span><span class="ti">Missing trailing newline hangs sendmessage</span><span class="vd">NOT-REPRODUCED (9.1, 8.6; local fake SMTP server, bodies with and without a trailing newline)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1709334fff">Open ticket 1709334fff</a> · Bug · smtp · filed 2007-04-28</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1, 8.6; local fake SMTP server, bodies with and without a trailing newline)</p><ul>
+<li><span class="k">Module</span> mime / smtp 1.5.2
+</li>
+<li><span class="k">Tested</span> logged the DATA section. Without a trailing newline, the body still ends with CRLF and "." is on its own line.
+</li>
+<li><span class="k">Cause</span> The non-Trf path appends CRLF (bug #827436 fix, 2006). The Trf path's flush/write adds it too, and ce8dab3154 (2021) fixed data loss at the end of the Trf path. Trf does not exist for Tcl 9.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works for me / Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce on trunk: a body without a final newline is terminated with CRLF before the closing ".". Closing.
+</li></ul></div></details><details class="t" id="1566389fff" data-s="1566389fff tests fail in fileutil 1.9 fileutil NOT-REPRODUCED on Windows (9.1): fileutil.test install-2.1 and install-2.2 pass (fileutil 345 passed, 107 skipped, 0 failed). " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1566389fff</span><span class="yr">2006</span><span class="ti">tests fail in fileutil 1.9</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcllib-triage/prototypes/1566389fff.patch">patch</a><span class="vd">NOT-REPRODUCED on Windows (9.1): fileutil.test install-2.1 and install-2.2 pass (fileutil 345 passed, 107 skipped, 0 failed).</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1566389fff">Open ticket 1566389fff</a> · Bug · fileutil · filed 2006-09-27</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED on Windows (9.1): fileutil.test install-2.1 and install-2.2 pass (fileutil 345 passed, 107 skipped, 0 failed).</p><ul>
+<li><span class="k">Module</span> fileutil 1.16.4 (tests install-2.1/2.2)
+</li>
+<li><span class="k">Tested</span> fileutil suite on 9.1 and 8.6 (Linux): all pass
+</li>
+<li><span class="k">Cause</span> fileutil.test install-2.1/2.2 call <code>glob -directory D [file join . / *]</code> = <code>glob -directory D /*</code>. On Windows <code>/*</code> is volume-relative, which is likely why it failed there.
+</li>
+<li><span class="k">Prototype</span> prototypes/1566389fff.patch (test-only, +2/-2): the pattern becomes <code>*</code>. It passes on Linux 9.1/8.6. I could not show the failure without Windows.
+</li>
+<li><span class="k">Suggested action</span> run fileutil.test on Windows; apply the prototype if install-2.x fail there, otherwise close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> Passes on Linux with 8.6/9.1. The tests glob with pattern <code>/*</code> ([file join . / *]), which is suspect on Windows. Proposed changing it to <code>*</code>.
+</li></ul><div class="winrun"><div class="lab">Windows VM, run 1</div><ul>
+<li><span class="k">Verdict</span> NOT-REPRODUCED on Windows (9.1): fileutil.test install-2.1 and install-2.2 pass (fileutil 345 passed, 107 skipped, 0 failed).
+</li>
+<li><span class="k">Tested</span> full <code>sak test run</code> of trunk with tclsh91 on the Windows VM. The odd glob pattern in the tests is harmless now, so the test-only prototype is cosmetic.
+</li></ul></div></div></details><details class="t" id="1566475fff" data-s="1566475fff pop3-6.1 fails sometimes pop3 NOT-REPRODUCED (pop3 suite passes on 9.1 and 8.6, 44/45 with 1 TLS skip. dgp could not reproduce it either in 2006, after aku&#x27;s dialog/test fixes) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1566475fff</span><span class="yr">2006</span><span class="ti">pop3-6.1 fails sometimes</span><span class="vd">NOT-REPRODUCED (pop3 suite passes on 9.1 and 8.6, 44/45 with 1 TLS skip. dgp could not reproduce it either in 2006, after aku's dialog/test fixes)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1566475fff">Open ticket 1566475fff</a> · Bug · pop3 · filed 2006-09-27</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (pop3 suite passes on 9.1 and 8.6, 44/45 with 1 TLS skip. dgp could not reproduce it either in 2006, after aku's dialog/test fixes)</p><ul>
+<li><span class="k">Module</span> pop3 1.11
+</li>
+<li><span class="k">Tested</span> sak test run modules/pop3 on 9.1 and 8.6.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works For Me / Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Solaris-only timing failure from 2006; not reproducible since aku's test fixes then, and the suite passes on 8.6 and 9.1.
+</li></ul></div></details><details class="t" id="1548418fff" data-s="1548418fff ftp::Put hangs when non-existent directory ftp NOT-REPRODUCED (Put to `nodir/x.txt` against ftpd, active and passive, 9.1 and 8.6, returns 0 at once; the dialog server replying 553 after an early data connection also returns 0) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1548418fff</span><span class="yr">2006</span><span class="ti">ftp::Put hangs when non-existent directory</span><span class="vd">NOT-REPRODUCED (Put to <code>nodir/x.txt</code> against ftpd, active and passive, 9.1 and 8.6, returns 0 at once; the dialog server replying 553 after an earl…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1548418fff">Open ticket 1548418fff</a> · Bug · ftp · filed 2006-08-29</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (Put to <code>nodir/x.txt</code> against ftpd, active and passive, 9.1 and 8.6, returns 0 at once; the dialog server replying 553 after an early data connection also returns 0)</p><ul>
+<li><span class="k">Module</span> ftp 2.4.14
+</li>
+<li><span class="k">Tested</span> see above
+</li>
+<li><span class="k">Cause</span> a hang is possible in active mode for larger uploads when the server connects before refusing, via the same un-cleared <code>state.data</code> as 744276. The 744276 prototype also covers put_sent.
+</li>
+<li><span class="k">Prototype</span> none (covered by prototypes/744276ffff.patch, test ftp-active-error-1.1)
+</li>
+<li><span class="k">Suggested action</span> close as Works for me, or close together with 744276 when that fix is applied
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on current trunk: Put into a missing directory returns 0 at once. The remaining active-mode wait-on-error issue is handled with [744276].
+</li></ul></div></details><details class="t" id="1397543fff" data-s="1397543fff Snit v2 not handling tcl8.5 return -options snit NOT-REPRODUCED (9.1, 8.6) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1397543fff</span><span class="yr">2006</span><span class="ti">Snit v2 not handling tcl8.5 return -options</span><span class="vd">NOT-REPRODUCED (9.1, 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1397543fff">Open ticket 1397543fff</a> · Bug · snit · filed 2006-01-05</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1, 8.6)</p><ul>
+<li><span class="k">Module</span> snit 2.3.4
+</li>
+<li><span class="k">Tested</span> a <code>mymethod</code> callback to a method that does <code>return -code error -errorcode {MY CODE}</code>, and one that returns break. Error code, info and break code are preserved.
+</li>
+<li><span class="k">Cause</span> RT.CallInstance re-throws with errorInfo/errorCode. Only extra custom return options are lost.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works for me
+</li>
+<li><span class="k">Suggested ticket comment</span> mymethod callbacks keep errorCode/errorInfo and non-error return codes. Closing.
+</li></ul></div></details><details class="t" id="1390477fff" data-s="1390477fff snit can destroy errorInfo in some cases snit NOT-REPRODUCED (9.1, 8.6, 8.5; the ticket&#x27;s trace-on-unset scenario) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1390477fff</span><span class="yr">2005</span><span class="ti">snit can destroy errorInfo in some cases</span><span class="vd">NOT-REPRODUCED (9.1, 8.6, 8.5; the ticket's trace-on-unset scenario)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1390477fff">Open ticket 1390477fff</a> · Patch · snit · filed 2005-12-26</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (9.1, 8.6, 8.5; the ticket's trace-on-unset scenario)</p><ul>
+<li><span class="k">Module</span> snit 2.3.4 / 1.4.3
+</li>
+<li><span class="k">Tested</span> a proc that errors while an unset trace destroys a snit object whose destructor calls cget/configure. Both caught errorInfo and the global errorInfo keep the real error in snit 1 and 2 (the core saves interp state around traces). snit 1 still overwrites ::errorInfo on normal method calls (cache misses). snit 2 does so only for cget/configure. Harmless when no error is in progress.
+</li>
+<li><span class="k">Cause</span> -
+</li>
+<li><span class="k">Prototype</span> none (the attached 2005 patch is against snit 1.0 and is obsolete)
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> The described scenario no longer loses the error on Tcl 8.5+: trace callbacks run with the interp state saved. Closing.
+</li></ul></div></details><details class="t" id="1280862fff" data-s="1280862fff profiler - errorInfo modifiable in enter- &amp; leaveHandler profiler NOT-REPRODUCED (fixed by Tcl 8.5 semantics). Since 8.5, `incr` on an unset variable creates it, so the `catch {incr ...}` in enter/leaveHandler never throws and errorInfo is left alone. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1280862fff</span><span class="yr">2005</span><span class="ti">profiler - errorInfo modifiable in enter- &amp; leaveHandler</span><span class="vd">NOT-REPRODUCED (fixed by Tcl 8.5 semantics). Since 8.5, <code>incr</code> on an unset variable creates it, so the <code>catch {incr ...}</code> in enter/leaveHandler nev…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1280862fff">Open ticket 1280862fff</a> · Bug · profiler · filed 2005-09-02</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (fixed by Tcl 8.5 semantics). Since 8.5, <code>incr</code> on an unset variable creates it, so the <code>catch {incr ...}</code> in enter/leaveHandler never throws and errorInfo is left alone.</p><ul>
+<li><span class="k">Module</span> profiler 0.7
+</li>
+<li><span class="k">Tested</span> <code>catch {error orig}</code>, then the first call of a profiled proc chain, then a check of <code>$::errorInfo</code>. It stays intact on 9.1, 8.6 and 8.5.
+</li>
+<li><span class="k">Cause</span> the catches are now dead code (tcllib requires 8.5+).
+</li>
+<li><span class="k">Prototype</span> none (not needed; the dead <code>catch</code> wrappers could be dropped as cleanup)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (by Tcl 8.5+ requirement)
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible with Tcl 8.5+: <code>incr</code> auto-creates the array element, so the catch never fires and errorInfo is untouched. tcllib now requires 8.5, so closing.
+</li></ul></div></details><details class="t" id="1014795fff" data-s="1014795fff tcl crashes when I b64 encode files base64 NOT-REPRODUCED (5 MB random binary encodes and decodes correctly in 7 ms / 80 ms on 9.1 and 8.6, and 1.6 s / 1.1 s with the pure-Tcl path on 8.5). The original report was the 8.4-era pure-Tcl encoder hitting a memory limit on Windows 98. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1014795fff</span><span class="yr">2004</span><span class="ti">tcl crashes when I b64 encode files</span><span class="vd">NOT-REPRODUCED (5 MB random binary encodes and decodes correctly in 7 ms / 80 ms on 9.1 and 8.6, and 1.6 s / 1.1 s with the pure-Tcl path on 8.5). …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1014795fff">Open ticket 1014795fff</a> · Bug · base64 · filed 2004-08-23</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (5 MB random binary encodes and decodes correctly in 7 ms / 80 ms on 9.1 and 8.6, and 1.6 s / 1.1 s with the pure-Tcl path on 8.5). The original report was the 8.4-era pure-Tcl encoder hitting a memory limit on Windows 98.</p><ul>
+<li><span class="k">Module</span> base64 2.6.1
+</li>
+<li><span class="k">Tested</span> base64::encode/decode round trip of 5 MB on 9.1, 8.6, 8.5
+</li>
+<li><span class="k">Cause</span> n/a (on 8.6+ base64 uses <code>binary encode base64</code>)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of date
+</li>
+<li><span class="k">Suggested ticket comment</span> Cannot reproduce: a 5 MB file encodes in milliseconds on 8.6/9.x (native <code>binary encode base64</code>) and in about 1.5 s with the pure-Tcl code on 8.5. Closing as out of date.
+</li></ul></div></details><details class="t" id="883573ffff" data-s="883573ffff ftp change directory problems ftp NOT-REPRODUCED (ftpd, 9.1 and 8.6: Cd/Pwd into `a b`, `x{y}`, `d$[1]`, `żółw` all work) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>883573ffff</span><span class="yr">2004</span><span class="ti">ftp change directory problems</span><span class="vd">NOT-REPRODUCED (ftpd, 9.1 and 8.6: Cd/Pwd into <code>a b</code>, <code>x{y}</code>, <code>d$[1]</code>, <code>żółw</code> all work)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/883573ffff">Open ticket 883573ffff</a> · Bug · ftp · filed 2004-01-24</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (ftpd, 9.1 and 8.6: Cd/Pwd into <code>a b</code>, <code>x{y}</code>, <code>d$[1]</code>, <code>żółw</code> all work)</p><ul>
+<li><span class="k">Module</span> ftp 2.4.14
+</li>
+<li><span class="k">Tested</span> see above
+</li>
+<li><span class="k">Cause</span> unknown. The report gives no example. Non-ASCII names go through the control socket's default (system) encoding, so they can fail with UTF-8 servers on non-UTF-8 systems.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works for me / insufficient information
+</li>
+<li><span class="k">Suggested ticket comment</span> Directory names with spaces, braces, <code>$</code>, brackets and non-ASCII letters work on current trunk. Without an example of a failing name this can't be investigated further.
+</li></ul></div></details><details class="t" id="782367ffff" data-s="782367ffff ftp.tcl: file list empty after file get ftp NOT-REPRODUCED (List / Get / List sequences against ftpd, active and passive, 9.1 and 8.6) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>782367ffff</span><span class="yr">2003</span><span class="ti">ftp.tcl: file list empty after file get</span><span class="vd">NOT-REPRODUCED (List / Get / List sequences against ftpd, active and passive, 9.1 and 8.6)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/782367ffff">Open ticket 782367ffff</a> · Bug · ftp · filed 2003-08-03</p><div class="lab">Full verdict</div><p>NOT-REPRODUCED (List / Get / List sequences against ftpd, active and passive, 9.1 and 8.6)</p><ul>
+<li><span class="k">Module</span> ftp 2.4.14
+</li>
+<li><span class="k">Tested</span> List sub, Get sub/b.txt, List ., List sub. All correct, no empty or duplicated listing.
+</li>
+<li><span class="k">Cause</span> the symptom (empty list, then double contents) matches data arriving after the control reply. That race was fixed by the WaitDataConn synchronizer in 863ac2e0d8 (2014-02-21, ticket eb0b15d598, ftp 2.4.13, tcllib 1.17).
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (probably by eb0b15d598), or works-for-me
+</li>
+<li><span class="k">Suggested ticket comment</span> Not reproducible on current trunk. The late-data-connection fix for <a class="h" href="https://core.tcl-lang.org/tcllib/info/eb0b15d598">eb0b15d598</a> (ftp 2.4.13) addresses exactly this kind of listing that shows up one command late.
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

@@ -1,0 +1,1077 @@
+<title>Tcllib Ticket Triage: Outdated, superseded, duplicate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280; --out:#7C5E10; --rfe:#0F766E;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --out:#D6B454; --rfe:#5EEAD4;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --out:#D6B454; --rfe:#5EEAD4;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}.c-out{--c:var(--out)}.c-rfe{--c:var(--rfe)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Open tcllib tickets: Outdated, superseded, duplicate</h1>
+  <p class="sub">Triage of all 509 open and Pending tickets of <a href="https://core.tcl-lang.org/tcllib">tcllib</a> (bugs, patches and feature requests) on 2026-11-15. Each ticket was checked against tcllib trunk on Linux with Tcl 9.1, 9.0, 8.6 and 8.5, using local servers for the network modules and a Windows 11 VM for Windows-only tickets. Outdated, superseded, duplicate and misfiled tickets are listed separately. Rows marked <span class="patch">patch</span> link to a prototype fix with a regression test (147 in all, in <a href="https://github.com/serhiy-storchaka/tcltk-dev/tree/main/tcllib-triage/prototypes">tcllib-triage/prototypes</a>). Updated 2026-11-15.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">157</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">70</span> Already fixed or done</a><a class="navchip c-out cur" href="outdated.html" aria-current="page"><span class="n">80</span> Outdated, superseded, duplicate</a><a class="navchip c-rfe" href="rfe.html"><span class="n">129</span> Feature requests</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">23</span> Not a bug</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">23</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">22</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">5</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">80</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, module, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="out"><h2><span class="dot c-out"></span>Outdated, superseded, duplicate <span class="cnt">80</span></h2><details class="t" id="04b8e4fb3c" data-s="04b8e4fb3c buildmessage/copymessage emit Content-Transfer-Encoding header twice mime DUPLICATE of dcf333e549 (same bug; this report has the correct analysis and the same suggested fix, which prototypes/dcf333e549.patch implements, including its suggested tests) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>04b8e4fb3c</span><span class="yr">2026</span><span class="ti">buildmessage/copymessage emit Content-Transfer-Encoding header twice</span><span class="vd">DUPLICATE of <a class="h" href="reproduced.html#dcf333e549">dcf333e549</a> (same bug; this report has the correct analysis and the same suggested fix, which prototypes/dcf333e549.patch implements, i…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/04b8e4fb3c">Open ticket 04b8e4fb3c</a> · Bug · mime · filed 2026-10-08</p><div class="lab">Full verdict</div><p>DUPLICATE of <a class="h" href="reproduced.html#dcf333e549">dcf333e549</a> (same bug; this report has the correct analysis and the same suggested fix, which prototypes/dcf333e549.patch implements, including its suggested tests)</p><ul>
+<li><span class="k">Module</span> mime 1.7.2
+</li>
+<li><span class="k">Tested</span> see <a class="h" href="reproduced.html#dcf333e549">dcf333e549</a>
+</li>
+<li><span class="k">Cause</span> see <a class="h" href="reproduced.html#dcf333e549">dcf333e549</a>
+</li>
+<li><span class="k">Prototype</span> prototypes/dcf333e549.patch
+</li>
+<li><span class="k">Suggested action</span> close as duplicate of <a class="h" href="reproduced.html#dcf333e549">dcf333e549</a> once that is fixed (or fix under both)
+</li>
+<li><span class="k">Suggested ticket comment</span> Duplicate of <a class="h" href="https://core.tcl-lang.org/tcllib/info/dcf333e549">dcf333e549</a>; the proposed fix there is the one suggested here, with the suggested tests.
+</li></ul></div></details><details class="t" id="0e69b86c2e" data-s="0e69b86c2e No longer &quot;-encoding binary&quot; in Tcl 9.0 A Category Is Missing WRONG-TRACKER (Tkhtml3 / BAWT distribution; not in tcllib or tklib). This is the same situation as sibling 0c118eed38 (tclvfs), which oehhar closed as Invalid. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>0e69b86c2e</span><span class="yr">2025</span><span class="ti">No longer "-encoding binary" in Tcl 9.0</span><span class="vd">WRONG-TRACKER (Tkhtml3 / BAWT distribution; not in tcllib or tklib). This is the same situation as sibling 0c118eed38 (tclvfs), which oehhar closed…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/0e69b86c2e">Open ticket 0e69b86c2e</a> · Bug · A Category Is Missing · filed 2025-10-07</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (Tkhtml3 / BAWT distribution; not in tcllib or tklib). This is the same situation as sibling 0c118eed38 (tclvfs), which oehhar closed as Invalid.</p><ul>
+<li><span class="k">Module</span> none (Tkhtml3 hv3-0.1.tm is not part of tcllib)
+</li>
+<li><span class="k">Tested</span> grep of tcllib/tklib trees for tkhtml/hv3: no hits
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (not tcllib code)
+</li>
+<li><span class="k">Suggested action</span> close as Invalid / Third party
+</li>
+<li><span class="k">Suggested ticket comment</span> hv3-0.1.tm belongs to Tkhtml3, not tcllib, so please report it to Tkhtml3 (or BAWT, which ships it). There, <code>-translation binary</code> alone is the right fix.
+</li></ul></div></details><details class="t" id="022bca0ff5" data-s="022bca0ff5 Fix for dns: can&#x27;t read &quot;state(size)&quot;: no such element in array dns DUPLICATE of 187a6fa7ae (the same TcpEvent short-read bug, still present on trunk). The attachment dns.patch (679c38e68f…) is not in the local repository copy, so it could not be compared. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>022bca0ff5</span><span class="yr">2024</span><span class="ti">Fix for dns: can't read "state(size)": no such element in array</span><span class="vd">DUPLICATE of <a class="h" href="reproduced.html#187a6fa7ae">187a6fa7ae</a> (the same TcpEvent short-read bug, still present on trunk). The attachment dns.patch (679c38e68f…) is not in the local repo…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/022bca0ff5">Open ticket 022bca0ff5</a> · Patch · dns · filed 2024-04-22</p><div class="lab">Full verdict</div><p>DUPLICATE of <a class="h" href="reproduced.html#187a6fa7ae">187a6fa7ae</a> (the same TcpEvent short-read bug, still present on trunk). The attachment dns.patch (679c38e68f…) is not in the local repository copy, so it could not be compared.</p><ul>
+<li><span class="k">Module</span> dns 1.6.1
+</li>
+<li><span class="k">Tested</span> see <a class="h" href="reproduced.html#187a6fa7ae">187a6fa7ae</a>
+</li>
+<li><span class="k">Prototype</span> see prototypes/187a6fa7ae.patch
+</li>
+<li><span class="k">Suggested action</span> close as Duplicate after the fix for <a class="h" href="reproduced.html#187a6fa7ae">187a6fa7ae</a> is applied
+</li>
+<li><span class="k">Suggested ticket comment</span> Same bug as <a class="h" href="https://core.tcl-lang.org/tcllib/info/187a6fa7ae">187a6fa7ae</a>. A proposed fix with a test is tracked there.
+</li></ul></div></details><details class="t" id="8996045906" data-s="8996045906 tcllib 1.21 compilation fails on Windows and MSVC (unused) DUPLICATE of 935ac3b65b (same SHA256Init/Update/Final C2375 errors; fixed on trunk in cc4d362b78) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>8996045906</span><span class="yr">2023</span><span class="ti">tcllib 1.21 compilation fails on Windows and MSVC</span><span class="vd">DUPLICATE of <a class="h" href="fixed.html#935ac3b65b">935ac3b65b</a> (same SHA256Init/Update/Final C2375 errors; fixed on trunk in cc4d362b78)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/8996045906">Open ticket 8996045906</a> · Bug · (unused) · filed 2023-08-24</p><div class="lab">Full verdict</div><p>DUPLICATE of <a class="h" href="fixed.html#935ac3b65b">935ac3b65b</a> (same SHA256Init/Update/Final C2375 errors; fixed on trunk in cc4d362b78)</p><ul>
+<li><span class="k">Module</span> sha256c
+</li>
+<li><span class="k">Tested</span> see <a class="h" href="fixed.html#935ac3b65b">935ac3b65b</a>
+</li>
+<li><span class="k">Cause</span> same as <a class="h" href="fixed.html#935ac3b65b">935ac3b65b</a>
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Duplicate
+</li>
+<li><span class="k">Suggested ticket comment</span> Duplicate of <a class="h" href="https://core.tcl-lang.org/tcllib/info/935ac3b65b">935ac3b65b</a>. The conflicting declarations were removed from sha256.h on trunk in <a class="h" href="https://core.tcl-lang.org/tcllib/info/cc4d362b78">cc4d362b78</a>.
+</li></ul></div></details><details class="t" id="de2be80fd2" data-s="de2be80fd2 direction and octant delete the minus sign lead to diagram display bugs math :: geometry WRONG-TRACKER (tklib diagrams; same text filed there as ffcd8611b8, still open; tklib e9c4eeae1f &quot;diagrams not rendered proper&quot; has a patch diagrams.diff, not applied) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>de2be80fd2</span><span class="yr">2021</span><span class="ti">direction and octant delete the minus sign lead to diagram display bugs</span><span class="vd">WRONG-TRACKER (tklib diagrams; same text filed there as ffcd8611b8, still open; tklib e9c4eeae1f "diagrams not rendered proper" has a patch diagram…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/de2be80fd2">Open ticket de2be80fd2</a> · Bug · math :: geometry · filed 2021-06-16</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib diagrams; same text filed there as ffcd8611b8, still open; tklib e9c4eeae1f "diagrams not rendered proper" has a patch diagrams.diff, not applied)</p><ul>
+<li><span class="k">Module</span> math, math::geometry 1.4.2
+</li>
+<li><span class="k">Tested</span> code inspection. The sign change was intentional (fb4812f82b, math::geometry 1.4.0, 2020-09-20). math_geometry.man has had a "COORDINATE SYSTEM" section since then, saying y points up and angles are counter-clockwise, and that Tk canvas differs. tklib modules/diagrams (basic.tcl, point.tcl) still calls <code>geo::direction</code>/<code>geo::octant</code> assuming the old canvas convention and requires only math::geometry 1.1.2.
+</li>
+<li><span class="k">Prototype</span> none (fix belongs in tklib diagrams)
+</li>
+<li><span class="k">Suggested action</span> close here as a duplicate of tklib ffcd8611b8 / Third Party; handle in tklib (review e9c4eeae1f's patch)
+</li>
+<li><span class="k">Suggested ticket comment</span> The change in math::geometry 1.4 was intentional and is documented in the COORDINATE SYSTEM section. tklib's diagram package must adapt; tracked in tklib <a class="h" href="https://core.tcl-lang.org/tklib/info/ffcd8611b8">ffcd8611b8</a> and <a class="h" href="https://core.tcl-lang.org/tklib/info/e9c4eeae1f">e9c4eeae1f</a> (with patch).
+</li></ul></div></details><details class="t" id="bbdff172a3" data-s="bbdff172a3 ::pki::verify always returns false when &quot;algo&quot; argument is provided pki DUPLICATE of f8e09da9dc (closed By Design; the documentation was updated in 3f868874e7, 2019-06-27) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>bbdff172a3</span><span class="yr">2020</span><span class="ti">::pki::verify always returns false when "algo" argument is provided</span><span class="vd">DUPLICATE of f8e09da9dc (closed By Design; the documentation was updated in 3f868874e7, 2019-06-27)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/bbdff172a3">Open ticket bbdff172a3</a> · Bug · pki · filed 2020-02-12</p><div class="lab">Full verdict</div><p>DUPLICATE of f8e09da9dc (closed By Design; the documentation was updated in 3f868874e7, 2019-06-27)</p><ul>
+<li><span class="k">Module</span> pki 0.22
+</li>
+<li><span class="k">Tested</span> code read: <code>pki::verify</code> with an explicit algo compares the hash with the raw decrypted data, which matches <code>pki::sign ... raw</code> of a precomputed digest; pki.man now says to pass algo only for "raw" signatures. The behaviour is unchanged on trunk.
+</li>
+<li><span class="k">Cause</span> by design (rkeene, 2020-02-18): algo is only meant for raw signatures without a PKCS#1 v1.5 DigestInfo.
+</li>
+<li><span class="k">Prototype</span> none (not a bug)
+</li>
+<li><span class="k">Suggested action</span> close as Duplicate of f8e09da9dc. The reporter's point that "algo" is a misleading name could become a docs RFE.
+</li>
+<li><span class="k">Suggested ticket comment</span> Same as <a class="h" href="https://core.tcl-lang.org/tcllib/info/f8e09da9dc">f8e09da9dc</a>: by design, and the docs now say to pass algo only when the signature was made with "raw". Closing as duplicate.
+</li></ul></div></details><details class="t" id="8c91e46800" data-s="8c91e46800 Error when bindplot on createLogXYPlot (unused) WRONG-TRACKER (tklib; fixed there in 15b81478b8, 2018-12-27) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>8c91e46800</span><span class="yr">2018</span><span class="ti">Error when bindplot on createLogXYPlot</span><span class="vd">WRONG-TRACKER (tklib; fixed there in 15b81478b8, 2018-12-27)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/8c91e46800">Open ticket 8c91e46800</a> · Bug · (unused) · filed 2018-12-10</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib; fixed there in 15b81478b8, 2018-12-27)</p><ul>
+<li><span class="k">Module</span> tklib Plotchart 2.7.0
+</li>
+<li><span class="k">Tested</span> tklib trunk on Xvfb, wish9.1 and wish8.6: bindplot/bindlast on createLogXYPlot and bindplot on createXLogYPlot all succeed
+</li>
+<li><span class="k">Cause</span> missing methodProc entries and unset scaling($w,eventobj) in tklib plotbind.tcl/plotchart.tcl; the reporter's patch was applied in tklib
+</li>
+<li><span class="k">Prototype</span> none (not tcllib)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (resolution is already "Not Applicable Here")
+</li>
+<li><span class="k">Suggested ticket comment</span> Plotchart is in tklib, where this was fixed in <a class="h" href="https://core.tcl-lang.org/tklib/info/15b81478b8">15b81478b8</a> (2018-12-27). bindplot/bindlast work on log plots with current tklib. Closing.
+</li></ul></div></details><details class="t" id="a8218fdfc0" data-s="a8218fdfc0 Incorrect help for commands / subcommands tepam DUPLICATE of a0e091b25d (probably; fixed in tepam 0.5.1, [5b9813887f] 2016-03-05, first released in tcllib 1.19) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>a8218fdfc0</span><span class="yr">2017</span><span class="ti">Incorrect help for commands / subcommands</span><span class="vd">DUPLICATE of a0e091b25d (probably; fixed in tepam 0.5.1, <a class="h" href="https://core.tcl-lang.org/tcllib/info/5b9813887f">5b9813887f</a> 2016-03-05, first released in tcllib 1.19)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/a8218fdfc0">Open ticket a8218fdfc0</a> · Bug · tepam · filed 2017-09-01</p><div class="lab">Full verdict</div><p>DUPLICATE of a0e091b25d (probably; fixed in tepam 0.5.1, <a class="h" href="https://core.tcl-lang.org/tcllib/info/5b9813887f">5b9813887f</a> 2016-03-05, first released in tcllib 1.19)</p><ul>
+<li><span class="k">Module</span> tepam 0.5.4
+</li>
+<li><span class="k">Tested</span> the two attached patches (pkgIndex.tcl.patch, tepam.tcl.patch) are missing from the repository (their blobs are not in tcllib.fossil), so I could not compare them. On trunk with 9.1 and 8.6, <code>cmd -help</code>, <code>cmd sub -help</code> and <code>ns::cmd -help</code> all print correct help, with and without namespaces and with or without a main procedure. The a0e091b25d script (sub-procedure names wrong in DESCRIPTION) reproduces with tepam.tcl from tcllib-1-18 and is fixed on trunk.
+</li>
+<li><span class="k">Cause</span> The reporter had "0.5", which is tcllib 1.18 / Debian. The subcommand help bug in 0.5.0 (every DESCRIPTION entry shows the last sub-procedure's name) is a0e091b25d. The 0.5.1 fix also bumped pkgIndex.tcl, which matches the two attachments.
+</li>
+<li><span class="k">Prototype</span> none (already fixed; regression test tepam-bug_fixes.help_text exists in bug_fixes.test)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (or Duplicate of a0e091b25d), unless the submitter shows a case that still fails
+</li>
+<li><span class="k">Suggested ticket comment</span> This looks like <a class="h" href="https://core.tcl-lang.org/tcllib/info/a0e091b25d">a0e091b25d</a>, fixed in tepam 0.5.1 (tcllib 1.19). The attached patches are no longer available. Please reopen with an example if command/subcommand help is still wrong in current tepam.
+</li></ul></div></details><details class="t" id="809e351f41" data-s="809e351f41 httpd - Make conversion (tml, md) extensible, and cacheable httpd OUTDATED (aku&#x27;s 2016 &quot;still active?&quot; placeholder; the author says caching and pluggable markup engines live in his separate toadhttpd/clay projects. The &quot;httpd 4.4&quot; he announced in 2020 never reached tcllib: trunk is still 4.3.6) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>809e351f41</span><span class="yr">2016</span><span class="ti">httpd - Make conversion (tml, md) extensible, and cacheable</span><span class="vd">OUTDATED (aku's 2016 "still active?" placeholder; the author says caching and pluggable markup engines live in his separate toadhttpd/clay projects…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/809e351f41">Open ticket 809e351f41</a> · Bug · httpd · filed 2016-11-14</p><div class="lab">Full verdict</div><p>OUTDATED (aku's 2016 "still active?" placeholder; the author says caching and pluggable markup engines live in his separate toadhttpd/clay projects. The "httpd 4.4" he announced in 2020 never reached tcllib: trunk is still 4.3.6)</p><ul>
+<li><span class="k">Module</span> httpd 4.3.6
+</li>
+<li><span class="k">Tested</span> code review only (content.file handles .md and .tml with fixed code paths and no cache hooks)
+</li>
+<li><span class="k">Cause</span> -
+</li>
+<li><span class="k">Prototype</span> none (RFE outside the module's scope, according to its author)
+</li>
+<li><span class="k">Suggested action</span> close as Rejected (out of scope; see toadhttpd)
+</li>
+<li><span class="k">Suggested ticket comment</span> No 4.4 rework ever reached tcllib, and the author keeps caching and pluggable markup engines in toadhttpd/clay. Closing as out of scope for tcllib's httpd.
+</li></ul></div></details><details class="t" id="faf551c778" data-s="faf551c778 snit doesn&#x27;t work in Tcl 8.3 snit OUTDATED (both snit loaders now `package require Tcl 8.5 9`; main1_83.tcl was removed; tcllib 2.x needs 8.5+) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>faf551c778</span><span class="yr">2016</span><span class="ti">snit doesn't work in Tcl 8.3</span><span class="vd">OUTDATED (both snit loaders now <code>package require Tcl 8.5 9</code>; main1_83.tcl was removed; tcllib 2.x needs 8.5+)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/faf551c778">Open ticket faf551c778</a> · Bug · snit · filed 2016-10-03</p><div class="lab">Full verdict</div><p>OUTDATED (both snit loaders now <code>package require Tcl 8.5 9</code>; main1_83.tcl was removed; tcllib 2.x needs 8.5+)</p><ul>
+<li><span class="k">Module</span> snit 2.3.4 / 1.4.3
+</li>
+<li><span class="k">Tested</span> code inspection
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> Tcl 8.3 is no longer supported by tcllib or snit (minimum 8.5). Closing.
+</li></ul></div></details><details class="t" id="deef12251a" data-s="deef12251a Depending on input file, zipfile:mkzip::mkzip may raise error zip OUTDATED (the `zlib stream put &quot;&quot;` &quot;buffer error&quot; was fixed in the Tcl core in 8.6.5, released 2016; tcllib is not involved) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>deef12251a</span><span class="yr">2016</span><span class="ti">Depending on input file, zipfile:mkzip::mkzip may raise error</span><span class="vd">OUTDATED (the <code>zlib stream put ""</code> "buffer error" was fixed in the Tcl core in 8.6.5, released 2016; tcllib is not involved)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/deef12251a">Open ticket deef12251a</a> · Bug · zip · filed 2016-02-03</p><div class="lab">Full verdict</div><p>OUTDATED (the <code>zlib stream put ""</code> "buffer error" was fixed in the Tcl core in 8.6.5, released 2016; tcllib is not involved)</p><ul>
+<li><span class="k">Module</span> zipfile::mkzip 1.2.4 (requires Tcl 8.6)
+</li>
+<li><span class="k">Tested</span> mkzip on a 2400 KiB file (600*4096 bytes, so the streaming branch ends with an empty read). Tcl 8.6.0 and 8.6.4 fail with "buffer error" and leave a broken zip. 8.6.5, 8.6.6, 8.6 tip and 9.1 work, and <code>unzip -t</code> is OK. A bare <code>$z put ""</code> after <code>$z get</code> fails the same way, again only before 8.6.5.
+</li>
+<li><span class="k">Cause</span> mkzip.tcl add_file_to_archive streaming loop calls <code>$zlib put $data</code> with an empty string on the last read. Tcl before 8.6.5 raised Z_BUF_ERROR for that (Tcl ticket 25842c161f).
+</li>
+<li><span class="k">Prototype</span> none (a one-line <code>if {$data ne ""}</code> guard would help only on Tcl 8.6.0-8.6.4, and no test can fail on supported Tcl versions)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (in the Tcl core). Optionally add the guard if 8.6.0-8.6.4 still matter.
+</li>
+<li><span class="k">Suggested ticket comment</span> The empty <code>zlib stream put</code> error was fixed in Tcl 8.6.5. mkzip works with files whose size is a multiple of 4096 on 8.6.5+ and 9.x. Closing.
+</li></ul></div></details><details class="t" id="0c3a46d24c" data-s="0c3a46d24c New FireTcl library tcllib: request for new module OUTDATED (FireTcl embeds Tcl into Firefox through the XUL/XULRunner extension mechanism, which Firefox removed in version 57 (2017). Nobody ever started integrating it: no firetcl branch or check-in in tcllib, and the etoyoc sandbox mentioned in the comment is gone.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>0c3a46d24c</span><span class="yr">2015</span><span class="ti">New FireTcl library</span><span class="vd">OUTDATED (FireTcl embeds Tcl into Firefox through the XUL/XULRunner extension mechanism, which Firefox removed in version 57 (2017). Nobody ever st…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/0c3a46d24c">Open ticket 0c3a46d24c</a> · RFE · tcllib: request for new module · filed 2015-08-22</p><div class="lab">Full verdict</div><p>OUTDATED (FireTcl embeds Tcl into Firefox through the XUL/XULRunner extension mechanism, which Firefox removed in version 57 (2017). Nobody ever started integrating it: no firetcl branch or check-in in tcllib, and the etoyoc sandbox mentioned in the comment is gone.)</p><ul>
+<li><span class="k">Module</span> none (proposed new module "firetcl")
+</li>
+<li><span class="k">Tested</span> searched the tcllib timeline and branches for "firetcl". Nothing found.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (RFE)
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> FireTcl depends on the XUL extension mechanism, which Firefox dropped in version 57. Nobody started the integration, so closing.
+</li></ul></div></details><details class="t" id="5613c718c2" data-s="5613c718c2 Fixing compiler-warnings in C-code Build System &amp; Testing SUPERSEDED (by 4bc853f186 2020-05-15 &quot;fixed all warnings (gcc 5.4)&quot;, 022eea6e5b 2024-01-21 Tcl 9 work, 0de126b30d/385cc65bf9/0b25980a00 2026-10 warning fixes) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>5613c718c2</span><span class="yr">2015</span><span class="ti">Fixing compiler-warnings in C-code</span><span class="vd">SUPERSEDED (by 4bc853f186 2020-05-15 "fixed all warnings (gcc 5.4)", 022eea6e5b 2024-01-21 Tcl 9 work, 0de126b30d/385cc65bf9/0b25980a00 2026-10 war…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/5613c718c2">Open ticket 5613c718c2</a> · Bug · Build System &amp; Testing · filed 2015-05-28</p><div class="lab">Full verdict</div><p>SUPERSEDED (by 4bc853f186 2020-05-15 "fixed all warnings (gcc 5.4)", 022eea6e5b 2024-01-21 Tcl 9 work, 0de126b30d/385cc65bf9/0b25980a00 2026-10 warning fixes)</p><ul>
+<li><span class="k">Module</span> C accelerators (pt rde_critcl, struct graph/tree, md5, sha1…)
+</li>
+<li><span class="k">Tested</span> code reading. The broken <code>rde_param_query_lstop</code> now returns its value (param.c:428). The review branch tkt-<a class="h" href="#5613c718c2">5613c718c2</a>-cwarnings was never merged. critcl is not installed here, so no build.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed/Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> The real bug (missing return in rde_param_query_lstop) and the warnings were fixed by later warning cleanups and the Tcl 9 work. The 2015 branch is obsolete.
+</li>
+<li><span class="k">Note</span> param.c:568 still casts a pointer through <code>(long int)</code>. That truncates on Win64, where intptr_t should be used as on line 428.
+</li></ul></div></details><details class="t" id="8c587f8f33" data-s="8c587f8f33 Combine information from /support into /modules Development Tools OUTDATED (2015 request driven by taolib/odie, which never went into tcllib. The &quot;kettle&quot; branch that was agreed on was never started. aku explained that a new module only needs an entry in support/installation/modules.tcl.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>8c587f8f33</span><span class="yr">2015</span><span class="ti">Combine information from /support into /modules</span><span class="vd">OUTDATED (2015 request driven by taolib/odie, which never went into tcllib. The "kettle" branch that was agreed on was never started. aku explained…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/8c587f8f33">Open ticket 8c587f8f33</a> · RFE · Development Tools · filed 2015-01-06</p><div class="lab">Full verdict</div><p>OUTDATED (2015 request driven by taolib/odie, which never went into tcllib. The "kettle" branch that was agreed on was never started. aku explained that a new module only needs an entry in support/installation/modules.tcl.)</p><ul>
+<li><span class="k">Module</span> devtools / sak
+</li>
+<li><span class="k">Tested</span> timeline search (no kettle branch or check-ins)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of date / Rejected
+</li>
+<li><span class="k">Suggested ticket comment</span> Nobody started the kettle evaluation, and the modules that drove the request never came into tcllib. Adding a module still only needs an entry in support/installation/modules.tcl. Closing.
+</li></ul></div></details><details class="t" id="3610482fff" data-s="3610482fff Symmetrical json conversion json SUPERSEDED (by json::write (documented generator, `object`/`array`/`string`) and huddle jsondump). The undocumented `json::dict2json` still exists, with quoting disabled (`if {0 &amp;&amp; …}`). " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3610482fff</span><span class="yr">2013</span><span class="ti">Symmetrical json conversion</span><span class="vd">SUPERSEDED (by json::write (documented generator, <code>object</code>/<code>array</code>/<code>string</code>) and huddle jsondump). The undocumented <code>json::dict2json</code> still exists,…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3610482fff">Open ticket 3610482fff</a> · Patch · json · filed 2013-04-10</p><div class="lab">Full verdict</div><p>SUPERSEDED (by json::write (documented generator, <code>object</code>/<code>array</code>/<code>string</code>) and huddle jsondump). The undocumented <code>json::dict2json</code> still exists, with quoting disabled (<code>if {0 &amp;&amp; …}</code>).</p><ul>
+<li><span class="k">Module</span> json 1.3.6
+</li>
+<li><span class="k">Tested</span> code read
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Superseded. Optionally remove or deprecate the half-working undocumented dict2json/list2json/string2json helpers.
+</li>
+<li><span class="k">Suggested ticket comment</span> Generating JSON with type control is covered by json::write (and huddle). A key list cannot make the conversion symmetric in general (strings vs numbers vs nested values).
+</li></ul></div></details><details class="t" id="3555995fff" data-s="3555995fff Latest version download link on sourceforge A Category Is Missing OUTDATED (SourceForge download page; releases are now on core.tcl-lang.org) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3555995fff</span><span class="yr">2012</span><span class="ti">Latest version download link on sourceforge</span><span class="vd">OUTDATED (SourceForge download page; releases are now on core.tcl-lang.org)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3555995fff">Open ticket 3555995fff</a> · Bug · A Category Is Missing · filed 2012-08-10</p><div class="lab">Full verdict</div><p>OUTDATED (SourceForge download page; releases are now on core.tcl-lang.org)</p><ul>
+<li><span class="k">Module</span> SourceForge project page
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of date
+</li>
+<li><span class="k">Suggested ticket comment</span> This was about the SourceForge download link. Releases are now distributed from core.tcl-lang.org. Closing.
+</li></ul></div></details><details class="t" id="3495830fff" data-s="3495830fff First go at installing tcl modules A Category Is Missing OUTDATED (2012 patch against the 2006 CVS installer.tcl; it no longer applies. DESTDIR is handled by Makefile.in passing $(DESTDIR) in all paths. Installing packages as .tm is still not supported; that would need a fresh RFE.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3495830fff</span><span class="yr">2012</span><span class="ti">First go at installing tcl modules</span><span class="vd">OUTDATED (2012 patch against the 2006 CVS installer.tcl; it no longer applies. DESTDIR is handled by Makefile.in passing $(DESTDIR) in all paths. I…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3495830fff">Open ticket 3495830fff</a> · Patch · A Category Is Missing · filed 2012-02-29</p><div class="lab">Full verdict</div><p>OUTDATED (2012 patch against the 2006 CVS installer.tcl; it no longer applies. DESTDIR is handled by Makefile.in passing $(DESTDIR) in all paths. Installing packages as .tm is still not supported; that would need a fresh RFE.)</p><ul>
+<li><span class="k">Module</span> installer.tcl
+</li>
+<li><span class="k">Tested</span> compared the attached diff with the current installer.tcl (no minstall, no -destdir; Makefile uses $(DESTDIR))
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (patch obsolete)
+</li>
+<li><span class="k">Suggested action</span> close as Out of date
+</li>
+<li><span class="k">Suggested ticket comment</span> The patch no longer applies to the reworked installer. DESTDIR is supported through the Makefile. Installing as Tcl modules would need a new RFE.
+</li></ul></div></details><details class="t" id="3495047fff" data-s="3495047fff Bug Database link broken on tcllib home page A Category Is Missing OUTDATED (SourceForge-era tracker/home page; tcllib now uses core.tcl-lang.org/tcllib with Fossil tickets) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3495047fff</span><span class="yr">2012</span><span class="ti">Bug Database link broken on tcllib home page</span><span class="vd">OUTDATED (SourceForge-era tracker/home page; tcllib now uses core.tcl-lang.org/tcllib with Fossil tickets)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3495047fff">Open ticket 3495047fff</a> · Bug · A Category Is Missing · filed 2012-02-27</p><div class="lab">Full verdict</div><p>OUTDATED (SourceForge-era tracker/home page; tcllib now uses core.tcl-lang.org/tcllib with Fossil tickets)</p><ul>
+<li><span class="k">Module</span> SourceForge project page
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of date
+</li>
+<li><span class="k">Suggested ticket comment</span> This was about the SourceForge home page. The project has moved to core.tcl-lang.org/tcllib. Closing.
+</li></ul></div></details><details class="t" id="3163579fff" data-s="3163579fff Add a -compress config option for ::http::config None WRONG-TRACKER (Tcl). DONE there: `http::config -zip` (http 2.9.0, Tcl 8.6.9). " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3163579fff</span><span class="yr">2011</span><span class="ti">Add a -compress config option for ::http::config</span><span class="vd">WRONG-TRACKER (Tcl). DONE there: <code>http::config -zip</code> (http 2.9.0, Tcl 8.6.9).</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3163579fff">Open ticket 3163579fff</a> · RFE · None · filed 2011-01-21</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (Tcl). DONE there: <code>http::config -zip</code> (http 2.9.0, Tcl 8.6.9).</p><ul>
+<li><span class="k">Module</span> http (Tcl core, not tcllib)
+</li>
+<li><span class="k">Tested</span> <code>http::config</code> on 8.6 (http 2.9.9), 9.0 and 9.1 (2.10.3) shows <code>-zip 1</code>. Also checked old builds: http 2.8.9 (8.6.5) lacks it, http 2.9.0 (8.6.9) has it.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed / wrong tracker.
+</li>
+<li><span class="k">Suggested ticket comment</span> http belongs to Tcl. Since http 2.9.0 (Tcl 8.6.9), <code>http::config -zip 0</code> disables requesting compressed responses.
+</li></ul></div></details><details class="t" id="3141163fff" data-s="3141163fff Login at hosted accounts in Rest API gdocs API None OUTDATED (the gdocs example uses Google ClientLogin and Documents List API 3.0, which Google shut down in 2015. The suggested accountType change is moot.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3141163fff</span><span class="yr">2010</span><span class="ti">Login at hosted accounts in Rest API gdocs API</span><span class="vd">OUTDATED (the gdocs example uses Google ClientLogin and Documents List API 3.0, which Google shut down in 2015. The suggested accountType change is…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3141163fff">Open ticket 3141163fff</a> · Bug · None · filed 2010-12-21</p><div class="lab">Full verdict</div><p>OUTDATED (the gdocs example uses Google ClientLogin and Documents List API 3.0, which Google shut down in 2015. The suggested accountType change is moot.)</p><ul>
+<li><span class="k">Module</span> rest (modules/rest/gdocs example)
+</li>
+<li><span class="k">Tested</span> modules/rest/gdocs still points to <a href="https://www.google.com/accounts/ClientLogin.">https://www.google.com/accounts/ClientLogin.</a>
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date. Optionally remove or mark the dead gdocs (and similar) example interfaces.
+</li>
+<li><span class="k">Suggested ticket comment</span> Google retired ClientLogin and the Documents List API, so the gdocs example cannot work at all anymore. Closing.
+</li></ul></div></details><details class="t" id="3091244fff" data-s="3091244fff parsing doesn&#x27;t respect pre tag &amp; trims trailing whitespaces htmlparse DUPLICATE of 715193ffff (same `string trim` in 2treeCallback) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3091244fff</span><span class="yr">2010</span><span class="ti">parsing doesn't respect pre tag &amp; trims trailing whitespaces</span><span class="vd">DUPLICATE of <a class="h" href="reproduced.html#715193ffff">715193ffff</a> (same <code>string trim</code> in 2treeCallback)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3091244fff">Open ticket 3091244fff</a> · Bug · htmlparse · filed 2010-10-20</p><div class="lab">Full verdict</div><p>DUPLICATE of <a class="h" href="reproduced.html#715193ffff">715193ffff</a> (same <code>string trim</code> in 2treeCallback)</p><ul>
+<li><span class="k">Module</span> htmlparse 1.2.3
+</li>
+<li><span class="k">Tested</span> <code>&lt;pre&gt;  x  &lt;/pre&gt;</code> loses its spaces on 9.1 and 8.6. Test 5.3 of the 715193 prototype covers <code>&lt;pre&gt;</code>.
+</li>
+<li><span class="k">Cause</span> htmlparse.tcl <code>2treeCallback</code>, <code>string trim $textBehindTheTag</code>.
+</li>
+<li><span class="k">Prototype</span> see prototypes/715193ffff.patch (removes the trim entirely, as Rolf and Martin suggested here, instead of making <code>pre</code> a special case)
+</li>
+<li><span class="k">Suggested action</span> close as Duplicate when 715193 is resolved
+</li>
+<li><span class="k">Suggested ticket comment</span> Same cause as 715193; the proposed fix there keeps all PCDATA whitespace, <code>&lt;pre&gt;</code> included.
+</li></ul></div></details><details class="t" id="3004301fff" data-s="3004301fff Bad images.tgz files in CVS bwidget WRONG-TRACKER (BWidget has its own repository; already Pending/Out of Date since 2013) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3004301fff</span><span class="yr">2010</span><span class="ti">Bad images.tgz files in CVS</span><span class="vd">WRONG-TRACKER (BWidget has its own repository; already Pending/Out of Date since 2013)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3004301fff">Open ticket 3004301fff</a> · Bug · bwidget · filed 2010-05-19 · <strong>Pending</strong> (resolved, waiting for confirmation)</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (BWidget has its own repository; already Pending/Out of Date since 2013)</p><ul>
+<li><span class="k">Module</span> BWidget (not in tcllib or tklib)
+</li>
+<li><span class="k">Tested</span> neither tcllib.fossil nor tklib.fossil has any bwidget/keramik files
+</li>
+<li><span class="k">Cause</span> CVS binary handling. The CVS era is long gone.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> BWidget is maintained in its own repository and CVS is gone. Closing.
+</li></ul></div></details><details class="t" id="2967134fff" data-s="2967134fff json2dict improvements  index json arrays in dict json SUPERSEDED (by huddle::json `json2huddle` (modules/yaml), which keeps types; json.man now documents the type loss and points to typed-json, b96bdd24d5 / 2b2bcd7ecf, 2026-01-27) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2967134fff</span><span class="yr">2010</span><span class="ti">json2dict improvements  index json arrays in dict</span><span class="vd">SUPERSEDED (by huddle::json <code>json2huddle</code> (modules/yaml), which keeps types; json.man now documents the type loss and points to typed-json, b96bdd2…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2967134fff">Open ticket 2967134fff</a> · RFE · json · filed 2010-03-10</p><div class="lab">Full verdict</div><p>SUPERSEDED (by huddle::json <code>json2huddle</code> (modules/yaml), which keeps types; json.man now documents the type loss and points to typed-json, b96bdd24d5 / 2b2bcd7ecf, 2026-01-27)</p><ul>
+<li><span class="k">Module</span> json 1.3.6
+</li>
+<li><span class="k">Tested</span> code/doc read
+</li>
+<li><span class="k">Cause</span> by design json2dict drops type info
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Rejected/Superseded
+</li>
+<li><span class="k">Suggested ticket comment</span> json2dict is intentionally untyped (now documented). For type-preserving parsing use huddle::json (json2huddle) or the typed-json module linked from the json docs.
+</li></ul></div></details><details class="t" id="2910682fff" data-s="2910682fff yaml&#x27;s dict package needs yaml OUTDATED (Tcl 8.4 support dropped; tcllib requires 8.5+; there is no `package require dict` any more) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2910682fff</span><span class="yr">2009</span><span class="ti">yaml's dict package needs</span><span class="vd">OUTDATED (Tcl 8.4 support dropped; tcllib requires 8.5+; there is no <code>package require dict</code> any more)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2910682fff">Open ticket 2910682fff</a> · Bug · yaml · filed 2009-12-08</p><div class="lab">Full verdict</div><p>OUTDATED (Tcl 8.4 support dropped; tcllib requires 8.5+; there is no <code>package require dict</code> any more)</p><ul>
+<li><span class="k">Module</span> yaml 0.4.2 / huddle 0.5
+</li>
+<li><span class="k">Tested</span> grep of yaml.tcl/huddle.tcl; yaml tests pass on 9.1 and 8.6.
+</li>
+<li><span class="k">Cause</span> n/a. (One dead <code>if {$::tcl_version &lt; 8.5}</code> branch remains in <code>::yaml::_parseTimestamp</code>; harmless.)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Outdated
+</li>
+<li><span class="k">Suggested ticket comment</span> Tcllib now requires Tcl 8.5+, and yaml/huddle no longer load the dict package. Closing.
+</li></ul></div></details><details class="t" id="2847341fff" data-s="2847341fff leak in md5 (critcl) md5 DUPLICATE of 2680202fff (same md5c leak, reported with tcllibc of 1.11.x, which predates the fix); FIXED since tcllib 1.12 ([2ba9a8f7a5]) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2847341fff</span><span class="yr">2009</span><span class="ti">leak in md5 (critcl)</span><span class="vd">DUPLICATE of <a class="h" href="fixed.html#2680202fff">2680202fff</a> (same md5c leak, reported with tcllibc of 1.11.x, which predates the fix); FIXED since tcllib 1.12 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/2ba9a8f7a5">2ba9a8f7a5</a>)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2847341fff">Open ticket 2847341fff</a> · Bug · md5 · filed 2009-08-30</p><div class="lab">Full verdict</div><p>DUPLICATE of <a class="h" href="fixed.html#2680202fff">2680202fff</a> (same md5c leak, reported with tcllibc of 1.11.x, which predates the fix); FIXED since tcllib 1.12 (<a class="h" href="https://core.tcl-lang.org/tcllib/info/2ba9a8f7a5">2ba9a8f7a5</a>)</p><ul>
+<li><span class="k">Module</span> md5 2.0.9 / md5c 0.12
+</li>
+<li><span class="k">Tested</span> same hand-built md5c run as <a class="h" href="fixed.html#2680202fff">2680202fff</a>, including the <code>md5::md5 testdata</code> loop: no growth on 9.1/8.6
+</li>
+<li><span class="k">Cause</span> see <a class="h" href="fixed.html#2680202fff">2680202fff</a>
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (duplicate of <a class="h" href="fixed.html#2680202fff">2680202fff</a>)
+</li>
+<li><span class="k">Suggested ticket comment</span> Same leak as <a class="h" href="https://core.tcl-lang.org/tcllib/info/2680202fff">2680202fff</a>, fixed in <a class="h" href="https://core.tcl-lang.org/tcllib/info/2ba9a8f7a5">2ba9a8f7a5</a> before tcllib 1.12. No growth with the current md5c.
+</li></ul></div></details><details class="t" id="2787849fff" data-s="2787849fff Can comm use Iocpsock under Windows comm OUTDATED (Iocpsock is unmaintained, Tcl 8.5+ sockets on Windows are fine; since comm 4.6 the -socketcmd option lets users plug in any socket command) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2787849fff</span><span class="yr">2009</span><span class="ti">Can comm use Iocpsock under Windows</span><span class="vd">OUTDATED (Iocpsock is unmaintained, Tcl 8.5+ sockets on Windows are fine; since comm 4.6 the -socketcmd option lets users plug in any socket command)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2787849fff">Open ticket 2787849fff</a> · RFE · comm · filed 2009-05-06</p><div class="lab">Full verdict</div><p>OUTDATED (Iocpsock is unmaintained, Tcl 8.5+ sockets on Windows are fine; since comm 4.6 the -socketcmd option lets users plug in any socket command)</p><ul>
+<li><span class="k">Module</span> comm 4.7.3
+</li>
+<li><span class="k">Tested</span> code reading (comm.man -socketcmd)
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> Since comm 4.6 a custom socket command can be given with -socketcmd, so an alternative socket implementation can be used without changes to comm. Closing.
+</li></ul></div></details><details class="t" id="2499978fff" data-s="2499978fff Infinite bug on widget::scrolledwindow tklib WRONG-TRACKER (tklib. The same ticket is Open in tklib. The suggested patch has not been applied: `_set_scroll` still enters the auto branch when `sb(lock)` is set.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2499978fff</span><span class="yr">2009</span><span class="ti">Infinite bug on widget::scrolledwindow</span><span class="vd">WRONG-TRACKER (tklib. The same ticket is Open in tklib. The suggested patch has not been applied: <code>_set_scroll</code> still enters the auto branch when `…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2499978fff">Open ticket 2499978fff</a> · Bug · tklib · filed 2009-01-11</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib. The same ticket is Open in tklib. The suggested patch has not been applied: <code>_set_scroll</code> still enters the auto branch when <code>sb(lock)</code> is set.)</p><ul>
+<li><span class="k">Module</span> tklib widget::scrolledwindow 1.2.1
+</li>
+<li><span class="k">Tested</span> code review of tklib trunk modules/widget/scrollw.tcl:_set_scroll. Not reproduced: the reporter saw it only on Windows XP, and the trace shows a BWidget Tree inside the scrolledwindow.
+</li>
+<li><span class="k">Cause</span> _set_scroll calls <code>update idletasks</code> with lock=1. A nested call re-grids the scrollbar, recurses, and resets lock to 0 on the way out, so the outer lock is lost and the calls can recurse without end.
+</li>
+<li><span class="k">Prototype</span> none (tklib; NEEDS-WINDOWS to reproduce)
+</li>
+<li><span class="k">Suggested action</span> close here as Not Applicable Here. In tklib, consider the one-line guard <code>if {$sb(auto) &amp;&amp; !$sb(lock)}</code>.
+</li>
+<li><span class="k">Suggested ticket comment</span> This is tklib. The identical ticket is open in the tklib tracker, and the suggested guard is still not applied there.
+</li></ul></div></details><details class="t" id="2370853fff" data-s="2370853fff Wrong path added to auto_path None OUTDATED (about an old third-party starkit build and Tcl 8.5.2 tclkit. The sdarchive is defunct, and tcllib does not ship a .kit.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2370853fff</span><span class="yr">2008</span><span class="ti">Wrong path added to auto_path</span><span class="vd">OUTDATED (about an old third-party starkit build and Tcl 8.5.2 tclkit. The sdarchive is defunct, and tcllib does not ship a .kit.)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2370853fff">Open ticket 2370853fff</a> · Bug · None · filed 2008-12-01</p><div class="lab">Full verdict</div><p>OUTDATED (about an old third-party starkit build and Tcl 8.5.2 tclkit. The sdarchive is defunct, and tcllib does not ship a .kit.)</p><ul>
+<li><span class="k">Module</span> n/a (third-party tcllib.kit from equi4 sdarchive)
+</li>
+<li><span class="k">Tested</span> no kit packaging in the tcllib sources.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date.
+</li>
+<li><span class="k">Suggested ticket comment</span> This concerns the old sdarchive tcllib.kit, which tcllib itself does not produce. Closing as out of date.
+</li></ul></div></details><details class="t" id="2346118fff" data-s="2346118fff canvas::sqmap limitations tklib WRONG-TRACKER (tklib. The same ticket 2346118fff is Open in the tklib tracker. The limitation is still present: canvas_sqmap.tcl delegates all methods except raise/lower/scan/xview/yview to the hull unfiltered, so find/gettags/etc. expose the internal `canvas::sqmap::cells` image items and tag.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2346118fff</span><span class="yr">2008</span><span class="ti">canvas::sqmap limitations</span><span class="vd">WRONG-TRACKER (tklib. The same ticket <a class="h" href="#2346118fff">2346118fff</a> is Open in the tklib tracker. The limitation is still present: canvas_sqmap.tcl delegates all meth…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2346118fff">Open ticket 2346118fff</a> · Bug · tklib · filed 2008-11-25</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib. The same ticket <a class="h" href="#2346118fff">2346118fff</a> is Open in the tklib tracker. The limitation is still present: canvas_sqmap.tcl delegates all methods except raise/lower/scan/xview/yview to the hull unfiltered, so find/gettags/etc. expose the internal <code>canvas::sqmap::cells</code> image items and tag.)</p><ul>
+<li><span class="k">Module</span> tklib canvas::sqmap 0.3.1
+</li>
+<li><span class="k">Tested</span> code review of tklib trunk modules/canvas/canvas_sqmap.tcl
+</li>
+<li><span class="k">Cause</span> n/a (design TODO)
+</li>
+<li><span class="k">Prototype</span> none (tklib)
+</li>
+<li><span class="k">Suggested action</span> close here as Not Applicable Here. The tklib copy stays open.
+</li>
+<li><span class="k">Suggested ticket comment</span> This is tklib. The identical ticket is open in the tklib tracker, so closing the tcllib copy.
+</li></ul></div></details><details class="t" id="2168846fff" data-s="2168846fff tklib test suite for plotchart generates core tklib :: plotchart WRONG-TRACKER (tklib, same ticket Open there) / OUTDATED: plothist.test no longer exists. The core was a Tk panic (&quot;TkpGetFontFromAttributes: cannot get any font&quot;) on Solaris 8 displaying to Exceed, a font problem of that X server, not a plotchart bug. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2168846fff</span><span class="yr">2008</span><span class="ti">tklib test suite for plotchart generates core</span><span class="vd">WRONG-TRACKER (tklib, same ticket Open there) / OUTDATED: plothist.test no longer exists. The core was a Tk panic ("TkpGetFontFromAttributes: canno…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2168846fff">Open ticket 2168846fff</a> · Bug · tklib :: plotchart · filed 2008-10-15</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib, same ticket Open there) / OUTDATED: plothist.test no longer exists. The core was a Tk panic ("TkpGetFontFromAttributes: cannot get any font") on Solaris 8 displaying to Exceed, a font problem of that X server, not a plotchart bug.</p><ul>
+<li><span class="k">Module</span> tklib plotchart
+</li>
+<li><span class="k">Tested</span> tklib trunk plotchart.test (42/42) and plotcontour.test (2/2) pass on 9.1 and 8.6 under Xvfb
+</li>
+<li><span class="k">Cause</span> environment (X server without usable fonts)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close here as Not Applicable Here, and in tklib as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> plothist.test is gone and the plotchart tests pass. The core dump was a Tk font panic caused by that X server. Closing as out of date.
+</li></ul></div></details><details class="t" id="2059415fff" data-s="2059415fff ctext error when widget destroyed None WRONG-TRACKER (tklib; fixed there in 2008, ctext 3.2) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2059415fff</span><span class="yr">2008</span><span class="ti">ctext error when widget destroyed</span><span class="vd">WRONG-TRACKER (tklib; fixed there in 2008, ctext 3.2)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2059415fff">Open ticket 2059415fff</a> · Bug · None · filed 2008-08-19</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib; fixed there in 2008, ctext 3.2)</p><ul>
+<li><span class="k">Module</span> ctext (tklib) 3.3
+</li>
+<li><span class="k">Tested</span> on Xvfb :116 with wish 9.1 and 8.6, tklib trunk ctext.tcl. Created a ctext, inserted highlighted text, destroyed it, then <code>update</code>, 5 times: no background errors. ctext's destroy handler cancels commentsAfterId/highlightAfterId/blinkAfterId.
+</li>
+<li><span class="k">Cause</span> n/a (fixed)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (wrong tracker). The same ticket is also Open in the tklib tracker; close it there too.
+</li>
+<li><span class="k">Suggested ticket comment</span> Fixed in tklib's ctext 3.2 (2008): pending after-callbacks are cancelled on destroy. Not reproducible with current ctext.
+</li></ul></div></details><details class="t" id="2037560fff" data-s="2037560fff support keys with no = sign inifile DUPLICATE of 1811890fff " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2037560fff</span><span class="yr">2008</span><span class="ti">support keys with no = sign</span><span class="vd">DUPLICATE of <a class="h" href="rfe.html#1811890fff">1811890fff</a></span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2037560fff">Open ticket 2037560fff</a> · RFE · inifile · filed 2008-08-04</p><div class="lab">Full verdict</div><p>DUPLICATE of <a class="h" href="rfe.html#1811890fff">1811890fff</a></p><ul>
+<li><span class="k">Module</span> inifile 0.3.3
+</li>
+<li><span class="k">Tested</span> same as <a class="h" href="rfe.html#1811890fff">1811890fff</a> (bare <code>key</code> lines are dropped on trunk, 9.1/8.6)
+</li>
+<li><span class="k">Cause</span> ini.tcl:_loadfile ignores lines without <code>=</code>
+</li>
+<li><span class="k">Prototype</span> see prototypes/1811890fff.patch
+</li>
+<li><span class="k">Suggested action</span> close as Duplicate of <a class="h" href="rfe.html#1811890fff">1811890fff</a>
+</li>
+<li><span class="k">Suggested ticket comment</span> Same request as <a class="h" href="https://core.tcl-lang.org/tcllib/info/1811890fff">1811890fff</a>, which has a patch. Tracking it there.
+</li></ul></div></details><details class="t" id="1931567fff" data-s="1931567fff pregistry version problem A Category Is Missing OUTDATED (pregistry is only an internal sak package, consistently 0.1 in index and source. The 1.0 came from an unrelated package in ActiveState&#x27;s teapot repository, which is gone.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1931567fff</span><span class="yr">2008</span><span class="ti">pregistry version problem</span><span class="vd">OUTDATED (pregistry is only an internal sak package, consistently 0.1 in index and source. The 1.0 came from an unrelated package in ActiveState's …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1931567fff">Open ticket 1931567fff</a> · Bug · A Category Is Missing · filed 2008-04-01</p><div class="lab">Full verdict</div><p>OUTDATED (pregistry is only an internal sak package, consistently 0.1 in index and source. The 1.0 came from an unrelated package in ActiveState's teapot repository, which is gone.)</p><ul>
+<li><span class="k">Module</span> pregistry 0.1 (sak-internal, support/devel/sak/registry)
+</li>
+<li><span class="k">Tested</span> grep for pregistry: only support/devel/sak. pkgIndex and <code>package provide</code> both say 0.1. It is not installed as a tcllib package.
+</li>
+<li><span class="k">Cause</span> version clash in ActiveTcl teapot, not in tcllib
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of date
+</li>
+<li><span class="k">Suggested ticket comment</span> pregistry is an internal sak helper (0.1 in both index and code). The conflicting 1.0 came from ActiveState's teapot, which no longer exists. Closing.
+</li></ul></div></details><details class="t" id="1906274fff" data-s="1906274fff pop3 module doesn&#x27;t support pop3s pop3 SUPERSEDED (by -socketcmd, 1e4e56a154, 2009-04-13, pop3 1.7: `-socketcmd tls::socket` also defaults the port to 995) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1906274fff</span><span class="yr">2008</span><span class="ti">pop3 module doesn't support pop3s</span><span class="vd">SUPERSEDED (by -socketcmd, 1e4e56a154, 2009-04-13, pop3 1.7: <code>-socketcmd tls::socket</code> also defaults the port to 995)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1906274fff">Open ticket 1906274fff</a> · Bug · pop3 · filed 2008-03-03</p><div class="lab">Full verdict</div><p>SUPERSEDED (by -socketcmd, 1e4e56a154, 2009-04-13, pop3 1.7: <code>-socketcmd tls::socket</code> also defaults the port to 995)</p><ul>
+<li><span class="k">Module</span> pop3 1.11
+</li>
+<li><span class="k">Tested</span> code read. Leftovers from the attached patch: the "To many arguments" typo (pop3.tcl:284) is still there, and the -stls check reports "Argument to -tls has to be boolean" (pop3.tcl:270).
+</li>
+<li><span class="k">Prototype</span> none (only the two cosmetic message fixes remain)
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (by -socketcmd), optionally fixing the two error messages
+</li>
+<li><span class="k">Suggested ticket comment</span> pop3s is supported since pop3 1.7 via <code>-socketcmd tls::socket</code> (port 995 by default).
+</li></ul></div></details><details class="t" id="1890987fff" data-s="1890987fff Encoded chars in rss feeds app: tkchat OUTDATED (tkchat, not tcllib) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1890987fff</span><span class="yr">2008</span><span class="ti">Encoded chars in rss feeds</span><span class="vd">OUTDATED (tkchat, not tcllib)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1890987fff">Open ticket 1890987fff</a> · Patch · app: tkchat · filed 2008-02-11</p><div class="lab">Full verdict</div><p>OUTDATED (tkchat, not tcllib)</p><ul>
+<li><span class="k">Module</span> none (tkchat_rss.tcl, tclapps)
+</li>
+<li><span class="k">Tested</span> n/a
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of date
+</li>
+<li><span class="k">Suggested ticket comment</span> tkchat is not part of tcllib; closing as out of date.
+</li></ul></div></details><details class="t" id="1891251fff" data-s="1891251fff Support of long ylabels in horizontal bar charts tklib: plotchart WRONG-TRACKER (tklib; the copy there is Open). Already DONE in tklib: `::Plotchart::createHorizontalBarchart` measures every y label with `font measure` and sets `config($w,margin,left)` to the widest label + 5. This is the approach the patch proposed. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1891251fff</span><span class="yr">2008</span><span class="ti">Support of long ylabels in horizontal bar charts</span><span class="vd">WRONG-TRACKER (tklib; the copy there is Open). Already DONE in tklib: <code>::Plotchart::createHorizontalBarchart</code> measures every y label with `font mea…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1891251fff">Open ticket 1891251fff</a> · Patch · tklib: plotchart · filed 2008-02-11</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib; the copy there is Open). Already DONE in tklib: <code>::Plotchart::createHorizontalBarchart</code> measures every y label with <code>font measure</code> and sets <code>config($w,margin,left)</code> to the widest label + 5. This is the approach the patch proposed.</p><ul>
+<li><span class="k">Module</span> tklib plotchart (Plotchart 2.7.0)
+</li>
+<li><span class="k">Tested</span> read tklib trunk modules/plotchart/plotchart.tcl, lines 1917-1925.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (already implemented)
+</li>
+<li><span class="k">Suggested action</span> close here as Wrong tracker. Close the tklib copy as Fixed.
+</li>
+<li><span class="k">Suggested ticket comment</span> Implemented in tklib's Plotchart: the left margin of horizontal bar charts now follows the widest y label. Closing.
+</li></ul></div></details><details class="t" id="1813193fff" data-s="1813193fff ftp - FXP - cross server transfer not going through client ftp DUPLICATE of 892318ffff (open RFE &quot;ftp - site to site transfer support&quot;; aku already linked them in 2008) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1813193fff</span><span class="yr">2007</span><span class="ti">ftp - FXP - cross server transfer not going through client</span><span class="vd">DUPLICATE of <a class="h" href="rfe.html#892318ffff">892318ffff</a> (open RFE "ftp - site to site transfer support"; aku already linked them in 2008)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1813193fff">Open ticket 1813193fff</a> · RFE · ftp · filed 2007-10-14</p><div class="lab">Full verdict</div><p>DUPLICATE of <a class="h" href="rfe.html#892318ffff">892318ffff</a> (open RFE "ftp - site to site transfer support"; aku already linked them in 2008)</p><ul>
+<li><span class="k">Module</span> ftp 2.4.14
+</li>
+<li><span class="k">Tested</span> code check. There is no FXP/site-to-site support. ftp::Quote can send raw PASV/PORT, but the API has no way to start the transfer on two sessions together.
+</li>
+<li><span class="k">Cause</span> n/a (feature)
+</li>
+<li><span class="k">Prototype</span> none (RFE; FXP is also disabled on most servers because of FTP bounce)
+</li>
+<li><span class="k">Suggested action</span> close as Duplicate of 892318, keep that one as the single RFE
+</li>
+<li><span class="k">Suggested ticket comment</span> Same request as [892318], which stays open as the RFE; closing this one as a duplicate.
+</li></ul></div></details><details class="t" id="1779624fff" data-s="1779624fff Execute a command only when debug is active. log SUPERSEDED (by log::logsubst, ea802e332b, 2018-05-18, log 1.4, tcllib 1.20) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1779624fff</span><span class="yr">2007</span><span class="ti">Execute a command only when debug is active.</span><span class="vd">SUPERSEDED (by log::logsubst, ea802e332b, 2018-05-18, log 1.4, tcllib 1.20)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1779624fff">Open ticket 1779624fff</a> · RFE · log · filed 2007-08-22</p><div class="lab">Full verdict</div><p>SUPERSEDED (by log::logsubst, ea802e332b, 2018-05-18, log 1.4, tcllib 1.20)</p><ul>
+<li><span class="k">Module</span> log 1.5
+</li>
+<li><span class="k">Tested</span> code and docs. <code>log::logsubst debug {[info script]}</code> substitutes only when debug is not suppressed. <code>if {![log::lvIsSuppressed debug]} {...}</code> has always been possible too.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of date.
+</li>
+<li><span class="k">Suggested ticket comment</span> Use <code>log::logsubst debug {... [cmd] ...}</code> (log 1.4, tcllib 1.20): the substitution runs only when the level is active. <code>log::lvIsSuppressed</code> also works for arbitrary code.
+</li></ul></div></details><details class="t" id="1735135fff" data-s="1735135fff tcllib math::linearalgebra additions (matrix stuff) math SUPERSEDED (determinant via LU: `det`, added in [dfb98177e3], 2009-04-06, by Michael Baudin; matrix rank was never added) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1735135fff</span><span class="yr">2007</span><span class="ti">tcllib math::linearalgebra additions (matrix stuff)</span><span class="vd">SUPERSEDED (determinant via LU: <code>det</code>, added in <a class="h" href="https://core.tcl-lang.org/tcllib/info/dfb98177e3">dfb98177e3</a>, 2009-04-06, by Michael Baudin; matrix rank was never added)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1735135fff">Open ticket 1735135fff</a> · RFE · math · filed 2007-06-11</p><div class="lab">Full verdict</div><p>SUPERSEDED (determinant via LU: <code>det</code>, added in <a class="h" href="https://core.tcl-lang.org/tcllib/info/dfb98177e3">dfb98177e3</a>, 2009-04-06, by Michael Baudin; matrix rank was never added)</p><ul>
+<li><span class="k">Module</span> math, math::linearalgebra 1.1.7
+</li>
+<li><span class="k">Tested</span> code inspection. The submitted code was on a pastebin (rafb.net) and is gone.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date. Matrix rank can be computed from determineSVD.
+</li>
+<li><span class="k">Suggested ticket comment</span> det (LU based, as suggested here) is in linearalgebra since 2009. The original paste is no longer available. A rank command could be a new RFE.
+</li></ul></div></details><details class="t" id="1709566fff" data-s="1709566fff crash during ftp::Get ftp DUPLICATE of 548540ffff (same diagnosis and same one-line patch as the 2007 comment there) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1709566fff</span><span class="yr">2007</span><span class="ti">crash during ftp::Get</span><span class="vd">DUPLICATE of <a class="h" href="reproduced.html#548540ffff">548540ffff</a> (same diagnosis and same one-line patch as the 2007 comment there)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1709566fff">Open ticket 1709566fff</a> · Bug · ftp · filed 2007-04-29</p><div class="lab">Full verdict</div><p>DUPLICATE of <a class="h" href="reproduced.html#548540ffff">548540ffff</a> (same diagnosis and same one-line patch as the 2007 comment there)</p><ul>
+<li><span class="k">Module</span> ftp 2.4.14
+</li>
+<li><span class="k">Tested</span> reproduced the Start_Time error on Get timeout (9.1, 8.6), see 548540
+</li>
+<li><span class="k">Cause</span> <code>::ftp::Timeout</code> sets state.control to 1
+</li>
+<li><span class="k">Prototype</span> prototypes/548540ffff.patch (test ftp-timeout-1.1 covers this crash)
+</li>
+<li><span class="k">Suggested action</span> close as Duplicate of 548540
+</li>
+<li><span class="k">Suggested ticket comment</span> Same issue as [548540]; the patch there applies your change and adds a test for the Get crash.
+</li></ul></div></details><details class="t" id="1695129fff" data-s="1695129fff doctools - Add backend &#x27;Tk&#x27; doctools SUPERSEDED (tklib&#x27;s `shtmlview::doctools` package renders doctools documents in a Tk shtmlview widget, through HTML) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1695129fff</span><span class="yr">2007</span><span class="ti">doctools - Add backend 'Tk'</span><span class="vd">SUPERSEDED (tklib's <code>shtmlview::doctools</code> package renders doctools documents in a Tk shtmlview widget, through HTML)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1695129fff">Open ticket 1695129fff</a> · RFE · doctools · filed 2007-04-05</p><div class="lab">Full verdict</div><p>SUPERSEDED (tklib's <code>shtmlview::doctools</code> package renders doctools documents in a Tk shtmlview widget, through HTML)</p><ul>
+<li><span class="k">Module</span> doctools 1.6.1; tklib shtmlview::doctools
+</li>
+<li><span class="k">Tested</span> checked tklib trunk modules/shtmlview (shtmlview-doctools.man)
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date / Fixed (via tklib)
+</li>
+<li><span class="k">Suggested ticket comment</span> tklib's shtmlview::doctools package now displays doctools documents in a Tk widget, which covers this use case without a separate tagged-text backend.
+</li></ul></div></details><details class="t" id="1627892fff" data-s="1627892fff Networking: what about SSH ?? tcllib: request for new module DUPLICATE of 1627877fff (identical submission, already Closed) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1627892fff</span><span class="yr">2007</span><span class="ti">Networking: what about SSH ??</span><span class="vd">DUPLICATE of 1627877fff (identical submission, already Closed)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1627892fff">Open ticket 1627892fff</a> · RFE · tcllib: request for new module · filed 2007-01-04</p><div class="lab">Full verdict</div><p>DUPLICATE of 1627877fff (identical submission, already Closed)</p><ul>
+<li><span class="k">Module</span> none
+</li>
+<li><span class="k">Tested</span> ticket comparison
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Duplicate
+</li>
+<li><span class="k">Suggested ticket comment</span> Duplicate of <a class="h" href="https://core.tcl-lang.org/tcllib/info/1627877fff">1627877fff</a>.
+</li></ul></div></details><details class="t" id="1580085fff" data-s="1580085fff tklib - Dial meter items for canvas tklib: request for new module WRONG-TRACKER (tklib; the copy there is Open). Largely DONE in tklib: the controlwidget module provides meter, rdial, tachometer, voltmeter and vertical_meter widgets. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1580085fff</span><span class="yr">2006</span><span class="ti">tklib - Dial meter items for canvas</span><span class="vd">WRONG-TRACKER (tklib; the copy there is Open). Largely DONE in tklib: the controlwidget module provides meter, rdial, tachometer, voltmeter and ver…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1580085fff">Open ticket 1580085fff</a> · RFE · tklib: request for new module · filed 2006-10-18</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib; the copy there is Open). Largely DONE in tklib: the controlwidget module provides meter, rdial, tachometer, voltmeter and vertical_meter widgets.</p><ul>
+<li><span class="k">Module</span> tklib (request for a new module)
+</li>
+<li><span class="k">Tested</span> listed tklib trunk modules/controlwidget.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close here as Wrong tracker. In tklib, close as Fixed (covered by controlwidget) unless canvas *items* specifically are still wanted.
+</li>
+<li><span class="k">Suggested ticket comment</span> Belongs to tklib, where the controlwidget package now provides dial and meter widgets. Closing the tcllib copy.
+</li></ul></div></details><details class="t" id="1571751fff" data-s="1571751fff [OSX] Install paths for tcllib 1.9 Installer OUTDATED (old Apple system Tcl, tcllib 1.9. /System is read-only under SIP anyway. `configure &amp;&amp; make install` passes explicit paths.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1571751fff</span><span class="yr">2006</span><span class="ti">[OSX] Install paths for tcllib 1.9</span><span class="vd">OUTDATED (old Apple system Tcl, tcllib 1.9. /System is read-only under SIP anyway. <code>configure &amp;&amp; make install</code> passes explicit paths.)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1571751fff">Open ticket 1571751fff</a> · Bug · Installer · filed 2006-10-05</p><div class="lab">Full verdict</div><p>OUTDATED (old Apple system Tcl, tcllib 1.9. /System is read-only under SIP anyway. <code>configure &amp;&amp; make install</code> passes explicit paths.)</p><ul>
+<li><span class="k">Module</span> installer.tcl (default paths)
+</li>
+<li><span class="k">Tested</span> code read. installer.tcl still derives <code>bindir</code> from the first non-zipfs <code>auto_path</code> entry (<code>[file dirname $libdir]/bin</code>). With Apple's /System Tcl this would still give /System/Library/bin. Homebrew/MacPorts Tcl gives sensible paths.
+</li>
+<li><span class="k">Cause</span> installer.tcl ~line 296-310 heuristic
+</li>
+<li><span class="k">Prototype</span> none (cannot test macOS)
+</li>
+<li><span class="k">Suggested action</span> close as Out of date
+</li>
+<li><span class="k">Suggested ticket comment</span> Apple's system Tcl is deprecated and /System is read-only nowadays. Use <code>./configure --prefix=... &amp;&amp; make install</code> or the installer's -app-path option.
+</li>
+<li><span class="k">Side note</span> installer.tcl has leftover debug output (<code>puts "$::auto_path"</code>, <code>puts $path</code>, <code>puts "libdir is $libdir"</code>) in that same block.
+</li></ul></div></details><details class="t" id="1475562fff" data-s="1475562fff improved handling of incorrect calls tklib: plotchart WRONG-TRACKER (tklib). The same ticket 1475562fff also exists in tklib&#x27;s tracker and is Open there. It is too vague to act on. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1475562fff</span><span class="yr">2006</span><span class="ti">improved handling of incorrect calls</span><span class="vd">WRONG-TRACKER (tklib). The same ticket <a class="h" href="#1475562fff">1475562fff</a> also exists in tklib's tracker and is Open there. It is too vague to act on.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1475562fff">Open ticket 1475562fff</a> · RFE · tklib: plotchart · filed 2006-04-24</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib). The same ticket <a class="h" href="#1475562fff">1475562fff</a> also exists in tklib's tracker and is Open there. It is too vague to act on.</p><ul>
+<li><span class="k">Module</span> tklib plotchart (Plotchart 2.7.0 in tklib trunk)
+</li>
+<li><span class="k">Tested</span> none (no concrete case is given).
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (no concrete bug)
+</li>
+<li><span class="k">Suggested action</span> close here as Wrong tracker. In tklib, close as Outdated unless someone gives a concrete case.
+</li>
+<li><span class="k">Suggested ticket comment</span> Plotchart is part of tklib, and the same ticket is open in tklib's tracker. Closing the tcllib copy.
+</li></ul></div></details><details class="t" id="1475567fff" data-s="1475567fff interaction with elements of the plots tklib: plotchart WRONG-TRACKER (tklib; the copy there is Open). The request is DONE in tklib: Plotchart now has `$plot bindplot` and `$plot bindlast`, and the docs say to use canvas tags on the elements for other bindings (plotchart.man, section &quot;Interaction&quot;). " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1475567fff</span><span class="yr">2006</span><span class="ti">interaction with elements of the plots</span><span class="vd">WRONG-TRACKER (tklib; the copy there is Open). The request is DONE in tklib: Plotchart now has <code>$plot bindplot</code> and <code>$plot bindlast</code>, and the docs …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1475567fff">Open ticket 1475567fff</a> · RFE · tklib: plotchart · filed 2006-04-24</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib; the copy there is Open). The request is DONE in tklib: Plotchart now has <code>$plot bindplot</code> and <code>$plot bindlast</code>, and the docs say to use canvas tags on the elements for other bindings (plotchart.man, section "Interaction").</p><ul>
+<li><span class="k">Module</span> tklib plotchart (Plotchart 2.7.0)
+</li>
+<li><span class="k">Tested</span> read tklib trunk plotchart.man and plotchart.tcl.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close here as Wrong tracker. Close the tklib copy as Fixed.
+</li>
+<li><span class="k">Suggested ticket comment</span> Plotchart lives in tklib. It now supports interaction through <code>bindplot</code>/<code>bindlast</code> and canvas tags on plot elements. Closing.
+</li></ul></div></details><details class="t" id="1427220fff" data-s="1427220fff TraceLog: Debugging helper None SUPERSEDED (by the logger trace facility, logger 0.7, SF patch 1530725, 2006-08-18, tcllib 1.9) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1427220fff</span><span class="yr">2006</span><span class="ti">TraceLog: Debugging helper</span><span class="vd">SUPERSEDED (by the logger trace facility, logger 0.7, SF patch 1530725, 2006-08-18, tcllib 1.9)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1427220fff">Open ticket 1427220fff</a> · RFE · None · filed 2006-02-08</p><div class="lab">Full verdict</div><p>SUPERSEDED (by the logger trace facility, logger 0.7, SF patch 1530725, 2006-08-18, tcllib 1.9)</p><ul>
+<li><span class="k">Module</span> n/a (proposed new package; the attachment is not in the repo)
+</li>
+<li><span class="k">Tested</span> logger.man documents <code>${log}::trace</code> (proc entry/leave tracing). The 2008 comment already noted the overlap.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date / Rejected.
+</li>
+<li><span class="k">Suggested ticket comment</span> The logger package provides proc-level tracing (<code>${log}::trace</code>) since tcllib 1.9, which covers this.
+</li></ul></div></details><details class="t" id="1409177fff" data-s="1409177fff more secure alternative to [tempfile] fileutil SUPERSEDED (by Tcl 8.6 `file tempfile`, TIP 210, as dgp noted in 2009. fileutil::tempfile already creates the file with `{RDWR CREAT EXCL}` and mode 0600.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1409177fff</span><span class="yr">2006</span><span class="ti">more secure alternative to [tempfile]</span><span class="vd">SUPERSEDED (by Tcl 8.6 <code>file tempfile</code>, TIP 210, as dgp noted in 2009. fileutil::tempfile already creates the file with <code>{RDWR CREAT EXCL}</code> and mod…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1409177fff">Open ticket 1409177fff</a> · RFE · fileutil · filed 2006-01-18</p><div class="lab">Full verdict</div><p>SUPERSEDED (by Tcl 8.6 <code>file tempfile</code>, TIP 210, as dgp noted in 2009. fileutil::tempfile already creates the file with <code>{RDWR CREAT EXCL}</code> and mode 0600.)</p><ul>
+<li><span class="k">Module</span> fileutil 1.16.4
+</li>
+<li><span class="k">Tested</span> read TempFile on trunk
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Superseded
+</li>
+<li><span class="k">Suggested ticket comment</span> Tcl 8.6's [file tempfile] creates and opens the file atomically. fileutil::tempfile keeps its name-returning API (with O_EXCL, 0600) for compatibility.
+</li></ul></div></details><details class="t" id="1376903fff" data-s="1376903fff tkchat - aqua mods - set app name + unhide on alert app: tkchat OUTDATED (tkchat app/Tclers chat infrastructure; Ffidl-based Aqua hack from 2005; the starkit link on mini.net is dead). All other ~90 tkchat tickets in this tracker are closed. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1376903fff</span><span class="yr">2005</span><span class="ti">tkchat - aqua mods - set app name + unhide on alert</span><span class="vd">OUTDATED (tkchat app/Tclers chat infrastructure; Ffidl-based Aqua hack from 2005; the starkit link on mini.net is dead). All other ~90 tkchat ticke…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1376903fff">Open ticket 1376903fff</a> · Patch · app: tkchat · filed 2005-12-09</p><div class="lab">Full verdict</div><p>OUTDATED (tkchat app/Tclers chat infrastructure; Ffidl-based Aqua hack from 2005; the starkit link on mini.net is dead). All other ~90 tkchat tickets in this tracker are closed.</p><ul>
+<li><span class="k">Module</span> none (tkchat was never in the tcllib repository; it lived in tclapps)
+</li>
+<li><span class="k">Tested</span> tcllib repo history: no tkchat files ever
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of date
+</li>
+<li><span class="k">Suggested ticket comment</span> tkchat is not part of tcllib (it was in tclapps), and this 2005 Ffidl/Aqua patch is obsolete. Closing.
+</li></ul></div></details><details class="t" id="1346299fff" data-s="1346299fff ctext module dir contains obsolete files tklib :: ctext WRONG-TRACKER (tklib. Same ticket Open there. installer.tcl is gone, but modules/ctext still contains the standalone install.tcl (&quot;Run this with the wish…&quot;), test.c, long_test_script and ad-hoc ctext_test*.tcl scripts.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1346299fff</span><span class="yr">2005</span><span class="ti">ctext module dir contains obsolete files</span><span class="vd">WRONG-TRACKER (tklib. Same ticket Open there. installer.tcl is gone, but modules/ctext still contains the standalone install.tcl ("Run this with th…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1346299fff">Open ticket 1346299fff</a> · Bug · tklib :: ctext · filed 2005-11-02</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib. Same ticket Open there. installer.tcl is gone, but modules/ctext still contains the standalone install.tcl ("Run this with the wish…"), test.c, long_test_script and ad-hoc ctext_test*.tcl scripts.)</p><ul>
+<li><span class="k">Module</span> tklib ctext 3.3
+</li>
+<li><span class="k">Tested</span> <code>fossil ls</code> of tklib trunk modules/ctext
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (tklib)
+</li>
+<li><span class="k">Suggested action</span> close here as Not Applicable Here. In tklib, remove install.tcl (and maybe move the test scripts).
+</li>
+<li><span class="k">Suggested ticket comment</span> This is tklib. The identical ticket is open there, and install.tcl is still present in tklib's modules/ctext.
+</li></ul></div></details><details class="t" id="1346295fff" data-s="1346295fff plotchart files in release have wrong unix permissions tklib :: plotchart WRONG-TRACKER (tklib. Same ticket Open there. Still true: in a tklib trunk checkout every plotchart file, including plotchart.man, NEWS, pkgIndex.tcl and *.test, has the executable bit, as do 176 files repo-wide.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1346295fff</span><span class="yr">2005</span><span class="ti">plotchart files in release have wrong unix permissions</span><span class="vd">WRONG-TRACKER (tklib. Same ticket Open there. Still true: in a tklib trunk checkout every plotchart file, including plotchart.man, NEWS, pkgIndex.t…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1346295fff">Open ticket 1346295fff</a> · Bug · tklib :: plotchart · filed 2005-11-02</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib. Same ticket Open there. Still true: in a tklib trunk checkout every plotchart file, including plotchart.man, NEWS, pkgIndex.tcl and *.test, has the executable bit, as do 176 files repo-wide.)</p><ul>
+<li><span class="k">Module</span> tklib plotchart
+</li>
+<li><span class="k">Tested</span> fresh tklib trunk checkout, <code>find -perm -u+x</code>
+</li>
+<li><span class="k">Cause</span> the exec bit is recorded in the fossil manifest
+</li>
+<li><span class="k">Prototype</span> none (tklib)
+</li>
+<li><span class="k">Suggested action</span> close here as Not Applicable Here. In tklib, a <code>fossil commit</code> that clears the x bit on non-scripts would fix it.
+</li>
+<li><span class="k">Suggested ticket comment</span> This is tklib. The identical ticket is open there, and the plotchart files still carry the x bit in tklib trunk.
+</li></ul></div></details><details class="t" id="1167772fff" data-s="1167772fff code/block expansion tklib: ctext WRONG-TRACKER (tklib. Same ticket Open there. The bug described in the mail still exists: ctext removes all tags except _cComment from the affected range on insert/delete, so user tags vanish. The attached modified code, which prefixes ctext&#x27;s own tags with __ctext, was never applied.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1167772fff</span><span class="yr">2005</span><span class="ti">code/block expansion</span><span class="vd">WRONG-TRACKER (tklib. Same ticket Open there. The bug described in the mail still exists: ctext removes all tags except _cComment from the affected…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1167772fff">Open ticket 1167772fff</a> · Patch · tklib: ctext · filed 2005-03-21</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib. Same ticket Open there. The bug described in the mail still exists: ctext removes all tags except _cComment from the affected range on insert/delete, so user tags vanish. The attached modified code, which prefixes ctext's own tags with __ctext, was never applied.)</p><ul>
+<li><span class="k">Module</span> tklib ctext 3.3
+</li>
+<li><span class="k">Tested</span> tklib trunk ctext under Xvfb, wish 9.1 and 8.6. After <code>insert end "abc def" mytag</code>, inserting or deleting one character in that line removes <code>mytag</code> completely.
+</li>
+<li><span class="k">Cause</span> ctext.tcl instance insert/delete (lines ~375, 400, 461): <code>foreach tag [tag names] {if not _cComment: tag remove}</code>
+</li>
+<li><span class="k">Prototype</span> none (tklib)
+</li>
+<li><span class="k">Suggested action</span> close here as Not Applicable Here. In tklib, keep open as a real bug (remove only ctext's highlight tags).
+</li>
+<li><span class="k">Suggested ticket comment</span> This is tklib. The identical ticket is open there. ctext 3.3 still strips user tags on insert/delete.
+</li></ul></div></details><details class="t" id="1167797fff" data-s="1167797fff 8.5 speed improvement via -all tklib: ctext WRONG-TRACKER (tklib, same ticket Open there). The 2005 patch (highlight85 with `search -all`, linemap rewrite, tile frame, personal tweaks) was never applied, and against ctext 3.3 it is obsolete: ctext has a different linemap now (smooth scrolling patch 3285751 accepted), and the author already warned that it mixes in personal changes. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1167797fff</span><span class="yr">2005</span><span class="ti">8.5 speed improvement via -all</span><span class="vd">WRONG-TRACKER (tklib, same ticket Open there). The 2005 patch (highlight85 with <code>search -all</code>, linemap rewrite, tile frame, personal tweaks) was ne…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1167797fff">Open ticket 1167797fff</a> · Patch · tklib: ctext · filed 2005-03-21</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib, same ticket Open there). The 2005 patch (highlight85 with <code>search -all</code>, linemap rewrite, tile frame, personal tweaks) was never applied, and against ctext 3.3 it is obsolete: ctext has a different linemap now (smooth scrolling patch 3285751 accepted), and the author already warned that it mixes in personal changes.</p><ul>
+<li><span class="k">Module</span> tklib ctext 3.3
+</li>
+<li><span class="k">Tested</span> grepped tklib ctext.tcl for <code>-all</code> searches and the patch's procs. Not present.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (tklib)
+</li>
+<li><span class="k">Suggested action</span> close here as Not Applicable Here, and in tklib as Out of Date. Only the <code>search -all</code> idea might be worth redoing.
+</li>
+<li><span class="k">Suggested ticket comment</span> This is tklib. The patch targets ctext 3.1, mixes in personal tweaks, and no longer applies to ctext 3.3. Closing as out of date.
+</li></ul></div></details><details class="t" id="1161942fff" data-s="1161942fff Adds most EXIF-2.2 tags to exif.tcl exif OUTDATED (the exif module was deprecated and excluded from installation in favour of `jpeg` in 7cdc13439b, 2009-02-06; support/installation/modules.tcl `Exclude exif`. The patch was never applied. jpeg::formatExif has vendor MakerNote handling for Canon/Nikon/Fuji/Olympus.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1161942fff</span><span class="yr">2005</span><span class="ti">Adds most EXIF-2.2 tags to exif.tcl</span><span class="vd">OUTDATED (the exif module was deprecated and excluded from installation in favour of <code>jpeg</code> in 7cdc13439b, 2009-02-06; support/installation/modules…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1161942fff">Open ticket 1161942fff</a> · Patch · exif · filed 2005-03-12</p><div class="lab">Full verdict</div><p>OUTDATED (the exif module was deprecated and excluded from installation in favour of <code>jpeg</code> in 7cdc13439b, 2009-02-06; support/installation/modules.tcl <code>Exclude exif</code>. The patch was never applied. jpeg::formatExif has vendor MakerNote handling for Canon/Nikon/Fuji/Olympus.)</p><ul>
+<li><span class="k">Module</span> exif 1.1.4
+</li>
+<li><span class="k">Tested</span> compared the attached unidiff with trunk exif.tcl (vendor makerNote dispatch, UserComment, 0xA408.. tags absent)
+</li>
+<li><span class="k">Prototype</span> none (deprecated module, 344-line patch without test images)
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> The exif package is deprecated (not installed since 2009); use the jpeg package, which handles EXIF 2.2 tags and several vendor maker notes.
+</li></ul></div></details><details class="t" id="1114498fff" data-s="1114498fff Change &#x27;find&#x27; API to allow an error handler fileutil SUPERSEDED (by fileutil::traverse `-errorcmd`, called for inaccessible directories; the callbacks were fixed in 39120747d3, 2015-04-22) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1114498fff</span><span class="yr">2005</span><span class="ti">Change 'find' API to allow an error handler</span><span class="vd">SUPERSEDED (by fileutil::traverse <code>-errorcmd</code>, called for inaccessible directories; the callbacks were fixed in 39120747d3, 2015-04-22)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1114498fff">Open ticket 1114498fff</a> · RFE · fileutil · filed 2005-02-02</p><div class="lab">Full verdict</div><p>SUPERSEDED (by fileutil::traverse <code>-errorcmd</code>, called for inaccessible directories; the callbacks were fixed in 39120747d3, 2015-04-22)</p><ul>
+<li><span class="k">Module</span> fileutil 1.16.4, fileutil::traverse 0.7
+</li>
+<li><span class="k">Tested</span> read traverse.tcl/traverse.man on trunk
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed/Superseded
+</li>
+<li><span class="k">Suggested ticket comment</span> Use fileutil::traverse with -errorcmd (and -filter/-prefilter). It provides the requested error handler. fileutil::find stays as it is.
+</li></ul></div></details><details class="t" id="971076ffff" data-s="971076ffff snitbutton widget tklib: request for new module WRONG-TRACKER (tklib; the copy there is Open). Also OUTDATED: the use case was the wikit Tk GUI on MacOS 9 without Itcl. Itcl now ships with Tcl, and ttk buttons cover the need. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>971076ffff</span><span class="yr">2004</span><span class="ti">snitbutton widget</span><span class="vd">WRONG-TRACKER (tklib; the copy there is Open). Also OUTDATED: the use case was the wikit Tk GUI on MacOS 9 without Itcl. Itcl now ships with Tcl, a…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/971076ffff">Open ticket 971076ffff</a> · RFE · tklib: request for new module · filed 2004-06-11</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib; the copy there is Open). Also OUTDATED: the use case was the wikit Tk GUI on MacOS 9 without Itcl. Itcl now ships with Tcl, and ttk buttons cover the need.</p><ul>
+<li><span class="k">Module</span> tklib (request for a new module)
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close here as Wrong tracker. Close in tklib as Outdated.
+</li>
+<li><span class="k">Suggested ticket comment</span> This request belongs to tklib, and its use case (wikit on MacOS 9 without Itcl) no longer exists. Closing.
+</li></ul></div></details><details class="t" id="932516ffff" data-s="932516ffff html - many procedures not compatible with prodebug html OUTDATED (about the TclPro debugger, an obsolete tool; renaming the commands would break the API) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>932516ffff</span><span class="yr">2004</span><span class="ti">html - many procedures not compatible with prodebug</span><span class="vd">OUTDATED (about the TclPro debugger, an obsolete tool; renaming the commands would break the API)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/932516ffff">Open ticket 932516ffff</a> · Bug · html · filed 2004-04-09</p><div class="lab">Full verdict</div><p>OUTDATED (about the TclPro debugger, an obsolete tool; renaming the commands would break the API)</p><ul>
+<li><span class="k">Module</span> html 1.6
+</li>
+<li><span class="k">Tested</span> html.tcl still defines html::foreach/for/while/if/set/eval.
+</li>
+<li><span class="k">Cause</span> the prodebug instrumenter mistakes these commands for the core control commands. aku (2019) said renaming would be a major API change, for a 2.x version.
+</li>
+<li><span class="k">Prototype</span> none (API change)
+</li>
+<li><span class="k">Suggested action</span> close as Won't Fix / Outdated (or keep as an RFE for an html 2.0)
+</li>
+<li><span class="k">Suggested ticket comment</span> The TclPro debugger is no longer maintained, and renaming these public commands would break existing users. Closing; a renamed API can be done in an html 2.x if anyone wants it.
+</li></ul></div></details><details class="t" id="861801ffff" data-s="861801ffff Add a new option parser routine tailored for functions cmdline SUPERSEDED (by tepam; getKnownOptions already leaves unknown options in the list) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>861801ffff</span><span class="yr">2003</span><span class="ti">Add a new option parser routine tailored for functions</span><span class="vd">SUPERSEDED (by tepam; getKnownOptions already leaves unknown options in the list)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/861801ffff">Open ticket 861801ffff</a> · RFE · cmdline · filed 2003-12-17</p><div class="lab">Full verdict</div><p>SUPERSEDED (by tepam; getKnownOptions already leaves unknown options in the list)</p><ul>
+<li><span class="k">Module</span> cmdline 1.5.3
+</li>
+<li><span class="k">Tested</span> attached getFunctionOptions compared with the current code
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> Procedure argument parsing is covered by tepam, and getKnownOptions for the lenient case. Closing.
+</li></ul></div></details><details class="t" id="828717ffff" data-s="828717ffff Enhancing the profiler profiler OUTDATED (2003 patch series against profiler 0.2.1, with Tcl 8.3 alias-mode code; never applied) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>828717ffff</span><span class="yr">2003</span><span class="ti">Enhancing the profiler</span><span class="vd">OUTDATED (2003 patch series against profiler 0.2.1, with Tcl 8.3 alias-mode code; never applied)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/828717ffff">Open ticket 828717ffff</a> · Patch · profiler · filed 2003-10-23</p><div class="lab">Full verdict</div><p>OUTDATED (2003 patch series against profiler 0.2.1, with Tcl 8.3 alias-mode code; never applied)</p><ul>
+<li><span class="k">Module</span> profiler 0.7
+</li>
+<li><span class="k">Tested</span> compared with current profiler.tcl. None of the proposed API (<code>profiler::add/remove pattern</code>, <code>watchForNewProcs</code>, canonical names via <code>namespace origin</code>, call-level lists) exists. The 8.3 <code>Handler</code> path it builds on is legacy now that Tcl 8.5+ is required.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (large API redesign, out of scope)
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date. Anyone who still wants individual features (add/remove by pattern, profiling builtins) can file them as separate RFEs.
+</li>
+<li><span class="k">Suggested ticket comment</span> This 2003 patch series targets profiler 0.2.1 and Tcl 8.3/8.4 and was never finished. Closing as outdated; please open focused RFEs for features you still want against the current profiler.
+</li></ul></div></details><details class="t" id="777061ffff" data-s="777061ffff add images to widget::balloonhelp  None WRONG-TRACKER (tklib; widget::balloonhelp no longer exists there. The equivalent tklib `tooltip` package supports `-image` since tklib ticket 2970577fff, Closed.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>777061ffff</span><span class="yr">2003</span><span class="ti">add images to widget::balloonhelp</span><span class="vd">WRONG-TRACKER (tklib; widget::balloonhelp no longer exists there. The equivalent tklib <code>tooltip</code> package supports <code>-image</code> since tklib ticket 29705…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/777061ffff">Open ticket 777061ffff</a> · Patch · None · filed 2003-07-24</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib; widget::balloonhelp no longer exists there. The equivalent tklib <code>tooltip</code> package supports <code>-image</code> since tklib ticket 2970577fff, Closed.)</p><ul>
+<li><span class="k">Module</span> none. widget::balloonhelp is not in tcllib or tklib history.
+</li>
+<li><span class="k">Tested</span> no balloonhelp file or check-in in either repo. tklib trunk modules/tooltip/tooltip.tcl accepts <code>-image</code>. The same ticket <a class="h" href="#777061ffff">777061ffff</a> is also Open in the tklib tracker.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date here, and close the tklib copy too.
+</li>
+<li><span class="k">Suggested ticket comment</span> widget::balloonhelp is not part of tcllib (and no longer of tklib). tklib's tooltip package provides image support (-image).
+</li></ul></div></details><details class="t" id="724822ffff" data-s="724822ffff graph - simply increased functionality in walk struct :: graph DUPLICATE of 724730ffff (same wiki page 8787 use case: multiple visits per node in walk) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>724822ffff</span><span class="yr">2003</span><span class="ti">graph - simply increased functionality in walk</span><span class="vd">DUPLICATE of <a class="h" href="rfe.html#724730ffff">724730ffff</a> (same wiki page 8787 use case: multiple visits per node in walk)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/724822ffff">Open ticket 724822ffff</a> · RFE · struct :: graph · filed 2003-04-21</p><div class="lab">Full verdict</div><p>DUPLICATE of <a class="h" href="rfe.html#724730ffff">724730ffff</a> (same wiki page 8787 use case: multiple visits per node in walk)</p><ul>
+<li><span class="k">Module</span> struct::graph 2.4.4
+</li>
+<li><span class="k">Tested</span> code inspection. The suggested hack (letting the callback unset <code>visited</code>) doesn't work with the C implementation.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Duplicate of <a class="h" href="rfe.html#724730ffff">724730ffff</a>
+</li>
+<li><span class="k">Suggested ticket comment</span> Same request as <a class="h" href="https://core.tcl-lang.org/tcllib/info/724730ffff">724730ffff</a> (multi-visit walk). Closing as duplicate.
+</li></ul></div></details><details class="t" id="720933ffff" data-s="720933ffff testsuite makes incorrect assumptions about walk order struct :: graph OUTDATED (the walk tests still expect one exact order, but each implementation has its own expected order via `tmE` (Tcl vs critcl), so tcllib&#x27;s own C implementation is covered. cgraph, the third-party implementation that motivated the ticket, is defunct.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>720933ffff</span><span class="yr">2003</span><span class="ti">testsuite makes incorrect assumptions about walk order</span><span class="vd">OUTDATED (the walk tests still expect one exact order, but each implementation has its own expected order via <code>tmE</code> (Tcl vs critcl), so tcllib's ow…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/720933ffff">Open ticket 720933ffff</a> · Bug · struct :: graph · filed 2003-04-14</p><div class="lab">Full verdict</div><p>OUTDATED (the walk tests still expect one exact order, but each implementation has its own expected order via <code>tmE</code> (Tcl vs critcl), so tcllib's own C implementation is covered. cgraph, the third-party implementation that motivated the ticket, is defunct.)</p><ul>
+<li><span class="k">Module</span> struct::graph 2.4.4 (graph/tests/walk.test)
+</li>
+<li><span class="k">Tested</span> code inspection of walk.test 3.x / 4.x
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (rewriting all walk expectations as "any valid order" is possible but not needed for tcllib itself)
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> The walk tests now take implementation-specific orders (tmE) for tcllib's Tcl and C graphs, and cgraph is gone. Closing.
+</li></ul></div></details><details class="t" id="714947ffff" data-s="714947ffff widget: digraph.tcl needs TIP 44 update widget OUTDATED (file never existed in the tcllib fossil repo; tklib&#x27;s widget module has no digraph.tcl) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>714947ffff</span><span class="yr">2003</span><span class="ti">widget: digraph.tcl needs TIP 44 update</span><span class="vd">OUTDATED (file never existed in the tcllib fossil repo; tklib's widget module has no digraph.tcl)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/714947ffff">Open ticket 714947ffff</a> · Bug · widget · filed 2003-04-03</p><div class="lab">Full verdict</div><p>OUTDATED (file never existed in the tcllib fossil repo; tklib's widget module has no digraph.tcl)</p><ul>
+<li><span class="k">Module</span> none (digraph.tcl was in a separate SourceForge CVS "widget" repository)
+</li>
+<li><span class="k">Tested</span> searched the tcllib and tklib fossil filename tables and trunk listings for digraph; no match.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Outdated
+</li>
+<li><span class="k">Suggested ticket comment</span> digraph.tcl was part of the old SourceForge "widget" CVS module and is not in tcllib or tklib. Closing as outdated.
+</li></ul></div></details><details class="t" id="693059ffff" data-s="693059ffff logger 0.1 depends on Tcl 8.2 log OUTDATED (Tcl 8.2-era packaging issue) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>693059ffff</span><span class="yr">2003</span><span class="ti">logger 0.1 depends on Tcl 8.2</span><span class="vd">OUTDATED (Tcl 8.2-era packaging issue)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/693059ffff">Open ticket 693059ffff</a> · Bug · log · filed 2003-02-25</p><div class="lab">Full verdict</div><p>OUTDATED (Tcl 8.2-era packaging issue)</p><ul>
+<li><span class="k">Module</span> logger 0.9.5, log 1.5
+</li>
+<li><span class="k">Tested</span> modules/log/pkgIndex.tcl now starts with <code>if {![package vsatisfies [package provide Tcl] 8.5 9]} {return}</code>, and logger.tcl has <code>package require Tcl 8.5 9</code>.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of date.
+</li>
+<li><span class="k">Suggested ticket comment</span> All log-module packages now require Tcl 8.5+, and the shared index checks for that first, so this no longer applies.
+</li></ul></div></details><details class="t" id="681734ffff" data-s="681734ffff tkchat - logging data change apps : tkchat OUTDATED (tkchat). The storage part was done in 2006 (~/.tkchat_msgs, mbox format); the viewer was never added. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>681734ffff</span><span class="yr">2003</span><span class="ti">tkchat - logging data change</span><span class="vd">OUTDATED (tkchat). The storage part was done in 2006 (~/.tkchat_msgs, mbox format); the viewer was never added.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/681734ffff">Open ticket 681734ffff</a> · RFE · apps : tkchat · filed 2003-02-06</p><div class="lab">Full verdict</div><p>OUTDATED (tkchat). The storage part was done in 2006 (~/.tkchat_msgs, mbox format); the viewer was never added.</p><ul>
+<li><span class="k">Module</span> none (tkchat, tclapps)
+</li>
+<li><span class="k">Tested</span> n/a
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of date
+</li>
+<li><span class="k">Suggested ticket comment</span> Memos have been stored in ~/.tkchat_msgs since 2006, and tkchat is not part of tcllib. Closing.
+</li></ul></div></details><details class="t" id="663394ffff" data-s="663394ffff Update all.tcl None OUTDATED (about Tcl 8.2/8.3-era compatibility. Tcllib now requires Tcl 8.5+ and tcltest 2, and the harness was reworked into sak/support/devel/all.tcl.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>663394ffff</span><span class="yr">2003</span><span class="ti">Update all.tcl</span><span class="vd">OUTDATED (about Tcl 8.2/8.3-era compatibility. Tcllib now requires Tcl 8.5+ and tcltest 2, and the harness was reworked into sak/support/devel/all.…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/663394ffff">Open ticket 663394ffff</a> · RFE · None · filed 2003-01-06</p><div class="lab">Full verdict</div><p>OUTDATED (about Tcl 8.2/8.3-era compatibility. Tcllib now requires Tcl 8.5+ and tcltest 2, and the harness was reworked into sak/support/devel/all.tcl.)</p><ul>
+<li><span class="k">Module</span> test harness (the top-level all.tcl is gone; it is now support/devel/all.tcl, driven by sak.tcl)
+</li>
+<li><span class="k">Tested</span> no top-level all.tcl in trunk. testsNeedTcltest/testutilities handle the version checks.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date.
+</li>
+<li><span class="k">Suggested ticket comment</span> The old all.tcl was replaced by sak.tcl + support/devel/all.tcl, and tcllib now requires Tcl 8.5 and tcltest 2, so this no longer applies.
+</li></ul></div></details><details class="t" id="601964ffff" data-s="601964ffff cmdline::parseargs cmdline SUPERSEDED (by tepam, tcllib&#x27;s procedure argument parser; plus getoptions/getKnownOptions work on `args`) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>601964ffff</span><span class="yr">2002</span><span class="ti">cmdline::parseargs</span><span class="vd">SUPERSEDED (by tepam, tcllib's procedure argument parser; plus getoptions/getKnownOptions work on <code>args</code>)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/601964ffff">Open ticket 601964ffff</a> · Patch · cmdline · filed 2002-08-29</p><div class="lab">Full verdict</div><p>SUPERSEDED (by tepam, tcllib's procedure argument parser; plus getoptions/getKnownOptions work on <code>args</code>)</p><ul>
+<li><span class="k">Module</span> cmdline 1.5.3
+</li>
+<li><span class="k">Tested</span> code reading. The proc was never added, and aku's 2003 questions were never answered.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> Never answered since 2003. tepam now covers declarative proc/argument parsing. Closing.
+</li></ul></div></details><details class="t" id="577678ffff" data-s="577678ffff Add the package tkmisc to tklib tcllib: request for new module WRONG-TRACKER (tklib. The same ticket is also Open in the tklib tracker. tklib has no splash or fullscreen package, and the fullscreen part is covered by Tk 8.5+ `wm attributes -fullscreen`.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>577678ffff</span><span class="yr">2002</span><span class="ti">Add the package tkmisc to tklib</span><span class="vd">WRONG-TRACKER (tklib. The same ticket is also Open in the tklib tracker. tklib has no splash or fullscreen package, and the fullscreen part is cove…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/577678ffff">Open ticket 577678ffff</a> · RFE · tcllib: request for new module · filed 2002-07-05</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (tklib. The same ticket is also Open in the tklib tracker. tklib has no splash or fullscreen package, and the fullscreen part is covered by Tk 8.5+ <code>wm attributes -fullscreen</code>.)</p><ul>
+<li><span class="k">Module</span> none (tklib request)
+</li>
+<li><span class="k">Tested</span> tklib trunk file list (no splash/fullscreen module); tklib ticket <a class="h" href="#577678ffff">577678ffff</a> Open, related 1041229fff "A new splash screen widget?" Closed.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close in tcllib as Not Applicable Here; decide in tklib
+</li>
+<li><span class="k">Suggested ticket comment</span> This is a tklib request and is tracked by the same ticket in the tklib tracker. Closing the Tcllib copy.
+</li></ul></div></details><details class="t" id="554233ffff" data-s="554233ffff Browser for images apps : request for new app OUTDATED (2002 request for a BWidget demo app; targets wish8.3; wrong project) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>554233ffff</span><span class="yr">2002</span><span class="ti">Browser for images</span><span class="vd">OUTDATED (2002 request for a BWidget demo app; targets wish8.3; wrong project)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/554233ffff">Open ticket 554233ffff</a> · RFE · apps : request for new app · filed 2002-05-09</p><div class="lab">Full verdict</div><p>OUTDATED (2002 request for a BWidget demo app; targets wish8.3; wrong project)</p><ul>
+<li><span class="k">Module</span> none (BWidget images directory; BWidget is a separate project, not in tcllib or tklib)
+</li>
+<li><span class="k">Tested</span> n/a
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of date / Wont fix
+</li>
+<li><span class="k">Suggested ticket comment</span> This is about BWidget, which is a separate project. Closing.
+</li></ul></div></details><details class="t" id="548233ffff" data-s="548233ffff more hpupdate bug reports ftp OUTDATED (example-app UI complaints from 2002; the reporter never answered the 2004 question about which parts concern the ftp package) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>548233ffff</span><span class="yr">2002</span><span class="ti">more hpupdate bug reports</span><span class="vd">OUTDATED (example-app UI complaints from 2002; the reporter never answered the 2004 question about which parts concern the ftp package)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/548233ffff">Open ticket 548233ffff</a> · Bug · ftp · filed 2002-04-24</p><div class="lab">Full verdict</div><p>OUTDATED (example-app UI complaints from 2002; the reporter never answered the 2004 question about which parts concern the ftp package)</p><ul>
+<li><span class="k">Module</span> examples/ftp/hpupdate.tcl (example app, not the ftp package)
+</li>
+<li><span class="k">Tested</span> code read only. <code>Disconnect</code> now resets the File menu entries (<code>entryconfigure 0/1</code>), so that part looks addressed. The selection reset on Connect and the upload cd behaviour are app design, with no ftp-package bug identified.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> These are UI issues in the hpupdate example, not in the ftp package. The menu state is now reset by Disconnect, and the question from 2004 was never answered, so I'm closing this.
+</li></ul></div></details><details class="t" id="526094ffff" data-s="526094ffff Unix console command tcllib: request for new module WRONG-TRACKER (Tk/tklib. The same SF ticket in the tklib tracker was closed &quot;Not Applicable Here&quot;, and Tk 480944ffff &quot;Add console support to Tk / Unix&quot; is Closed/Duplicate. Unix wish 8.6/9.1 still has no `console` command, though console.tcl is shipped.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>526094ffff</span><span class="yr">2002</span><span class="ti">Unix console command</span><span class="vd">WRONG-TRACKER (Tk/tklib. The same SF ticket in the tklib tracker was closed "Not Applicable Here", and Tk 480944ffff "Add console support to Tk / U…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/526094ffff">Open ticket 526094ffff</a> · RFE · tcllib: request for new module · filed 2002-03-05</p><div class="lab">Full verdict</div><p>WRONG-TRACKER (Tk/tklib. The same SF ticket in the tklib tracker was closed "Not Applicable Here", and Tk 480944ffff "Add console support to Tk / Unix" is Closed/Duplicate. Unix wish 8.6/9.1 still has no <code>console</code> command, though console.tcl is shipped.)</p><ul>
+<li><span class="k">Module</span> none (Tk feature)
+</li>
+<li><span class="k">Tested</span> wish9.1 and wish8.6 on Xvfb: <code>info commands console</code> is empty, and <code>$tk_library/console.tcl</code> exists.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Not Applicable Here
+</li>
+<li><span class="k">Suggested ticket comment</span> This is a Tk feature, not a Tcllib one. The tklib copy of this ticket was closed as Not Applicable Here. Use tkcon, or raise it in the Tk tracker.
+</li></ul></div></details><details class="t" id="516468ffff" data-s="516468ffff Allow lists as arguments to statistics math SUPERSEDED (Tcl 8.5 `{*}` and `tcl::mathfunc::max/min`; math::statistics::max/min/mean take a list) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>516468ffff</span><span class="yr">2002</span><span class="ti">Allow lists as arguments to statistics</span><span class="vd">SUPERSEDED (Tcl 8.5 <code>{*}</code> and <code>tcl::mathfunc::max/min</code>; math::statistics::max/min/mean take a list)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/516468ffff">Open ticket 516468ffff</a> · RFE · math · filed 2002-02-12</p><div class="lab">Full verdict</div><p>SUPERSEDED (Tcl 8.5 <code>{*}</code> and <code>tcl::mathfunc::max/min</code>; math::statistics::max/min/mean take a list)</p><ul>
+<li><span class="k">Module</span> math, math 1.2.x misc.tcl / math::statistics 1.6.1
+</li>
+<li><span class="k">Tested</span> <code>math::statistics::max {1 5 3}</code> gives 5.0, and <code>expr {max(1,5,3)}</code> gives 5 (9.1).
+</li>
+<li><span class="k">Prototype</span> none (RFE)
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date / Superseded
+</li>
+<li><span class="k">Suggested ticket comment</span> math::statistics::min/max/mean take lists, and since Tcl 8.5 <code>math::max {*}$list</code> or <code>tcl::mathfunc::max</code> avoid eval.
+</li></ul></div></details><details class="t" id="514494ffff" data-s="514494ffff Information about uri schemes uri OUTDATED (an open-ended pointer to a list of schemes, not a concrete request) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>514494ffff</span><span class="yr">2002</span><span class="ti">Information about uri schemes</span><span class="vd">OUTDATED (an open-ended pointer to a list of schemes, not a concrete request)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/514494ffff">Open ticket 514494ffff</a> · RFE · uri · filed 2002-02-07</p><div class="lab">Full verdict</div><p>OUTDATED (an open-ended pointer to a list of schemes, not a concrete request)</p><ul>
+<li><span class="k">Module</span> uri 1.2.8
+</li>
+<li><span class="k">Tested</span> none
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Outdated
+</li>
+<li><span class="k">Suggested ticket comment</span> This is only a pointer to the scheme registry. uri supports the common schemes, and other packages can register more (dns does). Specific schemes can be requested in new tickets.
+</li></ul></div></details><details class="t" id="511700ffff" data-s="511700ffff Chat window enhancement? apps : tkchat OUTDATED (tkchat). The request was in fact implemented there: split/history pane in tkchat rev 1.341 (2006, per treincke) and `/?text` search. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>511700ffff</span><span class="yr">2002</span><span class="ti">Chat window enhancement?</span><span class="vd">OUTDATED (tkchat). The request was in fact implemented there: split/history pane in tkchat rev 1.341 (2006, per treincke) and <code>/?text</code> search.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/511700ffff">Open ticket 511700ffff</a> · RFE · apps : tkchat · filed 2002-02-01</p><div class="lab">Full verdict</div><p>OUTDATED (tkchat). The request was in fact implemented there: split/history pane in tkchat rev 1.341 (2006, per treincke) and <code>/?text</code> search.</p><ul>
+<li><span class="k">Module</span> none (tkchat, tclapps)
+</li>
+<li><span class="k">Tested</span> n/a
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of date
+</li>
+<li><span class="k">Suggested ticket comment</span> Both parts were implemented in tkchat: a history pane and /? search. tkchat is not part of tcllib anyway. Closing.
+</li></ul></div></details><details class="t" id="483623ffff" data-s="483623ffff Use cmdline where applicable struct :: graph SUPERSEDED (struct::graph 2.x rewrite: `arcs`/`nodes` argument parsing is now a shared helper (CheckE in graph_tcl.tcl), and there is a parallel critcl C implementation (graph/methods.c), where cmdline is not applicable) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>483623ffff</span><span class="yr">2001</span><span class="ti">Use cmdline where applicable</span><span class="vd">SUPERSEDED (struct::graph 2.x rewrite: <code>arcs</code>/<code>nodes</code> argument parsing is now a shared helper (CheckE in graph_tcl.tcl), and there is a parallel cr…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/483623ffff">Open ticket 483623ffff</a> · Bug · struct :: graph · filed 2001-11-19</p><div class="lab">Full verdict</div><p>SUPERSEDED (struct::graph 2.x rewrite: <code>arcs</code>/<code>nodes</code> argument parsing is now a shared helper (CheckE in graph_tcl.tcl), and there is a parallel critcl C implementation (graph/methods.c), where cmdline is not applicable)</p><ul>
+<li><span class="k">Module</span> struct::graph 2.4.4
+</li>
+<li><span class="k">Tested</span> code inspection (graph_tcl.tcl <code>_arcs</code>, <code>_nodes</code>)
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> Argument handling was refactored in graph 2.x (shared CheckE helper, plus a C implementation). cmdline would add nothing now. Closing.
+</li></ul></div></details><details class="t" id="481019ffff" data-s="481019ffff comm registry mechanism comm SUPERSEDED (by the nns nano-nameserver modules: nameserv, nameserv::server, nameserv::auto, as noted by aku in 2008) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>481019ffff</span><span class="yr">2001</span><span class="ti">comm registry mechanism</span><span class="vd">SUPERSEDED (by the nns nano-nameserver modules: nameserv, nameserv::server, nameserv::auto, as noted by aku in 2008)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/481019ffff">Open ticket 481019ffff</a> · RFE · comm · filed 2001-11-12</p><div class="lab">Full verdict</div><p>SUPERSEDED (by the nns nano-nameserver modules: nameserv, nameserv::server, nameserv::auto, as noted by aku in 2008)</p><ul>
+<li><span class="k">Module</span> comm 4.7.3; nns (nameserv, nameserv::auto) on trunk
+</li>
+<li><span class="k">Tested</span> code reading only (modules/nns: nns.tcl, server.tcl, nns_auto.tcl)
+</li>
+<li><span class="k">Cause</span> n/a (RFE)
+</li>
+<li><span class="k">Prototype</span> none (RFE)
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date / Implemented (by nns)
+</li>
+<li><span class="k">Suggested ticket comment</span> The nns modules (nameserv client/server, nameserv::auto) provide a name server for comm ids. Closing; a fully transparent Tk-send-like registry can be filed anew if still wanted.
+</li></ul></div></details><details class="t" id="478818ffff" data-s="478818ffff date/time/calendar module for tcllib tcllib: request for new module SUPERSEDED (by the Tcl 8.5 clock rewrite (`clock add`, full format/scan), tcllib&#x27;s clock::iso8601/clock::rfc2822, and the calendar module) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>478818ffff</span><span class="yr">2001</span><span class="ti">date/time/calendar module for tcllib</span><span class="vd">SUPERSEDED (by the Tcl 8.5 clock rewrite (<code>clock add</code>, full format/scan), tcllib's clock::iso8601/clock::rfc2822, and the calendar module)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/478818ffff">Open ticket 478818ffff</a> · RFE · tcllib: request for new module · filed 2001-11-06</p><div class="lab">Full verdict</div><p>SUPERSEDED (by the Tcl 8.5 clock rewrite (<code>clock add</code>, full format/scan), tcllib's clock::iso8601/clock::rfc2822, and the calendar module)</p><ul>
+<li><span class="k">Module</span> calendar 0.4 (in the tree but excluded from installation), clock::iso8601, clock::rfc2822
+</li>
+<li><span class="k">Tested</span> code review. modules/calendar exists but is <code>Exclude</code>d in support/installation/modules.tcl, as the 2003 comment says.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> The Tcl 8.5 clock command and Tcllib's clock::iso8601 and clock::rfc2822 now cover most of this. The calendar module was created but its maintainers excluded it from distribution. Closing.
+</li></ul></div></details><details class="t" id="454718ffff" data-s="454718ffff Semephore control SUPERSEDED (by Tcl 8.6 coroutines / coroutine::util await; callbacks can set variables waited on with await; Thread has real semaphores for threads) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>454718ffff</span><span class="yr">2001</span><span class="ti">Semephore</span><span class="vd">SUPERSEDED (by Tcl 8.6 coroutines / coroutine::util await; callbacks can set variables waited on with await; Thread has real semaphores for threads)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/454718ffff">Open ticket 454718ffff</a> · RFE · control · filed 2001-08-23</p><div class="lab">Full verdict</div><p>SUPERSEDED (by Tcl 8.6 coroutines / coroutine::util await; callbacks can set variables waited on with await; Thread has real semaphores for threads)</p><ul>
+<li><span class="k">Module</span> control 0.1.4
+</li>
+<li><span class="k">Tested</span> code reading
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> Waiting for any of several callbacks is now done with coroutines (coroutine::util await). Closing.
+</li></ul></div></details><details class="t" id="449521ffff" data-s="449521ffff Add waitForAny to control module control SUPERSEDED (by coroutines in Tcl 8.6 and `coroutine::util await`, which waits for a write to any of several variables) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>449521ffff</span><span class="yr">2001</span><span class="ti">Add waitForAny to control module</span><span class="vd">SUPERSEDED (by coroutines in Tcl 8.6 and <code>coroutine::util await</code>, which waits for a write to any of several variables)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/449521ffff">Open ticket 449521ffff</a> · RFE · control · filed 2001-08-09</p><div class="lab">Full verdict</div><p>SUPERSEDED (by coroutines in Tcl 8.6 and <code>coroutine::util await</code>, which waits for a write to any of several variables)</p><ul>
+<li><span class="k">Module</span> control 0.1.4; coroutine 1.4
+</li>
+<li><span class="k">Tested</span> code reading (coroutine.tcl ::coroutine::util::await)
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> Tcl 8.6 coroutines cover this; tcllib's coroutine::util await waits for any of several variables. Closing.
+</li></ul></div></details><details class="t" id="429388ffff" data-s="429388ffff execCmd procedure: improved exec (UNIX) control OUTDATED (depends on TclX `pipe`; Tcl 8.6 has `chan pipe`, `open |` and `exec` improvements; dup 429384 was closed in 2001) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>429388ffff</span><span class="yr">2001</span><span class="ti">execCmd procedure: improved exec (UNIX)</span><span class="vd">OUTDATED (depends on TclX <code>pipe</code>; Tcl 8.6 has <code>chan pipe</code>, <code>open |</code> and <code>exec</code> improvements; dup 429384 was closed in 2001)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/429388ffff">Open ticket 429388ffff</a> · Patch · control · filed 2001-06-01</p><div class="lab">Full verdict</div><p>OUTDATED (depends on TclX <code>pipe</code>; Tcl 8.6 has <code>chan pipe</code>, <code>open |</code> and <code>exec</code> improvements; dup 429384 was closed in 2001)</p><ul>
+<li><span class="k">Module</span> control 0.1.4
+</li>
+<li><span class="k">Tested</span> attachment description and hobbs' comment
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Out of Date
+</li>
+<li><span class="k">Suggested ticket comment</span> The patch depends on TclX, and Tcl 8.6 provides chan pipe for this. Closing as out of date.
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

@@ -1,0 +1,49 @@
+Index: modules/yaml/yaml.tcl
+==================================================================
+--- modules/yaml/yaml.tcl
++++ modules/yaml/yaml.tcl
+@@ -561,12 +561,12 @@
+         if {$line eq ""} {
+             regsub " " $sep "" sep
+             append sep "\n"
+             continue
+         }
+-        if {$c eq "#"} {
+-            # skip comments
++        if {$c eq "#" && $indent < $first} {
++            # skip comments, lines at content indentation are content
+             continue
+         }
+         if {$indent <= $base} {
+             set stop 1
+             break
+
+Index: modules/yaml/yaml.test
+==================================================================
+--- modules/yaml/yaml.test
++++ modules/yaml/yaml.test
+@@ -775,10 +775,23 @@
+ test yaml-21.2 "explicit_tags float" -body {
+     set y {!!float 123=0}
+     yaml::yaml2dict $y
+ } -returnCodes error -result {expected floating-point number but got "123=0"}
+ 
++
++test yaml-39.1 "lines starting with # in literal block scalar, ticket 3052576fff" -body {
++    yaml::yaml2dict "a: |\n  # not a comment\n  line\n  # also not\n  end\n # comment\nb: 1\n"
++} -result {a {# not a comment
++line
++# also not
++end
++} b 1}
++
++test yaml-39.2 "lines starting with # in folded block scalar, ticket 3052576fff" -body {
++    yaml::yaml2dict "a: >\n  x\n  #y\n  z\n# c\nb: 1\n"
++} -result {a {x #y z
++} b 1}
+ 
+ # ... Tests of addStrings ...
+ #     (Requires introspection of parser state)
+ 
+ 
+

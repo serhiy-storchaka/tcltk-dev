@@ -1,0 +1,157 @@
+Index: modules/mime/smtp.tcl
+==================================================================
+--- modules/mime/smtp.tcl
++++ modules/mime/smtp.tcl
+@@ -272,11 +272,11 @@
+ 
+         set addrs [::mime::parseaddress $originator]
+         if {[llength $addrs] > 1} {
+             error "too many mailboxes in $who: $originator"
+         }
+-        array set aprops {error "invalid address \"$from\""}
++        array set aprops [list error "invalid address \"$originator\""]
+         array set aprops [lindex $addrs 0]
+         if {$aprops(error) != ""} {
+             error "error in $who: $aprops(error)"
+         }
+ 
+@@ -291,11 +291,11 @@
+         if {[lsearch -exact $lowerL $senderL] < 0 && \
+                 [string compare $originator $from]} {
+             if {[info exists aprops]} {
+                 unset aprops
+             }
+-            array set aprops {error "invalid address \"$from\""}
++            array set aprops [list error "invalid address \"$from\""]
+             array set aprops [lindex [::mime::parseaddress $from] 0]
+             if {$aprops(error) != ""} {
+                 error "error in $fromM: $aprops(error)"
+             }
+             if {[string compare $aprops(address) $sender]} {
+
+ADDED    modules/mime/smtp.test
+Index: modules/mime/smtp.test
+==================================================================
+--- /dev/null
++++ modules/mime/smtp.test
+@@ -0,0 +1,119 @@
++# smtp.test - Tests for the smtp client package                 -*- tcl -*-
++#
++# The tests talk to a scripted fake SMTP server running on the local
++# host in the same interpreter.
++#
++# -------------------------------------------------------------------------
++# See the file "license.terms" for information on usage and redistribution
++# of this file, and for a DISCLAIMER OF ALL WARRANTIES.
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 2.0
++
++support {
++    use md5/md5x.tcl md5
++    useLocal mime.tcl mime
++}
++testing {
++    useLocal smtp.tcl smtp
++}
++
++# -------------------------------------------------------------------------
++# Fake SMTP server.  [fakeserver ?datareplies?] starts a server and returns
++# its port.  The replies to the ends of the DATA sections can be configured,
++# they are used in order, the last one is repeated.  The conversation is
++# recorded in ::fake(log).
++
++proc fakeserver {{datareplies {{250 ok}}}} {
++    set ::fake(log) {}
++    set ::fake(datareplies) $datareplies
++    set ::fake(server) [socket -server fakeaccept -myaddr 127.0.0.1 0]
++    return [lindex [fconfigure $::fake(server) -sockname] 2]
++}
++
++proc fakestop {} {
++    catch {close $::fake(server)}
++}
++
++proc fakeaccept {sock addr port} {
++    fconfigure $sock -translation crlf -buffering line -blocking 0
++    set ::fake(data,$sock) 0
++    fileevent $sock readable [list fakeread $sock]
++    puts $sock "220 fake ESMTP"
++}
++
++proc fakeread {sock} {
++    # The client may close the connection without waiting for replies.
++    if {[catch {fakereply $sock}]} {
++        catch {close $sock}
++    }
++}
++
++proc fakereply {sock} {
++    if {[gets $sock line] < 0} {
++        if {[eof $sock]} {close $sock}
++        return
++    }
++    lappend ::fake(log) $line
++    if {$::fake(data,$sock)} {
++        if {$line eq "."} {
++            set ::fake(data,$sock) 0
++            puts $sock [lindex $::fake(datareplies) 0]
++            if {[llength $::fake(datareplies)] > 1} {
++                set ::fake(datareplies) [lrange $::fake(datareplies) 1 end]
++            }
++        }
++        return
++    }
++    switch -glob -- [string toupper $line] {
++        EHLO* {puts $sock "250 fake"}
++        DATA  {puts $sock "354 go ahead"; set ::fake(data,$sock) 1}
++        QUIT  {puts $sock "221 bye"; close $sock}
++        default {puts $sock "250 ok"}
++    }
++}
++
++# Returns the port of a local TCP port nobody listens on.
++proc closedport {} {
++    set s [socket -server {} -myaddr 127.0.0.1 0]
++    set port [lindex [fconfigure $s -sockname] 2]
++    close $s
++    return $port
++}
++
++# -------------------------------------------------------------------------
++# Tests
++# -------------------------------------------------------------------------
++
++test smtp-1.1 {no originator at all, ticket 1193023fff} -setup {
++    set user $::tcl_platform(user)
++    set ::tcl_platform(user) ""
++    set tok [mime::initialize -canonical text/plain -string hello]
++} -body {
++    smtp::sendmessage $tok -recipients a@example.com \
++        -servers 127.0.0.1 -ports [closedport]
++} -cleanup {
++    set ::tcl_platform(user) $user
++    mime::finalize $tok
++    unset user tok
++} -returnCodes error -result {error in -originator: invalid address ""}
++
++test smtp-1.2 {empty From header, ticket 1193023fff} -setup {
++    set tok [mime::initialize -canonical text/plain -string hello]
++} -body {
++    smtp::sendmessage $tok -recipients a@example.com -header {From ""} \
++        -servers 127.0.0.1 -ports [closedport]
++} -cleanup {
++    mime::finalize $tok
++    unset tok
++} -returnCodes error -result {error in From: invalid address ""}
++
++# -------------------------------------------------------------------------
++
++testsuiteCleanup
++return
+

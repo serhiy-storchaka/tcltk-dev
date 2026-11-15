@@ -1,0 +1,82 @@
+Index: modules/struct/stack.testsuite
+==================================================================
+--- modules/struct/stack.testsuite
++++ modules/struct/stack.testsuite
+@@ -12,10 +12,11 @@
+ 
+ # -------------------------------------------------------------------------
+ 
+ ::tcltest::testConstraint stack_critcl [string equal $impl critcl]
+ ::tcltest::testConstraint stack_oo     [expr {![catch {package present TclOO}] && [string equal $impl tcl]}]
++::tcltest::testConstraint stack_tcl    [expr {[catch {package present TclOO}] && [string equal $impl tcl]}]
+ 
+ #----------------------------------------------------------------------
+ 
+ test stack-${impl}-0.1.0 {stack errors} !stack_oo {
+     stack mystack
+@@ -91,10 +92,22 @@
+     set cmd [info commands ::$foo]
+     set size [$foo size]
+     $foo destroy
+     string match [list ::oo::Obj* ::oo::Obj* 0] [list $foo $cmd $size]
+ } 1
++
++test stack-${impl}-1.3 {stack creation, generated name skips existing commands, ticket 1005377fff} stack_tcl {
++    set foo [stack]
++    $foo destroy
++    regexp {^::stack([0-9]+)$} $foo -> n
++    set clash ::stack[incr n]
++    proc $clash {} {}
++    set code [catch {stack} bar]
++    if {!$code} {$bar destroy}
++    rename $clash {}
++    list $code [string equal $bar $clash]
++} {0 0}
+ 
+ #----------------------------------------------------------------------
+ 
+ test stack-${impl}-2.1 {stack destroy} {
+     stack mystack
+
+Index: modules/struct/stack_tcl.tcl
+==================================================================
+--- modules/struct/stack_tcl.tcl
++++ modules/struct/stack_tcl.tcl
+@@ -30,15 +30,17 @@
+ 
+ proc ::struct::stack::stack_tcl {args} {
+     variable I::stacks
+     variable counter
+     
++    set auto 0
+     switch -exact -- [llength [info level 0]] {
+ 	1 {
+ 	    # Missing name, generate one.
+ 	    incr counter
+ 	    set name "stack${counter}"
++	    set auto 1
+ 	}
+ 	2 {
+ 	    # Standard call. New empty stack.
+ 	    set name [lindex $args 0]
+ 	}
+@@ -56,10 +58,18 @@
+         if {"::" != $ns} {
+             append ns "::"
+         }
+ 
+         set name "$ns$name"
++
++	if {$auto} {
++	    # Skip generated names which clash with existing commands.
++	    while {[llength [info commands $name]]} {
++		incr counter
++		set name "${ns}stack${counter}"
++	    }
++	}
+     }
+     if {[llength [info commands $name]]} {
+ 	return -code error \
+ 		"command \"$name\" already exists, unable to create stack"
+     }
+

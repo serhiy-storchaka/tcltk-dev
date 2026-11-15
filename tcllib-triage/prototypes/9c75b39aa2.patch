@@ -1,0 +1,19 @@
+Index: modules/generator/generator.man
+==================================================================
+--- modules/generator/generator.man
++++ modules/generator/generator.man
+@@ -230,12 +230,11 @@
+ 
+ The following commands are provided as a standard library of generator
+ combinators and functions that perform convenience operations on generators. The
+ functions in this section are loosely modelled on the equivalent functions from
+ the Haskell Prelude. [emph Warning:] most of the functions in this prelude
+-destroy any generator arguments they are passed as a side-effect. If you want to
+-have persistent generators, see the streams library.
++destroy any generator arguments they are passed as a side-effect.
+ 
+ [list_begin definitions]
+ 
+ [call [cmd generator] [method map] [arg function] [arg generator]]
+ 
+

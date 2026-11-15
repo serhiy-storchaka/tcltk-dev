@@ -1,0 +1,55 @@
+Index: modules/yaml/yaml.tcl
+==================================================================
+--- modules/yaml/yaml.tcl
++++ modules/yaml/yaml.tcl
+@@ -616,11 +616,11 @@
+ # [162]    ns-plain-multi(n,c)
+ proc ::yaml::_parsePlainScalarInBlock {base {loop 0}} {
+     if {$loop == 5} { return }
+     variable data
+     set start $data(start)
+-    set reStr {(?:[^:#\t \n]*(?::[^\t \n]+)*(?:#[^\t \n]+)* *)*[^:#\t \n]*}
++    set reStr {(?:[^:#\t \n]*(?::+[^:\t \n]+)*(?:#[^:\t \n]+)* *)*[^:#\t \n]*}
+     set result [_getFoldedString $reStr]
+ 
+     set result [string trim $result]
+     set c [_getc 0]
+     if {$c eq "\n" || $c eq "#"} { ; # multi-line
+@@ -934,11 +934,11 @@
+ 
+ 
+ # [155]     nb-plain-char-in
+ proc ::yaml::_parsePlainScalarInFlow {} {
+     set sep {\t \n,\[\]\{\}}
+-    set reStr {(?:[^$sep:#]*(?::[^$sep]+)*(?:#[^$sep]+)* *)*[^$sep:#]*}
++    set reStr {(?:[^$sep:#]*(?::+[^$sep:]+)*(?:#[^$sep:]+)* *)*[^$sep:#]*}
+     set reStr [subst -nobackslashes -nocommands $reStr]
+     set result [_getFoldedString $reStr]
+     set result [string trim $result]
+ 
+     if {[_getc 0] eq "#"} {
+
+Index: modules/yaml/yaml.test
+==================================================================
+--- modules/yaml/yaml.test
++++ modules/yaml/yaml.test
+@@ -775,10 +775,18 @@
+ test yaml-21.2 "explicit_tags float" -body {
+     set y {!!float 123=0}
+     yaml::yaml2dict $y
+ } -returnCodes error -result {expected floating-point number but got "123=0"}
+ 
++
++test yaml-38.1 "mapping key containing colons, ticket 9a503797fa" -body {
++    yaml::yaml2dict "pre:\n  a: VSS\n  message:PHYS-279: .severity Error\nhttp://x: 1\n"
++} -result {pre {a VSS message:PHYS-279 {.severity Error}} http://x 1}
++
++test yaml-38.2 "flow mapping key containing colons, ticket 9a503797fa" -body {
++    yaml::yaml2dict "x: {a:b: c, d: e:f}\n"
++} -result {x {a:b c d e:f}}
+ 
+ # ... Tests of addStrings ...
+ #     (Requires introspection of parser state)
+ 
+ 
+

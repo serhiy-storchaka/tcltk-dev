@@ -1,0 +1,196 @@
+Index: modules/ftp/ftp.tcl
+==================================================================
+--- modules/ftp/ftp.tcl
++++ modules/ftp/ftp.tcl
+@@ -970,14 +970,14 @@
+             switch -exact -- $rc {
+                 1 {
+                     set ftp(State) reget_close
+                 }
+                 default {
+-                    if { [string equal $ftp(Mode) "passive"] } {
+-                        # close already opened DataConnection
+-                        catch {unset ftp(state.data)}
+-                    }  
++                    # close already opened DataConnection (passive
++                    # mode, or active mode with a server connecting
++                    # right after PORT)
++                    catch {unset ftp(state.data)}
+                     set errmsg "Error retrieving file \"$ftp(RemoteFilename)\"!"
+                     set complete_with 0
+ 		    Command $ftp(Command) error $errmsg
+                 }
+             }
+@@ -1044,14 +1044,14 @@
+             switch -exact -- $rc {
+                 1 {
+                     set ftp(State) get_close
+                 }
+                 default {
+-                    if { [string equal $ftp(Mode) "passive"] } {
+-                        # close already opened DataConnection
+-                        catch {unset ftp(state.data)}
+-                    }  
++                    # close already opened DataConnection (passive
++                    # mode, or active mode with a server connecting
++                    # right after PORT)
++                    catch {unset ftp(state.data)}
+                     set errmsg "Error retrieving file \"$ftp(RemoteFilename)\"!"
+                     set complete_with 0
+ 		    Command $ftp(Command) error $errmsg
+                 }
+             }
+@@ -2129,14 +2129,10 @@
+ 	# state does not contain local file information, so an error
+ 	# is thrown. Removing the catch here seems to fix it without
+ 	# adverse effects elsewhere. Maybe. We hope.
+         return 1
+     } else {
+-        if {$ftp(inline)} {
+-	    catch {unset ftp(get:channel)}
+-            return ""
+-	}
+         CloseDataConn $s
+ 	catch {unset ftp(get:channel)}
+         return 0
+     }
+ }
+@@ -2875,10 +2871,11 @@
+     # If the new channel is accepted, the dummy channel will be closed
+ 
+     catch {close $ftp(DummySock); unset ftp(DummySock)}
+ 
+     set ftp(state.data) 0
++    set ftp(DataSock) $sock
+ 
+     # Configure translation and blocking modes
+ 
+     set blocking 1
+     if {[string length $ftp(Command)]} {
+
+--- /dev/null
++++ modules/ftp/ftp.test
+@@ -0,0 +1,123 @@
++# -*- tcl -*-
++# ftp.test:  tests for the ftp client.
++#
++# The tests run the client against a local ftpd (tcllib) server
++# started in a child process, listening on 127.0.0.1 only.
++#
++# Sourcing this file into Tcl runs the tests and generates output for
++# errors.  No output means no errors were found.
++
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 2.0
++
++support {
++    use log/log.tcl log
++}
++testing {
++    useLocal ftp.tcl ftp
++}
++
++# -------------------------------------------------------------------------
++## Server. A tcllib ftpd running in a child process. Accepts every
++## login and grants access to all files, except those whose names
++## contain "denied". The document root is a
++## temporary directory.
++
++set rootDir [makeDirectory ftproot]
++set serverScript [makeFile {
++    lassign $argv modules docroot
++    lappend auto_path $modules
++    namespace eval ::ftpd {variable contact test@localhost}
++    package require ftpd
++    set ::ftpd::port 0
++    ::ftpd::fsFile::docRoot $docroot
++    ::ftpd::config -logCmd {apply {{s t} {}}} \
++	-authUsrCmd  {apply {{u p} {return 1}}} \
++	-authFileCmd {apply {{u p o} {expr {![string match *denied* $p]}}}}
++    ::ftpd::server 127.0.0.1
++    puts $::ftpd::port
++    flush stdout
++    fileevent stdin readable exit
++    vwait forever
++} ftpserver.tcl]
++
++set server [open |[list [info nameofexecutable] $serverScript \
++	[file dirname [localDirectory]] $rootDir] r+]
++gets $server serverPort
++
++proc open_session {mode} {
++    ftp::Open 127.0.0.1 user pass -port $::serverPort -mode $mode -timeout 5
++}
++proc rootfile {name} {
++    file join $::rootDir $name
++}
++proc readroot {name} {
++    set f [open [rootfile $name] rb]
++    set data [read $f]
++    close $f
++    return $data
++}
++proc writeroot {name data} {
++    set f [open [rootfile $name] wb]
++    puts -nonewline $f $data
++    close $f
++}
++
++# Keep the error messages of the package out of the test output.
++log::lvSuppress error
++
++# -------------------------------------------------------------------------
++
++foreach mode {passive active} {
++    test ftp-1.0-$mode {Get -variable} -setup {
++	writeroot get.txt hello
++	set h [open_session $mode]
++    } -body {
++	list [ftp::Get $h get.txt -variable data] $data
++    } -cleanup {
++	ftp::Close $h
++	file delete [rootfile get.txt]
++	unset -nocomplain h data
++    } -result {1 hello}
++
++    test ftp-1.1-$mode {Get -variable, missing file, ticket 1763707fff} -setup {
++	set h [open_session $mode]
++    } -body {
++	set data unchanged
++	list [ftp::Get $h nosuchfile -variable data] $data
++    } -cleanup {
++	ftp::Close $h
++	unset -nocomplain h data
++    } -result {0 unchanged}
++
++    test ftp-1.2-$mode {Get into file, access denied} -setup {
++	set h [open_session $mode]
++	set dest [makeFile {} dest.txt]
++	# Safety net: release a hanging wait for the data connection.
++	set hung 0
++	set watchdog [after 8000 [list apply {{h} {
++	    set ::hung 1
++	    set ::ftp::ftp${h}(state.data) 1
++	}} $h]]
++    } -body {
++	list [ftp::Get $h denied.txt $dest] $hung
++    } -cleanup {
++	after cancel $watchdog
++	ftp::Close $h
++	removeFile dest.txt
++	unset -nocomplain h dest hung watchdog
++    } -result {0 0}
++}
++
++# -------------------------------------------------------------------------
++close $server
++removeFile ftpserver.tcl
++removeDirectory ftproot
++testsuiteCleanup
++return

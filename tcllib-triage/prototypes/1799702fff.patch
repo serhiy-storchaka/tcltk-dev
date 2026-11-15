@@ -1,0 +1,119 @@
+Index: modules/dns/ipMore.tcl
+==================================================================
+--- modules/dns/ipMore.tcl
++++ modules/dns/ipMore.tcl
+@@ -1027,41 +1027,53 @@
+     set dotConv 0
+     if {[llength [lindex $prefixList 0]]==1} {
+ 	#format is dotted form convert all prefixes to native form
+ 	set prefixList [ip::prefixToNative $prefixList]
+ 	set dotConv 1
+-    }
+-
+-    set nonOverLapping $prefixList
+-    while {1==1} {
+-	set overlapFound 0
+-	set remaining $nonOverLapping
+-	set nonOverLapping {}
+-	while {[llength $remaining]} {
+-	    set current [lvarpop remaining]
+-	    set overLap [ip::isOverlapNative [lindex $current 0] [lindex $current 1] $remaining]
+-	    if {$overLap} {
+-		#there was a overlap find out which prefix has a the smaller mask, and keep that one
+-		if {[lindex $current 1] > [lindex [lindex $remaining [expr {$overLap -1}]] 1]} {
+-		    #current has more restrictive mask, throw that prefix away
+-		    # keep other prefix
+-		    lappend nonOverLapping [lindex $remaining [expr {$overLap -1}]]
+-		} else {
+-		    lappend nonOverLapping $current
+-		}
+-		lvarpop remaining [expr {$overLap -1}]
+-		set overlapFound 1
+-	    } else {
+-		#no overlap, keep all prefixes, don't touch the stuff in
+-		# remaining, it is needed for other overlap checking
+-		lappend nonOverLapping $current
+-	    }
+-	}
+-	if {$overlapFound==0} {break}
+-    }
+-    if {$dotConv} {return [nativeToPrefix $nonOverLapping]}
+-    return $nonOverLapping
++	if {[llength [lindex $prefixList 0]]==1} {
++	    # a single prefix was converted into a non-listified entry
++	    set prefixList [list $prefixList]
++	}
++    }
++
++    # Keep a prefix unless another prefix covers all of its addresses.
++    # Comparing only mask lengths is wrong for non-contiguous masks
++    # (bug 1799702).
++    set nonOverLapping {}
++    set n [llength $prefixList]
++    for {set i 0} {$i < $n} {incr i} {
++	lassign [lindex $prefixList $i] ip mask
++	if {[string equal $mask ""]} {set mask 0xffffffff}
++	set keep 1
++	for {set j 0} {$j < $n} {incr j} {
++	    if {$i == $j} continue
++	    lassign [lindex $prefixList $j] oip omask
++	    if {[string equal $omask ""]} {set omask 0xffffffff}
++	    if {($mask & $omask) == $omask
++		&& ($ip & $omask) == ($oip & $omask)} {
++		# prefix j covers prefix i. Of two equal prefixes keep the first.
++		if {$j < $i || $mask != $omask} {
++		    set keep 0
++		    break
++		}
++	    }
++	}
++	if {$keep} {lappend nonOverLapping [lindex $prefixList $i]}
++    }
++    if {!$dotConv} {return $nonOverLapping}
++    set r {}
++    foreach native $nonOverLapping {
++	lassign $native ip mask
++	binary scan [binary format I [expr {$mask}]] B32 maskB
++	if {[regexp {^1*0*$} $maskB]} {
++	    lappend r [nativeToPrefix $native]
++	} else {
++	    # non-contiguous mask, cannot be written as a length
++	    lappend r [ToString [binary format I [expr {$ip}]]]/[ToString [binary format I [expr {$mask}]]]
++	}
++    }
++    return $r
+ }
+ 
+ ##Procedure Header
+ # Copyright (c) 2004 Cisco Systems, Inc.
+ #
+
+Index: modules/dns/ipMore.test
+==================================================================
+--- modules/dns/ipMore.test
++++ modules/dns/ipMore.test
+@@ -646,10 +646,23 @@
+     } -constraints {
+     } -cleanup {
+     } -body {
+         ::ip::reduceToAggregates {1.1.1.0/24 1.1.0.0/8  2.1.1.0/24 1.1.1.1/32 }
+     } -result {1.0.0.0/8 2.1.1.0/24}
++
++    ::tcltest::test ::ip:reduceToAggregates-1799702 {
++        non-contiguous netmask, bug 1799702
++    } -body {
++        ::ip::reduceToAggregates {1.2.0.4/255.255.0.255 1.2.3.0/255.255.255.0}
++    } -result {1.2.0.4/255.255.0.255 1.2.3.0/24}
++
++    ::tcltest::test ::ip:reduceToAggregates-1799702-2 {
++        single prefix, duplicates
++    } -body {
++        list [::ip::reduceToAggregates {1.1.1.0/24}] \
++            [::ip::reduceToAggregates {1.1.1.0/24 1.1.0.0/16 1.1.1.0/24 1.1.0.0/16}]
++    } -result {1.1.1.0/24 1.1.0.0/16}
+ 
+     ::tcltest::test ::ip:longestPrefixMatch-1 {
+     } -setup {
+     } -constraints {
+     } -cleanup {
+

@@ -1,0 +1,37 @@
+Index: modules/doctools2base/msgcat.test
+==================================================================
+--- modules/doctools2base/msgcat.test
++++ modules/doctools2base/msgcat.test
+@@ -26,10 +26,12 @@
+ # -------------------------------------------------------------------------
+ 
+ array_unset env LANG*
+ array_unset env LC_*
+ set env(LANG) C ; # Usually default if nothing is set, OS X requires this.
++# msgcat has already picked its locale from the environment when it was loaded.
++msgcat::mclocale c
+ 
+ # -------------------------------------------------------------------------
+ 
+ # search paths .............................................................
+ 
+
+Index: support/devel/all.tcl
+==================================================================
+--- support/devel/all.tcl
++++ support/devel/all.tcl
+@@ -210,11 +210,12 @@
+ 
+ 	set tail [file tail $file]
+ 	Note Testsuite [string map [list "$root/" ""] $file]
+ 	Note StartFile [Now]
+ 	$c eval {
+-	    if {[catch {source [pSet file]} msg]} {
++	    # Test files are UTF-8, whatever the system encoding is.
++	    if {[catch {source -encoding utf-8 [pSet file]} msg]} {
+ 		puts stdout "@+"
+ 		puts stdout @|[join [split $errorInfo \n] "\n@|"]
+ 		puts stdout "@-"
+ 	    }
+ 	}
+

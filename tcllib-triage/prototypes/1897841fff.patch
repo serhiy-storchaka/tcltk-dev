@@ -1,0 +1,39 @@
+Index: modules/stringprep/stringprep.test
+==================================================================
+--- modules/stringprep/stringprep.test
++++ modules/stringprep/stringprep.test
+@@ -104,26 +104,31 @@
+         "foo.bar.baz" }
+     { "Case folding ASCII U+0043 U+0041 U+0046 U+0045" "CAFE" "cafe" }
+     { "Case folding 8bit U+00DF (german sharp s)" "\xC3\x9F" "ss" }
+     { "Case folding U+0130 (turkish capital I with dot)" "\xC4\xB0" "i\xcc\x87" }
+     { "Case folding multibyte U+0143 U+037A" "\xC5\x83\xCD\xBA" "\xC5\x84 \xCE\xB9" }
+-    { "Case folding U+2121 U+33C6 U+1D7BB (Tcl cannot represent U+1D7BB)"
++    { "Case folding U+2121 U+33C6 U+1D7BB (needs Tcl with full Unicode)"
+ 	"\xE2\x84\xA1\xE3\x8F\x86\xF0\x9D\x9E\xBB"
+         "telc\xE2\x88\x95kg\xCF\x83" }
+     { "Normalization of U+006a U+030c U+00A0 U+00AA" "\x6A\xCC\x8C\xC2\xA0\xC2\xAA"
+         "\xC7\xB0 a" }
+     { "Case folding U+1FB7 and normalization" "\xE1\xBE\xB7" "\xE1\xBE\xB6\xCE\xB9" }
+     { "Case folding U+2121 U+33C6" "\xE2\x84\xA1\xE3\x8F\x86"
+         "telc\xE2\x88\x95kg" }
+ }
++
++# Tcl 8.5 cannot represent characters outside the BMP such as U+1D7BB.
++testConstraint fullUnicode [expr {
++    [scan [encoding convertfrom utf-8 "\xF0\x9D\x9E\xBB"] %c] == 0x1D7BB
++}]
+ 
+ set id 0
+ foreach vector $vectors {
+     foreach {comment input output} $vector break
+ 
+     if {$id == 5} {
+-	test nameprep-$id $comment knownBug {
++	test nameprep-$id $comment fullUnicode {
+ 	    list [catch {::stringprep::stringprep nameprep \
+ 			     [encoding convertfrom utf-8 $input]} res] $res
+ 	} [list 0 [encoding convertfrom utf-8 $output]]
+     } else {
+ 	test nameprep-$id $comment {
+

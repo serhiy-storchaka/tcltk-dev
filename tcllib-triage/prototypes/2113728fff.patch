@@ -1,0 +1,87 @@
+Index: modules/snit/main1.tcl
+==================================================================
+--- modules/snit/main1.tcl
++++ modules/snit/main1.tcl
+@@ -2148,11 +2148,22 @@
+ 	}
+ 
+         # NEXT, create the widget
+         set self $name
+         package require Tk
+-        ${type}::installhull using $Snit_info(hulltype) -class $wclass
++        if {[catch {
++            ${type}::installhull using $Snit_info(hulltype) -class $wclass
++        } result]} {
++            # Don't leave a half-made instance behind.
++            global errorInfo
++            global errorCode
++
++            set theInfo $errorInfo
++            set theCode $errorCode
++            namespace delete $selfns
++            error $result $theInfo $theCode
++        }
+ 
+         # NEXT, let's query the option database for our
+         # widget, now that we know that it exists.
+         foreach opt $Snit_optionInfo(local) {
+             set dbval [RT.OptionDbGet $type $name $opt]
+
+Index: modules/snit/main2.tcl
+==================================================================
+--- modules/snit/main2.tcl
++++ modules/snit/main2.tcl
+@@ -1956,11 +1956,22 @@
+ 	}
+ 
+         # NEXT, create the widget
+         set self $name
+         package require Tk
+-        ${type}::installhull using $Snit_info(hulltype) -class $wclass
++        if {[catch {
++            ${type}::installhull using $Snit_info(hulltype) -class $wclass
++        } result]} {
++            # Don't leave a half-made instance behind.
++            global errorInfo
++            global errorCode
++
++            set theInfo $errorInfo
++            set theCode $errorCode
++            namespace delete $selfns
++            error $result $theInfo $theCode
++        }
+ 
+         # NEXT, let's query the option database for our
+         # widget, now that we know that it exists.
+         foreach opt $Snit_optionInfo(local) {
+             set dbval [RT.OptionDbGet $type $name $opt]
+
+Index: modules/snit/snit.test
+==================================================================
+--- modules/snit/snit.test
++++ modules/snit/snit.test
+@@ -4626,10 +4626,23 @@
+ } -returnCodes {
+     error
+ } -cleanup {
+     myframe destroy
+ } -result {can't set "hull": The hull component cannot be redefined}
++
++test widget-2.2 {failed hull creation leaves no instance, ticket 2113728fff} -constraints {
++    tk
++} -body {
++    widget myframe {}
++
++    myframe .frm
++    set code [catch {myframe .frm} msg]
++    list $code $msg [myframe info instances]
++} -cleanup {
++    destroy .frm
++    myframe destroy
++} -result {1 {window name "frm" already exists in parent} .frm}
+ 
+ #-----------------------------------------------------------------------
+ # install
+ #
+ # The install command is used to install widget components, while getting
+

@@ -1,0 +1,102 @@
+Index: modules/counter/counter.man
+==================================================================
+--- modules/counter/counter.man
++++ modules/counter/counter.man
+@@ -158,10 +158,25 @@
+ 
+ [def [option -histDayVar]]
+ 
+ Return the name of the daily histogram array variable.
+ 
++[def [option -maxPerMinute]]
++
++Return the maximum rate per second observed over a minute.
++Only supported for [option -timehist] counters.
++
++[def [option -maxPerHour]]
++
++Return the maximum rate per second observed over an hour.
++Only supported for [option -timehist] counters.
++
++[def [option -maxPerDay]]
++
++Return the maximum rate per second observed over a day.
++Only supported for [option -timehist] counters.
++
+ [def [option -resetDate]]
+ 
+ Return the clock seconds value recorded when the
+ counter was last reset.
+ 
+
+Index: modules/counter/counter.tcl
+==================================================================
+--- modules/counter/counter.tcl
++++ modules/counter/counter.tcl
+@@ -527,18 +527,17 @@
+         return $result
+     }
+     -histDayVar {
+         return ::counter::Day-$tag
+     }
+-    -maxPerMinute {
+-        return $counter(maxPerMinute)
+-    }
+-    -maxPerHour {
+-        return $counter(maxPerHour)
+-    }
++    -maxPerMinute -
++    -maxPerHour -
+     -maxPerDay {
+-        return $counter(maxPerDay)
++        if {$counter(type) != "-timehist"} {
++        return -code error "The $option option is only supported for -timehist counters."
++        }
++        return $counter([string range $option 1 end])
+     }
+     -resetDate {
+         if {[info exists counter(resetDate)]} {
+         return $counter(resetDate)
+         } else {
+@@ -549,11 +548,12 @@
+         return [array get counter]
+     }
+     default {
+         return -code error "Invalid option $option.\
+         Should be -all, -total, -N, -avg, -avgn, -hist, -histHour,\
+-        -histDay, -totalVar, -histVar, -histHourVar, -histDayVar -resetDate."
++        -histDay, -totalVar, -histVar, -histHourVar, -histDayVar,\
++        -maxPerMinute, -maxPerHour, -maxPerDay, -resetDate."
+     }
+     }
+ }
+ 
+ # ::counter::names --
+
+Index: modules/counter/counter.test
+==================================================================
+--- modules/counter/counter.test
++++ modules/counter/counter.test
+@@ -202,10 +202,21 @@
+     #puts "timehist [time {counter::count hits} 100]"
+ 
+     set result
+ } {0 2 1 4 2 8}
+ 
++
++test counter-maxPer-1.0 {-maxPerMinute on non-timehist counter, ticket 1011096} {
++    counter::init hist -hist 20
++    list [catch {counter::get hist -maxPerMinute} msg] $msg
++} {1 {The -maxPerMinute option is only supported for -timehist counters.}}
++
++test counter-maxPer-1.1 {-maxPer* on timehist counter, ticket 1011096} {
++    counter::init hits -timehist 4
++    list [counter::get hits -maxPerMinute] [counter::get hits -maxPerHour] \
++	[counter::get hits -maxPerDay]
++} {0 0 0}
+ 
+ test counter-countNames {counter::names} {
+     counter::init simple
+     counter::init avg
+     counter::init lastn -lastn 4
+

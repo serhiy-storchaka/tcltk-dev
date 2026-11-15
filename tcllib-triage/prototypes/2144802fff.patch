@@ -1,0 +1,175 @@
+Index: modules/snit/main1.tcl
+==================================================================
+--- modules/snit/main1.tcl
++++ modules/snit/main1.tcl
+@@ -3094,21 +3094,36 @@
+     return $result
+ }
+ 
+ # Looks for the named option in the named variable.  If found,
+ # it and its value are removed from the list, and the value
+-# is returned.  Otherwise, the default value is returned.
++# is returned.  Only even list positions are option names; if the
++# option occurs more than once, all occurrences are removed and the
++# last value is returned.  Otherwise, the default value is returned.
+ # If the option is undelegated, it's own default value will be
+ # used if none is specified.
+ #
+ # Implements the "from" command.
+ 
+ proc ::snit::RT.from {type argvName option {defvalue ""}} {
+     variable ${type}::Snit_optionInfo
+     upvar $argvName argv
+ 
+-    set ioption [lsearch -exact $argv $option]
++    # Only even indices hold option names; the odd ones are values.
++    # All occurrences are removed; the value of the last one wins.
++    set ioption -1
++    set newargv {}
++    set len [llength $argv]
++    for {set i 0} {$i < $len} {incr i 2} {
++        set ivalue [expr {$i + 1}]
++        if {[lindex $argv $i] eq $option} {
++            set ioption $i
++            set value [lindex $argv $ivalue]
++        } else {
++            set newargv [concat $newargv [lrange $argv $i $ivalue]]
++        }
++    }
+ 
+     if {$ioption == -1} {
+         if {"" == $defvalue &&
+             [info exists Snit_optionInfo(default-$option)]} {
+             return $Snit_optionInfo(default-$option)
+@@ -3115,14 +3130,11 @@
+         } else {
+             return $defvalue
+         }
+     }
+ 
+-    set ivalue [expr {$ioption + 1}]
+-    set value [lindex $argv $ivalue]
+-
+-    set argv [lreplace $argv $ioption $ivalue]
++    set argv $newargv
+ 
+     return $value
+ }
+ 
+ #-----------------------------------------------------------------------
+
+Index: modules/snit/main2.tcl
+==================================================================
+--- modules/snit/main2.tcl
++++ modules/snit/main2.tcl
+@@ -2983,21 +2983,36 @@
+     return $result
+ }
+ 
+ # Looks for the named option in the named variable.  If found,
+ # it and its value are removed from the list, and the value
+-# is returned.  Otherwise, the default value is returned.
++# is returned.  Only even list positions are option names; if the
++# option occurs more than once, all occurrences are removed and the
++# last value is returned.  Otherwise, the default value is returned.
+ # If the option is undelegated, it's own default value will be
+ # used if none is specified.
+ #
+ # Implements the "from" command.
+ 
+ proc ::snit::RT.from {type argvName option {defvalue ""}} {
+     namespace upvar $type Snit_optionInfo Snit_optionInfo
+     upvar $argvName argv
+ 
+-    set ioption [lsearch -exact $argv $option]
++    # Only even indices hold option names; the odd ones are values.
++    # All occurrences are removed; the value of the last one wins.
++    set ioption -1
++    set newargv {}
++    set len [llength $argv]
++    for {set i 0} {$i < $len} {incr i 2} {
++        set ivalue [expr {$i + 1}]
++        if {[lindex $argv $i] eq $option} {
++            set ioption $i
++            set value [lindex $argv $ivalue]
++        } else {
++            set newargv [concat $newargv [lrange $argv $i $ivalue]]
++        }
++    }
+ 
+     if {$ioption == -1} {
+         if {"" == $defvalue &&
+             [info exists Snit_optionInfo(default-$option)]} {
+             return $Snit_optionInfo(default-$option)
+@@ -3004,14 +3019,11 @@
+         } else {
+             return $defvalue
+         }
+     }
+ 
+-    set ivalue [expr {$ioption + 1}]
+-    set value [lindex $argv $ivalue]
+-    
+-    set argv [lreplace $argv $ioption $ivalue] 
++    set argv $newargv
+ 
+     return $value
+ }
+ 
+ #-----------------------------------------------------------------------
+
+Index: modules/snit/snit.man
+==================================================================
+--- modules/snit/snit.man
++++ modules/snit/snit.man
+@@ -1604,10 +1604,14 @@
+ 
+ [para]
+ 
+ [cmd from] looks for [arg option] in the option list.  If it is found,
+ it and its value are removed from the list, and the value is returned.
++Only the elements at even positions in the list are treated as option
++names; the elements at odd positions are option values.  If
++[arg option] occurs more than once, all occurrences are removed and
++the value of the last one is returned.
+ If [arg option] doesn't appear in the list, then the [arg defvalue] is
+ returned.
+ 
+ If the option is locally-defined option, and [arg defvalue] is
+ not specified, then the option's default value as specified in the
+
+Index: modules/snit/snit.test
+==================================================================
+--- modules/snit/snit.test
++++ modules/snit/snit.test
+@@ -4115,10 +4115,29 @@
+     dog create spot -foo quux -baz frobnitz -bar frobozz
+     list [spot cget -foo] [spot cget -bar] [spot cget -args]
+ } -cleanup {
+     dog destroy
+ } -result {quux frobozz {-baz frobnitz}}
++
++test from-1.3 {option names only at even positions, last one wins} -body {
++    type dog {
++        option -foo FOO
++        option -bar BAR
++        option -args
++
++        constructor {args} {
++            $self configure -bar [from args -bar xyzzy]
++            $self configure -foo [from args -foo]
++            $self configure -args $args
++        }
++    }
++
++    dog create spot -foo -bar -snarf 0 -foo {a b}
++    list [spot cget -foo] [spot cget -bar] [spot cget -args]
++} -cleanup {
++    dog destroy
++} -result {{a b} xyzzy {-snarf 0}}
+ 
+ #-----------------------------------------------------------------------
+ # Widgetadaptors
+ 
+ test widgetadaptor-1.1 {creating a widget: hull hijacking} -constraints {
+

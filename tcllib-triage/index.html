@@ -1,0 +1,238 @@
+<title>Tcllib Ticket Triage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280; --out:#7C5E10; --rfe:#0F766E;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --out:#D6B454; --rfe:#5EEAD4;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --out:#D6B454; --rfe:#5EEAD4;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}.c-out{--c:var(--out)}.c-rfe{--c:var(--rfe)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Open tcllib tickets</h1>
+  <p class="sub">Triage of all 509 open and Pending tickets of <a href="https://core.tcl-lang.org/tcllib">tcllib</a> (bugs, patches and feature requests) on 2026-11-15. Each ticket was checked against tcllib trunk on Linux with Tcl 9.1, 9.0, 8.6 and 8.5, using local servers for the network modules and a Windows 11 VM for Windows-only tickets. Outdated, superseded, duplicate and misfiled tickets are listed separately. Rows marked <span class="patch">patch</span> link to a prototype fix with a regression test (147 in all, in <a href="https://github.com/serhiy-storchaka/tcltk-dev/tree/main/tcllib-triage/prototypes">tcllib-triage/prototypes</a>). Updated 2026-11-15.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip cur" href="index.html" aria-current="page">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">157</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">70</span> Already fixed or done</a><a class="navchip c-out" href="outdated.html"><span class="n">80</span> Outdated, superseded, duplicate</a><a class="navchip c-rfe" href="rfe.html"><span class="n">129</span> Feature requests</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">23</span> Not a bug</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">23</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">22</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">5</span> Not tested</a></nav>
+</header>
+<details class="hl" open><summary>Highlights</summary>
+<h3>Triage run 2026-11-15</h3><p>all 509 open and Pending tickets of tcllib: 308 bugs, 150 feature requests and 51 patches, many from the SourceForge era. They were checked in 26 batches on Linux against tcllib trunk (adeef82ca0, 2026-11-13) with Tcl 9.1, 9.0, 8.6 and 8.5. Network modules (ftp, ftpd, smtp, pop3, pop3d, dns, ldap, http, websocket, …) were tested against local servers on 127.0.0.1. A Windows 11 VM ran the Windows-only tickets and the whole test suite. 148 prototype patches were written. Every patch that changes code includes a regression test, which fails without the fix and passes with it on 9.1 and 8.6. Nothing has been committed or posted yet.</p>
+<h3>Verdicts</h3><p>134 reproduced and 22 partly fixed. 129 feature requests are still open; many of those could be closed as stale. 22 docs issues, 22 not reproduced, 23 not a bug.</p><ul>
+<li>About 170 tickets can be closed:
+<ul>
+<li>41 already fixed and 28 already done;
+</li>
+<li>29 outdated (tkchat, BWidget, TclPro, the SourceForge site, Tcl 8.4, …) and 18 superseded;
+</li>
+<li>12 duplicates;
+</li>
+<li>22 in the wrong tracker: mostly tklib (Plotchart, ctext, tooltip, scrolledwindow, canvas::sqmap, diagrams); a few belong to Tcl, BWidget or Tkhtml3. Most tklib ones have an identical open copy in tklib's tracker.
+</li></ul>
+</li></ul>
+<h3>Broken on trunk or in the last release (worth fixing first)</h3><ul>
+<li><a class="h" href="reproduced.html#61e49798ee">61e49798ee</a>: <code>package require nettool</code> always fails. Since 94a3829047 (2024-09-13, in tcllib 2.0) its pkgIndex.tcl names <code>nexttool.tcl</code>. The same check found four more index entries that don't match the code (<a class="h" href="reproduced.html#523f7e0556">523f7e0556</a>). Among them is <code>rest</code>: the index says 1.7 while rest.tcl provides 1.8, so <code>package require rest</code> fails on trunk (<a class="h" href="reproduced.html#cdbdd399e4">cdbdd399e4</a>).
+</li>
+<li><a class="h" href="reproduced.html#af927e957f">af927e957f</a>: <code>ldap::starttls</code> and <code>ldap::info whoami</code> always fail with "invalid command name" in tcllib 1.21, 2.0 and trunk. The 2022 change 495ba2b8f5 calls <code>asnEncodeString</code>, which asn does not export.
+</li>
+<li><a class="h" href="reproduced.html#3308105fff">3308105fff</a>: since tcllib 1.21 (1df85e69fb), when the server rejects a message, <code>smtp::sendmessage</code> returns code 7 with a raw dict instead of raising an error. A rejected Bcc copy is not reported at all.
+</li>
+<li>Tcl 9:
+<ul>
+<li><a class="h" href="reproduced.html#29ff5c3abd">29ff5c3abd</a>: <code>autoproxy::tls_socket</code> uses the wrong host;
+</li>
+<li><a class="h" href="reproduced.html#34a589f660">34a589f660</a>: ftpd does not load;
+</li>
+<li><a class="h" href="reproduced.html#d3d4117803">d3d4117803</a>: practcl generates <code>Tcl_InitStubs(interp, "8.6", 0)</code>;
+</li>
+<li><a class="h" href="reproduced.html#8ac37e504d">8ac37e504d</a>, <a class="h" href="reproduced.html#146ae829a9">146ae829a9</a>: leftover <code>-encoding binary</code> in practcl and doctools::tcl::parse;
+</li>
+<li><a class="h" href="reproduced.html#4c3e532500">4c3e532500</a>: <code>package require tool</code> fails when no USER/USERNAME variable is set;
+</li>
+<li><a class="h" href="reproduced.html#450914ffff">450914ffff</a>: the ftp hpupdate example uses a private Tk procedure.
+</li></ul>
+</li>
+<li><a class="h" href="reproduced.html#0f65bfa2d3">0f65bfa2d3</a>: <code>struct::graph::op::tarjan</code> hangs for node names with spaces. This is a regression of Bug 2815302: the 2009 fix was undone by the GSoC merge 42c21b6c75.
+</li>
+<li><a class="h" href="reproduced.html#2848168fff">2848168fff</a>, confirmed on Windows: <code>::crc::Crc</code> gives a wrong CRC for non-reflected 32-bit CRCs, because <code>tcl_platform(wordSize)</code> is 4 there.
+</li>
+<li><a class="h" href="reproduced.html#7bd2d439ca">7bd2d439ca</a>: with tcllibc, crc32 of files over 4 KiB fails on Tcl 9 on Windows (emulated on Linux).
+</li>
+<li>No ticket yet:
+<ul>
+<li><code>struct</code> 1.5 requires <code>struct::matrix 1.2.1</code>, which no longer exists.
+</li>
+<li>On Tcl 9, pluginmgr cannot load package-based plugins: since TIP 579 the safe base no longer puts access paths on the child's auto_path.
+</li></ul>
+</li></ul>
+<h3>Unmerged branches that are ready, or nearly</h3><p>review and merge, or close:</p><ul>
+<li><code>tkt-4dd68ce4e76841f</code>: linear-model t values, <a class="h" href="reproduced.html#4dd68ce4e7">4dd68ce4e7</a>. Checked independently; correct.
+</li>
+<li><code>e15c2a7c-json-write-hao</code>: <a class="h" href="rfe.html#e15c2a7ce1">e15c2a7ce1</a>. It merges cleanly, but the test name json-write-6.2 is used twice.
+</li>
+<li><code>tkt-<a class="h" href="reproduced.html#d74e6561a2">d74e6561a2</a>-yaml-huddle</code>: <a class="h" href="reproduced.html#d74e6561a2">d74e6561a2</a>.
+</li>
+<li><code>bug-f6624cf52ba4</code>: <a class="h" href="reproduced.html#f6624cf52b">f6624cf52b</a>. It breaks the bad-option message; the prototype fixes that.
+</li>
+<li><code>fix-dns-udp-ipv6-7554bfed30</code>: needs tcludp to test.
+</li>
+<li><code>ak-tkt-<a class="h" href="rfe.html#b41b6f76b0">b41b6f76b0</a>-ftp-eprt</code>: ftp EPRT/EPSV for IPv6, from 2014; needs a rebase.
+</li>
+<li><code>pbrooks-ticket-664392</code>: needs a Windows run.
+</li>
+<li><code>virtchan-1985a34255</code>: refchan truncate exists only in Tcl 9.
+</li>
+<li><code>sha256-vc-fix</code> and <code>apn-vc-fixes</code> look superseded by cc4d362b78.
+</li></ul>
+<h3>Prototypes that overlap</h3><p>some patches touch the same lines or each add the same new test file, so they must be merged by hand:</p><ul>
+<li>ftp: 8 patches from two batches each create <code>modules/ftp/ftp.test</code>. The module had no tests.
+</li>
+<li>ftpd: <a class="h" href="reproduced.html#1508656fff">1508656fff</a>, <a class="h" href="reproduced.html#2928355fff">2928355fff</a> and <a class="h" href="reproduced.html#3312860fff">3312860fff</a> stack on <a class="h" href="reproduced.html#34a589f660">34a589f660</a>.
+</li>
+<li>rest: 3 patches, each creating <code>rest.test</code>. smtp: 3 patches, each creating <code>smtp.test</code>.
+</li>
+<li>yaml: 12 patches insert at the same place in yaml.test; all 12 were merged together once and pass 182/182.
+</li>
+<li>httpd: 3 patches add tests at the same place.
+</li>
+<li>zip: <a class="h" href="reproduced.html#c976e4a85d">c976e4a85d</a> and <a class="h" href="reproduced.html#a0cbdc7e6f">a0cbdc7e6f</a> share a helper.
+</li>
+<li>oo::util: <a class="h" href="reproduced.html#3609183fff">3609183fff</a> and <a class="h" href="reproduced.html#f990aa37bc">f990aa37bc</a> change the same line.
+</li>
+<li>markdown: <a class="h" href="reproduced.html#0d824f26fb">0d824f26fb</a> and <a class="h" href="reproduced.html#a028a78b5b">a028a78b5b</a> change the same regexp line.
+</li>
+<li>nettool: <a class="h" href="reproduced.html#d879576438">d879576438</a> and <a class="h" href="reproduced.html#9a21637273">9a21637273</a> both change <code>dump</code>.
+</li>
+<li>pluginmgr: <a class="h" href="reproduced.html#dffc63972b">dffc63972b</a> includes <a class="h" href="reproduced.html#8ab3be2e6a">8ab3be2e6a</a>.
+</li>
+<li>Duplicate fixes: the nettool index typo is fixed by both <a class="h" href="reproduced.html#61e49798ee">61e49798ee</a> and <a class="h" href="reproduced.html#523f7e0556">523f7e0556</a>; the <code>-encoding binary</code> line by both <a class="h" href="reproduced.html#146ae829a9">146ae829a9</a> and <a class="h" href="reproduced.html#8ac37e504d">8ac37e504d</a>.
+</li></ul>
+<h3>Behaviour changes in the prototypes</h3><p>these need a decision:</p><ul>
+<li><a class="h" href="reproduced.html#472259ffff">472259ffff</a>: cmdline adds an <code>INVALID</code> errorcode word.
+</li>
+<li><a class="h" href="reproduced.html#715193ffff">715193ffff</a>: htmlparse keeps whitespace text nodes.
+</li>
+<li><a class="h" href="reproduced.html#1f29f7baf9">1f29f7baf9</a>: <code>ncgi::encode</code> uses UTF-8, so <code>%C3%B6</code> instead of <code>%F6</code>.
+</li>
+<li><a class="h" href="reproduced.html#6abf74eec8">6abf74eec8</a>: the pure-Tcl md5crypt hashes UTF-8; Latin-1 passwords hash differently on 8.6.
+</li>
+<li><a class="h" href="reproduced.html#1519755fff">1519755fff</a>: deleting a missing struct::record now raises an error, as documented.
+</li>
+<li><a class="h" href="reproduced.html#a316389e99">a316389e99</a>: <code>math::decimal::fromstr</code> raises an error on invalid input.
+</li>
+<li><a class="h" href="reproduced.html#3612359fff">3612359fff</a>: <code>fileutil::lexnormalize</code> keeps leading <code>..</code> in relative paths.
+</li>
+<li><a class="h" href="reproduced.html#4f25e933fc">4f25e933fc</a>: yaml's null type is renamed <code>yaml_null</code>.
+</li>
+<li><a class="h" href="reproduced.html#2144802fff">2144802fff</a> and <a class="h" href="reproduced.html#665fbc24eb">665fbc24eb</a>: snit <code>from</code> and destructor errors.
+</li></ul>
+<h3>Test suite problems found</h3><ul>
+<li><code>websocket.test</code> uses the external echo server ws.ifelse.io and has no constraint, so a full <code>sak test run</code> contacts an outside host. It needs a local server (the triage used one) or a constraint that is off by default.
+</li>
+<li>On Tcl 9.x, without any patch:
+<ul>
+<li>crc: 7 failures, because the tests expect the old wording of the "expected byte sequence" error;
+</li>
+<li>hook: 2 failures on 9.1 (<code>-errorstack</code>);
+</li>
+<li>snit 1: 27 failures on 9.1 (3 on 8.6), because <code>snit::typemethod</code>/<code>method</code> at runtime now need a fully qualified type name.
+</li></ul>
+</li>
+<li>doctools msgcat-2.0 fails in any non-C locale. Under 8.6 in a non-UTF-8 locale, mime, textutil, base64 and yaml fail too (<a class="h" href="reproduced.html#509776ffff">509776ffff</a> has a fix).
+</li>
+<li>mime.test leaves <code>checkmime.msg</code> in the current directory, and practcl.test leaves an empty <code>test</code> directory.
+</li>
+<li>httpd.test, jpeg.test and tiff.test only run through sak, because they don't load their own dependencies.
+</li>
+<li>New test files were added for modules that had none: ftp, ftpd, rest, smtp, term, nmea, imap4, generator, pluginmgr, coroutine, coroutine::auto.
+</li></ul>
+<h3>Ticket housekeeping</h3><ul>
+<li><a class="h" href="fixed.html#b5092d5623">b5092d5623</a> has an e-mail address as its title, and three anonymous spam comments with personal data. Retitle it and hide the comments.
+</li>
+<li><a class="h" href="fixed.html#3513149fff">3513149fff</a> has resolution Fixed but status Open; <a class="h" href="not-a-bug.html#01afa9345d">01afa9345d</a> is resolved Invalid but still Open; <a class="h" href="rfe.html#203aa0ea50">203aa0ea50</a> is Open with "Wont Fix". <a class="h" href="rfe.html#1213545fff">1213545fff</a> is Pending on a change from an unmerged, closed branch.
+</li>
+<li>Several attachments referred to in tickets are missing from the repository: <a class="h" href="outdated.html#022bca0ff5">022bca0ff5</a>, <a class="h" href="reproduced.html#2eb11228fb">2eb11228fb</a>, <a class="h" href="rfe.html#3fff267fc4">3fff267fc4</a>, <a class="h" href="rfe.html#5af6381a8b">5af6381a8b</a>, <a class="h" href="reproduced.html#66063baec4">66063baec4</a>, <a class="h" href="reproduced.html#9a21637273">9a21637273</a>, <a class="h" href="reproduced.html#0f65bfa2d3">0f65bfa2d3</a>, <a class="h" href="outdated.html#a8218fdfc0">a8218fdfc0</a>, and the reporter's patches for <a class="h" href="reproduced.html#4f25e933fc">4f25e933fc</a>.
+</li></ul>
+</details>
+
+<footer>Generated from the triage notes of each batch.</footer>
+</div>
+

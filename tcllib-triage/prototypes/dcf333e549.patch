@@ -1,0 +1,80 @@
+Index: modules/mime/mime.tcl
+==================================================================
+--- modules/mime/mime.tcl
++++ modules/mime/mime.tcl
+@@ -1896,16 +1896,15 @@
+ 
+     set converter {}
+     set encoding {}
+     if {$state(value) ne {parts}} {
+         if {$state(canonicalP)} {
++            # The Content-Transfer-Encoding header was already
++            # written above, as part of [getheader].
+             if {[set encoding $state(encoding)] eq {}} {
+                 set encoding [encoding $token]
+             }
+-            if {$encoding ne {}} {
+-                puts $channel "Content-Transfer-Encoding: $encoding"
+-            }
+             switch -- $encoding {
+                 base64
+                     -
+                 quoted-printable {
+                     set converter $encoding
+
+Index: modules/mime/mime.test
+==================================================================
+--- modules/mime/mime.test
++++ modules/mime/mime.test
+@@ -669,10 +669,50 @@
+     set restore [mime::initialize -string $str]
+ } -cleanup {
+     mime::finalize $restore
+     unset part whole saved stm str
+ } -match glob -result "::mime::*"
++
++# -------------------------------------------------------------------------
++
++foreach {n encoding string} {
++    1 {}               "plain text\n"
++    2 8bit             "plain text\n"
++    3 7bit             "plain text\n"
++    4 base64           "plain text\n"
++    5 quoted-printable "plain text\n"
++    6 {}               "\x00\x01\x02"
++} {
++    test mime-15.$n "tickets dcf333e549, 04b8e4fb3c: single Content-Transfer-Encoding, -encoding \"$encoding\"" -setup {
++	set opts [list -canonical application/octet-stream -string $string]
++	if {$encoding ne {}} {
++	    lappend opts -encoding $encoding
++	}
++	set token [mime::initialize {*}$opts]
++	mime::setheader $token Subject test
++    } -body {
++	llength [regexp -all -inline -line -nocase \
++		     {^Content-Transfer-Encoding:} [mime::buildmessage $token]]
++    } -cleanup {
++	mime::finalize $token
++	unset opts token
++    } -result [expr {$n == 1 ? 0 : 1}]
++}
++
++test mime-15.7 {tickets dcf333e549, 04b8e4fb3c: single Content-Transfer-Encoding with copymessage} -setup {
++    set token [mime::initialize -canonical text/plain -encoding 8bit -string hi]
++    set chan [tcl::chan::memchan]
++} -body {
++    mime::copymessage $token $chan
++    seek $chan 0
++    llength [regexp -all -inline -line -nocase \
++		 {^Content-Transfer-Encoding:} [read $chan]]
++} -cleanup {
++    close $chan
++    mime::finalize $token
++    unset token chan
++} -result 1
+ 
+ # -------------------------------------------------------------------------
+ 
+ testsuiteCleanup
+ return
+

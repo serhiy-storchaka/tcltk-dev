@@ -1,0 +1,219 @@
+Index: modules/profiler/profiler.tcl
+==================================================================
+--- modules/profiler/profiler.tcl
++++ modules/profiler/profiler.tcl
+@@ -102,10 +102,42 @@
+ 	    }
+         }
+     }
+     return [ list $mean $sigma $cov ]
+ }
++
++# ::profiler::StatsFromSums --
++#
++#	Same as stats, but computed from the number of values, their sum
++#	and the sum of their squares, so the individual values need not
++#	be kept around.
++#
++# Arguments:
++#	N	Number of values.
++#	sum	Sum of the values.
++#	sumsq	Sum of the squares of the values.
++#
++# Results:
++#	A list with three elements:  the mean, the standard deviation, and the
++#	covariance.
++
++proc ::profiler::StatsFromSums {N sum sumsq} {
++    set mean  0
++    set sigma 0
++    set cov   0
++    if { $N > 1 && $sum > 0 } {
++	set mean [ expr { $sum/$N } ]
++	# sum((v-mean)^2) = sumsq - 2*mean*sum + N*mean^2
++	set sigma_sq [ expr { double($sumsq - 2*$mean*$sum + $N*$mean*$mean)/($N-1) } ]
++	set sigma [ expr { round(sqrt($sigma_sq)) } ]
++	if { $mean != 0 } {
++	    set cov [ expr { (($sigma*1.0)/$mean)*100 } ]
++	    set cov [ expr { round($cov*10)/10.0 } ]
++	}
++    }
++    return [ list $mean $sigma $cov ]
++}
+ 
+ # ::profiler::Handler --
+ #
+ #	Profile a function (tcl8.3).  This function works together with
+ #       profProc, which replaces the proc command.  When a new procedure
+@@ -233,11 +265,12 @@
+     if { !$enabled($name) } {
+ 	return [uplevel 1 {lindex $args 1}] ;# RETURN RESULT!
+     }
+ 
+     set t [::profiler::tMark $name.$caller]
+-    lappend ::profiler::statTime($name) $t
++    # Tkt [1747945fff] Keep only the sum of squares, not every sample.
++    incr ::profiler::statSumSq($name) [expr {$t*$t}]
+ 
+     if { [incr ::profiler::callCount($name)] == 1 } {
+         set ::profiler::compileTime($name) $t
+     }
+     incr ::profiler::totalRuntime($name) $t
+@@ -267,11 +300,11 @@
+ proc ::profiler::profProc {name arglist body} {
+     variable callCount
+     variable compileTime
+     variable totalRuntime
+     variable descendantTime
+-    variable statTime
++    variable statSumSq
+     variable enabled
+     variable paused
+ 
+     # Get the fully qualified name of the proc
+     set ns [uplevel [list namespace current]]
+@@ -290,11 +323,11 @@
+     # Set up accounting for this procedure
+     set callCount($name) 0
+     set compileTime($name) 0
+     set totalRuntime($name) 0
+     set descendantTime($name) 0
+-    set statTime($name) {}
++    set statSumSq($name) 0
+     set enabled($name) [expr {!$paused}]
+ 
+     uplevel 1 [list ::_oldProc $name $arglist $body]
+     trace add execution $name {enter leave} \
+         [list ::profiler::TraceHandler $name]
+@@ -331,21 +364,22 @@
+     variable callCount
+     variable compileTime
+     variable totalRuntime
+     variable descendantTime
+     variable descendants
+-    variable statTime
++    variable statSumSq
+     variable callers
+ 
+     set result ""
+ 
+     set avgRuntime 0
+     set sigmaRuntime 0
+     set covRuntime 0
+     set avgDesTime 0
+     if { $callCount($name) > 0 } {
+-	foreach {m s c} [eval ::profiler::stats $statTime($name)] { break }
++	foreach {m s c} [StatsFromSums $callCount($name) \
++		$totalRuntime($name) $statSumSq($name)] { break }
+ 	set avgRuntime   $m
+ 	set sigmaRuntime $s
+ 	set covRuntime   $c
+ 	set avgDesTime \
+ 	    [expr {$descendantTime($name)/$callCount($name)}]
+@@ -414,11 +448,11 @@
+     variable callCount
+     variable compileTime
+     variable totalRuntime
+     variable descendantTime
+     variable descendants
+-    variable statTime
++    variable statSumSq
+     variable callers
+ 
+     set data [sortFunctions $key]
+     foreach {k v} $data {
+ 	append result [printname [lindex $k 0]]
+@@ -442,11 +476,11 @@
+     variable compileTime
+     variable totalRuntime
+     variable callers
+     variable descendantTime
+     variable descendants
+-    variable statTime
++    variable statSumSq
+ 
+     set result ""
+     foreach name [lsort [array names callCount $pattern]] {
+ 	set i [expr {[string length $name] + 1}]
+ 	catch {unset thisCallers}
+@@ -456,11 +490,12 @@
+ 	set avgRuntime 0
+ 	set sigmaRuntime 0
+ 	set covRuntime 0
+ 	set avgDesTime 0
+ 	if { $callCount($name) > 0 } {
+-	    foreach {m s c} [eval ::profiler::stats $statTime($name)] { break }
++	    foreach {m s c} [StatsFromSums $callCount($name) \
++		$totalRuntime($name) $statSumSq($name)] { break }
+ 	    set avgRuntime   $m
+ 	    set sigmaRuntime $s
+ 	    set covRuntime   $c
+ 	    set avgDesTime \
+ 		    [expr {$descendantTime($name)/$callCount($name)}]
+@@ -570,19 +605,19 @@
+ proc ::profiler::reset {{pattern *}} {
+     variable callCount
+     variable compileTime
+     variable totalRuntime
+     variable callers
+-    variable statTime
++    variable statSumSq
+     variable descendantTime
+     variable descendants
+ 
+     foreach name [array names callCount $pattern] {
+ 	set callCount($name) 0
+ 	set compileTime($name) 0
+ 	set totalRuntime($name) 0
+-	set statTime($name) {}
++	set statSumSq($name) 0
+ 	foreach caller [array names callers $name,*] {
+ 	    unset callers($caller)
+ 	}
+ 	set descendantTime($name) 0
+         foreach descendant [array names descendants $name,*] {
+
+Index: modules/profiler/profiler.test
+==================================================================
+--- modules/profiler/profiler.test
++++ modules/profiler/profiler.test
+@@ -344,10 +344,38 @@
+ 	profile_a
+ 
+ 	expr {$profiler::totalRuntime(::profile_a) < $profiler::descendantTime(::profile_a)}
+     }
+ } 0
++
++test profiler-12.0-tkt-1747945fff {profiler state does not grow with the number of calls} {
++    do {
++	proc ::foo {} {}
++	proc size {} {
++	    set n 0
++	    foreach v [info vars ::profiler::*] {
++		if {![array exists $v]} continue
++		foreach {k val} [array get $v] {incr n [llength $val]}
++	    }
++	    return $n
++	}
++	foo ; foo ; size ; # size is profiled too
++	set before [size]
++	for {set i 0} {$i < 100} {incr i} foo
++	expr {[size] - $before}
++    }
++} 0
++
++test profiler-12.1-tkt-1747945fff {statistics from sums match statistics from values} {
++    do {
++	set vals {3 5 8 13 21 34}
++	set sum 0 ; set sumsq 0
++	foreach v $vals {incr sum $v ; incr sumsq [expr {$v*$v}]}
++	list [profiler::stats {*}$vals] \
++	    [profiler::StatsFromSums [llength $vals] $sum $sumsq]
++    }
++} {{14 12 85.7} {14 12 85.7}}
+ 
+ # -------------------------------------------------------------------------
+ rename do {}
+ testsuiteCleanup
+ return
+

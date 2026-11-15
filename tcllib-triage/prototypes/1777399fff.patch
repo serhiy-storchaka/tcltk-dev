@@ -1,0 +1,160 @@
+Index: modules/ftp/ftp.tcl
+==================================================================
+--- modules/ftp/ftp.tcl
++++ modules/ftp/ftp.tcl
+@@ -2522,10 +2522,11 @@
+     # StateHandler at first time is called automatically
+     # by a fileevent for the control channel.
+ 
+     # Try to open a control connection
+     if { ![OpenControlConn $s [expr {[string length $ftp(Command)] > 0}]] } {
++        unset ftp
+         return -1
+     }
+ 
+     # waits for synchronization
+     #   0 ... Not logged in
+@@ -2541,11 +2542,15 @@
+         set connections($ftp(User),$ftp(Passwd),$ftp(RemoteHost)) $s
+ 	Command $ftp(Command) connect $s
+         return $s
+     } else {
+         # close connection if not logged in
+-        Close $s
++        if {[info exists ftp(State)]} {
++            Close $s
++        }
++        catch {close $ftp(CtrlSock)}
++        catch {unset ftp}
+         return -1
+     }
+ }
+ 
+ #############################################################################
+
+--- /dev/null
++++ modules/ftp/ftp.test
+@@ -0,0 +1,123 @@
++# -*- tcl -*-
++# ftp.test:  tests for the ftp client.
++#
++# The tests run the client against a local ftpd (tcllib) server
++# started in a child process, listening on 127.0.0.1 only.
++#
++# Sourcing this file into Tcl runs the tests and generates output for
++# errors.  No output means no errors were found.
++
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 2.0
++
++support {
++    use log/log.tcl log
++}
++testing {
++    useLocal ftp.tcl ftp
++}
++
++# -------------------------------------------------------------------------
++## Server. A tcllib ftpd running in a child process. Accepts every
++## login and grants access to all files, except those whose names
++## contain "denied". The document root is a
++## temporary directory.
++
++set rootDir [makeDirectory ftproot]
++set serverScript [makeFile {
++    lassign $argv modules docroot
++    lappend auto_path $modules
++    namespace eval ::ftpd {variable contact test@localhost}
++    package require ftpd
++    set ::ftpd::port 0
++    ::ftpd::fsFile::docRoot $docroot
++    ::ftpd::config -logCmd {apply {{s t} {}}} \
++	-authUsrCmd  {apply {{u p} {return 1}}} \
++	-authFileCmd {apply {{u p o} {expr {![string match *denied* $p]}}}}
++    ::ftpd::server 127.0.0.1
++    puts $::ftpd::port
++    flush stdout
++    fileevent stdin readable exit
++    vwait forever
++} ftpserver.tcl]
++
++set server [open |[list [info nameofexecutable] $serverScript \
++	[file dirname [localDirectory]] $rootDir] r+]
++gets $server serverPort
++
++proc open_session {mode} {
++    ftp::Open 127.0.0.1 user pass -port $::serverPort -mode $mode -timeout 5
++}
++proc rootfile {name} {
++    file join $::rootDir $name
++}
++proc readroot {name} {
++    set f [open [rootfile $name] rb]
++    set data [read $f]
++    close $f
++    return $data
++}
++proc writeroot {name data} {
++    set f [open [rootfile $name] wb]
++    puts -nonewline $f $data
++    close $f
++}
++
++# Keep the error messages of the package out of the test output.
++log::lvSuppress error
++
++# -------------------------------------------------------------------------
++
++foreach mode {passive active} {
++    test ftp-1.0-$mode {Get -variable} -setup {
++	writeroot get.txt hello
++	set h [open_session $mode]
++    } -body {
++	list [ftp::Get $h get.txt -variable data] $data
++    } -cleanup {
++	ftp::Close $h
++	file delete [rootfile get.txt]
++	unset -nocomplain h data
++    } -result {1 hello}
++
++}
++
++# -------------------------------------------------------------------------
++## Failed logins must not leave the session state behind.
++
++test ftp-3.0 {Open, connection refused, ticket 1777399fff} -setup {
++    set sock [socket -server {apply {{c a p} {close $c}}} -myaddr 127.0.0.1 0]
++    set port [lindex [fconfigure $sock -sockname] 2]
++    close $sock
++    set before [info vars ::ftp::ftp*]
++} -body {
++    list [ftp::Open 127.0.0.1 user pass -port $port -timeout 5] \
++	[expr {[info vars ::ftp::ftp*] eq $before}]
++} -cleanup {
++    unset -nocomplain sock port before
++} -result {-1 1}
++
++test ftp-3.1 {Open, server closes connection, ticket 1777399fff} -setup {
++    set sock [socket -server {apply {{c a p} {close $c}}} -myaddr 127.0.0.1 0]
++    set port [lindex [fconfigure $sock -sockname] 2]
++    set before [info vars ::ftp::ftp*]
++} -body {
++    list [ftp::Open 127.0.0.1 user pass -port $port -timeout 5] \
++	[expr {[info vars ::ftp::ftp*] eq $before}]
++} -cleanup {
++    close $sock
++    unset -nocomplain sock port before
++} -result {-1 1}
++
++# -------------------------------------------------------------------------
++close $server
++removeFile ftpserver.tcl
++removeDirectory ftproot
++testsuiteCleanup
++return

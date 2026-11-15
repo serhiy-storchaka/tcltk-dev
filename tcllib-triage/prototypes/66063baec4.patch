@@ -1,0 +1,42 @@
+Index: modules/ncgi/ncgi.tcl
+==================================================================
+--- modules/ncgi/ncgi.tcl
++++ modules/ncgi/ncgi.tcl
+@@ -269,10 +269,12 @@
+     # rewrite "+" back to space
+     # protect \ from quoting another '\'
+     set str [string map [list + { } "\\" "\\\\" \[ \\\[ \] \\\]] $str]
+ 
+     # prepare to process all %-escapes
++    regsub -all -nocase -- {%(F[0-4])%([89AB][A-F0-9])%([89AB][A-F0-9])%([89AB][A-F0-9])} \
++	$str {[encoding convertfrom utf-8 [DecodeHex \1\2\3\4]]} str
+     regsub -all -nocase -- {%([E][A-F0-9])%([89AB][A-F0-9])%([89AB][A-F0-9])} \
+ 	$str {[encoding convertfrom utf-8 [DecodeHex \1\2\3]]} str
+     regsub -all -nocase -- {%([CDcd][A-F0-9])%([89AB][A-F0-9])} \
+ 	$str {[encoding convertfrom utf-8 [DecodeHex \1\2]]} str
+     regsub -all -nocase -- {%([A-F0-9][A-F0-9])} $str {\\u00\1} str
+
+Index: modules/ncgi/ncgi.test
+==================================================================
+--- modules/ncgi/ncgi.test
++++ modules/ncgi/ncgi.test
+@@ -139,10 +139,18 @@
+ } "\u2810" ; # a braille pattern
+ 
+ test ncgi-3.10 {ncgi::decode, bug 3601995, tkt [1f900bdf6b]} {
+     ncgi::decode {%E2%B1}
+ } "\u00e2\u00b1" ;# Changed with branch `ncgi-1f900bdf6b`, tkt [1f900bdf6b]
++
++test ncgi-3.11 {ncgi::decode, 4-byte utf-8, tkt [66063baec4]} {
++    binary encode hex [encoding convertto utf-8 [ncgi::decode {%F0%A0%AE%B7}]]
++} f0a0aeb7
++
++test ncgi-3.12 {ncgi::decode, 4-byte utf-8, tkt [66063baec4]} {
++    binary encode hex [encoding convertto utf-8 [ncgi::decode {%E8%BE%BB%F3%A0%84%80x}]]
++} e8bebbf3a0848078
+ 
+ test ncgi-4.1 {ncgi::encode} {
+     ncgi::encode abcdef0123
+ } abcdef0123
+ 
+

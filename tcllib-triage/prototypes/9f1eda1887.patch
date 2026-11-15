@@ -1,0 +1,60 @@
+Index: modules/snit/snit.man
+==================================================================
+--- modules/snit/snit.man
++++ modules/snit/snit.man
+@@ -72,11 +72,18 @@
+ new type, along with other activities.
+ 
+ [para]
+ 
+ The [cmd snit::type] [arg definition] block is a script that may
+-contain the following definitions:
++contain the following definitions.  Note that the [arg definition] is
++evaluated in a separate interpreter used for compiling Snit types, not
++in the caller's interpreter, so it cannot refer to the caller's
++variables: e.g. [const {option -a -default $::a}] fails with
++[const {can't read "::a": no such variable}].  To use such a
++value, substitute it before the definition is evaluated, e.g. by
++building the [arg definition] with [cmd list] or [cmd {string map}], or
++set the option in the [cmd constructor] instead.
+ 
+ [list_begin definitions]
+ [call [cmd typevariable] [arg name] [opt [const -array]] [opt [arg value]]]
+ 
+ Defines a type variable with the specified [arg name], and optionally
+
+Index: modules/snit/snit.test
+==================================================================
+--- modules/snit/snit.test
++++ modules/snit/snit.test
+@@ -4115,10 +4115,29 @@
+     dog create spot -foo quux -baz frobnitz -bar frobozz
+     list [spot cget -foo] [spot cget -bar] [spot cget -args]
+ } -cleanup {
+     dog destroy
+ } -result {quux frobozz {-baz frobnitz}}
++
++test option-default-1.1 {definition can't see caller's variables} -body {
++    set ::snitTestDefault 1234
++    type dog {
++        option -foo -default $::snitTestDefault
++    }
++} -cleanup {
++    unset ::snitTestDefault
++} -returnCodes error -result {can't read "::snitTestDefault": no such variable}
++
++test option-default-1.2 {caller's variables substituted into definition} -body {
++    set ::snitTestDefault 1234
++    type dog [list option -foo -default $::snitTestDefault]
++    dog create spot
++    spot cget -foo
++} -cleanup {
++    dog destroy
++    unset ::snitTestDefault
++} -result 1234
+ 
+ #-----------------------------------------------------------------------
+ # Widgetadaptors
+ 
+ test widgetadaptor-1.1 {creating a widget: hull hijacking} -constraints {
+

@@ -1,0 +1,267 @@
+Index: modules/doctools2toc/container.test
+==================================================================
+--- modules/doctools2toc/container.test
++++ modules/doctools2toc/container.test
+@@ -42,10 +42,27 @@
+ # -------------------------------------------------------------------------
+ 
+ TestAccelDo struct::tree impl {
+     source [localPath tests/container_main]
+ }
++
++test doctools-toc-pkgindex-1.0 {pkgIndex.tcl matches package provide, ticket 523f7e0556} -setup {
++    set i [interp create]
++} -body {
++    $i eval [list set dir [localDirectory]]
++    $i eval {source [file join $dir pkgIndex.tcl]}
++    set v [$i eval {package versions doctools::toc}]
++    set f [lindex [$i eval [list package ifneeded doctools::toc $v]] end]
++    set c [open $f]
++    set data [read $c]
++    close $c
++    regexp {package provide doctools::toc (\S+)} $data -> pv
++    expr {$pv eq $v}
++} -cleanup {
++    interp delete $i
++    unset -nocomplain i v f c data pv
++} -result 1
+ 
+ #----------------------------------------------------------------------
+ TestAccelExit struct::tree
+ testsuiteCleanup
+ return
+
+Index: modules/doctools2toc/pkgIndex.tcl
+==================================================================
+--- modules/doctools2toc/pkgIndex.tcl
++++ modules/doctools2toc/pkgIndex.tcl
+@@ -7,11 +7,11 @@
+ # - Export and import management
+ # - Export and import plugins
+ # - Parser for doctoc markup, and handling serializations
+ # - Message catalogs for the parser
+ 
+-package ifneeded doctools::toc                 2     [list source [file join $dir container.tcl]]
++package ifneeded doctools::toc                 2.1   [list source [file join $dir container.tcl]]
+ package ifneeded doctools::toc::export         0.2.2 [list source [file join $dir export.tcl]]
+ 
+ package ifneeded doctools::toc::export::doctoc 0.2 [list source [file join $dir export_doctoc.tcl]]
+ package ifneeded doctools::toc::export::html   0.2 [list source [file join $dir export_html.tcl]]
+ package ifneeded doctools::toc::export::json   0.2 [list source [file join $dir export_json.tcl]]
+
+Index: modules/math/filtergen.test
+==================================================================
+--- modules/math/filtergen.test
++++ modules/math/filtergen.test
+@@ -157,10 +157,27 @@
+     }
+ 
+     set filtered [lrange $filtered end-9 end]
+ } -result {0.771545 0.809968 0.845195 0.877086 0.905515 0.930371 0.951555 0.968984 0.982588 0.992315}
+ 
++
++test filters-pkgindex-1.0 {pkgIndex.tcl matches package provide, ticket 523f7e0556} -setup {
++    set i [interp create]
++} -body {
++    $i eval [list set dir [localDirectory]]
++    $i eval {source [file join $dir pkgIndex.tcl]}
++    set v [$i eval {package versions math::filters}]
++    set f [lindex [$i eval [list package ifneeded math::filters $v]] end]
++    set c [open $f]
++    set data [read $c]
++    close $c
++    regexp {package provide math::filters (\S+)} $data -> pv
++    expr {$pv eq $v}
++} -cleanup {
++    interp delete $i
++    unset -nocomplain i v f c data pv
++} -result 1
+ 
+ #
+ # Cleanup
+ #
+ testsuiteCleanup
+
+Index: modules/math/pkgIndex.tcl
+==================================================================
+--- modules/math/pkgIndex.tcl
++++ modules/math/pkgIndex.tcl
+@@ -27,9 +27,9 @@
+ 
+ if {![package vsatisfies [package require Tcl] 8.6 9]} {return}
+ package ifneeded math::exact             1.0.2 [list source [file join $dir exact.tcl]]
+ package ifneeded math::PCA               1.1   [list source [file join $dir pca.tcl]]
+ package ifneeded math::figurate          1.1   [list source [file join $dir figurate.tcl]]
+-package ifneeded math::filters           0.3   [list source [file join $dir filtergen.tcl]]
++package ifneeded math::filters           0.4   [list source [file join $dir filtergen.tcl]]
+ package ifneeded math::probopt           1.1   [list source [file join $dir probopt.tcl]]
+ package ifneeded math::changepoint       0.2   [list source [file join $dir changepoint.tcl]]
+ package ifneeded math::combinatorics     2.1.1 [list source [file join $dir combinatoricsExt.tcl]]
+
+Index: modules/nettool/nettool.test
+==================================================================
+--- modules/nettool/nettool.test
++++ modules/nettool/nettool.test
+@@ -94,8 +94,25 @@
+ 
+ ::tcltest::test port-allocate-0006 \
+     "Test allocate port returns the next address of an claimed spot and claims it" \
+     [list ::nettool::allocate_port 7790] 7792
+ 
++
++test nettool-pkgindex-1.0 {pkgIndex.tcl matches package provide, ticket 523f7e0556} -setup {
++    set i [interp create]
++} -body {
++    $i eval [list set dir [localDirectory]]
++    $i eval {source [file join $dir pkgIndex.tcl]}
++    set v [$i eval {package versions nettool}]
++    set f [lindex [$i eval [list package ifneeded nettool $v]] end]
++    set c [open $f]
++    set data [read $c]
++    close $c
++    regexp {package provide nettool (\S+)} $data -> pv
++    expr {$pv eq $v}
++} -cleanup {
++    interp delete $i
++    unset -nocomplain i v f c data pv
++} -result 1
+ 
+ testsuiteCleanup
+ return
+
+Index: modules/nettool/pkgIndex.tcl
+==================================================================
+--- modules/nettool/pkgIndex.tcl
++++ modules/nettool/pkgIndex.tcl
+@@ -1,6 +1,6 @@
+ 
+ if {![package vsatisfies [package provide Tcl] 8.5 9]} {return}
+ # Backward compatible alias
+ package ifneeded nettool::available_ports 0.2 {package require nettool ; package provide nettool::available_ports 0.2}
+-package ifneeded nettool 0.5.4 [list source [file join $dir nexttool.tcl]]
++package ifneeded nettool 0.5.4 [list source [file join $dir nettool.tcl]]
+ 
+
+Index: modules/rest/pkgIndex.tcl
+==================================================================
+--- modules/rest/pkgIndex.tcl
++++ modules/rest/pkgIndex.tcl
+@@ -1,2 +1,2 @@
+ if {![package vsatisfies [package provide Tcl] 8.5 9]} {return}
+-package ifneeded rest 1.7 [list source [file join $dir rest.tcl]]
++package ifneeded rest 1.8 [list source [file join $dir rest.tcl]]
+
+Index: modules/rest/rest.man
+==================================================================
+--- modules/rest/rest.man
++++ modules/rest/rest.man
+@@ -1,7 +1,7 @@
+ [comment {-*- tcl -*- doctools manpage}]
+-[vset VERSION 1.7]
++[vset VERSION 1.8]
+ [manpage_begin rest n [vset VERSION]]
+ [moddesc   {A framework for RESTful web services}]
+ [titledesc {define REST web APIs and call them inline or asychronously}]
+ [require Tcl "8.5 9"]
+ [require rest [opt [vset VERSION]]]
+
+ADDED    modules/rest/rest.test
+Index: modules/rest/rest.test
+==================================================================
+--- /dev/null
++++ modules/rest/rest.test
+@@ -0,0 +1,34 @@
++# -*- tcl -*-
++# rest.test:  Tests for the rest package.
++
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 2.0
++
++# -------------------------------------------------------------------------
++
++test rest-pkgindex-1.0 {pkgIndex.tcl matches package provide, ticket 523f7e0556} -setup {
++    set i [interp create]
++} -body {
++    $i eval [list set dir [localDirectory]]
++    $i eval {source [file join $dir pkgIndex.tcl]}
++    set v [$i eval {package versions rest}]
++    set f [lindex [$i eval [list package ifneeded rest $v]] end]
++    set c [open $f]
++    set data [read $c]
++    close $c
++    regexp {package provide rest (\S+)} $data -> pv
++    expr {$pv eq $v}
++} -cleanup {
++    interp delete $i
++    unset -nocomplain i v f c data pv
++} -result 1
++
++# -------------------------------------------------------------------------
++testsuiteCleanup
++return
+
+Index: modules/virtchannel_base/pkgIndex.tcl
+==================================================================
+--- modules/virtchannel_base/pkgIndex.tcl
++++ modules/virtchannel_base/pkgIndex.tcl
+@@ -7,11 +7,11 @@
+ package ifneeded tcl::chan::halfpipe 1.0.3 [list source [file join $dir halfpipe.tcl]]
+ package ifneeded tcl::chan::memchan 1.0.5  [list source [file join $dir memchan.tcl]]
+ package ifneeded tcl::chan::null 1.1       [list source [file join $dir null.tcl]]
+ package ifneeded tcl::chan::nullzero 1.1   [list source [file join $dir nullzero.tcl]]
+ package ifneeded tcl::chan::random 1.1     [list source [file join $dir random.tcl]]
+-package ifneeded tcl::chan::std 1.0.2      [list source [file join $dir std.tcl]]
++package ifneeded tcl::chan::std 1.2        [list source [file join $dir std.tcl]]
+ package ifneeded tcl::chan::string 1.0.4   [list source [file join $dir string.tcl]]
+ package ifneeded tcl::chan::textwindow 1.1 [list source [file join $dir textwindow.tcl]]
+ package ifneeded tcl::chan::variable 1.0.5 [list source [file join $dir variable.tcl]]
+ package ifneeded tcl::chan::zero 1.1         [list source [file join $dir zero.tcl]]
+ package ifneeded tcl::randomseed 1.1         [list source [file join $dir randseed.tcl]]
+
+ADDED    modules/virtchannel_base/std.test
+Index: modules/virtchannel_base/std.test
+==================================================================
+--- /dev/null
++++ modules/virtchannel_base/std.test
+@@ -0,0 +1,34 @@
++# -*- tcl -*-
++# std.test:  Tests for the tcl::chan::std package.
++
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 2.0
++
++# -------------------------------------------------------------------------
++
++test tcl-chan-std-pkgindex-1.0 {pkgIndex.tcl matches package provide, ticket 523f7e0556} -setup {
++    set i [interp create]
++} -body {
++    $i eval [list set dir [localDirectory]]
++    $i eval {source [file join $dir pkgIndex.tcl]}
++    set v [$i eval {package versions tcl::chan::std}]
++    set f [lindex [$i eval [list package ifneeded tcl::chan::std $v]] end]
++    set c [open $f]
++    set data [read $c]
++    close $c
++    regexp {package provide tcl::chan::std (\S+)} $data -> pv
++    expr {$pv eq $v}
++} -cleanup {
++    interp delete $i
++    unset -nocomplain i v f c data pv
++} -result 1
++
++# -------------------------------------------------------------------------
++testsuiteCleanup
++return
+

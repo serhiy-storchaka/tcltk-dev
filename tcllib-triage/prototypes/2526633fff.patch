@@ -1,0 +1,132 @@
+Index: modules/dns/spf.tcl
+==================================================================
+--- modules/dns/spf.tcl
++++ modules/dns/spf.tcl
+@@ -198,11 +198,11 @@
+     }
+     ${log}::debug "  fetching A for $testdomain"
+     set dips [A $testdomain];           # get the IPs for the testdomain
+     foreach dip $dips {
+         ${log}::debug "  compare: ${ip}/${bits} with ${dip}/${bits}"
+-        if {[ip::equal $ip/$bits $dip/$bits]} {
++        if {[IpMatch $ip $dip $bits]} {
+             return 1
+         }
+     }
+     return 0
+ }
+@@ -224,11 +224,11 @@
+     foreach mx $mxs {
+         set mx [lindex $mx 1]
+         set mxips [A $mx]
+         foreach mxip $mxips {
+             ${log}::debug "  compare: ${ip}/${bits} with ${mxip}/${bits}"
+-            if {[ip::equal $ip/$bits $mxip/$bits]} {
++            if {[IpMatch $ip $mxip $bits]} {
+                 return 1
+             }
+         }
+     }
+     return 0
+@@ -245,11 +245,12 @@
+         return 0
+     }
+     foreach name $names {
+         set addrs [A $name]
+         foreach addr $addrs {
+-            if {[ip::equal $ip $addr]} {
++            if {[ip::version $ip] == [ip::version $addr]
++                && [ip::equal $ip $addr]} {
+                 lappend validnames $name
+                 continue
+             }
+         }
+     }
+@@ -265,19 +266,28 @@
+         }
+     }
+ 
+     return 0
+ }
++
++# Compare two IP addresses using the given prefix length (if any).
++# Addresses of different families never match.
++proc ::spf::IpMatch {ip addr bits} {
++    if {[ip::version $ip] != [ip::version $addr]} {
++        return 0
++    }
++    return [ip::equal $ip/$bits $addr/$bits]
++}
+ 
+ # 4.7: These mechanisms test if the <sending-host> falls into a given IP
+ #      network.
+ #
+ proc ::spf::_ip4 {ip domain sender param} {
+     variable log
+     foreach {network bits} [ip::SplitIp [string range $param 1 end]] {}
+     ${log}::debug "  compare ${ip}/${bits} to ${network}/${bits}"
+-    if {[ip::equal $ip/$bits $network/$bits]} {
++    if {[IpMatch $ip $network $bits]} {
+         return 1
+     }
+     return 0
+ }
+ 
+@@ -286,11 +296,11 @@
+ #
+ proc ::spf::_ip6 {ip domain sender param} {
+     variable log
+     foreach {network bits} [ip::SplitIp [string range $param 1 end]] {}
+     ${log}::debug "  compare ${ip}/${bits} to ${network}/${bits}"
+-    if {[ip::equal $ip/$bits $network/$bits]} {
++    if {[IpMatch $ip $network $bits]} {
+         return 1
+     }
+     return 0
+ }
+ 
+
+Index: modules/dns/spf.test
+==================================================================
+--- modules/dns/spf.test
++++ modules/dns/spf.test
+@@ -172,10 +172,38 @@
+     list [catch {
+         spf::Spf 192.0.2.3 email.example.com $::email \
+             "v=spf1 ip4:192.0/16 ?all"
+     } r] $r
+ } {0 +}
++
++test spf-4.6 {ip4 directive does not fail for IPv6 sender} {
++    list [catch {
++        spf::Spf 2001:db8::1 email.example.com $::email \
++            "v=spf1 ip4:192.0.2.0/24 ip6:2001:db8::/32 -all"
++    } r] $r
++} {0 +}
++
++test spf-4.7 {ip6 directive does not fail for IPv4 sender} {
++    list [catch {
++        spf::Spf 192.0.2.3 email.example.com $::email \
++            "v=spf1 ip6:2001:db8::/32 ip4:192.0.2.0/24 -all"
++    } r] $r
++} {0 +}
++
++test spf-4.8 {ip6 directive: no match} {
++    list [catch {
++        spf::Spf 2001:db9::1 email.example.com $::email \
++            "v=spf1 ip4:192.0.2.0/24 ip6:2001:db8::/32 -all"
++    } r] $r
++} {0 -}
++
++test spf-4.9 {a and mx directives do not fail for IPv6 sender} {
++    list [catch {
++        spf::Spf 2001:db8::1 email.example.com $::email \
++            "v=spf1 a mx -all"
++    } r] $r
++} {0 -}
+ 
+ # -------------------------------------------------------------------------
+ # Macros language tests
+ # These are all taken from the specification document.
+ 
+

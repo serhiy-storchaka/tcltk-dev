@@ -1,0 +1,59 @@
+--- modules/ftpd/ftpd.tcl
++++ modules/ftpd/ftpd.tcl
+@@ -1902,8 +1902,10 @@
+         rename {
+             foreach {newname outchan} $args break
+ 
++            set newname [file join $docRoot $newname]
+             if {![file isdirectory [file dirname $newname]]} {
+ 	        puts $outchan "550 rename: No such file or directory."
++	        return
+             }
+             file rename $path $newname
+             puts $outchan "250 RNTO command successful."
+--- modules/ftpd/ftpd.test
++++ modules/ftpd/ftpd.test
+@@ -27,5 +27,43 @@
+ } -result "$::tcl_platform(user)@[info hostname]"
+ 
+ # -------------------------------------------------------------------------
++## Default file system, ::ftpd::fsFile::fs
++
++test ftpd-3.0 {fs rename, relative to docRoot, ticket 2928355fff} -setup {
++    set root [makeDirectory ftproot]
++    set oldroot [::ftpd::fsFile::docRoot]
++    ::ftpd::fsFile::docRoot $root
++    file mkdir [file join $root sub]
++    close [open [file join $root sub old.txt] w]
++    set out [open [makeFile {} reply.txt] w]
++} -body {
++    ::ftpd::fsFile::fs rename sub/old.txt sub/new.txt $out
++    close $out
++    list [viewFile reply.txt] [glob -nocomplain -tails -directory $root sub/*]
++} -cleanup {
++    ::ftpd::fsFile::docRoot $oldroot
++    removeDirectory ftproot
++    removeFile reply.txt
++    unset -nocomplain root oldroot out
++} -result {{250 RNTO command successful.} sub/new.txt}
++
++test ftpd-3.1 {fs rename, missing target directory, single reply} -setup {
++    set root [makeDirectory ftproot]
++    set oldroot [::ftpd::fsFile::docRoot]
++    ::ftpd::fsFile::docRoot $root
++    close [open [file join $root old.txt] w]
++    set out [open [makeFile {} reply.txt] w]
++} -body {
++    set code [catch {::ftpd::fsFile::fs rename old.txt nosuchdir/new.txt $out}]
++    close $out
++    list $code [viewFile reply.txt] [glob -nocomplain -tails -directory $root *]
++} -cleanup {
++    ::ftpd::fsFile::docRoot $oldroot
++    removeDirectory ftproot
++    removeFile reply.txt
++    unset -nocomplain root oldroot out code
++} -result {0 {550 rename: No such file or directory.} old.txt}
++
++# -------------------------------------------------------------------------
+ testsuiteCleanup
+ return

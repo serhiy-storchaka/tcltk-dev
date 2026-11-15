@@ -1,0 +1,71 @@
+Index: modules/imap4/imap4.tcl
+==================================================================
+--- modules/imap4/imap4.tcl
++++ modules/imap4/imap4.tcl
+@@ -1316,11 +1316,11 @@
+ }
+ 
+ ################################################################################
+ # Example and test
+ ################################################################################
+-if {[info script] eq $argv0} {
++if {[info exists ::argv0] && [info script] eq $::argv0} {
+     # set imap4::debug 0
+     set FOLDER INBOX
+     set port 0
+     if {[llength $argv] < 3} {
+         puts "Usage: imap4.tcl <server> <user> <pass> ?folder? ?-secure? ?-debug?"
+
+Index: modules/imap4/imap4.test (new file)
+===================================================================
+--- /dev/null
++++ modules/imap4/imap4.test
+@@ -0,0 +1,48 @@
++# -*- tcl -*-
++# imap4.test:  tests for the imap4 client.
++#
++# This file contains a collection of tests for one or more of the Tcl
++# built-in commands.  Sourcing this file into Tcl runs the tests and
++# generates output for errors.  No output means no errors were found.
++
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 2.0
++
++testing {
++    useLocal imap4.tcl imap4
++}
++
++# -------------------------------------------------------------------------
++
++test imap4-1.0 {load without argv0, ticket dbde846f53} -setup {
++    set ip [interp create]
++} -body {
++    $ip eval {unset -nocomplain ::argv0}
++    $ip eval [list source [localPath imap4.tcl]]
++    $ip eval {package present imap4}
++} -cleanup {
++    interp delete $ip
++    unset ip
++} -match glob -result {0.*}
++
++test imap4-1.1 {load from inside a procedure, ticket dbde846f53} -setup {
++    set ip [interp create]
++} -body {
++    $ip eval {set ::argv0 [info nameofexecutable]}
++    $ip eval [list proc load {} [list source [localPath imap4.tcl]]]
++    $ip eval load
++    $ip eval {package present imap4}
++} -cleanup {
++    interp delete $ip
++    unset ip
++} -match glob -result {0.*}
++
++# -------------------------------------------------------------------------
++testsuiteCleanup
++return

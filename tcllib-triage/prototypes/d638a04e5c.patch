@@ -1,0 +1,267 @@
+Index: modules/coroutine/coroutine.tcl
+==================================================================
+--- modules/coroutine/coroutine.tcl
++++ modules/coroutine/coroutine.tcl
+@@ -51,11 +51,12 @@
+ package require Tcl 8.6 9
+ 
+ namespace eval ::coroutine::util {
+ 
+     namespace export \
+-	create global after exit vwait update gets read puts socket await
++	create global after exit vwait update gets gets_safety read puts \
++	socket await
+ 
+     namespace ensemble create
+ }
+ 
+ # # ## ### ##### ######## #############
+@@ -184,11 +185,11 @@
+ 	# necessary error with the proper message.
+ 	tailcall ::chan gets {*}$args
+     }
+ 
+     # Loop until we have a complete line. Yield to the event loop
+-    # where necessary. During
++    # where necessary.
+     set blocking [::chan configure $chan -blocking]
+     set readable [::chan event $chan readable]
+     ::chan event $chan readable [list [info coroutine]]
+     ::chan configure $chan -blocking 0
+     try {
+@@ -217,42 +218,51 @@
+ 
+ 
+ proc ::coroutine::util::gets_safety {chan limit varname {timeout 120000}} {
+     # Process arguments.
+     # Acceptable syntax:
+-    # * gets CHAN ?VARNAME?
++    # * gets_safety CHAN LIMIT VARNAME ?TIMEOUT?
+ 
+     # Loop until we have a complete line. Yield to the event loop
+-    # where necessary. During
++    # where necessary. Fail if the line is longer than the limit.
+     upvar 1 $varname line
+     set blocking [::chan configure $chan -blocking]
+     ::chan configure $chan -blocking 0
+     set readable [::chan event $chan readable]
+     ::chan event $chan readable [list [info coroutine] readable]
++    set timeoutevent {}
+     try {
+ 	while 1 {
+-	    if {[::chan pending input $chan] >= $limit} {
+-		error {Too many notes, Mozart. Too many notes}
+-	    }
+ 	    try {
+ 		set result [::chan gets $chan line]
+ 	    } on error {result opts} {
+ 		return -code $result -options $opts
+ 	    }
+ 
+-	    if {[::chan blocked $chan]} {
+-		set timeoutevent [::after $timeout [list [info coroutine] timeout]]
+-		set event [yield]
+-		if {$event eq {timeout}} {
+-		  error {Connection Timed Out}
+-		}
+-		::after cancel $timeoutevent
+-	    } else {
+-		return $result
++	    if {![::chan blocked $chan]} {
++		if {$result > $limit} {
++		    return -code error -errorcode {COROUTINE GETS_SAFETY LIMIT} \
++			{Too many notes, Mozart. Too many notes}
++		}
++		return $result
++	    }
++	    # Incomplete line. The partial line stays buffered in the
++	    # channel.
++	    if {[::chan pending input $chan] > $limit} {
++		return -code error -errorcode {COROUTINE GETS_SAFETY LIMIT} \
++		    {Too many notes, Mozart. Too many notes}
++	    }
++	    set timeoutevent [::after $timeout [list [info coroutine] timeout]]
++	    set event [yield]
++	    ::after cancel $timeoutevent
++	    if {$event eq {timeout}} {
++		return -code error -errorcode {COROUTINE GETS_SAFETY TIMEOUT} \
++		    {Connection Timed Out}
+ 	    }
+ 	}
+     } finally {
++	::after cancel $timeoutevent
+ 	::chan configure $chan -blocking $blocking
+ 	::chan event $chan readable $readable
+     }
+ }
+ 
+
+ADDED    modules/coroutine/coroutine.test
+Index: modules/coroutine/coroutine.test
+==================================================================
+--- /dev/null
++++ modules/coroutine/coroutine.test
+@@ -0,0 +1,130 @@
++# -*- tcl -*-
++# Tests for the coroutine module.
++#
++# Sourcing this file into Tcl runs the tests and generates output for
++# errors.  No output means no errors were found.
++
++source [file join \
++    [file dirname [file dirname [file join [pwd] [info script]]]] \
++    devtools testutilities.tcl]
++
++testsNeedTcl     8.6
++testsNeedTcltest 2.0
++
++testing {
++    useLocal coroutine.tcl coroutine
++}
++
++# -------------------------------------------------------------------------
++## Helpers. Run a script in a coroutine, wait for it to complete, and
++## return its outcome as a list of return code and result.
++
++proc runco {script} {
++    set ::outcome {}
++    coroutine::util create apply [list {script} {
++	set code [catch {uplevel #0 $script} result]
++	set ::outcome [list $code $result]
++    }] $script
++    set guard [after 5000 {set ::outcome hang}]
++    if {![llength $::outcome]} {vwait ::outcome}
++    after cancel $guard
++    return $::outcome
++}
++
++proc mkpipe {data} {
++    lassign [chan pipe] r w
++    chan configure $w -translation binary
++    chan configure $r -translation binary
++    puts -nonewline $w $data
++    flush $w
++    return [list $r $w]
++}
++
++# -------------------------------------------------------------------------
++## gets_safety. Ticket d638a04e5c.
++
++test coroutine-gets_safety-1.0 {short line, ensemble} -setup {
++    lassign [mkpipe "abc\n"] r w
++} -body {
++    runco [list coroutine::util gets_safety $r 10 ::line]
++} -cleanup {
++    close $r ; close $w
++} -result {0 3}
++
++test coroutine-gets_safety-1.1 {short line, variable} -setup {
++    lassign [mkpipe "abc\n"] r w
++} -body {
++    runco [list coroutine::util::gets_safety $r 10 ::line]
++    set ::line
++} -cleanup {
++    close $r ; close $w
++} -result abc
++
++test coroutine-gets_safety-1.2 {short line followed by much data} -setup {
++    lassign [mkpipe "abc\n[string repeat A 20000]\n"] r w
++} -body {
++    list [runco [list coroutine::util::gets_safety $r 10 ::line]] $::line
++} -cleanup {
++    close $r ; close $w
++} -result {{0 3} abc}
++
++test coroutine-gets_safety-1.3 {complete line too long} -setup {
++    lassign [mkpipe "[string repeat A 20000]\n"] r w
++} -body {
++    runco [list coroutine::util::gets_safety $r 10 ::line]
++} -cleanup {
++    close $r ; close $w
++} -result {1 {Too many notes, Mozart. Too many notes}}
++
++test coroutine-gets_safety-1.4 {incomplete line too long} -setup {
++    lassign [mkpipe [string repeat A 20000]] r w
++} -body {
++    runco [list coroutine::util::gets_safety $r 10 ::line]
++} -cleanup {
++    close $r ; close $w
++} -result {1 {Too many notes, Mozart. Too many notes}}
++
++test coroutine-gets_safety-1.5 {line at limit} -setup {
++    lassign [mkpipe "[string repeat A 10]\n"] r w
++} -body {
++    runco [list coroutine::util::gets_safety $r 10 ::line]
++} -cleanup {
++    close $r ; close $w
++} -result {0 10}
++
++test coroutine-gets_safety-1.6 {line split over writes} -setup {
++    lassign [mkpipe "ab"] r w
++    after 50 [list puts $w "c"]
++    after 60 [list flush $w]
++} -body {
++    list [runco [list coroutine::util::gets_safety $r 10 ::line]] $::line
++} -cleanup {
++    close $r ; close $w
++} -result {{0 3} abc}
++
++test coroutine-gets_safety-1.7 {timeout} -setup {
++    lassign [mkpipe ""] r w
++} -body {
++    runco [list coroutine::util::gets_safety $r 10 ::line 50]
++} -cleanup {
++    close $r ; close $w
++} -result {1 {Connection Timed Out}}
++
++test coroutine-gets_safety-1.8 {error codes} -setup {
++    lassign [mkpipe "[string repeat A 100]\n"] r w
++} -body {
++    runco [list apply {{r} {
++	catch {coroutine::util::gets_safety $r 10 ::line} m o
++	dict get $o -errorcode
++    }} $r]
++} -cleanup {
++    close $r ; close $w
++} -result {0 {COROUTINE GETS_SAFETY LIMIT}}
++
++# -------------------------------------------------------------------------
++
++rename runco {}
++rename mkpipe {}
++unset -nocomplain ::outcome ::line
++testsuiteCleanup
++return
+
+Index: modules/coroutine/tcllib_coroutine.man
+==================================================================
+--- modules/coroutine/tcllib_coroutine.man
++++ modules/coroutine/tcllib_coroutine.man
+@@ -77,16 +77,22 @@
+ 
+ This command reads a line from the channel [arg chan] and returns it
+ either as its result, or, if a [arg varname] was specified, writes it
+ to the named variable and returns the number of characters read.
+ 
+-[call [cmd {coroutine::util gets_safety}] [arg chan] [arg limit] [arg varname]]
++[call [cmd {coroutine::util gets_safety}] [arg chan] [arg limit] [arg varname] [opt [arg timeout]]]
+ 
+ This command reads a line from the channel [arg chan] up to size [arg limit]
+-and stores the result in [arg varname]. Of [arg limit] is reached before the
+-set first newline, an error is thrown. The command returns the number of
+-characters read.
++and stores the result in [arg varname]. If the line is longer than
++[arg limit], an error with error code [const {COROUTINE GETS_SAFETY LIMIT}]
++is thrown. If no complete line arrives within [arg timeout] milliseconds
++(default 120000), an error with error code
++[const {COROUTINE GETS_SAFETY TIMEOUT}] is thrown. The command returns the
++number of characters read.
++
++[para] Note that data which is already available, as for a file, is read
++by the channel without regard to the [arg limit].
+ 
+ [call [cmd {coroutine::util global}] [arg varname]...]
+ 
+ This command imports the named global variables of the coroutine into
+ the current scope. From the technical point of view these variables
+

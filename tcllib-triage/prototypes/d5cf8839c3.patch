@@ -1,0 +1,319 @@
+Index: modules/ftp/ftp.tcl
+==================================================================
+--- modules/ftp/ftp.tcl
++++ modules/ftp/ftp.tcl
+@@ -800,16 +800,15 @@
+         put_sent {
+             switch -exact -- $rc {
+                 1 -
+ 		2 {
+                     set ftp(State) put_close
++                    StartPut $s
+                 }
+                 default {
+-                    if { [string equal $ftp(Mode) "passive"] } {
+-                        # close already opened DataConnection
+-                        catch {unset ftp(state.data)}
+-                    }  
++                    # close already opened DataConnection
++                    catch {unset ftp(state.data)}
+                     set errmsg "Error opening connection!"
+                     set complete_with 0
+ 		    Command $ftp(Command) error $errmsg
+                 }
+             }
+@@ -878,16 +877,15 @@
+         }
+         append_sent {
+             switch -exact -- $rc {
+                 1 {
+                     set ftp(State) append_close
++                    StartPut $s
+                 }
+                 default {
+-                    if { [string equal $ftp(Mode) "passive"] } {
+-                        # close already opened DataConnection
+-                        catch {unset ftp(state.data)}
+-                    }  
++                    # close already opened DataConnection
++                    catch {unset ftp(state.data)}
+                     set errmsg "Error opening connection!"
+                     set complete_with 0
+ 		    Command $ftp(Command) error $errmsg
+                 }
+             }
+@@ -2838,10 +2836,11 @@
+ 	catch {unset ftp(get:channel)}
+ 	catch {unset ftp(DestCI)}
+     }
+ 
+     catch { unset ftp(AC) }
++    catch {close [lindex $ftp(PutHandler) end]; unset ftp(PutHandler)}
+     catch {after cancel $ftp(Wait)}
+     catch {fileevent $ftp(DataSock) readable {}}
+     catch {close $ftp(DataSock); unset ftp(DataSock)}
+     catch {close $ftp(DestCI); unset ftp(DestCI)} 
+     catch {close $ftp(SourceCI); unset ftp(SourceCI)}
+@@ -2913,15 +2912,21 @@
+         append -
+         put {
+             if {$ftp(inline)} {
+                 set ftp(Start_Time) -1
+                 set ftp(Total) 0
+-                fileevent $sock writable [list [namespace current]::HandleOutput $s $sock]
++                set handler HandleOutput
+ 	    } else {
+-                fileevent $sock writable [list [namespace current]::HandleData $s $sock]
++                set handler HandleData
+                 set ftp(DestCI) $sock
+ 	    }
++            # Do not send data before the server accepted the STOR or
++            # APPE command, see StartPut.
++            set ftp(PutHandler) [list [namespace current]::$handler $s $sock]
++            if {[string match *_close $ftp(State)]} {
++                StartPut $s
++            }
+         }
+ 	default {
+ 	    error "Unknown state \"$ftp(State)\""
+ 	}
+     }
+@@ -2932,10 +2937,31 @@
+ 
+     # Marker for WaitDataConn
+     set ftp(AC) 1
+     return
+ }
++
++#############################################################################
++#
++# StartPut --
++#
++# Starts sending data over the data connection, once both the data
++# connection is open (InitDataConn) and the server has accepted the
++# STOR or APPE command (states put_sent, append_sent).
++#
++# Arguments:
++# s -		ftp connection handle
++
++proc ::ftp::StartPut {s} {
++    upvar ::ftp::ftp$s ftp
++
++    if {[info exists ftp(PutHandler)]} {
++        fileevent [lindex $ftp(PutHandler) end] writable $ftp(PutHandler)
++        unset ftp(PutHandler)
++    }
++    return
++}
+ 
+ #############################################################################
+ #
+ # WaitDataConn --
+ # Arguments: The ftp connection handle
+
+--- /dev/null
++++ modules/ftp/ftp.test
+@@ -0,0 +1,203 @@
++# -*- tcl -*-
++# ftp.test:  tests for the ftp client.
++#
++# The tests run the client against a local ftpd (tcllib) server
++# started in a child process, listening on 127.0.0.1 only.
++#
++# Sourcing this file into Tcl runs the tests and generates output for
++# errors.  No output means no errors were found.
++
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 2.0
++
++support {
++    use log/log.tcl log
++}
++testing {
++    useLocal ftp.tcl ftp
++}
++
++# -------------------------------------------------------------------------
++## Server. A tcllib ftpd running in a child process. Accepts every
++## login and grants access to all files, except those whose names
++## contain "denied". The document root is a
++## temporary directory.
++
++set rootDir [makeDirectory ftproot]
++set serverScript [makeFile {
++    lassign $argv modules docroot
++    lappend auto_path $modules
++    namespace eval ::ftpd {variable contact test@localhost}
++    package require ftpd
++    set ::ftpd::port 0
++    ::ftpd::fsFile::docRoot $docroot
++    ::ftpd::config -logCmd {apply {{s t} {}}} \
++	-authUsrCmd  {apply {{u p} {return 1}}} \
++	-authFileCmd {apply {{u p o} {expr {![string match *denied* $p]}}}}
++    ::ftpd::server 127.0.0.1
++    puts $::ftpd::port
++    flush stdout
++    fileevent stdin readable exit
++    vwait forever
++} ftpserver.tcl]
++
++set server [open |[list [info nameofexecutable] $serverScript \
++	[file dirname [localDirectory]] $rootDir] r+]
++gets $server serverPort
++
++proc open_session {mode} {
++    ftp::Open 127.0.0.1 user pass -port $::serverPort -mode $mode -timeout 5
++}
++proc rootfile {name} {
++    file join $::rootDir $name
++}
++proc readroot {name} {
++    set f [open [rootfile $name] rb]
++    set data [read $f]
++    close $f
++    return $data
++}
++proc writeroot {name data} {
++    set f [open [rootfile $name] wb]
++    puts -nonewline $f $data
++    close $f
++}
++
++# Keep the error messages of the package out of the test output.
++log::lvSuppress error
++
++# -------------------------------------------------------------------------
++
++foreach mode {passive active} {
++    test ftp-1.0-$mode {Get -variable} -setup {
++	writeroot get.txt hello
++	set h [open_session $mode]
++    } -body {
++	list [ftp::Get $h get.txt -variable data] $data
++    } -cleanup {
++	ftp::Close $h
++	file delete [rootfile get.txt]
++	unset -nocomplain h data
++    } -result {1 hello}
++
++}
++
++# -------------------------------------------------------------------------
++## A strict server, in a child process. In active mode it opens the
++## data connection right after PORT (like pyftpdlib and ftpd), but
++## delays the reply to PORT a bit. It rejects a STOR or APPE if data
++## arrived on the data connection before the command. Stored data is
++## written to the file "stored" in the document root.
++
++set strictScript [makeFile {
++    set out [lindex $argv 0]
++    proc accept {c args} {
++	fconfigure $c -buffering line -translation crlf
++	puts $c "220 strict"
++	fileevent $c readable [list control $c]
++    }
++    proc control {c} {
++	global data early
++	if {[gets $c line] < 0} {
++	    close $c
++	    return
++	}
++	switch -glob -- $line {
++	    USER* {puts $c "331 Password"}
++	    PASS* {puts $c "230 OK"}
++	    TYPE* {puts $c "200 OK"}
++	    QUIT  {puts $c "221 Bye"}
++	    PORT* {
++		set n [split [lindex $line 1] ,]
++		set data [socket [join [lrange $n 0 3] .] \
++		    [expr {[lindex $n 4] * 256 + [lindex $n 5]}]]
++		set early 0
++		fconfigure $data -translation binary
++		fileevent $data readable {set early 1}
++		after 200 [list puts $c "200 PORT OK"]
++	    }
++	    STOR* - APPE* {
++		if {$early} {
++		    puts $c "425 Data arrived before $line"
++		    close $data
++		    return
++		}
++		puts $c "150 Ok"
++		set f [open $::out wb]
++		fileevent $data readable [list store $c $data $f]
++	    }
++	    default {puts $c "502 Not implemented"}
++	}
++    }
++    proc store {c d f} {
++	puts -nonewline $f [read $d]
++	if {[eof $d]} {
++	    close $d
++	    close $f
++	    puts $c "226 Transfer complete"
++	}
++    }
++    set s [socket -server accept -myaddr 127.0.0.1 0]
++    puts [lindex [fconfigure $s -sockname] 2]
++    flush stdout
++    fileevent stdin readable exit
++    vwait forever
++} strictserver.tcl]
++
++set strictServer [open |[list [info nameofexecutable] $strictScript \
++	[rootfile stored]] r+]
++gets $strictServer strictPort
++
++proc open_strict {} {
++    file delete [rootfile stored]
++    ftp::Open 127.0.0.1 user pass -port $::strictPort -mode active -timeout 5
++}
++proc stored {} {
++    if {![file exists [rootfile stored]]} {return {}}
++    readroot stored
++}
++
++test ftp-4.0 {Put -data, active, no data before STOR, ticket d5cf8839c3} -setup {
++    set h [open_strict]
++} -body {
++    list [ftp::Put $h -data "line1\nline2\n" put.txt] [stored]
++} -cleanup {
++    ftp::Close $h
++    unset -nocomplain h
++} -result [list 1 "line1\nline2\n"]
++
++test ftp-4.1 {Append -data, active, no data before APPE, ticket d5cf8839c3} -setup {
++    set h [open_strict]
++} -body {
++    list [ftp::Append $h -data "line1\nline2\n" put.txt] [stored]
++} -cleanup {
++    ftp::Close $h
++    unset -nocomplain h
++} -result [list 1 "line1\nline2\n"]
++
++test ftp-4.2 {Put file, active, no data before STOR, ticket d5cf8839c3} -setup {
++    set src [makeFile "line1\nline2" src.txt]
++    set h [open_strict]
++} -body {
++    list [ftp::Put $h $src put.txt] [stored]
++} -cleanup {
++    ftp::Close $h
++    removeFile src.txt
++    unset -nocomplain h src
++} -result [list 1 "line1\nline2\n"]
++
++close $strictServer
++removeFile strictserver.tcl
++
++# -------------------------------------------------------------------------
++close $server
++removeFile ftpserver.tcl
++removeDirectory ftproot
++testsuiteCleanup
++return

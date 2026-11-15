@@ -1,0 +1,42 @@
+Index: modules/yaml/yaml.tcl
+==================================================================
+--- modules/yaml/yaml.tcl
++++ modules/yaml/yaml.tcl
+@@ -429,11 +429,11 @@
+             }
+         }
+         if {$scalar} {
+             set pos [_getCurrent]
+             _ungetc
+-            set value [_parseScalarNode $type "BLOCK" $pos]
++            set value [_parseScalarNode $type "BLOCK" [expr {$indent + 1}]]
+             set value [_composeTags $tag $value]
+             set tag ""
+             set scalar 0
+         }
+         if {[info exists value]} {
+
+Index: modules/yaml/yaml.test
+==================================================================
+--- modules/yaml/yaml.test
++++ modules/yaml/yaml.test
+@@ -775,10 +775,18 @@
+ test yaml-21.2 "explicit_tags float" -body {
+     set y {!!float 123=0}
+     yaml::yaml2dict $y
+ } -returnCodes error -result {expected floating-point number but got "123=0"}
+ 
++
++test yaml-31.1 "plain scalar continuation line starting with *, ticket 815408482c" -body {
++    yaml::yaml2dict "items:\n- key: some long text\n    *bold text*\n  other: val\n"
++} -result {items {{key {some long text *bold text*} other val}}}
++
++test yaml-31.2 "plain scalar continuation less indented than scalar start, ticket 815408482c" -body {
++    yaml::yaml2dict "key: some long text\n  - text\nother: val\n"
++} -result {key {some long text - text} other val}
+ 
+ # ... Tests of addStrings ...
+ #     (Requires introspection of parser state)
+ 
+ 
+

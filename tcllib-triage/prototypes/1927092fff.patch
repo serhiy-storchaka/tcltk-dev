@@ -1,0 +1,31 @@
+Index: modules/ncgi/ncgi.man
+==================================================================
+--- modules/ncgi/ncgi.man
++++ modules/ncgi/ncgi.man
+@@ -187,11 +187,11 @@
+ will be qualified with the current server and current directory, if
+ necessary, to convert it into a full URL.
+ 
+ [call [cmd ::ncgi::reset] [arg {query type}]]
+ 
+-Set the query data and Content-Type for the current CGI session.  This
++Set the query data and Content-Type for the current CGI request.  This
+ is used by the test suite and by Web servers to initialize the ncgi
+ module so it does not try to read standard input or use environment
+ variables to get its data.  If neither [arg query] or [arg type] are
+ specified, then the [package ncgi] module will look in the standard
+ CGI environment for its data.
+@@ -243,11 +243,11 @@
+ 
+ [call [cmd ::ncgi::urlStub] [opt [arg url]]]
+ 
+ Returns the current URL, but without the protocol, server, and port.
+ If [arg url] is specified, then it defines the URL for the current
+-session.  That value will be returned by future calls to
++request.  That value will be returned by future calls to
+ 
+ [cmd ::ncgi::urlStub]
+ 
+ [call [cmd ::ncgi::value] [arg key] [opt [arg default]]]
+ 
+

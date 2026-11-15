@@ -1,0 +1,69 @@
+Index: modules/log/logger.tcl
+==================================================================
+--- modules/log/logger.tcl
++++ modules/log/logger.tcl
+@@ -190,12 +190,18 @@
+ 	    variable inSetLevel 1
+ 	    set oldlvl [currentloglevel]
+ 
+ 	    # do not allow enable and disable to do recursion
+ 	    if {[catch {
+-		disable $lv 0
+-		set newlvl [enable $lv 0]
++		if {$lv eq "none"} {
++		    # Disable all levels.
++		    variable levels
++		    set newlvl [disable [lindex $levels end] 0]
++		} else {
++		    disable $lv 0
++		    set newlvl [enable $lv 0]
++		}
+ 	    } msg] == 1} {
+ 		return -code error -errorcode $::errorCode $msg
+ 	    }
+ 	    # do the recursion here
+ 	    logger::walk [namespace current] [list setlevel $lv]
+@@ -636,11 +642,13 @@
+ 	    # whole thing.
+ 	    if { ! [::info exists ${parent}::enabled] } {
+ 		logger::init [string range $parent 16 end]
+ 	    }
+ 	    set enabled [set ${parent}::enabled]
+-	    enable $enabled
++	    if {$enabled ne "none"} {
++		enable $enabled
++	    }
+ 	    set parent [namespace parent $parent]
+ 	}
+     }
+ 
+     # Now create the commands for different levels.
+
+Index: modules/log/logger.test
+==================================================================
+--- modules/log/logger.test
++++ modules/log/logger.test
+@@ -1296,10 +1296,22 @@
+     ::foo::bar::log::delete
+     ::foo::log::delete
+     namespace delete ::foo
+     set lvl
+ } error
++
++test logger-18.0 {child inherits level none, ticket 3506188fff} -setup {
++    set log [logger::init foo]
++    foreach lvl [logger::levels] {${log}::disable $lvl}
++} -body {
++    set child [logger::init foo::bar]
++    list [${log}::currentloglevel] [${child}::currentloglevel] \
++	[interp alias {} ${child}::emergency]
++} -cleanup {
++    ${log}::delete
++    unset -nocomplain log child lvl
++} -result {none none ::logger::tree::foo::bar::no-op}
+ 
+ # # ## ### ##### ######## ############# #####################
+ 
+ testsuiteCleanup
+ return
+

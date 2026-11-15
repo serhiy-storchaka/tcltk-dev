@@ -1,0 +1,51 @@
+Index: modules/doctools2base/tcl_parse.tcl
+==================================================================
+--- modules/doctools2base/tcl_parse.tcl
++++ modules/doctools2base/tcl_parse.tcl
+@@ -39,11 +39,11 @@
+ snit::type            ::doctools::tcl::parse {
+     # # ## ### ##### ######## #############
+     ## Public API
+ 
+     typemethod file {t path {root {}}} {
+-	$type text $t [fileutil::cat -translation binary -encoding binary $path] $root
++	$type text $t [fileutil::cat -translation binary $path] $root
+     }
+ 
+     typemethod text {t text {root {}}} {
+ 	# --- --- --- --------- --------- ---------
+ 	# Phase 1. Lexical processing.
+
+Index: modules/doctools2base/tests/tcl_parse
+==================================================================
+--- modules/doctools2base/tests/tcl_parse
++++ modules/doctools2base/tests/tcl_parse
+@@ -27,10 +27,27 @@
+ 	myresult destroy
+     } -result $expected
+ }
+ 
+ # -------------------------------------------------------------------------
++
++# Ticket [146ae829a9]: [parse file] used "-encoding binary", rejected by Tcl 9.
++
++TestFilesProcess $mytestdir ok in out -> n label input data expected {
++    test doctools-tcl-parse-${stkimpl}-${setimpl}-${impl}-13.$n "doctools::tcl::parse file, $label, ok" -setup {
++	struct::tree myresult
++    } -body {
++	doctools::tcl::parse file myresult $input
++	set res {}
++	myresult walk root tok {
++	    lappend res "[string repeat {....} [myresult depth $tok]]$tok ([dictsort [myresult getall $tok]])"
++	}
++	join $res \n
++    } -cleanup {
++	myresult destroy
++    } -result $expected
++}
+ 
+ TestFilesProcess $mytestdir fail in out -> n label input data expected {
+     test doctools-tcl-parse-${stkimpl}-${setimpl}-${impl}-11.$n "doctools::tcl::parse, $label, eror message" -setup {
+ 	struct::tree myresult
+     } -body {
+

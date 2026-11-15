@@ -1,0 +1,130 @@
+Index: modules/doctools2base/tcl_parse.tcl
+==================================================================
+--- modules/doctools2base/tcl_parse.tcl
++++ modules/doctools2base/tcl_parse.tcl
+@@ -39,11 +39,11 @@
+ snit::type            ::doctools::tcl::parse {
+     # # ## ### ##### ######## #############
+     ## Public API
+ 
+     typemethod file {t path {root {}}} {
+-	$type text $t [fileutil::cat -translation binary -encoding binary $path] $root
++	$type text $t [fileutil::cat -translation binary $path] $root
+     }
+ 
+     typemethod text {t text {root {}}} {
+ 	# --- --- --- --------- --------- ---------
+ 	# Phase 1. Lexical processing.
+
+Index: modules/doctools2base/tcl_parse.test
+==================================================================
+--- modules/doctools2base/tcl_parse.test
++++ modules/doctools2base/tcl_parse.test
+@@ -66,10 +66,33 @@
+ 
+ TestAccelDo struct::stack stkimpl {
+     TestAccelDo struct::set setimpl {
+ 	TestAccelDo struct::tree impl {
+ 	    source [localPath tests/tcl_parse]
++
++	    test doctools-tcl-parse-${stkimpl}-${setimpl}-${impl}-12.0 {parse file, binary channel (Tcl 9)} -setup {
++		set path [makeFile {a b c} tclparse12.0.tcl]
++		struct::tree myresult
++		struct::tree myexpected
++	    } -body {
++		doctools::tcl::parse file myresult $path
++		doctools::tcl::parse text myexpected [fileutil::cat $path]
++		set res {}
++		foreach t {myresult myexpected} {
++		    set r {}
++		    $t walk root tok {
++			lappend r [dictsort [$t getall $tok]]
++		    }
++		    lappend res $r
++		}
++		expr {[lindex $res 0] eq [lindex $res 1]}
++	    } -cleanup {
++		myresult destroy
++		myexpected destroy
++		removeFile tclparse12.0.tcl
++		unset path res r t tok
++	    } -result 1
+ 	}
+     }
+ }
+ 
+ #----------------------------------------------------------------------
+
+Index: modules/practcl/build/class/distro/snapshot.tcl
+==================================================================
+--- modules/practcl/build/class/distro/snapshot.tcl
++++ modules/practcl/build/class/distro/snapshot.tcl
+@@ -29,11 +29,11 @@
+       .gz {
+         # Tarball
+         ::practcl::tcllib_require tcl::transform::zlib
+         ::practcl::tcllib_require tar
+         set fh [::open $archive]
+-        fconfigure $fh -encoding binary -translation lf -eofchar {}
++        fconfigure $fh -translation binary
+         ::tcl::transform::zlib $fh
+       }
+     }
+     set fosdb [my ScmClone]
+     set tag [my ScmTag]
+
+Index: modules/practcl/practcl.tcl
+==================================================================
+--- modules/practcl/practcl.tcl
++++ modules/practcl/practcl.tcl
+@@ -7671,11 +7671,11 @@
+       .gz {
+         # Tarball
+         ::practcl::tcllib_require tcl::transform::zlib
+         ::practcl::tcllib_require tar
+         set fh [::open $archive]
+-        fconfigure $fh -encoding binary -translation lf -eofchar {}
++        fconfigure $fh -translation binary
+         ::tcl::transform::zlib $fh
+       }
+     }
+     set fosdb [my ScmClone]
+     set tag [my ScmTag]
+
+Index: modules/practcl/practcl.test
+==================================================================
+--- modules/practcl/practcl.test
++++ modules/practcl/practcl.test
+@@ -33,6 +33,31 @@
+ test dict-compare-001 {Test our testing method} {
+   ::practcl::findByPattern test *.tcl
+ } {test/one.tcl test/sub/two.tcl test/sub/sub/three.tcl}
+ 
+ file delete -force test
++
++test practcl-snapshot-unpack-001 {ScmUnpack opens tarballs in binary mode (Tcl 9)} -setup {
++  set tmp [file join $TestPwd snaptmp]
++  file mkdir [file join $tmp dl] [file join $tmp src]
++  set fout [open [file join $tmp dl snap.tgz] wb]
++  puts -nonewline $fout [zlib gzip abc]
++  close $fout
++  oo::object create ::practcl::LOCAL
++  oo::objdefine ::practcl::LOCAL method define {op key} {
++    return [file join $::tmp dl]
++  }
++  set obj [::practcl::distribution.snapshot new]
++  oo::objdefine $obj {
++    method SrcDir {} {return [file join $::tmp src]}
++    method define {op key args} {return file:///x/snap.tgz}
++    method ScmClone {} {return -code error STOP}
++  }
++} -body {
++  [info object namespace $obj]::my ScmUnpack
++} -cleanup {
++  $obj destroy
++  ::practcl::LOCAL destroy
++  file delete -force $tmp
++  unset obj tmp
++} -returnCodes error -result STOP
+ 
+

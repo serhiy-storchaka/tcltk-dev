@@ -1,0 +1,80 @@
+Index: modules/math/geometry.tcl
+==================================================================
+--- modules/math/geometry.tcl
++++ modules/math/geometry.tcl
+@@ -668,12 +668,14 @@
+     if {[lineSegmentsIntersect $linesegment1 $linesegment2]} {
+ 	set lineintersect [findLineIntersection $linesegment1 $linesegment2]
+ #puts ">>Intersect: $lineintersect"
+ 	switch -- $lineintersect {
+ 
+-	    "coincident" {
+-		# lines are coincident
++	    "coincident" -
++	    "none" {
++		# lines are coincident, or parallel within the margin
++		# used by lineSegmentsIntersect
+ 		set l1x1 [lindex $linesegment1 0]
+ 		set l1y1 [lindex $linesegment1 1]
+ 		set l1x2 [lindex $linesegment1 2]
+ 		set l1y2 [lindex $linesegment1 3]
+ 		set l2x1 [lindex $linesegment2 0]
+@@ -687,26 +689,25 @@
+ #puts ">>Overlap: $overlapx $overlapy"
+ 		if {$overlapx || $overlapy} {
+ 		    return "coincident"
+ 		} else {
+ 		    # If the line segments are adjacent, return the proper end point, otherwise "none"
+-		    if { ( $l1x1 == $l2x1 && $l1y1 == $l2y1 ) || ( $l1x1 == $l2x2 && $l1y1 == $l2y2 ) } {
+-		        return [list $l1x1 $l1y1]
++		    set margin 1.0e-7
++		    foreach p [list [list $l1x1 $l1y1] [list $l1x2 $l1y2]] {
++			if { [calculateDistanceToLineSegment $p $linesegment2] < $margin } {
++			    return $p
++			}
+ 		    }
+-		    if { ( $l1x2 == $l2x1 && $l1y2 == $l2y1 ) || ( $l1x2 == $l2x2 && $l1y2 == $l2y2 ) } {
+-		        return [list $l1x2 $l1y2]
++		    foreach p [list [list $l2x1 $l2y1] [list $l2x2 $l2y2]] {
++			if { [calculateDistanceToLineSegment $p $linesegment1] < $margin } {
++			    return $p
++			}
+ 		    }
+ 		    return "none"
+ 		}
+ 	    }
+ 
+-	    "none" {
+-		# should never happen, because we call "lineSegmentsIntersect" first
+-		puts stderr "::math::geometry::findLineSegmentIntersection: suddenly no intersection?"
+-		return "none"
+-	    }
+-
+ 	    default {
+ 		# lineintersect = the intersection point
+ 		return $lineintersect
+ 	    }
+ 	}
+
+Index: modules/math/geometry.test
+==================================================================
+--- modules/math/geometry.test
++++ modules/math/geometry.test
+@@ -308,10 +308,16 @@
+     list [::math::geometry::findLineSegmentIntersection {0 0 10 10} {10 10 15 15}] \
+          [::math::geometry::findLineSegmentIntersection {10 10 0 0} {10 10 15 15}] \
+          [::math::geometry::findLineSegmentIntersection {0 0 10 10} {15 15 10 10}] \
+          [::math::geometry::findLineSegmentIntersection {10 10 0 0} {15 15 10 10}]
+ } {{10 10} {10 10} {10 10} {10 10}}
++
++test geometry-10.8 {geometry::findLineSegmentIntersection, parallel within margin - ticket 90cb1c1368} -body {
++    list [::math::geometry::findLineSegmentIntersection {0 0 10 0} {5 1e-8 15 1e-8}] \
++         [::math::geometry::findLineSegmentIntersection {0 0 10 0} {10 1e-8 20 1e-8}] \
++         [::math::geometry::findLineSegmentIntersection {0 0 10 0} {10.00000001 0 20 0}]
++} -output {} -errorOutput {} -result {coincident {10 0} {10 0}}
+ 
+ 
+ ###
+ # movePointInDirection
+ ###
+

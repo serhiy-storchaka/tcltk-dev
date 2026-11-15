@@ -1,0 +1,46 @@
+Index: modules/doctools/doctools.test
+==================================================================
+--- modules/doctools/doctools.test
++++ modules/doctools/doctools.test
+@@ -296,10 +296,19 @@
+     set res
+ } {manpage {category {} desc {} fid {} file {} keywords {} module {} section n seealso {} shortdesc {} title foo version 1.0} {{DocTools Warning (depr_strong): In macro at line 1, column 38 of file :
+ DocTools Warning (depr_strong): Deprecated command "[strong]".
+ DocTools Warning (depr_strong): 	Please consider appropriate semantic markup or [emph] instead.}}}
+ 
++
++test doctools-8.5 {format nroff, multi-line titledesc, ticket 3058654fff} {
++    new mydoctools -format nroff
++    set res [mydoctools format "\[manpage_begin foo n 1.0\]\[moddesc {m\n d}\]\[titledesc {a\n  b}\]\[description\]\[manpage_end\]"]
++    mydoctools destroy
++    list [regexp -line -inline {^\.TH.*} $res] [regexp -inline {\.SH NAME\n[^\n]*\n} $res]
++} {{{.TH "foo" n 1\&.0  "m d"}} {{.SH NAME
++foo \- a b
++}}}
+ 
+ 
+ # doctools manpage syntax .......................................................
+ 
+ test doctools-9.0 {manpage syntax} {
+
+Index: modules/doctools/mpformats/fmt.nroff
+==================================================================
+--- modules/doctools/mpformats/fmt.nroff
++++ modules/doctools/mpformats/fmt.nroff
+@@ -42,10 +42,15 @@
+     # compact whitespace
+     foreach v {module shortdesc description copyright} {
+ 	upvar 0 $v text
+ 	regsub -all {[ \t]+} $text { } text
+ 	set text [string trim $text]
++    }
++    # The NAME line and .TH arguments must be single lines (apropos).
++    foreach v {module shortdesc description} {
++	upvar 0 $v line
++	regsub -all {\s+} $line { } line
+     }
+ 
+     c_holdBuffers hdr
+ 
+     c_hold hdr [nr_comment {}]
+

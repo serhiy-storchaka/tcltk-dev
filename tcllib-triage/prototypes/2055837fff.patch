@@ -1,0 +1,89 @@
+Index: modules/jpeg/jpeg.tcl
+==================================================================
+--- modules/jpeg/jpeg.tcl
++++ modules/jpeg/jpeg.tcl
+@@ -474,19 +474,22 @@
+ proc ::jpeg::_exif {fh byteOrder offset {tag_info exif_tags}} {
+     variable exif_formats
+     variable exif_tags
+     variable gps_tags
+     set return {}
+-    for {_scan $byteOrder [read $fh 2] s num} {$num > 0} {incr num -1} {
++    # A bad offset may point past the end of the data (bug 2055837).
++    if {![_scan $byteOrder [read $fh 2] s num]} { return $return }
++    for {} {$num > 0} {incr num -1} {
+         binary scan [read $fh 2] H2H2 t1 t2
+         _scan $byteOrder [read $fh 6] si format components
+         if {$byteOrder == "big"} {
+             set tag $t1$t2
+         } else {
+             set tag $t2$t1
+         }
+         set value [read $fh 4]
++        if {[string length $value] < 4} break
+         # special tags, they point to more exif blocks
+         if {$tag == "8769" || $tag == "a005"} {
+             _scan $byteOrder $value i next
+             set pos [tell $fh]
+             seek $fh [expr {$offset + $next}] start
+@@ -513,10 +516,12 @@
+             set pos [tell $fh]
+             _scan $byteOrder $value i value
+             seek $fh [expr {$offset + $value}] start
+             set value [read $fh $size]
+             seek $fh $pos start
++            # skip values which are not completely in the data
++            if {[string length $value] < $size} continue
+         }
+         lappend return $tag [_format $byteOrder $value $format $components]
+     }
+     return $return
+ }
+
+Index: modules/jpeg/jpeg.test
+==================================================================
+--- modules/jpeg/jpeg.test
++++ modules/jpeg/jpeg.test
+@@ -493,9 +493,41 @@
+ }
+ 
+ test jpeg-42.0 "debug, fail, [file tail [info script]]" -body {
+     ::jpeg::debug [info script]
+ } -returnCodes error -result {not a jpg file}
++
++# Exif data with offsets pointing past the end of the data, bug 2055837
++proc mkbadexif {entry} {
++    set tiff "II[binary format si 42 8][binary format s 1]$entry[binary format i 0]"
++    set app1 "Exif\0\0$tiff"
++    set f [file join [tcltest::temporaryDirectory] badexif.jpg]
++    set fd [open $f w]
++    fconfigure $fd -translation binary
++    puts -nonewline $fd "\xff\xd8\xff\xe1[binary format S [expr {[string length $app1]+2}]]$app1\xff\xd9"
++    close $fd
++    return $f
++}
++
++test jpeg-43.0 {getExif, value offset past end of data, bug 2055837} -setup {
++    set f [mkbadexif [binary format ssii 0x0100 3 4 0x1000]]
++} -body {
++    ::jpeg::getExif $f
++} -cleanup {
++    file delete $f
++    unset f
++} -result {ExifOffset 12 ExifByteOrder little}
++
++test jpeg-43.1 {getExif, InteropIFD offset past end of data, bug 2055837} -setup {
++    set f [mkbadexif [binary format ssii 0xa005 4 1 0x1000]]
++} -body {
++    ::jpeg::getExif $f
++} -cleanup {
++    file delete $f
++    unset f
++} -result {ExifOffset 12 ExifByteOrder little}
++
++rename mkbadexif {}
+ 
+ # -------------------------------------------------------------------------
+ rename strdiff {}
+ testsuiteCleanup
+

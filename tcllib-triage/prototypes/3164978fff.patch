@@ -1,0 +1,139 @@
+Index: modules/nmea/nmea.man
+==================================================================
+--- modules/nmea/nmea.man
++++ modules/nmea/nmea.man
+@@ -33,10 +33,13 @@
+ 4800bps by default or to [arg speed].
+ 
+ [call [cmd ::nmea::close_port]]
+ Close the com port connection if one is open.
+ 
++[call [cmd ::nmea::close]]
++Close the open port or file, if any. This is the same as [cmd close_port] and [cmd close_file].
++
+ [call [cmd ::nmea::configure_port] [arg settings]]
+ Changes the current port settings. [arg settings] has the same format as fconfigure -mode.
+ 
+ [call [cmd ::nmea::open_file] [arg file] [opt rate]]
+ Open file [arg file] and read NMEA sentences, one per line, at the rate specified by [opt rate] in milliseconds.
+@@ -48,14 +51,21 @@
+ 
+ [call [cmd ::nmea::do_line]]
+ If there is a currently open file, this command will read and process a single line from it.
+ Returns the number of lines read.
+ 
+-[call [cmd ::nmea::rate]]
++[call [cmd ::nmea::rate] [opt rate]]
+ Sets the rate at which lines are processed from the open file, in milliseconds. The rate remains
+ consistant across files, there does not need to be a file currently open to use this command.
+ Set to 0 to disable automatic line processing.
++Returns the current rate. If [arg rate] is not specified, only returns the current rate.
++
++[call [cmd ::nmea::configure] [arg option] [opt value]]
++Sets or queries an option. The supported options are [const rate], with the same
++meaning as for the [cmd rate] command, and [const checksum], a boolean telling whether
++the checksums of incoming sentences are verified (the default is true).
++If [arg value] is not specified, returns the current value.
+ 
+ [call [cmd ::nmea::log] [opt file]]
+ Starts or stops input logging. If a file name is specified then all NMEA data recieved on
+ the open port will be logged to the [opt file] in append mode. If file is an empty string then
+ any logging will be stopped. If no file is specified then returns a boolean value indicating
+
+Index: modules/nmea/nmea.tcl
+==================================================================
+--- modules/nmea/nmea.tcl
++++ modules/nmea/nmea.tcl
+@@ -52,10 +52,18 @@
+         if {[lindex [after info $x] 0 0] == "::nmea::read_file"} {
+             after cancel $x
+         }
+     }
+ }
++
++# Documented names for closing the port or the file.
++proc ::nmea::close_port {} { ::nmea::close }
++proc ::nmea::close_file {} { ::nmea::close }
++
++proc ::nmea::rate {{val {}}} {
++    return [::nmea::configure rate $val]
++}
+ 
+ proc ::nmea::read_port {f} {
+     if {[catch {gets $f} line] || [eof $f]} {
+         if {[info exists ::nmea::dispatch(EOF)]} {
+             $::nmea::dispatch(EOF)
+@@ -108,11 +116,11 @@
+                         after cancel $x
+                     }
+                 }
+                 set val 0
+             }
+-            if {$nmea(rate) == 0 && $val > 0} {
++            if {$nmea(rate) == 0 && $val > 0 && [info exists nmea(fh)]} {
+                 after $val [list ::nmea::read_file $nmea(fh)]
+             }
+             set nmea(rate) $val
+             return $val
+         }
+
+ADDED    modules/nmea/nmea.test
+Index: modules/nmea/nmea.test
+==================================================================
+--- /dev/null
++++ modules/nmea/nmea.test
+@@ -0,0 +1,53 @@
++# -*- tcl -*-
++# nmea.test:  tests for the nmea package.
++
++source [file join \
++    [file dirname [file dirname [file join [pwd] [info script]]]] \
++    devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 2.0
++
++testing {
++    useLocal nmea.tcl nmea
++}
++
++# -------------------------------------------------------------------------
++
++proc nmeaTestHandler {args} {
++    lappend ::nmeaLines $args
++}
++
++test nmea-1.0 {checksum} -body {
++    nmea::checksum GPGSA,A,3,04,05,,09,12,,,24,,,,,2.5,1.3,2.1
++} -result 39
++
++test nmea-2.0 {open_file, do_line, close_file (ticket 3164978fff)} -setup {
++    set f [makeFile "GPGGA,1,2\nGPGGA,3,4\n" nmea.txt]
++    set ::nmeaLines {}
++    nmea::event GPGGA nmeaTestHandler
++} -body {
++    nmea::open_file $f
++    nmea::do_line
++    nmea::close_file
++    list $::nmeaLines [catch nmea::do_line msg] $msg
++} -cleanup {
++    nmea::close
++    nmea::event GPGGA {}
++    removeFile nmea.txt
++    unset -nocomplain f msg ::nmeaLines
++} -result {{{{1 2}}} 1 {there is no currently open file}}
++
++test nmea-2.1 {close_port without an open port} -body {
++    nmea::close_port
++} -result {}
++
++test nmea-3.0 {rate without an open file} -body {
++    list [nmea::rate] [nmea::rate 100] [nmea::rate] [nmea::rate 0]
++} -cleanup {
++    nmea::configure rate 0
++} -result {0 100 100 0}
++
++# -------------------------------------------------------------------------
++testsuiteCleanup
++return
+

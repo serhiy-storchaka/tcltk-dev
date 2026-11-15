@@ -1,0 +1,105 @@
+Index: modules/ncgi/ncgi.man
+==================================================================
+--- modules/ncgi/ncgi.man
++++ modules/ncgi/ncgi.man
+@@ -70,11 +70,14 @@
+ The return value is a boolean. It returns [const 0] if the CGI
+ variable [arg name] is not present, and [const 1] otherwise.
+ 
+ [call [cmd ::ncgi::encode] [arg string]]
+ 
+-Encode [arg string] into www-url-encoded format.
++Encode [arg string] into www-url-encoded format.  The characters of
++[arg string] are converted to UTF-8, and every byte other than an ASCII
++letter or digit is replaced by a %xx sequence (a space becomes "+",
++a newline becomes "%0D%0A").
+ 
+ [call [cmd ::ncgi::header] [opt [arg type]] [arg args]]
+ 
+ Output the CGI header to standard output.  This emits a Content-Type:
+ header and additional headers based on [arg args], which is a list of
+
+Index: modules/ncgi/ncgi.tcl
+==================================================================
+--- modules/ncgi/ncgi.tcl
++++ modules/ncgi/ncgi.tcl
+@@ -75,11 +75,11 @@
+  
+     variable i
+     variable c
+     variable map
+ 
+-    for {set i 1} {$i <= 256} {incr i} {
++    for {set i 0} {$i < 256} {incr i} {
+ 	set c [format %c $i]
+ 	if {![string match \[a-zA-Z0-9\] $c]} {
+ 	    set map($c) %[format %.2X $i]
+ 	}
+     }
+@@ -281,11 +281,13 @@
+     return [subst -novar $str]
+ }
+ 
+ # ::ncgi::encode
+ #
+-#	This encodes data in www-url-encoded format.
++#	This encodes data in www-url-encoded format.  Characters are
++#	converted to UTF-8 first, then every non-alphanumeric byte is
++#	replaced by %HH.
+ #
+ # Arguments:
+ #	A string
+ #
+ # Results:
+@@ -292,15 +294,17 @@
+ #	The encoded value
+ 
+ proc ::ncgi::encode {string} {
+     variable map
+ 
++    # 0 convert to UTF-8, so only byte values 0-255 remain
+     # 1 leave alphanumerics characters alone
+     # 2 Convert every other character to an array lookup
+     # 3 Escape constructs that are "special" to the tcl parser
+     # 4 "subst" the result, doing all the array substitutions
+ 
++    set string [encoding convertto utf-8 $string]
+     regsub -all -- \[^a-zA-Z0-9\] $string {$map(&)} string
+     # This quotes cases like $map([) or $map($) => $map(\[) ...
+     regsub -all -- {[][{})\\]\)} $string {\\&} string
+     set string [string map {$map(() $map(\\()} $string]
+     return [subst -nocommand $string]
+
+Index: modules/ncgi/ncgi.test
+==================================================================
+--- modules/ncgi/ncgi.test
++++ modules/ncgi/ncgi.test
+@@ -161,10 +161,27 @@
+ test ncgi-4.5 {ncgi::encode TIP 465} {
+     ncgi::decode [ncgi::encode "("]
+     # emacs: )
+ } "("
+ # emacs: )
++
++test ncgi-4.6 {ncgi::encode, non-Latin-1 characters, tkt [1f29f7baf9]} {
++    ncgi::encode "\u0439\u4e2d"
++} {%D0%B9%E4%B8%AD}
++
++test ncgi-4.7 {ncgi::encode, UTF-8, tkt [1f29f7baf9]} {
++    list [ncgi::encode "\u00f6"] [ncgi::encode "\u0100"] [ncgi::encode "a\x00b"]
++} {%C3%B6 %C4%80 a%00b}
++
++test ncgi-4.8 {ncgi::encode, 4-byte UTF-8, tkt [1f29f7baf9]} {
++    ncgi::encode [encoding convertfrom utf-8 "\xF0\x9F\x98\x80"]
++} {%F0%9F%98%80}
++
++test ncgi-4.9 {ncgi::encode/decode round trip, tkt [1f29f7baf9]} {
++    set s "\u0105\u00f6\u0439\u4e2d (x) \[y\] \$z \\"
++    string equal $s [ncgi::decode [ncgi::encode $s]]
++} 1
+ 
+ test ncgi-5.1 {ncgi::nvlist} {
+     ncgi::reset "name=hello+world&name2=%7ewelch"
+     ncgi::nvlist
+ } {name {hello world} name2 ~welch}
+

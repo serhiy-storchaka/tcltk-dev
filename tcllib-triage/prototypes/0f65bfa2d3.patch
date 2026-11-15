@@ -1,0 +1,81 @@
+Index: modules/struct/graph/tests/ops/cutvertex.test
+==================================================================
+--- modules/struct/graph/tests/ops/cutvertex.test
++++ modules/struct/graph/tests/ops/cutvertex.test
+@@ -91,7 +91,19 @@
+     SETUP_G
+     set result [lsort -dict [struct::graph::op::isCutVertex? mygraph 3b]]
+     mygraph destroy
+     set result
+ } 0
++
++test graphop-t${treeimpl}-g${impl}-s${setimpl}-st${stkimpl}-q${queimpl}-isCutVertex?-3.4 {isCutVertex?, node names with spaces} {
++    SETUP
++    mygraph node insert {a b} c d
++    mygraph arc insert {a b} c
++    mygraph arc insert c d
++    set result [list \
++        [struct::graph::op::isCutVertex? mygraph {a b}] \
++        [struct::graph::op::isCutVertex? mygraph c]]
++    mygraph destroy
++    set result
++} {0 1}
+ 
+ # ---------------------------------------------------
+
+Index: modules/struct/graph/tests/ops/tarjan.test
+==================================================================
+--- modules/struct/graph/tests/ops/tarjan.test
++++ modules/struct/graph/tests/ops/tarjan.test
+@@ -93,7 +93,19 @@
+ } -body {
+     setsetcanon [struct::graph::op::tarjan mygraph]
+ } -cleanup {
+     mygraph destroy
+ } -result {1b 1w 2b 2w 3b 3w 4b 4w 5b 5w}
++
++test graphop-t${treeimpl}-g${impl}-s${setimpl}-st${stkimpl}-q${queimpl}-tarjan-3.9 {tarjan, node names with spaces, ticket 0f65bfa2d3} -setup {
++    SETUP
++    mygraph node insert {a b} b c
++    mygraph arc insert {a b} b
++    mygraph arc insert b {a b}
++    mygraph arc insert b c
++} -body {
++    setsetcanon [struct::graph::op::tarjan mygraph]
++} -cleanup {
++    mygraph destroy
++} -result {c {{a b} b}}
+ 
+ # ---------------------------------------------------
+
+Index: modules/struct/graphops.tcl
+==================================================================
+--- modules/struct/graphops.tcl
++++ modules/struct/graphops.tcl
+@@ -3108,11 +3108,11 @@
+ 
+ proc ::struct::graph::op::TarjanSub {start counter} {
+     # Import the tracer state from our caller.
+     upvar 1 g g index index lowlink lowlink instack instack result result pending pending all all
+ 
+-    struct::set subtract all $start
++    struct::set exclude all $start
+ 
+     set component {}
+     set   index($start) $counter
+     set lowlink($start) $counter
+     incr counter
+@@ -3298,11 +3298,11 @@
+ 
+     # We remove the node from the original component, so that we can
+     # select a new start node without fear of hitting on the
+     # cut-vertex candidate. Also makes the comparison later easier
+     # (straight ==).
+-    struct::set subtract compBefore $n
++    struct::set exclude compBefore $n
+ 
+     set copy       [struct::graph CutVertexCopy = $g]
+     $copy node delete $n
+     set compAfter  [ComponentOf $copy [lindex $compBefore 0]]
+     $copy destroy
+

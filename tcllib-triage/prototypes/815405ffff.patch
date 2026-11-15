@@ -1,0 +1,98 @@
+Index: modules/pop3/pop3.tcl
+==================================================================
+--- modules/pop3/pop3.tcl
++++ modules/pop3/pop3.tcl
+@@ -674,11 +674,16 @@
+ proc ::pop3::RetrSlow {chan} {
+ 
+     set msgBuffer ""
+ 	
+     while {1} {
+-	set line [string trimright [gets $chan] \r]
++	if {[gets $chan line] < 0} {
++	    # Connection closed before the terminating "." was seen.
++	    # Do not loop forever on the EOF.
++	    error "connection closed by server"
++	}
++	set line [string trimright $line \r]
+ 	::log::log debug "pop3 $chan slow $line"
+ 
+ 	# End of the message is a line with just "."
+ 	if {$line == "."} {
+ 	    break
+@@ -711,11 +716,14 @@
+    if {$cmdstring != {}} {
+        ::log::log debug "pop3 $chan >>> $cmdstring"       
+        puts $chan $cmdstring
+    }
+    
+-   set popRet [string trim [gets $chan]]
++   if {[gets $chan popRet] < 0} {
++       error "connection closed by server"
++   }
++   set popRet [string trim $popRet]
+    ::log::log debug "pop3 $chan <<< $popRet"
+ 
+    if {[string first "+OK" $popRet] == -1} {
+        error [string range $popRet 4 end]
+    }
+
+Index: modules/pop3/pop3.test
+==================================================================
+--- modules/pop3/pop3.test
++++ modules/pop3/pop3.test
+@@ -164,10 +164,24 @@
+     loginStatusOk
+     dialog::respond. +OK
+     message $msg
+     dialog::respond. {+OK localhost coserv shutting down}
+ }
++
++proc topTruncated {} {
++    loginStatusOk
++    dialog::respond. +OK
++    dialog::send.    {Content-Type: text/plain;}
++    # The script ends here, the server closes the connection without
++    # sending the terminating ".".
++}
++
++proc statNoAnswer {} {
++    loginStatusOk
++    # Read the STAT command, then close the connection without answer.
++    dialog::receive.
++}
+ 
+ proc deleDialog {} {
+     loginStatusOk
+     dialog::respond. {+OK 11 176}
+ 
+@@ -600,10 +614,28 @@
+     # status data is retained if the connection is not closed through
+     # the prescribed api command.
+     lappend msg [peek $psock]
+     set msg
+ } {1 {limit 11 msex 0 retr_mode retr socketcmd tls::socket stls 0 tls-callback {}}}
++
++test pop3-ticket-815405-1 {top, connection closed during response, no hang} {
++    dialog::dialog_set topTruncated
++    set psock [pop3::open localhost ak smash [dialog::listener]]
++    set code [catch {pop3::top $psock 1 1} msg]
++    catch {::close $psock}
++    dialog::waitdone
++    list $code $msg
++} {1 {connection closed by server}}
++
++test pop3-ticket-815405-2 {command, connection closed, error message} {
++    dialog::dialog_set statNoAnswer
++    set psock [pop3::open localhost ak smash [dialog::listener]]
++    set code [catch {pop3::status $psock} msg]
++    catch {::close $psock}
++    dialog::waitdone
++    list $code $msg
++} {1 {POP3 STAT ERROR: connection closed by server}}
+ 
+ # ----------------------------------------------------------------------
+ # ----------------------------------------------------------------------
+ dialog::shutdown
+ testsuiteCleanup
+

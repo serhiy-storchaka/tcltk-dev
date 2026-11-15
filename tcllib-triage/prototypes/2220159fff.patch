@@ -1,0 +1,27 @@
+Index: modules/snit/snitfaq.man
+==================================================================
+--- modules/snit/snitfaq.man
++++ modules/snit/snitfaq.man
+@@ -1326,10 +1326,21 @@
+ According to this, a dog has four notable properties: a
+ breed, a color, a flag that says whether it's pedigreed with the
+ American Kennel Club, and another flag that says whether it has had
+ its shots.  The default dog, evidently, is a brown mutt.
+ 
++[para]
++
++Option names follow the Tk conventions: an option name must begin with
++a hyphen, and must not contain upper case letters or spaces.  Thus
++[const -transformbefore] is a valid option name, but
++[const transformBefore] and [const -transformBefore] are not.  (The
++option's resource and class names, which are used with
++[sectref "THE TK OPTION DATABASE"], may contain upper case letters;
++see [sectref "What are option resource and class names?"] or
++the [cmd option] statement in the Snit man page.)
++
+ [para]
+ 
+ There are a number of options you can specify when defining an option;
+ if [const -default] is the only one, you can omit the word
+ [const -default] as follows:
+

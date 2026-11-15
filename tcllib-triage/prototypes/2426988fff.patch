@@ -1,0 +1,112 @@
+Index: modules/struct/matrix.tcl
+==================================================================
+--- modules/struct/matrix.tcl
++++ modules/struct/matrix.tcl
+@@ -1604,11 +1604,11 @@
+ 	    set array($c,$r) $data($key)
+ 	}
+     }
+ 
+     trace add variable array {write unset} [list ::struct::matrix::MatTraceIn  $variable $name]
+-    trace add variable data  write  [list ::struct::matrix::MatTraceOut $variable $name]
++    trace add variable data  {write unset} [list ::struct::matrix::MatTraceOut $variable $name]
+     return
+ }
+ 
+ # ::struct::matrix::_links --
+ #
+@@ -2211,11 +2211,11 @@
+ 
+     upvar #0 $avar    array
+     variable ${name}::data
+ 
+     trace remove variable array {write unset} [list ::struct::matrix::MatTraceIn  $avar $name]
+-    trace remove variable data  write  [list ::struct::matrix::MatTraceOut $avar $name]
++    trace remove variable data  {write unset} [list ::struct::matrix::MatTraceOut $avar $name]
+ 
+     unset link($avar)
+     return
+ }
+ 
+@@ -2542,10 +2542,15 @@
+ 
+ proc ::struct::matrix::MatTraceOut {avar name var idx op} {
+     # Propagate changes in the matrix data array into the linked array.
+ 
+     variable ${name}::unset
++
++    if {$idx eq ""} {
++	# The whole data array is going away. Nothing to propagate.
++	return
++    }
+ 
+     if {![string compare $avar $unset]} {
+ 	# Do not change the variable currently unsetting
+ 	# one of its elements.
+ 	return
+@@ -2570,10 +2575,15 @@
+ 	# We are currently propagating the unset of an
+ 	# element in a different linked array to this
+ 	# array. We make sure that this is an unset too.
+ 
+ 	unset array($c,$r)
++    } elseif {![string compare $op unset]} {
++	# A cell was removed from the matrix (delete row/column,
++	# transpose, ...). Remove the element from the array too.
++
++	unset -nocomplain array($c,$r)
+     } else {
+ 	set array($c,$r) $data($idx)
+     }
+     set lock 0
+     return
+
+Index: modules/struct/matrix.test
+==================================================================
+--- modules/struct/matrix.test
++++ modules/struct/matrix.test
+@@ -1837,11 +1837,42 @@
+     lappend result [trace info variable ::mymatrix::data]
+     mymatrix unlink a
+     lappend result [trace info variable ::mymatrix::data]
+     mymatrix destroy
+     set result
+-} {{} {{write {::struct::matrix::MatTraceOut a ::mymatrix}}} {}}
++} {{} {{{write unset} {::struct::matrix::MatTraceOut a ::mymatrix}}} {}}
++
++test matrix-9.15 {linked array follows row and column deletion, ticket 2426988fff} {
++    catch {unset a}
++    catch {unset b}
++    matrix mymatrix
++    mymatrix add columns 2
++    mymatrix add row {1 2}
++    mymatrix add row {3 4}
++    mymatrix add row {5 6}
++    mymatrix link a
++    mymatrix link -transpose b
++    set result {}
++    mymatrix delete row 1
++    lappend result [dictsort [array get a]] [dictsort [array get b]]
++    mymatrix delete column 0
++    lappend result [dictsort [array get a]] [dictsort [array get b]]
++    mymatrix destroy
++    set result
++} {{0,0 1 0,1 5 1,0 2 1,1 6} {0,0 1 0,1 2 1,0 5 1,1 6} {0,0 2 0,1 6} {0,0 2 1,0 6}}
++
++test matrix-9.16 {linked array follows transpose, ticket 2426988fff} {
++    catch {unset a}
++    matrix mymatrix
++    mymatrix add columns 3
++    mymatrix add row {1 2 3}
++    mymatrix link a
++    mymatrix transpose
++    set result [dictsort [array get a]]
++    mymatrix destroy
++    set result
++} {0,0 1 0,1 2 0,2 3}
+ 
+ test matrix-10.1 {search errors} {
+     matrix mymatrix
+     catch {mymatrix search} msg
+     mymatrix destroy
+

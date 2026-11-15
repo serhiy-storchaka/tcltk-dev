@@ -1,0 +1,113 @@
+Index: modules/dns/spf.tcl
+==================================================================
+--- modules/dns/spf.tcl
++++ modules/dns/spf.tcl
+@@ -463,25 +463,39 @@
+     return -code $code -errorcode $errorcode $result
+ }
+ 
+ # 3.4: Record lookup
+ proc ::spf::SPF {domain} {
++    variable log
+     set txt ""
+     if {[catch {Resolve $domain SPF ::dns::result} spf]} {
+         set code $::errorCode
+-        ${log}::debug "error fetching SPF record: $r"
++        ${log}::debug "error fetching SPF record: $spf"
+         switch -exact -- $code {
+             3 { return -code return [list - "Domain Does Not Exist"] }
+             2 { return -code error -errorcode temporary $spf }
+         }
+         set txt none
+     } else {
++        # 4.5: Discard the TXT records which are not SPF records.
++        set records {}
+         foreach res $spf {
+             set ndx [lsearch $res rdata]
+             incr ndx
+             if {$ndx != 0} {
+-                append txt [string range [lindex $res $ndx] 1 end]
++                set rdata [lindex $res $ndx]
++                if {[regexp -nocase {^v=spf1( |$)} $rdata]} {
++                    lappend records $rdata
++                }
++            }
++        }
++        switch -exact -- [llength $records] {
++            0 { set txt none }
++            1 { set txt [lindex $records 0] }
++            default {
++                return -code error -errorcode permanent \
++                    "multiple SPF records for \"$domain\""
+             }
+         }
+     }
+     return $txt
+ }
+
+Index: modules/dns/spf.test
+==================================================================
+--- modules/dns/spf.test
++++ modules/dns/spf.test
+@@ -226,10 +226,60 @@
+             ::spf::Expand $macro 5f05:2000:80ad:5800::1 \
+                 email.example.com $::email
+         } msg] $msg
+     } [list 0 $check]
+ }
++
++# -------------------------------------------------------------------------
++# SPF record lookup. The DNS query is emulated by replacing Resolve.
++
++proc ::spf::TestResolve {args} {
++    set result {}
++    foreach txt $args {
++        lappend result [list name email.example.com type TXT class IN \
++                            ttl 60 rdlength [string length $txt] rdata $txt]
++    }
++    rename ::spf::Resolve ::spf::tmp_Resolve
++    proc ::spf::Resolve {domain type resultproc} [list return $result]
++}
++proc ::spf::TestResolveCleanup {} {
++    rename ::spf::Resolve {}
++    rename ::spf::tmp_Resolve ::spf::Resolve
++}
++
++test spf-7.1 {SPF record lookup} -setup {
++    ::spf::TestResolve "v=spf1 ip4:192.0.2.0/24 -all"
++} -body {
++    ::spf::tmp_SPF email.example.com
++} -cleanup {
++    ::spf::TestResolveCleanup
++} -result {v=spf1 ip4:192.0.2.0/24 -all}
++
++test spf-7.2 {SPF record lookup: other TXT records are ignored} -setup {
++    ::spf::TestResolve "google-site-verification=abc" \
++        "v=spf1 ip4:192.0.2.0/24 -all" "v=spf10 -all"
++} -body {
++    ::spf::tmp_SPF email.example.com
++} -cleanup {
++    ::spf::TestResolveCleanup
++} -result {v=spf1 ip4:192.0.2.0/24 -all}
++
++test spf-7.3 {SPF record lookup: no SPF record} -setup {
++    ::spf::TestResolve "google-site-verification=abc"
++} -body {
++    ::spf::tmp_SPF email.example.com
++} -cleanup {
++    ::spf::TestResolveCleanup
++} -result none
++
++test spf-7.4 {SPF record lookup: multiple SPF records} -setup {
++    ::spf::TestResolve "v=spf1 -all" "v=spf1 +all"
++} -body {
++    ::spf::tmp_SPF email.example.com
++} -cleanup {
++    ::spf::TestResolveCleanup
++} -returnCodes error -result {multiple SPF records for "email.example.com"}
+ 
+ # -------------------------------------------------------------------------
+ 
+ foreach cmd [list SPF TXT A PTR MX] {
+     catch {rename ::spf::$cmd {}}
+

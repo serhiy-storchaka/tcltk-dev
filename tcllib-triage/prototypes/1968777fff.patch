@@ -1,0 +1,166 @@
+Index: modules/doctools/checker.tcl
+==================================================================
+--- modules/doctools/checker.tcl
++++ modules/doctools/checker.tcl
+@@ -22,10 +22,22 @@
+ } else {
+     foreach path [dt_search] {
+ 	::msgcat::mcload $path
+     }
+ }
++
++# Use the C messages as the root locale catalog, the fallback for
++# locales without a catalog of their own, or with an incomplete one.
++# Note: [file] is a formatting command here, avoid it.
++foreach path [dt_search] {
++    if {[catch {open $path/c.msg} chan]} continue
++    fconfigure $chan -encoding utf-8
++    set msgs [read $chan]
++    close $chan
++    uplevel #0 [string map {{mcset c } {mcset {} }} $msgs]
++}
++unset -nocomplain path chan msgs
+ 
+ # State, and checker commands.
+ # -------------------------------------------------------------
+ #
+ # Note that the code below assumes that a command XXX provided by the
+
+Index: modules/doctools/checker_idx.tcl
+==================================================================
+--- modules/doctools/checker_idx.tcl
++++ modules/doctools/checker_idx.tcl
+@@ -22,10 +22,22 @@
+ } else {
+     foreach path [dt_search] {
+ 	::msgcat::mcload $path
+     }
+ }
++
++# Use the C messages as the root locale catalog, the fallback for
++# locales without a catalog of their own, or with an incomplete one.
++# Note: [file] is a formatting command here, avoid it.
++foreach path [dt_search] {
++    if {[catch {open $path/c.msg} chan]} continue
++    fconfigure $chan -encoding utf-8
++    set msgs [read $chan]
++    close $chan
++    uplevel #0 [string map {{mcset c } {mcset {} }} $msgs]
++}
++unset -nocomplain path chan msgs
+ 
+ # State, and checker commands.
+ # -------------------------------------------------------------
+ #
+ # Note that the code below assumes that a command XXX provided by the
+
+Index: modules/doctools/checker_toc.tcl
+==================================================================
+--- modules/doctools/checker_toc.tcl
++++ modules/doctools/checker_toc.tcl
+@@ -22,10 +22,22 @@
+ } else {
+     foreach path [dt_search] {
+ 	::msgcat::mcload $path
+     }
+ }
++
++# Use the C messages as the root locale catalog, the fallback for
++# locales without a catalog of their own, or with an incomplete one.
++# Note: [file] is a formatting command here, avoid it.
++foreach path [dt_search] {
++    if {[catch {open $path/c.msg} chan]} continue
++    fconfigure $chan -encoding utf-8
++    set msgs [read $chan]
++    close $chan
++    uplevel #0 [string map {{mcset c } {mcset {} }} $msgs]
++}
++unset -nocomplain path chan msgs
+ 
+ # State, and checker commands.
+ # -------------------------------------------------------------
+ #
+ # Note that the code below assumes that a command XXX provided by the
+
+Index: modules/doctools/docidx.test
+==================================================================
+--- modules/doctools/docidx.test
++++ modules/doctools/docidx.test
+@@ -282,10 +282,21 @@
+ 
+ test docidx-9.0 {docidx syntax} {
+     new mydocidx -format null
+     catch {mydocidx format foo} result
+     mydocidx destroy
++    set result
++} {Docidx Error in plain text at line 1, column 0:
++[plain_text foo]
++--> (FmtError) IDX error (idx/plaintext), "plain_text foo" : Plain text beyond whitespace is not allowed..}
++
++test docidx-9.0.1 {docidx syntax, locale without catalog, ticket 1968777fff} {
++    set env(LANG) pl_PL
++    new mydocidx -format null
++    catch {mydocidx format foo} result
++    mydocidx destroy
++    set env(LANG) C
+     set result
+ } {Docidx Error in plain text at line 1, column 0:
+ [plain_text foo]
+ --> (FmtError) IDX error (idx/plaintext), "plain_text foo" : Plain text beyond whitespace is not allowed..}
+ 
+
+Index: modules/doctools/doctoc.test
+==================================================================
+--- modules/doctools/doctoc.test
++++ modules/doctools/doctoc.test
+@@ -282,10 +282,21 @@
+ 
+ test doctoc-9.0 {doctoc syntax} {
+     new mydoctoc -format null
+     catch {mydoctoc format foo} result
+     mydoctoc destroy
++    set result
++} {Doctoc Error in plain text at line 1, column 0:
++[plain_text foo]
++--> (FmtError) TOC error (toc/plaintext), "plain_text foo" : Plain text beyond whitespace is not allowed..}
++
++test doctoc-9.0.1 {doctoc syntax, locale without catalog, ticket 1968777fff} {
++    set env(LANG) pl_PL
++    new mydoctoc -format null
++    catch {mydoctoc format foo} result
++    mydoctoc destroy
++    set env(LANG) C
+     set result
+ } {Doctoc Error in plain text at line 1, column 0:
+ [plain_text foo]
+ --> (FmtError) TOC error (toc/plaintext), "plain_text foo" : Plain text beyond whitespace is not allowed..}
+ 
+
+Index: modules/doctools/doctools.test
+==================================================================
+--- modules/doctools/doctools.test
++++ modules/doctools/doctools.test
+@@ -304,10 +304,22 @@
+ 
+ test doctools-9.0 {manpage syntax} {
+     new mydoctools -format null
+     catch {mydoctools format foo} result
+     mydoctools destroy
++    set result
++} {Doctools Error in plain text at line 1, column 0:
++[plain_text foo]
++--> (FmtError) Manpage error (body), "plain_text foo" : Plain text not allowed outside of the body of the manpage.}
++
++test doctools-9.0.1 {manpage syntax, locale without catalog, ticket 1968777fff} {
++    # msgcat in the checker reads LANG when created. pl_PL has no catalog.
++    set env(LANG) pl_PL
++    new mydoctools -format null
++    catch {mydoctools format foo} result
++    mydoctools destroy
++    set env(LANG) C
+     set result
+ } {Doctools Error in plain text at line 1, column 0:
+ [plain_text foo]
+ --> (FmtError) Manpage error (body), "plain_text foo" : Plain text not allowed outside of the body of the manpage.}
+ 
+

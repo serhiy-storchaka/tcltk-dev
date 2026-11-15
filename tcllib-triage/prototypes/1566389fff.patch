@@ -1,0 +1,31 @@
+Index: modules/fileutil/fileutil.test
+==================================================================
+--- modules/fileutil/fileutil.test
++++ modules/fileutil/fileutil.test
+@@ -316,11 +316,11 @@
+ makeDirectory installDst
+ 
+ test install-2.1 {install a directory} {
+     list [catch {
+         fileutil::install                         [file join installSrc subdir] installDst
+-        set result [lsort [glob -tails -directory [file join installDst subdir] [file join . / *]]]
++        set result [lsort [glob -tails -directory [file join installDst subdir] *]]
+         file delete -force installDst
+         set result
+     } err] $err
+ } {0 {subfile1 subfile2 subfile3}}
+ 
+@@ -327,11 +327,11 @@
+ makeDirectory installDst
+ 
+ test install-2.2 {install a directory} {
+     list [catch {
+         fileutil::install                  [file join installSrc subdir] installDst
+-        set result [lsort [glob -directory [file join installDst subdir] [file join . / *]]]
++        set result [lsort [glob -directory [file join installDst subdir] *]]
+         file delete -force installDst
+         set result
+     } err] $err
+ } {0 {installDst/subdir/subfile1 installDst/subdir/subfile2 installDst/subdir/subfile3}}
+ 
+

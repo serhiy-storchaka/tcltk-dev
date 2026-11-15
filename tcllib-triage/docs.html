@@ -1,0 +1,391 @@
+<title>Tcllib Ticket Triage: Docs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280; --out:#7C5E10; --rfe:#0F766E;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --out:#D6B454; --rfe:#5EEAD4;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --out:#D6B454; --rfe:#5EEAD4;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}.c-out{--c:var(--out)}.c-rfe{--c:var(--rfe)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Open tcllib tickets: Docs</h1>
+  <p class="sub">Triage of all 509 open and Pending tickets of <a href="https://core.tcl-lang.org/tcllib">tcllib</a> (bugs, patches and feature requests) on 2026-11-15. Each ticket was checked against tcllib trunk on Linux with Tcl 9.1, 9.0, 8.6 and 8.5, using local servers for the network modules and a Windows 11 VM for Windows-only tickets. Outdated, superseded, duplicate and misfiled tickets are listed separately. Rows marked <span class="patch">patch</span> link to a prototype fix with a regression test (147 in all, in <a href="https://github.com/serhiy-storchaka/tcltk-dev/tree/main/tcllib-triage/prototypes">tcllib-triage/prototypes</a>). Updated 2026-11-15.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">157</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">70</span> Already fixed or done</a><a class="navchip c-out" href="outdated.html"><span class="n">80</span> Outdated, superseded, duplicate</a><a class="navchip c-rfe" href="rfe.html"><span class="n">129</span> Feature requests</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">23</span> Not a bug</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">23</span> Not reproduced</a><a class="navchip c-docs cur" href="docs.html" aria-current="page"><span class="n">22</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">5</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">22</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, module, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="docs"><h2><span class="dot c-docs"></span>Docs <span class="cnt">22</span></h2><details class="t" id="0fc5d24109" data-s="0fc5d24109 Gaps in format documentation pt (parsetools) DOCS (all points still valid). The PE serialization docs do not list `..`, `cl` or `str`. `pt::pe verify` still rejects `[pt::pe class abc]` and `[pt::pe str abc]` (&quot;invalid operator&quot;), while `..` verifies. `t x` with multi-character x is not documented as invalid. `ddigit` is still described as `regexp`-based. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>0fc5d24109</span><span class="yr">2024</span><span class="ti">Gaps in format documentation</span><span class="vd">DOCS (all points still valid). The PE serialization docs do not list <code>..</code>, <code>cl</code> or <code>str</code>. <code>pt::pe verify</code> still rejects <code>[pt::pe class abc]</code> and `[…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/0fc5d24109">Open ticket 0fc5d24109</a> · Bug · pt (parsetools) · filed 2024-01-21</p><div class="lab">Full verdict</div><p>DOCS (all points still valid). The PE serialization docs do not list <code>..</code>, <code>cl</code> or <code>str</code>. <code>pt::pe verify</code> still rejects <code>[pt::pe class abc]</code> and <code>[pt::pe str abc]</code> ("invalid operator"), while <code>..</code> verifies. <code>t x</code> with multi-character x is not documented as invalid. <code>ddigit</code> is still described as <code>regexp</code>-based.</p><ul>
+<li><span class="k">Module</span> pt docs (include/serial/pexpression.inc, pt_astree.man, pt_peg_language.man)
+</li>
+<li><span class="k">Tested</span> <code>pt::pe verify</code> on range/class/str results on 9.1. Grep of the docs; pexpression.inc has been unchanged since 2010.
+</li>
+<li><span class="k">Cause</span> docs gaps, plus an inconsistency between <code>pt::pe class/str</code> and <code>pt::pe verify</code>
+</li>
+<li><span class="k">Prototype</span> none (needs the maintainer to decide whether cl/str are official serialization operators)
+</li>
+<li><span class="k">Suggested action</span> keep open
+</li>
+<li><span class="k">Suggested ticket comment</span> Still valid on trunk: <code>..</code>, <code>cl</code> and <code>str</code> are undocumented, and verify rejects cl/str although <code>pt::pe class/str</code> produce them.
+</li></ul></div></details><details class="t" id="9c75b39aa2" data-s="9c75b39aa2 reference to unknown library &quot;streams&quot; in documentation of generator generator DOCS (the sentence is still in generator.man on trunk) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>9c75b39aa2</span><span class="yr">2023</span><span class="ti">reference to unknown library "streams" in documentation of generator</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcllib-triage/prototypes/9c75b39aa2.patch">patch</a><span class="vd">DOCS (the sentence is still in generator.man on trunk)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/9c75b39aa2">Open ticket 9c75b39aa2</a> · Bug · generator · filed 2023-10-26</p><div class="lab">Full verdict</div><p>DOCS (the sentence is still in generator.man on trunk)</p><ul>
+<li><span class="k">Module</span> generator 0.3 (generator.man)
+</li>
+<li><span class="k">Tested</span> grep generator.man; the sentence is at line 236.
+</li>
+<li><span class="k">Cause</span> aku (2024-04-05): even the author does not remember what "streams" meant. aku said he would remove the sentence, but has not done so yet.
+</li>
+<li><span class="k">Prototype</span> prototypes/9c75b39aa2.patch (16 lines; removes the sentence). Docs only, so no test is possible.
+</li>
+<li><span class="k">Suggested action</span> apply prototype, close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> Removed the reference to the nonexistent "streams" library, as agreed with the author.
+</li></ul></div></details><details class="t" id="743f95e16d" data-s="743f95e16d matrices cannot be a single column math :: linearalgebra DOCS (inherent: `{{1} {2} {3}}` and `{1 2 3}` are the same Tcl value; `mkMatrix 3 1` returns `1.0 1.0 1.0`, and shape gives 3) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>743f95e16d</span><span class="yr">2023</span><span class="ti">matrices cannot be a single column</span><span class="vd">DOCS (inherent: <code>{{1} {2} {3}}</code> and <code>{1 2 3}</code> are the same Tcl value; <code>mkMatrix 3 1</code> returns <code>1.0 1.0 1.0</code>, and shape gives 3)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/743f95e16d">Open ticket 743f95e16d</a> · Bug · math :: linearalgebra · filed 2023-06-28</p><div class="lab">Full verdict</div><p>DOCS (inherent: <code>{{1} {2} {3}}</code> and <code>{1 2 3}</code> are the same Tcl value; <code>mkMatrix 3 1</code> returns <code>1.0 1.0 1.0</code>, and shape gives 3)</p><ul>
+<li><span class="k">Module</span> math, math::linearalgebra 1.1.7
+</li>
+<li><span class="k">Tested</span> 9.1, 8.6: <code>shape {{1} {2} {3}}</code> gives 3, and <code>shape [mkMatrix 3 1 1.0]</code> gives 3.
+</li>
+<li><span class="k">Prototype</span> none (a doc note in linalg.man near shape/mkMatrix, saying n×1 matrices cannot be told apart from vectors; doc only, so no test)
+</li>
+<li><span class="k">Suggested action</span> add a doc note, then close
+</li>
+<li><span class="k">Suggested ticket comment</span> A single-column matrix and a vector have the same string representation in Tcl, so this cannot be fixed without a different data representation. We will document it.
+</li></ul></div></details><details class="t" id="422bc67f03" data-s="422bc67f03 Tcllib cmdline example is inadequate cmdline DOCS (the reported getfiles problem is misuse, not a bug) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>422bc67f03</span><span class="yr">2020</span><span class="ti">Tcllib cmdline example is inadequate</span><span class="vd">DOCS (the reported getfiles problem is misuse, not a bug)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/422bc67f03">Open ticket 422bc67f03</a> · Bug · cmdline · filed 2020-09-17</p><div class="lab">Full verdict</div><p>DOCS (the reported getfiles problem is misuse, not a bug)</p><ul>
+<li><span class="k">Module</span> cmdline 1.5.3
+</li>
+<li><span class="k">Tested</span> <code>getfiles [list /path/a.zip] 0</code> returns the file. <code>getfiles {/path/*.zip} 0</code> on Unix warns "no files match", as documented (no globbing on Unix). The reporter passed the pattern instead of the remaining argv. There is no <code>optind</code> in cmdline: argv is modified in place, and the example now says so (2dce7b748a, Fixed).
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (docs only. Could extend the example with <code>set files [cmdline::getfiles $argv 0]</code> after getoptions.)
+</li>
+<li><span class="k">Suggested action</span> add a short example of processing the remaining argv, then close
+</li>
+<li><span class="k">Suggested ticket comment</span> After getoptions, argv holds the remaining words. Pass that list to getfiles (on Unix the shell does the globbing). There is no optind variable.
+</li></ul></div></details><details class="t" id="c426ceafad" data-s="c426ceafad pki package - add pki::public_key pki DOCS (RFE-OPEN; `::pki::public_key keylist ?password? ?encodePem?` (pki.tcl:861) and `::pki::pkcs::parse_public_key key ?password?` (pki.tcl:1135) exist but pki.man still documents neither) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>c426ceafad</span><span class="yr">2019</span><span class="ti">pki package - add pki::public_key</span><span class="vd">DOCS (RFE-OPEN; <code>::pki::public_key keylist ?password? ?encodePem?</code> (pki.tcl:861) and <code>::pki::pkcs::parse_public_key key ?password?</code> (pki.tcl:1135) …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/c426ceafad">Open ticket c426ceafad</a> · RFE · pki · filed 2019-10-26</p><div class="lab">Full verdict</div><p>DOCS (RFE-OPEN; <code>::pki::public_key keylist ?password? ?encodePem?</code> (pki.tcl:861) and <code>::pki::pkcs::parse_public_key key ?password?</code> (pki.tcl:1135) exist but pki.man still documents neither)</p><ul>
+<li><span class="k">Module</span> pki 0.22
+</li>
+<li><span class="k">Tested</span> grep of pki.man on trunk.
+</li>
+<li><span class="k">Prototype</span> none (docs only: two [call] entries modelled on ::pki::key and ::pki::pkcs::parse_key)
+</li>
+<li><span class="k">Suggested action</span> document both commands in pki.man, then close
+</li>
+<li><span class="k">Suggested ticket comment</span> Still valid on trunk: both pki::public_key and pki::pkcs::parse_public_key exist but are missing from pki.man.
+</li></ul></div></details><details class="t" id="14e2c2cbba" data-s="14e2c2cbba Update aycock parser example to include lexer Documentation DOCS (still valid). The example is also wrong: it and the [call] use `aycock::parser`, which does not exist (`invalid command name &quot;aycock::parser&quot;`). The real command is `grammar::aycock::parser`. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>14e2c2cbba</span><span class="yr">2017</span><span class="ti">Update aycock parser example to include lexer</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcllib-triage/prototypes/14e2c2cbba.patch">patch</a><span class="vd">DOCS (still valid). The example is also wrong: it and the [call] use <code>aycock::parser</code>, which does not exist (`invalid command name "aycock::parser"…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/14e2c2cbba">Open ticket 14e2c2cbba</a> · Bug · Documentation · filed 2017-05-24</p><div class="lab">Full verdict</div><p>DOCS (still valid). The example is also wrong: it and the [call] use <code>aycock::parser</code>, which does not exist (<code>invalid command name "aycock::parser"</code>). The real command is <code>grammar::aycock::parser</code>.</p><ul>
+<li><span class="k">Module</span> grammar::aycock 1.1 (docs, aycock.man)
+</li>
+<li><span class="k">Tested</span> ran the documented example (fails) and the submitter's lexer example on 9.1 and 8.6 (prints 40)
+</li>
+<li><span class="k">Prototype</span> prototypes/14e2c2cbba.patch (+25/-4, docs only, no test). It fixes the [call] name to <code>::grammar::aycock::parser</code> and replaces the example with a slightly condensed version of the submitted lexer plus the parser. I extracted the example from the .man and ran it: it prints 40 on 9.1 and 8.6, and dtplite renders it.
+</li>
+<li><span class="k">Suggested action</span> apply the prototype, regenerate the docs, close
+</li>
+<li><span class="k">Suggested ticket comment</span> Agreed. The current example also calls the non-existent <code>aycock::parser</code>. Proposed doc update with a lexer and the correct <code>grammar::aycock::parser</code> name.
+</li></ul></div></details><details class="t" id="9fdff6c603" data-s="9fdff6c603 Write manpages for oo::dialect A Category Is Missing DOCS (still only oodialect.md, no .man; not in the generated docs. The oo::meta twin a20b080092 was fixed in 2019.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>9fdff6c603</span><span class="yr">2016</span><span class="ti">Write manpages for oo::dialect</span><span class="vd">DOCS (still only oodialect.md, no .man; not in the generated docs. The oo::meta twin a20b080092 was fixed in 2019.)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/9fdff6c603">Open ticket 9fdff6c603</a> · Bug · A Category Is Missing · filed 2016-11-14</p><div class="lab">Full verdict</div><p>DOCS (still only oodialect.md, no .man; not in the generated docs. The oo::meta twin a20b080092 was fixed in 2019.)</p><ul>
+<li><span class="k">Module</span> oo::dialect 0.3.4
+</li>
+<li><span class="k">Tested</span> ls modules/oodialect; grep embedded/md/toc.md (no entry)
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (docs-only; could convert oodialect.md to doctools)
+</li>
+<li><span class="k">Suggested action</span> keep open, or close if oo::dialect counts as superseded by clay
+</li>
+<li><span class="k">Suggested ticket comment</span> oo::dialect still has only a Markdown README and no doctools manpage, so it's missing from the docs.
+</li></ul></div></details><details class="t" id="83567329c9" data-s="83567329c9 suggest clarification of pki docs about proc input types pki DOCS (partly addressed: since tcllib 1.21 (900fb4ff6d, 2021-10-31) parse_cert/parse_csr say &quot;can be either PEM or DER encoded&quot;. parse_key, verify_cert etc. still just say &quot;key&quot;/&quot;cert&quot;, and nothing states that the arguments are data, not file names) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>83567329c9</span><span class="yr">2016</span><span class="ti">suggest clarification of pki docs about proc input types</span><span class="vd">DOCS (partly addressed: since tcllib 1.21 (900fb4ff6d, 2021-10-31) parse_cert/parse_csr say "can be either PEM or DER encoded". parse_key, verify_c…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/83567329c9">Open ticket 83567329c9</a> · RFE · pki · filed 2016-03-19</p><div class="lab">Full verdict</div><p>DOCS (partly addressed: since tcllib 1.21 (900fb4ff6d, 2021-10-31) parse_cert/parse_csr say "can be either PEM or DER encoded". parse_key, verify_cert etc. still just say "key"/"cert", and nothing states that the arguments are data, not file names)</p><ul>
+<li><span class="k">Module</span> pki 0.22
+</li>
+<li><span class="k">Tested</span> read pki.man on trunk.
+</li>
+<li><span class="k">Prototype</span> none (docs only)
+</li>
+<li><span class="k">Suggested action</span> add a sentence near the top of pki.man that all key/cert/csr arguments are the PEM or DER data, not file names, then close
+</li>
+<li><span class="k">Suggested ticket comment</span> Partly done in 1.21 (parse_cert/parse_csr now say "PEM or DER encoded"). A general note that the arguments are the encoded data, not file names, is still missing.
+</li></ul></div></details><details class="t" id="70d8274f90" data-s="70d8274f90 json2dict return value json DOCS (fixed on trunk 2b2bcd7ecf, 2026-01-27). json.man documents dict-or-list results and the type ambiguity. DUPLICATE of 2df194042b in substance. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>70d8274f90</span><span class="yr">2015</span><span class="ti">json2dict return value</span><span class="vd">DOCS (fixed on trunk 2b2bcd7ecf, 2026-01-27). json.man documents dict-or-list results and the type ambiguity. DUPLICATE of <a class="h" href="#2df194042b">2df194042b</a> in substance.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/70d8274f90">Open ticket 70d8274f90</a> · Bug · json · filed 2015-09-02</p><div class="lab">Full verdict</div><p>DOCS (fixed on trunk 2b2bcd7ecf, 2026-01-27). json.man documents dict-or-list results and the type ambiguity. DUPLICATE of <a class="h" href="#2df194042b">2df194042b</a> in substance.</p><ul>
+<li><span class="k">Module</span> json 1.3.6
+</li>
+<li><span class="k">Tested</span> doc read
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (docs) / Duplicate of <a class="h" href="#2df194042b">2df194042b</a>
+</li>
+<li><span class="k">Suggested ticket comment</span> The docs now explain that arrays become lists, objects become dicts, and that the type cannot be recovered <a class="h" href="https://core.tcl-lang.org/tcllib/info/2b2bcd7ecf">2b2bcd7ecf</a>.
+</li></ul></div></details><details class="t" id="2df194042b" data-s="2df194042b json2dict does not always produce a dictionary json DOCS (fixed on trunk, 3ec5b08cd9 / b96bdd24d5, merged 2b2bcd7ecf, 2026-01-23/27, not yet released) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2df194042b</span><span class="yr">2015</span><span class="ti">json2dict does not always produce a dictionary</span><span class="vd">DOCS (fixed on trunk, 3ec5b08cd9 / b96bdd24d5, merged 2b2bcd7ecf, 2026-01-23/27, not yet released)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2df194042b">Open ticket 2df194042b</a> · Bug · json · filed 2015-01-16</p><div class="lab">Full verdict</div><p>DOCS (fixed on trunk, 3ec5b08cd9 / b96bdd24d5, merged 2b2bcd7ecf, 2026-01-23/27, not yet released)</p><ul>
+<li><span class="k">Module</span> json 1.3.6
+</li>
+<li><span class="k">Tested</span> json.man on trunk: "Returns a dict or list …" and explains that type information is not kept.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Fixed (docs)
+</li>
+<li><span class="k">Suggested ticket comment</span> The documentation now states that json2dict returns a dict or a list (or a scalar) and that type information is lost <a class="h" href="https://core.tcl-lang.org/tcllib/info/2b2bcd7ecf">2b2bcd7ecf</a>.
+</li></ul></div></details><details class="t" id="dec864a3b5" data-s="dec864a3b5 Example ::tcl::transform::otp otp DOCS (RFE-OPEN; vt_otp.man still has no example) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>dec864a3b5</span><span class="yr">2014</span><span class="ti">Example ::tcl::transform::otp</span><span class="vd">DOCS (RFE-OPEN; vt_otp.man still has no example)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/dec864a3b5">Open ticket dec864a3b5</a> · RFE · otp · filed 2014-10-15</p><div class="lab">Full verdict</div><p>DOCS (RFE-OPEN; vt_otp.man still has no example)</p><ul>
+<li><span class="k">Module</span> virtchannel_transform, tcl::transform::otp 1.1 (vt_otp.man)
+</li>
+<li><span class="k">Tested</span> a file encrypt/decrypt round trip on 9.1 and 8.6 works: open the output channel, open the key file twice (<code>rb</code>) for keychanw/keychanr, call <code>tcl::transform::otp $out $kw $kr</code>, then <code>fcopy</code>. Reading back through the transform with fresh key channels gives the plaintext.
+</li>
+<li><span class="k">Cause</span> missing documentation only.
+</li>
+<li><span class="k">Prototype</span> none (docs only; a short [example] block in vt_otp.man would do it)
+</li>
+<li><span class="k">Suggested action</span> add an example to vt_otp.man, then close
+</li>
+<li><span class="k">Suggested ticket comment</span> Still valid: vt_otp.man has no example. Usage: open the key file twice (one channel for writing, one for reading), <code>tcl::transform::otp $chan $keyw $keyr</code>, then write or fcopy through <code>$chan</code>.
+</li></ul></div></details><details class="t" id="759713c5c4" data-s="759713c5c4 Tcllib mime package doesn&#x27;t (document) support for header encoding mime DOCS / RFE-OPEN (still true: mime::word_encode, word_decode, field_decode are not in mime.man; non-ASCII header values are written raw, not RFC 2047 encoded) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>759713c5c4</span><span class="yr">2014</span><span class="ti">Tcllib mime package doesn't (document) support for header encoding</span><span class="vd">DOCS / RFE-OPEN (still true: mime::word_encode, word_decode, field_decode are not in mime.man; non-ASCII header values are written raw, not RFC 204…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/759713c5c4">Open ticket 759713c5c4</a> · Bug · mime · filed 2014-01-07</p><div class="lab">Full verdict</div><p>DOCS / RFE-OPEN (still true: mime::word_encode, word_decode, field_decode are not in mime.man; non-ASCII header values are written raw, not RFC 2047 encoded)</p><ul>
+<li><span class="k">Module</span> mime 1.7.2
+</li>
+<li><span class="k">Tested</span> 9.1/8.6: <code>-header {Subject "Привіт öö"}</code> → raw UTF-8 bytes in the header
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (docs + optional auto-encoding is a design decision)
+</li>
+<li><span class="k">Suggested action</span> document word_encode/word_decode/field_decode in mime.man (they are tested in mime.test, so they are effectively public); auto-encoding could be a separate RFE
+</li>
+<li><span class="k">Suggested ticket comment</span> Still valid: word_encode, word_decode and field_decode are tested but not documented, and headers are not encoded automatically.
+</li></ul></div></details><details class="t" id="3600285fff" data-s="3600285fff smtpd STARTTLS not documented smtpd DOCS " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>3600285fff</span><span class="yr">2013</span><span class="ti">smtpd STARTTLS not documented</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcllib-triage/prototypes/3600285fff.patch">patch</a><span class="vd">DOCS</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/3600285fff">Open ticket 3600285fff</a> · Bug · smtpd · filed 2013-01-10</p><div class="lab">Full verdict</div><p>DOCS</p><ul>
+<li><span class="k">Module</span> smtpd 1.6
+</li>
+<li><span class="k">Tested</span> smtpd.man has no -usetls and none of the tls::import pass-through options (-certfile, -keyfile, ...). The code supports them (configure, STARTTLS).
+</li>
+<li><span class="k">Cause</span> smtpd.man: configure option list
+</li>
+<li><span class="k">Prototype</span> prototypes/3600285fff.patch (41 lines, docs only). Documents -usetls and the tls options. Formats cleanly with doctools. No regression test (documentation change).
+</li>
+<li><span class="k">Suggested action</span> apply prototype
+</li>
+<li><span class="k">Suggested ticket comment</span> Still undocumented. Proposed doc text for -usetls and the tls options in prototypes/3600285fff.patch.
+</li></ul></div></details><details class="t" id="2459470fff" data-s="2459470fff Debug and Verbose do not generate output ftp DOCS (works as designed; the manual is misleading) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2459470fff</span><span class="yr">2008</span><span class="ti">Debug and Verbose do not generate output</span><span class="vd">DOCS (works as designed; the manual is misleading)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2459470fff">Open ticket 2459470fff</a> · Bug · ftp · filed 2008-12-22</p><div class="lab">Full verdict</div><p>DOCS (works as designed; the manual is misleading)</p><ul>
+<li><span class="k">Module</span> ftp 2.4.14, log 1.5
+</li>
+<li><span class="k">Tested</span> <code>set ftp::VERBOSE 1; set ftp::DEBUG 1</code> prints nothing by default. After <code>log::lvSuppress debug 0</code> everything shows, on 9.1 and 8.6.
+</li>
+<li><span class="k">Cause</span> ftp.tcl <code>::ftp::DisplayMsg</code> logs through <code>log::log debug</code>, and the log package suppresses debug/info/notice/warning by default. The suggested <code>log::lvSuppressLE emergency 0</code> inside the ftp package would change the logging of the whole application, so it should not be done.
+</li>
+<li><span class="k">Prototype</span> none (doc-only change; no test possible). Suggested ftp.man text after the paragraph about DisplayMsg: "The messages are logged at level <code>debug</code> (errors at level <code>error</code>). The log package suppresses level <code>debug</code> by default, so an application setting VERBOSE or DEBUG also has to call <code>log::lvSuppress debug 0</code>, or use the <code>-output</code> option of <code>::ftp::Open</code>."
+</li>
+<li><span class="k">Suggested action</span> fix the docs, then close
+</li>
+<li><span class="k">Suggested ticket comment</span> The messages go to the log package at level debug, which is suppressed by default. Enable them with <code>log::lvSuppress debug 0</code> (or use <code>-output</code>). Changing log's global settings from inside ftp would affect the whole application, so we will document this instead.
+</li></ul></div></details><details class="t" id="2220159fff" data-s="2220159fff Missing in snitfaq: limitiation on names for options snit DOCS (snit.man&#x27;s `option` statement already states the rule; snitfaq.man does not) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2220159fff</span><span class="yr">2008</span><span class="ti">Missing in snitfaq: limitiation on names for options</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcllib-triage/prototypes/2220159fff.patch">patch</a><span class="vd">DOCS (snit.man's <code>option</code> statement already states the rule; snitfaq.man does not)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2220159fff">Open ticket 2220159fff</a> · Bug · snit · filed 2008-11-04</p><div class="lab">Full verdict</div><p>DOCS (snit.man's <code>option</code> statement already states the rule; snitfaq.man does not)</p><ul>
+<li><span class="k">Module</span> snit 2.3.4 (snitfaq.man)
+</li>
+<li><span class="k">Tested</span> <code>option transformBefore</code> and <code>option -transformBefore</code> both give <code>badly named option</code> on 9.1 and 8.6. The rule (Comp.OptionNameIsValid: leading hyphen, no upper case, no space) is already covered by tests option-*.
+</li>
+<li><span class="k">Cause</span> snitfaq "How do I define an option?" does not mention the naming rules.
+</li>
+<li><span class="k">Prototype</span> prototypes/2220159fff.patch (27 lines, docs only; it adds a paragraph to the snitfaq "How do I define an option?" section, and the doctools render has no warnings). No new test: the naming rule is already tested (snit.test lines ~2790-2837, "badly named option").
+</li>
+<li><span class="k">Suggested action</span> apply prototype, close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> The rule (leading hyphen, no upper case or spaces; resource/class names may use upper case) is in snit(n) but missing in the FAQ. Proposed FAQ paragraph is ready.
+</li></ul></div></details><details class="t" id="1927092fff" data-s="1927092fff ncgi documentation - confusing use of term &#x27;session&#x27; ncgi DOCS (still present: two uses of &quot;session&quot; in the reset and urlStub descriptions) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1927092fff</span><span class="yr">2008</span><span class="ti">ncgi documentation - confusing use of term 'session'</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcllib-triage/prototypes/1927092fff.patch">patch</a><span class="vd">DOCS (still present: two uses of "session" in the reset and urlStub descriptions)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1927092fff">Open ticket 1927092fff</a> · Bug · ncgi · filed 2008-03-27</p><div class="lab">Full verdict</div><p>DOCS (still present: two uses of "session" in the reset and urlStub descriptions)</p><ul>
+<li><span class="k">Module</span> ncgi 1.4.6 (ncgi.man)
+</li>
+<li><span class="k">Tested</span> grep of ncgi.man
+</li>
+<li><span class="k">Cause</span> wording
+</li>
+<li><span class="k">Prototype</span> prototypes/1927092fff.patch (2 changed lines, replaces "session" with "request". No test possible for wording.)
+</li>
+<li><span class="k">Suggested action</span> apply prototype, close
+</li>
+<li><span class="k">Suggested ticket comment</span> Replaced "session" with "request" in the reset and urlStub descriptions.
+</li></ul></div></details><details class="t" id="1917018fff" data-s="1917018fff dns - Package resolv is not documented dns DOCS: still no man page and no test suite. Duplicate 1954483fff was closed in favour of this ticket. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1917018fff</span><span class="yr">2008</span><span class="ti">dns - Package resolv is not documented</span><span class="vd">DOCS: still no man page and no test suite. Duplicate 1954483fff was closed in favour of this ticket.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1917018fff">Open ticket 1917018fff</a> · Bug · dns · filed 2008-03-17</p><div class="lab">Full verdict</div><p>DOCS: still no man page and no test suite. Duplicate 1954483fff was closed in favour of this ticket.</p><ul>
+<li><span class="k">Module</span> resolv 1.0.4 (dns module)
+</li>
+<li><span class="k">Tested</span> grep of all .man files
+</li>
+<li><span class="k">Prototype</span> none (needs a new man page)
+</li>
+<li><span class="k">Suggested action</span> keep open (or decide to deprecate resolv)
+</li>
+<li><span class="k">Suggested ticket comment</span> Still true on trunk: resolv has no man page and no tests.
+</li></ul></div></details><details class="t" id="1917019fff" data-s="1917019fff dns - Package spf not documented dns DOCS: still no man page. spf.test exists now; tcllib_dns.man only links to an SPF website. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1917019fff</span><span class="yr">2008</span><span class="ti">dns - Package spf not documented</span><span class="vd">DOCS: still no man page. spf.test exists now; tcllib_dns.man only links to an SPF website.</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1917019fff">Open ticket 1917019fff</a> · Bug · dns · filed 2008-03-17</p><div class="lab">Full verdict</div><p>DOCS: still no man page. spf.test exists now; tcllib_dns.man only links to an SPF website.</p><ul>
+<li><span class="k">Module</span> spf 1.1.2 (dns module)
+</li>
+<li><span class="k">Tested</span> grep of all .man files
+</li>
+<li><span class="k">Prototype</span> none (needs a new man page)
+</li>
+<li><span class="k">Suggested action</span> keep open
+</li>
+<li><span class="k">Suggested ticket comment</span> Still undocumented on trunk. A test suite exists now, but no man page.
+</li></ul></div></details><details class="t" id="1646625fff" data-s="1646625fff doctools - html backend - backslashes wrong in doc example doctools DOCS (REPRODUCED on 9.1 and 8.6. The doubled backslashes are in the des.man source, not added by doctools. Inside `[example {...}]` doctools copies backslashes verbatim, so `\\0` in the source shows up as `\\0` in HTML/markdown/text. That is also wrong Tcl: `string repeat \\0 8` is 16 literal characters, not 8 NUL bytes. aes.man has the same error, `string repeat \\0 16`, and its printed hex result only matches the single-backslash form. I checked: with `\\0` the result is fdb1..., with `\0` it is 66e94bd4... as documented.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1646625fff</span><span class="yr">2007</span><span class="ti">doctools - html backend - backslashes wrong in doc example</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcllib-triage/prototypes/1646625fff.patch">patch</a><span class="vd">DOCS (REPRODUCED on 9.1 and 8.6. The doubled backslashes are in the des.man source, not added by doctools. Inside <code>[example {...}]</code> doctools copies…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1646625fff">Open ticket 1646625fff</a> · Bug · doctools · filed 2007-01-28</p><div class="lab">Full verdict</div><p>DOCS (REPRODUCED on 9.1 and 8.6. The doubled backslashes are in the des.man source, not added by doctools. Inside <code>[example {...}]</code> doctools copies backslashes verbatim, so <code>\\0</code> in the source shows up as <code>\\0</code> in HTML/markdown/text. That is also wrong Tcl: <code>string repeat \\0 8</code> is 16 literal characters, not 8 NUL bytes. aes.man has the same error, <code>string repeat \\0 16</code>, and its printed hex result only matches the single-backslash form. I checked: with <code>\\0</code> the result is fdb1..., with <code>\0</code> it is 66e94bd4... as documented.)</p><ul>
+<li><span class="k">Module</span> des 1.2 (des.man), aes (aes.man). doctools itself is fine.
+</li>
+<li><span class="k">Tested</span> formatted AK's four test cases plus des.man/aes.man to html/nroff on 9.1 and 8.6. Ran the aes example both ways.
+</li>
+<li><span class="k">Cause</span> modules/des/des.man:175-176 and modules/aes/aes.man:140 use <code>\\</code> inside a braced example. The only doctools special case is a backslash at the end of a line, where <code>\\</code> gives one <code>\</code> (AK's continuation-line note). That does not apply here.
+</li>
+<li><span class="k">Prototype</span> prototypes/1646625fff.patch (4 changed lines, docs only. No regression test possible, because the change is only in .man example text. I checked by regenerating the HTML.)
+</li>
+<li><span class="k">Suggested action</span> apply prototype, regenerate embedded docs, close as Fixed
+</li>
+<li><span class="k">Suggested ticket comment</span> The doubled backslashes come from des.man itself: doctools copies the text of [example {...}] verbatim. The example was also wrong as Tcl code. Fixed des.man, and aes.man which had the same mistake.
+</li></ul></div></details><details class="t" id="1608820fff" data-s="1608820fff Doc update for ncgi - examples needed ncgi DOCS (partly done: an &quot;Uploading a file&quot; EXAMPLES section was added in 2007, c33818a4c4, but there is still no basic read-a-form example) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1608820fff</span><span class="yr">2006</span><span class="ti">Doc update for ncgi - examples needed</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcllib-triage/prototypes/1608820fff.patch">patch</a><span class="vd">DOCS (partly done: an "Uploading a file" EXAMPLES section was added in 2007, c33818a4c4, but there is still no basic read-a-form example)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1608820fff">Open ticket 1608820fff</a> · Patch · ncgi · filed 2006-12-04</p><div class="lab">Full verdict</div><p>DOCS (partly done: an "Uploading a file" EXAMPLES section was added in 2007, c33818a4c4, but there is still no basic read-a-form example)</p><ul>
+<li><span class="k">Module</span> ncgi 1.4.6 (ncgi.man)
+</li>
+<li><span class="k">Tested</span> ran the new example as a CGI script (QUERY_STRING) on 9.1 and 8.6. <code>sak.tcl doc validate ncgi</code> passes.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> prototypes/1608820fff.patch (31 lines, docs only. No regression test possible for a man page example; the example was run by hand instead.)
+</li>
+<li><span class="k">Suggested action</span> apply prototype, then close
+</li>
+<li><span class="k">Suggested ticket comment</span> The man page has an upload example since 2007. A basic parse/value/header example is proposed in addition.
+</li></ul></div></details><details class="t" id="1307714fff" data-s="1307714fff ftp - NList Documentation problem ftp DOCS " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1307714fff</span><span class="yr">2005</span><span class="ti">ftp - NList Documentation problem</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcllib-triage/prototypes/1307714fff.patch">patch</a><span class="vd">DOCS</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1307714fff">Open ticket 1307714fff</a> · Bug · ftp · filed 2005-09-29</p><div class="lab">Full verdict</div><p>DOCS</p><ul>
+<li><span class="k">Module</span> ftp 2.4.14 (ftp.man)
+</li>
+<li><span class="k">Tested</span> the ftpd NList examples work. Globbing is done by the server, as with List.
+</li>
+<li><span class="k">Cause</span> ftp.man documents <code>NList handle ?directory?</code>, while List documents <code>?pattern?</code>
+</li>
+<li><span class="k">Prototype</span> prototypes/1307714fff.patch (6 lines, docs only, so no test possible). It renames the argument to <code>pattern</code> and notes that directory prefixes in the result depend on the server (see 1584235).
+</li>
+<li><span class="k">Suggested action</span> apply prototype, close
+</li>
+<li><span class="k">Suggested ticket comment</span> The argument is passed to the server like List's pattern; the docs now say so.
+</li></ul></div></details><details class="t" id="861622ffff" data-s="861622ffff Documentation error(s) mime DOCS (the -part/-parts naming was fixed via 3354014/3552226; there is still no example of building a multipart message, or of naming an attachment with Content-Disposition/filename) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>861622ffff</span><span class="yr">2003</span><span class="ti">Documentation error(s)</span><span class="vd">DOCS (the -part/-parts naming was fixed via 3354014/3552226; there is still no example of building a multipart message, or of naming an attachment …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/861622ffff">Open ticket 861622ffff</a> · Bug · mime · filed 2003-12-17</p><div class="lab">Full verdict</div><p>DOCS (the -part/-parts naming was fixed via 3354014/3552226; there is still no example of building a multipart message, or of naming an attachment with Content-Disposition/filename)</p><ul>
+<li><span class="k">Module</span> mime 1.7.2 (mime.man)
+</li>
+<li><span class="k">Tested</span> read mime.man
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none (docs only; Pat's 2006 comment has a ready example for the EXAMPLES section)
+</li>
+<li><span class="k">Suggested action</span> add Pat's multipart/mixed + attachment example to mime.man, then close
+</li>
+<li><span class="k">Suggested ticket comment</span> -parts is documented now. An example of a multipart message with a named attachment, like the one in the 2006 comment, is still missing from the manual.
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

@@ -1,0 +1,132 @@
+Index: modules/math/linalg.man
+==================================================================
+--- modules/math/linalg.man
++++ modules/math/linalg.man
+@@ -634,10 +634,13 @@
+ [call [cmd ::math::linearalgebra::solveGauss] [arg matrix] [arg bvect]]
+ 
+ Solve a system of linear equations (Ax=b) using Gauss elimination.
+ Returns the solution (x) as a vector or matrix of the same shape as
+ bvect.
++Rows are only exchanged to avoid a zero pivot; use [cmd solvePGauss]
++for better numerical stability.
++An error is raised if the matrix is singular.
+ 
+ [list_begin arguments]
+ [arg_def list matrix] Square matrix (matrix A)
+ [arg_def list bvect] Vector or matrix whose columns are the individual
+ b-vectors
+@@ -646,10 +649,11 @@
+ [call [cmd ::math::linearalgebra::solvePGauss] [arg matrix] [arg bvect]]
+ 
+ Solve a system of linear equations (Ax=b) using Gauss elimination with
+ partial pivoting. Returns the solution (x) as a vector or matrix of the
+ same shape as bvect.
++An error is raised if the matrix is singular.
+ 
+ [list_begin arguments]
+ [arg_def list matrix] Square matrix (matrix A)
+ [arg_def list bvect] Vector or matrix whose columns are the individual
+ b-vectors
+
+Index: modules/math/linalg.tcl
+==================================================================
+--- modules/math/linalg.tcl
++++ modules/math/linalg.tcl
+@@ -1455,13 +1455,29 @@
+ proc ::math::linearalgebra::solveGauss { matrix bvect } {
+     set norows [llength $matrix]
+     set nocols $norows
+ 
+     for { set i 0 } { $i < $nocols } { incr i } {
++        # No pivoting, except to avoid a zero pivot
++        if { [lindex $matrix $i $i] == 0 } {
++            for { set j [expr {$i+1}] } { $j < $norows } { incr j } {
++                if { [lindex $matrix $j $i] != 0 } {
++                    set row [lindex $matrix $i]
++                    lset matrix $i [lindex $matrix $j]
++                    lset matrix $j $row
++                    set row [lindex $bvect $i]
++                    lset bvect $i [lindex $bvect $j]
++                    lset bvect $j $row
++                    break
++                }
++            }
++            if { $j >= $norows } {
++                return -code error "Matrix is singular"
++            }
++        }
+         set sweep_row   [getrow $matrix $i]
+         set bvect_sweep [getrow $bvect  $i]
+-        # No pivoting yet
+         set sweep_fact  [expr {double([lindex $sweep_row $i])}]
+         for { set j [expr {$i+1}] } { $j < $norows } { incr j } {
+             set current_row   [getrow $matrix $j]
+             set bvect_current [getrow $bvect  $j]
+             set factor      [expr {-[lindex $current_row $i]/$sweep_fact}]
+@@ -1537,10 +1553,13 @@
+         "U" {
+             for { set i [expr {$norows-1}] } { $i >= 0 } { incr i -1 } {
+                 set sweep_row   [getrow $matrix $i]
+                 set bvect_sweep [getrow $bvect  $i]
+                 set sweep_fact  [expr {double([lindex $sweep_row $i])}]
++                if { $sweep_fact == 0.0 } {
++                    return -code error "Matrix is singular"
++                }
+                 set norm_fact   [expr {1.0/$sweep_fact}]
+ 
+                 lset bvect $i [scale $norm_fact $bvect_sweep]
+ 
+                 for { set j [expr {$i-1}] } { $j >= 0 } { incr j -1 } {
+@@ -1555,10 +1574,13 @@
+         "L" {
+             for { set i 0 } { $i < $norows } { incr i } {
+                 set sweep_row   [getrow $matrix $i]
+                 set bvect_sweep [getrow $bvect  $i]
+                 set sweep_fact  [expr {double([lindex $sweep_row $i])}]
++                if { $sweep_fact == 0.0 } {
++                    return -code error "Matrix is singular"
++                }
+                 set norm_fact   [expr {1.0/$sweep_fact}]
+ 
+                 lset bvect $i [scale $norm_fact $bvect_sweep]
+ 
+                 for { set j 0 } { $j < $i } { incr j } {
+
+Index: modules/math/linalg.test
+==================================================================
+--- modules/math/linalg.test
++++ modules/math/linalg.test
+@@ -562,10 +562,31 @@
+     set norm [norm $diff max]
+     # Computed norm : 0.
+     set result [expr {$norm<1.e-15}]
+ } -result {1}
+ 
++# Ticket 91c114ee92
++test solve-2.1 "solveGauss - zero pivot in non-singular matrix" -match numbers -body {
++    solveGauss {{0 1} {1 0}} {1 2}
++} -result {2 1}
++
++test solve-2.2 "solveGauss - singular matrix" -body {
++    solveGauss {{0 0 0} {-2 3 4} {1 1 1}} {{2 3 4} {-2 3 4} {1 1 1}}
++} -returnCodes error -result {Matrix is singular}
++
++test solve-2.3 "solveGauss - singular matrix, zero pivot after elimination" -body {
++    solveGauss {{1 2} {2 4}} {1 2}
++} -returnCodes error -result {Matrix is singular}
++
++test solve-2.4 "solvePGauss - singular matrix" -body {
++    solvePGauss {{0 0 0} {-2 3 4} {1 1 1}} {{2 3 4} {-2 3 4} {1 1 1}}
++} -returnCodes error -result {Matrix is singular}
++
++test solve-2.5 "solveTriangular - zero on the diagonal" -body {
++    solveTriangular {{1 2} {0 0}} {1 2}
++} -returnCodes error -result {Matrix is singular}
++
+ 
+ test orthon-1.0 "orthonormalize columns - 3x3" -match numbers -body {
+     set M {{1 1 1}
+            {0 1 1}
+            {0 0 1}}
+

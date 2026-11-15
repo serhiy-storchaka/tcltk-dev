@@ -1,0 +1,68 @@
+Index: modules/htmlparse/htmlparse.tcl
+==================================================================
+--- modules/htmlparse/htmlparse.tcl
++++ modules/htmlparse/htmlparse.tcl
+@@ -957,10 +957,30 @@
+     # Recognize borken beginnings of a comment and convert them to PCDATA.
+     regsub -all -- "<--(\[^\001\]*)\001(\[^\002\]*)\002" $html {\&lt;--\1--\2\&gt;} html
+ 
+     # And now recognize true comments, remove them.
+     regsub -all -- "<!--\[^\001\]*\001(\[^\002\]*)\002"  $html {}                   html
++
++    # The contents of <script> and <style> elements are raw text. Hide
++    # any '<' and '>' in them from the tag recognizer by converting
++    # them to entities.
++
++    set res   ""
++    set start 0
++    while {[regexp -nocase -indices -start $start \
++		{<(script|style)\M[^>]*>} $html m tag]} {
++	set name [string range $html {*}$tag]
++	set from [expr {[lindex $m 1] + 1}]
++	if {![regexp -nocase -indices -start $from "</$name\\s*>" $html e]} {
++	    set e [list [string length $html] [string length $html]]
++	}
++	append res [string range $html $start [lindex $m 1]]
++	append res [string map {< &lt; > &gt;} \
++		[string range $html $from [expr {[lindex $e 0] - 1}]]]
++	set start [lindex $e 0]
++    }
++    set html $res[string range $html $start end]
+ 
+     # Protect characters special to tcl (braces, slashes) by
+     # converting them to their escape sequences.
+ 
+     return [string map [list \
+
+Index: modules/htmlparse/htmlparse.test
+==================================================================
+--- modules/htmlparse/htmlparse.test
++++ modules/htmlparse/htmlparse.test
+@@ -540,10 +540,26 @@
+      [list $extraarg html {} {} {}] \
+      [list $extraarg a    {} {b="a"} {x}] \
+      [list $extraarg a    /  {} {}] \
+      [list $extraarg html /  {} {}] ]
+ 
++
++test htmlparse-12.0 {script and style contents are not parsed for tags} {
++    set tags [list]
++    htmlparse::parse -cmd cb -vroot html \
++	"<SCRIPT type=x>if(i<w.length && a>b) x();</SCRIPT><style>p>b{}</style><p>t</p>"
++    set tags
++}  [list \
++     [list html   {} {} {}] \
++     [list SCRIPT {} {type=x} {if(i&lt;w.length && a&gt;b) x();}] \
++     [list SCRIPT /  {} {}] \
++     [list style  {} {} {p&gt;b&#123;&#125;}] \
++     [list style  /  {} {}] \
++     [list p      {} {} t] \
++     [list p      /  {} {}] \
++     [list html   /  {} {}] ]
++
+ 
+ # -------------------------------------------------------------------------
+ # In this section we run all the tests depending on a struct::tree,
+ # and thus have to test all the available implementations.
+ 
+

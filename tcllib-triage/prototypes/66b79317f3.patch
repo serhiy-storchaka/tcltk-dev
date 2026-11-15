@@ -1,0 +1,62 @@
+Index: modules/sasl/ntlm.tcl
+==================================================================
+--- modules/sasl/ntlm.tcl
++++ modules/sasl/ntlm.tcl
+@@ -290,17 +290,17 @@
+ proc ::SASL::NTLM::LMhash {password nonce} {
+     set magic "\x4b\x47\x53\x21\x40\x23\x24\x25"
+     set hash ""
+     set password [string range [string toupper $password][string repeat \0 14] 0 13]
+     foreach key [CreateDesKeys $password] {
+-        append hash [DES::des -dir encrypt -weak -mode ecb -key $key $magic]
++        append hash [DES::des -dir encrypt -weak -mode ecb -key $key -- $magic]
+     }
+ 
+     append hash [string repeat \0 5]
+     set res ""
+     foreach key [CreateDesKeys $hash] {
+-        append res [DES::des -dir encrypt -weak -mode ecb -key $key $nonce]
++        append res [DES::des -dir encrypt -weak -mode ecb -key $key -- $nonce]
+     }
+ 
+     return $res
+ }
+ 
+@@ -309,11 +309,11 @@
+     set hash [md4::md4 $pass]
+     append hash [string repeat \x00 5]
+ 
+     set res ""
+     foreach key [CreateDesKeys $hash] {
+-        append res [DES::des -dir encrypt -weak -mode ecb -key $key $nonce]
++        append res [DES::des -dir encrypt -weak -mode ecb -key $key -- $nonce]
+     }
+ 
+     return $res
+ }
+ 
+
+Index: modules/sasl/ntlm.test
+==================================================================
+--- modules/sasl/ntlm.test
++++ modules/sasl/ntlm.test
+@@ -78,10 +78,18 @@
+         set response [SASL::response $ctx]
+         SASL::cleanup $ctx
+         base64::encode -maxlen 0 $response
+     } res] $res
+ } [list 0 $Chk(3)]
++
++test SASL-NTLM-1.2 {LM/NT hashes of a nonce starting with a dash, ticket 66b79317f3} {
++    list [catch {
++        set nonce "-\x01\x02\x03\x04\x05\x06\x07"
++        list [string length [SASL::NTLM::LMhash SecREt01 $nonce]] \
++            [string length [SASL::NTLM::NThash SecREt01 $nonce]]
++    } res] $res
++} {0 {24 24}}
+ 
+ # -------------------------------------------------------------------------
+ 
+ unset Chk
+ testsuiteCleanup
+

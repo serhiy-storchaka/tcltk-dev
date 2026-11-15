@@ -1,0 +1,85 @@
+Index: modules/yaml/huddle.man
+==================================================================
+--- modules/yaml/huddle.man
++++ modules/yaml/huddle.man
+@@ -277,16 +277,20 @@
+ s str
+ % huddle to_node {HUDDLE {l {a b c}}}
+ l {a b c}
+ }]
+ 
++[call [cmd "huddle wrap"] [arg node]]
+ [call [cmd "huddle wrap"] [arg tag] [arg src]]
+ for type-callbacks.
+ [para]
+-Create a huddle object from [arg src] with specified [arg tag].
++Create a huddle object from the huddle [arg node], or from [arg src]
++with specified [arg tag].
+ 
+ [example {
++% huddle wrap {s str}
++HUDDLE {s str}
+ % huddle wrap "" str
+ HUDDLE str
+ % huddle wrap s str
+ HUDDLE {s str}
+ }]
+
+Index: modules/yaml/huddle.tcl
+==================================================================
+--- modules/yaml/huddle.tcl
++++ modules/yaml/huddle.tcl
+@@ -224,12 +224,27 @@
+     } else {
+         return [list $default_tag $src]
+     }
+ }
+ 
+-proc ::huddle::wrap { node } {
+-    return [list HUDDLE $node]
++proc ::huddle::wrap {args} {
++    switch -- [llength $args] {
++        1 {
++            return [list HUDDLE [lindex $args 0]]
++        }
++        2 {
++            # Form "wrap tag src" of huddle 0.1
++            lassign $args tag src
++            if {$tag eq ""} {
++                return [list HUDDLE $src]
++            }
++            return [list HUDDLE [list $tag $src]]
++        }
++        default {
++            return -code error {wrong # args: should be "huddle wrap node" or "huddle wrap tag src"}
++        }
++    }
+ }
+ 
+ proc ::huddle::unwrap { huddle_object } {
+     return [lindex $huddle_object 1]
+ }
+
+Index: modules/yaml/huddle.test
+==================================================================
+--- modules/yaml/huddle.test
++++ modules/yaml/huddle.test
+@@ -238,10 +238,17 @@
+ }}
+ 
+ # ... Tests of addStrings ...
+ #     (Requires introspection of parser state)
+ 
++test huddle-3.8 {ticket [333ccac763]: wrap with one or two arguments} -body {
++    list [huddle wrap {s str}] [huddle wrap s str] [huddle wrap "" str] \
++        [catch {huddle wrap a b c} msg] $msg
++} -cleanup {
++    unset -nocomplain msg
++} -result {{HUDDLE {s str}} {HUDDLE {s str}} {HUDDLE str} 1 {wrong # args: should be "huddle wrap node" or "huddle wrap tag src"}}
++
+ test huddle-4.1 "test of huddle set" -body {
+     huddle set data_dict dd bb a baa
+ } -result {HUDDLE {D {dd {D {bb {D {a {s baa} c {s d}}} cc {D {e {s f} g {s h}}}}} ee {D {i {s j} k {s l}}}}}}
+ 
+ test huddle-4.2 "test of huddle remove" -body {
+

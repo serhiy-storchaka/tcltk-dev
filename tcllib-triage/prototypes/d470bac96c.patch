@@ -1,0 +1,101 @@
+Index: modules/httpd/build/server.tcl
+==================================================================
+--- modules/httpd/build/server.tcl
++++ modules/httpd/build/server.tcl
+@@ -120,21 +120,21 @@
+     chan configure $sock \
+       -blocking 0 \
+       -translation {auto crlf} \
+       -buffering line
+     my counter url_hit
++    set query [dict create UUID $uuid]
+     try {
+       set readCount [::coroutine::util::gets_safety $sock 4096 http_request]
+       set mimetxt [my HttpHeaders $sock]
+-      dict set query UUID $uuid
+       dict set query mimetxt $mimetxt
+       dict set query mixin style [my clay get server/ style]
+       dict set query http [my ServerHeaders $ip $http_request $mimetxt]
+       my Headers_Process query
+       set reply [my dispatch $query]
+     } on error {err errdat} {
+-      my debug [list uri: [dict getnull $query REQUEST_URI] ip: $ip error: $err errorinfo: [dict get $errdat -errorinfo]]
++      my debug [list uri: [dict getnull $query http REQUEST_URI] ip: $ip error: $err errorinfo: [dict get $errdat -errorinfo]]
+       my log BadRequest $uuid [list ip: $ip error: $err errorinfo: [dict get $errdat -errorinfo]]
+       catch {chan puts $sock "HTTP/1.0 400 Bad Request (The data is invalid)"}
+       catch {chan close $sock}
+       return
+     }
+
+Index: modules/httpd/httpd.tcl
+==================================================================
+--- modules/httpd/httpd.tcl
++++ modules/httpd/httpd.tcl
+@@ -823,21 +823,21 @@
+     chan configure $sock \
+       -blocking 0 \
+       -translation {auto crlf} \
+       -buffering line
+     my counter url_hit
++    set query [dict create UUID $uuid]
+     try {
+       set readCount [::coroutine::util::gets_safety $sock 4096 http_request]
+       set mimetxt [my HttpHeaders $sock]
+-      dict set query UUID $uuid
+       dict set query mimetxt $mimetxt
+       dict set query mixin style [my clay get server/ style]
+       dict set query http [my ServerHeaders $ip $http_request $mimetxt]
+       my Headers_Process query
+       set reply [my dispatch $query]
+     } on error {err errdat} {
+-      my debug [list uri: [dict getnull $query REQUEST_URI] ip: $ip error: $err errorinfo: [dict get $errdat -errorinfo]]
++      my debug [list uri: [dict getnull $query http REQUEST_URI] ip: $ip error: $err errorinfo: [dict get $errdat -errorinfo]]
+       my log BadRequest $uuid [list ip: $ip error: $err errorinfo: [dict get $errdat -errorinfo]]
+       catch {chan puts $sock "HTTP/1.0 400 Bad Request (The data is invalid)"}
+       catch {chan close $sock}
+       return
+     }
+
+Index: modules/httpd/httpd.test
+==================================================================
+--- modules/httpd/httpd.test
++++ modules/httpd/httpd.test
+@@ -373,10 +373,37 @@
+ 
+ ::DEBUG puts httpd-client-0008
+ test httpd-client-0008 {Pull a constant string} -body {
+     ::httpd::test::send 10001 {GET /string HTTP/1.0} {} {}
+ } -match glob -result [200 apple]
++::DEBUG puts httpd-client-0009
++test httpd-client-0009 {Timeout while reading the request line, ticket d470bac96c} -setup {
++    set sock [socket localhost 10001]
++    chan configure $sock -blocking 0 -translation binary
++    # Send an incomplete request line, then stall
++    puts -nonewline $sock "GET /echo"
++    flush $sock
++    set timeoutscript {}
++    for {set i 0} {$i < 50 && $timeoutscript eq {}} {incr i} {
++        after 20 {set ::httpd::test::tick 1}
++        vwait ::httpd::test::tick
++        foreach id [after info] {
++            set script [lindex [after info $id] 0]
++            if {[string match {::httpd::coro::* timeout} $script]} {
++                after cancel $id
++                set timeoutscript $script
++            }
++        }
++    }
++} -body {
++    # Simulate the expiry of the read timeout
++    list [catch {uplevel #0 $timeoutscript} msg] $msg [string length $timeoutscript]
++} -cleanup {
++    close $sock
++    unset -nocomplain sock timeoutscript i id script msg
++} -match glob -result {0 {} [1-9]*}
++
+ # -------------------------------------------------------------------------
+ # Test proxies
+ 
+ clay::define ::test::content.proxy {
+     superclass ::httpd::content.proxy
+

@@ -1,0 +1,111 @@
+Index: modules/zip/decode.tcl
+==================================================================
+--- modules/zip/decode.tcl
++++ modules/zip/decode.tcl
+@@ -251,18 +251,19 @@
+ 	}
+     }
+ 
+     if {
+ 	($::tcl_platform(platform) ne "windows") &&
+-	($fd(efattr) != 0)
++	(($fd(efattr) >> 16) != 0)
+     } {
+ 	# On unix take the permissions encoded in the external
+ 	# attributes and apply them to the new file. If there are
+ 	# permission. A value of 0 indicates an older teabag where
+-	# the encoder did not yet support permissions. These we do not
+-	# change from the sustem defaults. Permissions are in the
+-	# lower 9 bits of the MSW.
++	# the encoder did not yet support permissions, or an archive
++	# made on MS-DOS/Windows, where only the LSB holds attributes.
++	# These we do not change from the system defaults. Permissions
++	# are in the lower 9 bits of the MSW.
+ 
+ 	file attributes $dst -permissions \
+ 	    [string map {0 --- 1 --x 2 -w- 3 -wx 4 r-- 5 r-x 6 rw- 7 rwx} \
+ 		 [format %03o [expr {($fd(efattr) >> 16) & 0x1ff}]]]
+     }
+
+Index: modules/zip/encode.test
+==================================================================
+--- modules/zip/encode.test
++++ modules/zip/encode.test
+@@ -40,10 +40,40 @@
+ 
+ tcltest::removeDirectory foo
+ 
+ set externalZipFile [file join [file dirname [info script]] zipFileForTests.zip]
+ tcltest::testConstraint GotZipFile [file exists $externalZipFile]
++
++# -------------------------------------------------------------------------
++# Write a minimal zip archive (stored entries only) with full control
++# over the "version made by" and "external attributes" fields, to test
++# how zipfile::decode handles archives made by other tools.
++# entries = list of {name data vmb efattr}
++
++proc mkTestZip {path entries} {
++    set local {}
++    set central {}
++    foreach e $entries {
++        lassign $e name data vmb efattr
++        set crc [zlib crc32 $data]
++        set len [string length $data]
++        set offset [string length $local]
++        append local [binary format a4sssssiiiss PK\03\04 \
++                          20 0 0 0 0x21 $crc $len $len \
++                          [string length $name] 0] $name $data
++        append central [binary format a4ssssssiiisssssii PK\01\02 \
++                            $vmb 20 0 0 0 0x21 $crc $len $len \
++                            [string length $name] 0 0 0 0 $efattr $offset] $name
++    }
++    set n [llength $entries]
++    set ch [open $path wb]
++    puts -nonewline $ch $local$central
++    puts -nonewline $ch [binary format a4ssssiis PK\05\06 0 0 $n $n \
++                             [string length $central] [string length $local] 0]
++    close $ch
++    return
++}
+ 
+ # -------------------------------------------------------------------------
+ 
+ 
+ test zipfile-encode-encode-1.0 {encode, wrong args, not enough} -body {
+@@ -333,10 +363,35 @@
+     set adict [zipfile::decode::archive]
+     set date [zipfile::decode::filetime $adict foo/a/msg.txt]
+     zipfile::decode::close
+     set date
+ } -result [clock scan "2026-02-02 09:00:00" -format "%Y-%m-%d %H:%M:%S"]
++test zipfile-decode-unzip-8.0 {unzip, MS-DOS attributes do not clear permissions, ticket a0cbdc7e6f} -constraints {unix} -setup {
++    mkTestZip dosattr.zip [list \
++        [list a/intro.txt hello 0x0014 0x20] \
++        [list a/ro.txt    bye   0x0014 0x21]]
++} -cleanup {
++    tcltest::removeDirectory foo3
++    tcltest::removeFile dosattr.zip
++} -body {
++    zipfile::decode::unzipfile dosattr.zip foo3
++    list [file readable foo3/a/intro.txt] [file readable foo3/a/ro.txt] \
++        [tcltest::viewFile foo3/a/intro.txt]
++} -result {1 1 hello}
++
++test zipfile-decode-unzip-8.1 {unzip, unix permissions are applied} -constraints {unix} -setup {
++    mkTestZip unixattr.zip [list \
++        [list a/x.sh hello 0x0314 [expr {0o100750 << 16}]]]
++} -cleanup {
++    tcltest::removeDirectory foo3
++    tcltest::removeFile unixattr.zip
++    unset -nocomplain st
++} -body {
++    zipfile::decode::unzipfile unixattr.zip foo3
++    file stat foo3/a/x.sh st
++    format %o [expr {$st(mode) & 0o777}]
++} -result 750
+ 
+ 
+ # -------------------------------------------------------------------------
+ 
+ tcltest::removeFile zipFileFromEncode.zip
+

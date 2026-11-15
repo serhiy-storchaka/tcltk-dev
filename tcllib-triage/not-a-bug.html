@@ -1,0 +1,415 @@
+<title>Tcllib Ticket Triage: Not a bug</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+:root{
+  --bg:#F5F7FA; --panel:#FFFFFF; --ink:#16202E; --muted:#5A6577; --line:#D9DFE7; --accent:#0B7A83; --accent-soft:#E1F1F2;
+  --code:#EDF0F4;
+  --rep:#C2410C; --partly:#B45309; --docs:#6D28D9; --fixed:#15803D; --notrep:#0369A1; --nab:#64748B; --win:#1D4ED8; --cant:#9A6B4F; --other:#6B7280; --out:#7C5E10; --rfe:#0F766E;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+    --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --out:#D6B454; --rfe:#5EEAD4;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F151D; --panel:#161E29; --ink:#E4E9F0; --muted:#98A3B3; --line:#2A3544; --accent:#4FC3CB; --accent-soft:#12303A; --code:#1F2935;
+  --rep:#FB923C; --partly:#FBBF24; --docs:#A78BFA; --fixed:#4ADE80; --notrep:#38BDF8; --nab:#94A3B8; --win:#7AA2FF; --cant:#D4A582; --other:#9CA3AF; --out:#D6B454; --rfe:#5EEAD4;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code{font:13px var(--mono);background:var(--code);padding:1px 4px;border-radius:3px}
+a.h{font-family:var(--mono);font-size:13px}
+header h1{font:600 30px/1.15 var(--cond);letter-spacing:.01em;margin:0 0 6px;text-wrap:balance}
+header .sub{color:var(--muted);max-width:70ch;margin:0 0 18px}
+.sub code{font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.navchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.navchip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--line))}
+.navchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.navchip.cur{border-color:var(--c,var(--accent));box-shadow:inset 0 0 0 1px var(--c,var(--accent))}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+#q{font:14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;flex:1 1 260px;min-width:0}
+.btn{font:500 13px var(--sans);color:var(--accent);background:none;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+#shown{color:var(--muted);font:13px var(--mono)}
+.c-rep{--c:var(--rep)}.c-partly{--c:var(--partly)}.c-docs{--c:var(--docs)}.c-fixed{--c:var(--fixed)}.c-notrep{--c:var(--notrep)}.c-nab{--c:var(--nab)}.c-win{--c:var(--win)}.c-cant{--c:var(--cant)}.c-other{--c:var(--other)}.c-out{--c:var(--out)}.c-rfe{--c:var(--rfe)}
+.hl{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 22px 14px;margin:26px 0 8px}
+.hl h3{font:600 17px/1.3 var(--cond);margin:18px 0 6px;letter-spacing:.01em}
+.hl ul{margin:4px 0;padding-left:20px}.hl li{margin:4px 0;max-width:95ch}
+.hl summary{cursor:pointer;font:600 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 0 4px}
+.grp{margin-top:34px}
+.grp h2{font:600 20px var(--cond);margin:0 0 8px;display:flex;align-items:center;gap:10px;letter-spacing:.01em}
+.grp h2 .cnt{font:500 14px var(--mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block}
+details.t{border-top:1px solid var(--line)}
+details.t:last-child{border-bottom:1px solid var(--line)}
+details.t>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;row-gap:2px;padding:9px 4px;align-items:baseline}
+details.t>summary::-webkit-details-marker{display:none}
+details.t>summary:hover{background:var(--accent-soft)}
+.id{font:500 13px var(--mono);color:var(--accent)}
+.yr{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow-wrap:anywhere}
+a.patch{text-decoration:none}
+.patch{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;align-self:center}
+.vd{grid-column:3/5;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+details.t[open]>summary{background:var(--accent-soft)}
+.d{padding:4px 4px 16px 4px;max-width:96ch}
+.d ul{padding-left:20px;margin:6px 0}.d li{margin:3px 0;overflow-wrap:anywhere}
+.d p{margin:6px 0;overflow-wrap:anywhere}
+.k,.lab{font:600 11.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.k{margin-right:4px}
+.lab{margin-top:10px}
+.meta{font-size:13px;color:var(--muted)}
+.winrun{border-left:3px solid var(--win);padding-left:12px;margin-top:12px}
+.pf{margin-top:8px}
+.pchip{font:500 13px var(--sans);color:var(--ink);background:var(--panel);border:1px dashed var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.pchip .n{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pe{display:inline-block;width:1.4em;font-size:14px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.since{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0 12px}
+.since ul{padding-left:4px;list-style:none}.since li{margin:5px 0}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media (max-width:560px){
+  details.t>summary{grid-template-columns:auto 1fr auto}
+  .yr{display:none}.vd{grid-column:1/-1}
+  header h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Open tcllib tickets: Not a bug</h1>
+  <p class="sub">Triage of all 509 open and Pending tickets of <a href="https://core.tcl-lang.org/tcllib">tcllib</a> (bugs, patches and feature requests) on 2026-11-15. Each ticket was checked against tcllib trunk on Linux with Tcl 9.1, 9.0, 8.6 and 8.5, using local servers for the network modules and a Windows 11 VM for Windows-only tickets. Outdated, superseded, duplicate and misfiled tickets are listed separately. Rows marked <span class="patch">patch</span> link to a prototype fix with a regression test (147 in all, in <a href="https://github.com/serhiy-storchaka/tcltk-dev/tree/main/tcllib-triage/prototypes">tcllib-triage/prototypes</a>). Updated 2026-11-15.</p>
+  <nav class="filters" aria-label="Triage pages"><a class="navchip" href="index.html">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">157</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">70</span> Already fixed or done</a><a class="navchip c-out" href="outdated.html"><span class="n">80</span> Outdated, superseded, duplicate</a><a class="navchip c-rfe" href="rfe.html"><span class="n">129</span> Feature requests</a><a class="navchip c-nab cur" href="not-a-bug.html" aria-current="page"><span class="n">23</span> Not a bug</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">23</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">22</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">5</span> Not tested</a></nav>
+  <div class="filters pf" role="group" aria-label="Filter by progress since the triage"><button class="pchip" data-p="untouched" aria-pressed="false"><span aria-hidden="true">⬜</span> <span class="n">23</span> Untouched</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search id, title, module, verdict" aria-label="Search tickets">
+    <button class="btn" id="patchonly" aria-pressed="false">Only with patch</button>
+    <button class="btn" id="expand">Expand shown</button>
+    <span id="shown"></span>
+  </div>
+</header>
+
+<section class="grp" data-cat="nab"><h2><span class="dot c-nab"></span>Not a bug <span class="cnt">23</span></h2><details class="t" id="dce2cb7dc4" data-s="dce2cb7dc4 Design a blueprint for all the Internet security, 1, cloud storage offline 2, security data cookies 3 device learning mechanism for user biometric Build System &amp; Testing NOT-A-BUG (spam / unrelated request) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>dce2cb7dc4</span><span class="yr">2026</span><span class="ti">Design a blueprint for all the Internet security, 1, cloud storage offline 2, security data cookies 3 device learning mechanism for user biometric</span><span class="vd">NOT-A-BUG (spam / unrelated request)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/dce2cb7dc4">Open ticket dce2cb7dc4</a> · RFE · Build System &amp; Testing · filed 2026-06-11</p><div class="lab">Full verdict</div><p>NOT-A-BUG (spam / unrelated request)</p><ul>
+<li><span class="k">Module</span> none
+</li>
+<li><span class="k">Tested</span> n/a
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Rejected (or delete as spam)
+</li>
+<li><span class="k">Suggested ticket comment</span> Not a Tcllib issue.
+</li></ul></div></details><details class="t" id="6c615f0a81" data-s="6c615f0a81 ldap module doesn&#x27;t handle $code &quot;error&quot; from server... ldap NOT-A-BUG (local socket error, not a server code. Only the diagnostic is confusing) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>6c615f0a81</span><span class="yr">2022</span><span class="ti">ldap module doesn't handle $code "error" from server...</span><span class="vd">NOT-A-BUG (local socket error, not a server code. Only the diagnostic is confusing)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/6c615f0a81">Open ticket 6c615f0a81</a> · Bug · ldap · filed 2022-10-21</p><div class="lab">Full verdict</div><p>NOT-A-BUG (local socket error, not a server code. Only the diagnostic is confusing)</p><ul>
+<li><span class="k">Module</span> ldap 1.10.2
+</li>
+<li><span class="k">Tested</span> decoded the hex in the report with <code>binary format h*</code> (the code dumps it nibble-swapped). It reads <code>error reading "sockeb61d42490": software caused connection abort</code>.
+</li>
+<li><span class="k">Cause</span> <code>ldap::ReceiveBytes</code> returns the code <code>error</code> when <code>read</code> throws, here because the connection was aborted (ECONNABORTED). <code>MessageReceiver</code> sends that to the <code>default</code> branch, which labels it "Protocol error ... Error reading SEQUENCE" and hex-dumps the error text. The caller does get an error, which is correct. The wording is misleading and the socket is not closed.
+</li>
+<li><span class="k">Prototype</span> none (cosmetic. A test would need a forced socket read error)
+</li>
+<li><span class="k">Suggested action</span> close as Works as designed. Optionally add an explicit <code>error</code> branch that reports the read error text in plain words and closes the socket.
+</li>
+<li><span class="k">Suggested ticket comment</span> Decoded, the dump says <code>error reading "sock...": software caused connection abort</code>: the TCP connection was aborted (server or network), and ldap reported it. The message could be clearer, but no server reply is mishandled.
+</li></ul></div></details><details class="t" id="2aa0cebb88" data-s="2aa0cebb88 json::json2dict treats null as a string json NOT-A-BUG (documented design). json.man now states that null becomes the string &quot;null&quot; and links this ticket (2b2bcd7ecf, 2026-01-27). " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2aa0cebb88</span><span class="yr">2021</span><span class="ti">json::json2dict treats null as a string</span><span class="vd">NOT-A-BUG (documented design). json.man now states that null becomes the string "null" and links this ticket (2b2bcd7ecf, 2026-01-27).</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2aa0cebb88">Open ticket 2aa0cebb88</a> · Bug · json · filed 2021-04-27</p><div class="lab">Full verdict</div><p>NOT-A-BUG (documented design). json.man now states that null becomes the string "null" and links this ticket (2b2bcd7ecf, 2026-01-27).</p><ul>
+<li><span class="k">Module</span> json 1.3.6
+</li>
+<li><span class="k">Tested</span> 9.1: <code>{"a":null,"b":"null"}</code> gives <code>a null b null</code>
+</li>
+<li><span class="k">Cause</span> parseValue returns the bare token
+</li>
+<li><span class="k">Prototype</span> none (changing it to "" would break existing users and is equally lossy)
+</li>
+<li><span class="k">Suggested action</span> close as Works as designed (now documented)
+</li>
+<li><span class="k">Suggested ticket comment</span> This is documented behaviour now. null and "null" cannot be distinguished in the untyped dict result. Use huddle::json or typed-json if you need that.
+</li></ul></div></details><details class="t" id="79c916b904" data-s="79c916b904 couldn&#x27;t open socket: address already in use httpd NOT-A-BUG (the `::httpd::server` constructor already calls `my start`. The wiki snippet then calls `HTTPD start` a second time, which binds the same port again. With `port auto` the second start just allocates another port, which is why that &quot;works&quot;) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>79c916b904</span><span class="yr">2020</span><span class="ti">couldn't open socket: address already in use</span><span class="vd">NOT-A-BUG (the <code>::httpd::server</code> constructor already calls <code>my start</code>. The wiki snippet then calls <code>HTTPD start</code> a second time, which binds the sam…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/79c916b904">Open ticket 79c916b904</a> · Bug · httpd · filed 2020-06-04</p><div class="lab">Full verdict</div><p>NOT-A-BUG (the <code>::httpd::server</code> constructor already calls <code>my start</code>. The wiki snippet then calls <code>HTTPD start</code> a second time, which binds the same port again. With <code>port auto</code> the second start just allocates another port, which is why that "works")</p><ul>
+<li><span class="k">Module</span> httpd 4.3.6
+</li>
+<li><span class="k">Tested</span> <code>httpd::server create HTTPD port 18000; HTTPD start</code> gives "couldn't open socket: address already in use" on 9.1. Without the extra <code>start</code> the server runs (the man page's minimal example has no <code>start</code> call).
+</li>
+<li><span class="k">Cause</span> httpd.tcl server constructor ends with <code>my start</code>. httpd.man documents <code>start</code> as "Open the socket listener" but does not say that the constructor already calls it.
+</li>
+<li><span class="k">Prototype</span> none (docs or a wiki fix. Optionally <code>start</code> could close existing listeners first)
+</li>
+<li><span class="k">Suggested action</span> close as Works as Designed. Optionally add one sentence to httpd.man saying the constructor starts listening.
+</li>
+<li><span class="k">Suggested ticket comment</span> The server constructor already opens the listener, so the extra <code>HTTPD start</code> from the wiki snippet tries to bind the same port a second time. Drop that line, as in the man page's minimal example.
+</li></ul></div></details><details class="t" id="7d12acd105" data-s="7d12acd105 uri::split does not parse file schemes correctly on Windows uri NOT-A-BUG. Same issue as 6362dbd12b; it could also be closed as a DUPLICATE of 6362dbd12b. join and split are complementary: `uri::join scheme file path /C:/src` gives `file:///C:/src`, which splits back to `path /C:/src`. The leading `/` belongs to the URI path. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>7d12acd105</span><span class="yr">2017</span><span class="ti">uri::split does not parse file schemes correctly on Windows</span><span class="vd">NOT-A-BUG. Same issue as <a class="h" href="#6362dbd12b">6362dbd12b</a>; it could also be closed as a DUPLICATE of <a class="h" href="#6362dbd12b">6362dbd12b</a>. join and split are complementary: `uri::join scheme file…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/7d12acd105">Open ticket 7d12acd105</a> · Bug · uri · filed 2017-08-29</p><div class="lab">Full verdict</div><p>NOT-A-BUG. Same issue as <a class="h" href="#6362dbd12b">6362dbd12b</a>; it could also be closed as a DUPLICATE of <a class="h" href="#6362dbd12b">6362dbd12b</a>. join and split are complementary: <code>uri::join scheme file path /C:/src</code> gives <code>file:///C:/src</code>, which splits back to <code>path /C:/src</code>. The leading <code>/</code> belongs to the URI path.</p><ul>
+<li><span class="k">Module</span> uri 1.2.8
+</li>
+<li><span class="k">Tested</span> 9.1, the round trip.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works as designed (or Duplicate of <a class="h" href="#6362dbd12b">6362dbd12b</a>)
+</li>
+<li><span class="k">Suggested ticket comment</span> The leading "/" is part of the URI path (RFC 3986/8089), and join/split round-trip correctly. Converting to a native Windows filename is documented in uri.man.
+</li></ul></div></details><details class="t" id="9f1eda1887" data-s="9f1eda1887 snit  -option -default won&#x27;t recognize global or namespaced variables snit NOT-A-BUG (by design; DOCS) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>9f1eda1887</span><span class="yr">2016</span><span class="ti">snit  -option -default won't recognize global or namespaced variables</span><a class="patch" href="https://github.com/serhiy-storchaka/tcltk-dev/blob/main/tcllib-triage/prototypes/9f1eda1887.patch">patch</a><span class="vd">NOT-A-BUG (by design; DOCS)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/9f1eda1887">Open ticket 9f1eda1887</a> · Bug · snit · filed 2016-09-02</p><div class="lab">Full verdict</div><p>NOT-A-BUG (by design; DOCS)</p><ul>
+<li><span class="k">Module</span> snit 2.3.4
+</li>
+<li><span class="k">Tested</span> <code>option -a -default $::a</code> gives <code>can't read "::a"</code> on 9.1/8.6. <code>snit::type C [list option -a -default $::a]</code> works.
+</li>
+<li><span class="k">Cause</span> type definitions are evaluated in Snit's separate compiler interpreter, so the caller's variables don't exist there. snit.man only mentions this interpreter for macros.
+</li>
+<li><span class="k">Prototype</span> prototypes/9f1eda1887.patch (60 lines, docs + tests option-default-1.1/1.2). It documents the limitation and the workarounds (substitute with <code>list</code>/<code>string map</code>, or set the option in the constructor) next to <code>snit::type</code>. The tests pin the error and the workaround.
+</li>
+<li><span class="k">Suggested action</span> apply doc patch, close as Won't Fix / Documented
+</li>
+<li><span class="k">Suggested ticket comment</span> By design: the definition is evaluated in Snit's compiler interpreter, not the caller's. Build the body with <code>list</code>/<code>string map</code> or set the option in the constructor. A doc note is proposed.
+</li></ul></div></details><details class="t" id="6362dbd12b" data-s="6362dbd12b uri::split does not support Windows drives uri NOT-A-BUG. `file:///T:/dir1/file1.txt` splits to path `/T:/dir1/file1.txt`, which is the RFC 3986/8089 path-absolute form. Since uri 1.2.7, uri.man documents that on Windows the `path` of a file URI is not a valid local filename, and its EXAMPLES section shows how to convert. `T:/dir1/file1.txt` is not a URI, so `unknown scheme &#x27;T&#x27;` is correct. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>6362dbd12b</span><span class="yr">2016</span><span class="ti">uri::split does not support Windows drives</span><span class="vd">NOT-A-BUG. <code>file:///T:/dir1/file1.txt</code> splits to path <code>/T:/dir1/file1.txt</code>, which is the RFC 3986/8089 path-absolute form. Since uri 1.2.7, uri.man…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/6362dbd12b">Open ticket 6362dbd12b</a> · Bug · uri · filed 2016-08-19</p><div class="lab">Full verdict</div><p>NOT-A-BUG. <code>file:///T:/dir1/file1.txt</code> splits to path <code>/T:/dir1/file1.txt</code>, which is the RFC 3986/8089 path-absolute form. Since uri 1.2.7, uri.man documents that on Windows the <code>path</code> of a file URI is not a valid local filename, and its EXAMPLES section shows how to convert. <code>T:/dir1/file1.txt</code> is not a URI, so <code>unknown scheme 'T'</code> is correct.</p><ul>
+<li><span class="k">Module</span> uri 1.2.8
+</li>
+<li><span class="k">Tested</span> 9.1, <code>uri::split file:///T:/dir1/file1.txt</code> and <code>uri::split T:/dir1/file1.txt file</code>.
+</li>
+<li><span class="k">Cause</span> n/a (by design)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works as designed. Branch pbrooks-ticket-664392 additionally makes <code>uri::geturl</code> accept such paths on Windows.
+</li>
+<li><span class="k">Suggested ticket comment</span> Per RFC 3986, the path of file:///T:/x is "/T:/x". uri.man (since 1.2.7) documents this and how to convert to a native name. "T:/..." is not a URI, hence the unknown-scheme error.
+</li></ul></div></details><details class="t" id="29aa482121" data-s="29aa482121 JSON module fails to parse data json NOT-A-BUG (the input is not a JSON object: no `{}`. Only the first entity is returned, which is documented.) A related real weakness was found: the Tcl parser silently skips characters that are not tokens, e.g. `{&quot;a&quot;: @@ 1}` gives `a 1`, and trailing garbage is ignored. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>29aa482121</span><span class="yr">2015</span><span class="ti">JSON module fails to parse data</span><span class="vd">NOT-A-BUG (the input is not a JSON object: no <code>{}</code>. Only the first entity is returned, which is documented.) A related real weakness was found: the…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/29aa482121">Open ticket 29aa482121</a> · Bug · json · filed 2015-05-13</p><div class="lab">Full verdict</div><p>NOT-A-BUG (the input is not a JSON object: no <code>{}</code>. Only the first entity is returned, which is documented.) A related real weakness was found: the Tcl parser silently skips characters that are not tokens, e.g. <code>{"a": @@ 1}</code> gives <code>a 1</code>, and trailing garbage is ignored.</p><ul>
+<li><span class="k">Module</span> json 1.3.6
+</li>
+<li><span class="k">Tested</span> 9.1, 8.6: the example returns <code>message</code>, <code>{"a":1} garbage</code> gives <code>a 1</code>, <code>{"a": @@ 1}</code> gives <code>a 1</code>
+</li>
+<li><span class="k">Cause</span> json_tcl.tcl:json2dict_tcl tokenizes with <code>regexp -all -inline $tokenRE</code>, which drops unmatched text
+</li>
+<li><span class="k">Prototype</span> none (strict validation would change behaviour for existing lenient users; needs a decision, e.g. a -strict option)
+</li>
+<li><span class="k">Suggested action</span> close as Not a bug. Optionally open a new RFE for strict mode/validation.
+</li>
+<li><span class="k">Suggested ticket comment</span> The input lacks the enclosing braces, so it is not a JSON object. json2dict returns the first entity ("success" at key position), as documented. Wrap it in <code>{...}</code>.
+</li></ul></div></details><details class="t" id="52b764e4dd" data-s="52b764e4dd json2dict incorrectly adds braces to strings starting with $ json NOT-A-BUG (`{$::x}` is just the list string representation. `lindex` returns `$::x` exactly. The fact that an array gives a list is now documented.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>52b764e4dd</span><span class="yr">2015</span><span class="ti">json2dict incorrectly adds braces to strings starting with $</span><span class="vd">NOT-A-BUG (<code>{$::x}</code> is just the list string representation. <code>lindex</code> returns <code>$::x</code> exactly. The fact that an array gives a list is now documented.)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/52b764e4dd">Open ticket 52b764e4dd</a> · Bug · json · filed 2015-01-22</p><div class="lab">Full verdict</div><p>NOT-A-BUG (<code>{$::x}</code> is just the list string representation. <code>lindex</code> returns <code>$::x</code> exactly. The fact that an array gives a list is now documented.)</p><ul>
+<li><span class="k">Module</span> json 1.3.6
+</li>
+<li><span class="k">Tested</span> 9.1, 8.6: <code>json2dict {["length","$::x"]}</code> gives <code>length {$::x}</code>
+</li>
+<li><span class="k">Cause</span> Tcl list quoting
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Not a bug
+</li>
+<li><span class="k">Suggested ticket comment</span> The braces are Tcl list quoting. The element value is <code>$::x</code>, as <code>lindex</code> shows. Use list commands, or <code>join</code>, rather than the string form.
+</li></ul></div></details><details class="t" id="4565d1598d" data-s="4565d1598d Type change from &quot;request&quot; in 1.3.1 to &quot;connect&quot; in 1.4 websocket NOT-A-BUG (intentional change from 2015; `connect` is the documented event and `request` was never documented). Re-adding `request` after 11 years would surprise current users more than it helps. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>4565d1598d</span><span class="yr">2015</span><span class="ti">Type change from "request" in 1.3.1 to "connect" in 1.4</span><span class="vd">NOT-A-BUG (intentional change from 2015; <code>connect</code> is the documented event and <code>request</code> was never documented). Re-adding <code>request</code> after 11 years …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/4565d1598d">Open ticket 4565d1598d</a> · Bug · websocket · filed 2015-01-15</p><div class="lab">Full verdict</div><p>NOT-A-BUG (intentional change from 2015; <code>connect</code> is the documented event and <code>request</code> was never documented). Re-adding <code>request</code> after 11 years would surprise current users more than it helps.</p><ul>
+<li><span class="k">Module</span> websocket 1.6
+</li>
+<li><span class="k">Tested</span> read websocket.tcl takeover and websocket.man.
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Won't fix
+</li>
+<li><span class="k">Suggested ticket comment</span> The event was renamed to "connect" in 1.4 (2015), and only "connect" is documented. Bringing back "request" now would mostly cause duplicate callbacks, so closing.
+</li></ul></div></details><details class="t" id="cffddbb426" data-s="cffddbb426 Is this package being supported? yaml NOT-A-BUG (support question, answered by aku in 2013) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>cffddbb426</span><span class="yr">2013</span><span class="ti">Is this package being supported?</span><span class="vd">NOT-A-BUG (support question, answered by aku in 2013)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/cffddbb426">Open ticket cffddbb426</a> · Bug · yaml · filed 2013-11-26</p><div class="lab">Full verdict</div><p>NOT-A-BUG (support question, answered by aku in 2013)</p><ul>
+<li><span class="k">Module</span> yaml 0.4.2 / huddle 0.5
+</li>
+<li><span class="k">Tested</span> n/a
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close (question answered)
+</li>
+<li><span class="k">Suggested ticket comment</span> Question answered; yaml/huddle remain in Tcllib with fixes taken as patches with tests. Specific bugs are tracked in their own tickets.
+</li></ul></div></details><details class="t" id="01afa9345d" data-s="01afa9345d textutil::expander expand - cget within an expand textutil :: expander NOT-A-BUG (expand pushes a new empty context, so cset values from the outer context are not visible. Resolution is already Invalid. A note was added to the documentation in [e53cad73ec] 2013-12-06 and is present in expander.man.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>01afa9345d</span><span class="yr">2013</span><span class="ti">textutil::expander expand - cget within an expand</span><span class="vd">NOT-A-BUG (expand pushes a new empty context, so cset values from the outer context are not visible. Resolution is already Invalid. A note was adde…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/01afa9345d">Open ticket 01afa9345d</a> · Bug · textutil :: expander · filed 2013-10-18</p><div class="lab">Full verdict</div><p>NOT-A-BUG (expand pushes a new empty context, so cset values from the outer context are not visible. Resolution is already Invalid. A note was added to the documentation in <a class="h" href="https://core.tcl-lang.org/tcllib/info/e53cad73ec">e53cad73ec</a> 2013-12-06 and is present in expander.man.)</p><ul>
+<li><span class="k">Module</span> textutil::expander 1.3.2
+</li>
+<li><span class="k">Tested</span> checked expander.man for the note (line ~208) and expander.tcl:Op_expand (<code>Op_cpush $name expand</code>)
+</li>
+<li><span class="k">Cause</span> intended behaviour
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close (Invalid). Only the status was left Open.
+</li>
+<li><span class="k">Suggested ticket comment</span> As explained below, this is intended, and the documentation notes it. Closing.
+</li></ul></div></details><details class="t" id="2861189fff" data-s="2861189fff decode and encode: inconsistent handling of line breaks ncgi NOT-A-BUG (by spec). application/x-www-form-urlencoded requires line breaks to be sent as CR LF (`%0D%0A`), browsers send textarea content that way, and Tcl&#x27;s own `http::formatQuery` does the same. decode faithfully returns what was sent. Mapping CRLF to LF in decode would silently alter data. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2861189fff</span><span class="yr">2009</span><span class="ti">decode and encode: inconsistent handling of line breaks</span><span class="vd">NOT-A-BUG (by spec). application/x-www-form-urlencoded requires line breaks to be sent as CR LF (<code>%0D%0A</code>), browsers send textarea content that way…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2861189fff">Open ticket 2861189fff</a> · Bug · ncgi · filed 2009-09-18</p><div class="lab">Full verdict</div><p>NOT-A-BUG (by spec). application/x-www-form-urlencoded requires line breaks to be sent as CR LF (<code>%0D%0A</code>), browsers send textarea content that way, and Tcl's own <code>http::formatQuery</code> does the same. decode faithfully returns what was sent. Mapping CRLF to LF in decode would silently alter data.</p><ul>
+<li><span class="k">Module</span> ncgi 1.4.6
+</li>
+<li><span class="k">Tested</span> <code>ncgi::decode [ncgi::encode "a\nb"]</code> gives "a\r\nb" on 9.1 and 8.6
+</li>
+<li><span class="k">Cause</span> by design (<code>map(\n) = %0D%0A</code>)
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works as designed (optionally mention it in the man page)
+</li>
+<li><span class="k">Suggested ticket comment</span> The form encoding mandates CR LF for line breaks, so encode sends %0D%0A like browsers and http::formatQuery do. The receiver should normalize with string map {\r\n \n} if it wants LF.
+</li></ul></div></details><details class="t" id="2220156fff" data-s="2220156fff Several questions about Snit objects snit NOT-A-BUG (support questions, not an RFE) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>2220156fff</span><span class="yr">2008</span><span class="ti">Several questions about Snit objects</span><span class="vd">NOT-A-BUG (support questions, not an RFE)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/2220156fff">Open ticket 2220156fff</a> · RFE · snit · filed 2008-11-04</p><div class="lab">Full verdict</div><p>NOT-A-BUG (support questions, not an RFE)</p><ul>
+<li><span class="k">Module</span> snit 2.3.4
+</li>
+<li><span class="k">Tested</span> on 9.1, <code>install</code> called from a method after construction replaces the component, and delegated methods follow the new component.
+</li>
+<li><span class="k">Cause</span> n/a. (1) There is no built-in clone; you write it with introspection or serialize methods. (2) <code>install</code> (or plain assignment to the component variable) works at any time, not only in the constructor. (3) <code>delegate</code> is a definition-time statement only.
+</li>
+<li><span class="k">Prototype</span> none (questions)
+</li>
+<li><span class="k">Suggested action</span> close as Works For Me / Answered
+</li>
+<li><span class="k">Suggested ticket comment</span> Answers: no built-in cloning; components can be re-installed at any time (e.g. from a method) and delegation follows the new component; <code>delegate</code> is only available in the type definition. Closing.
+</li></ul></div></details><details class="t" id="1798420fff" data-s="1798420fff Documenting C functions doctools NOT-A-BUG (the `[fun]` and `[type]` markup exists and the reporter got good results with it, see the 2007-09-23 comment. Creating man-page aliases/symlinks for installation is outside doctools&#x27; scope, as AK said.) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1798420fff</span><span class="yr">2007</span><span class="ti">Documenting C functions</span><span class="vd">NOT-A-BUG (the <code>[fun]</code> and <code>[type]</code> markup exists and the reporter got good results with it, see the 2007-09-23 comment. Creating man-page aliases/…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1798420fff">Open ticket 1798420fff</a> · Bug · doctools · filed 2007-09-19</p><div class="lab">Full verdict</div><p>NOT-A-BUG (the <code>[fun]</code> and <code>[type]</code> markup exists and the reporter got good results with it, see the 2007-09-23 comment. Creating man-page aliases/symlinks for installation is outside doctools' scope, as AK said.)</p><ul>
+<li><span class="k">Module</span> doctools 1.6.1
+</li>
+<li><span class="k">Tested</span> code reading (checker.tcl <code>fun</code>, <code>type</code>)
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works For Me
+</li>
+<li><span class="k">Suggested ticket comment</span> C functions can be documented with [fun], [type] and [arg], as the reporter found. Creating per-function man page aliases is a job for the build system, not doctools.
+</li></ul></div></details><details class="t" id="1733442fff" data-s="1733442fff elements of htmlparse param list cannot be accessed htmlparse NOT-A-BUG (param is the raw attribute string, not a Tcl list) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1733442fff</span><span class="yr">2007</span><span class="ti">elements of htmlparse param list cannot be accessed</span><span class="vd">NOT-A-BUG (param is the raw attribute string, not a Tcl list)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1733442fff">Open ticket 1733442fff</a> · Bug · htmlparse · filed 2007-06-08</p><div class="lab">Full verdict</div><p>NOT-A-BUG (param is the raw attribute string, not a Tcl list)</p><ul>
+<li><span class="k">Module</span> htmlparse 1.2.3
+</li>
+<li><span class="k">Tested</span> by code reading. parse passes the text between the tag name and <code>&gt;</code> unchanged. A string with quoted values containing quotes or spaces is not a valid list.
+</li>
+<li><span class="k">Cause</span> htmlparse.man line 197 calls it the "un-interpreted list of parameters", which misleads. The intro and the 2tree section say the attributes are passed unparsed.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works as designed (maybe fix the "list" wording in the docs). Attribute parsing is RFE 3000165.
+</li>
+<li><span class="k">Suggested ticket comment</span> The param argument is the raw attribute text, not a Tcl list, so list commands cannot be used on it. Attribute parsing is requested in RFE 3000165.
+</li></ul></div></details><details class="t" id="1584235fff" data-s="1584235fff Nlist against win. IIS behaves bizar ftp NOT-A-BUG (NList passes server output through unchanged; the reporter agreed in 2006 that it is IIS behaviour) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1584235fff</span><span class="yr">2006</span><span class="ti">Nlist against win. IIS behaves bizar</span><span class="vd">NOT-A-BUG (NList passes server output through unchanged; the reporter agreed in 2006 that it is IIS behaviour)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1584235fff">Open ticket 1584235fff</a> · Bug · ftp · filed 2006-10-25</p><div class="lab">Full verdict</div><p>NOT-A-BUG (NList passes server output through unchanged; the reporter agreed in 2006 that it is IIS behaviour)</p><ul>
+<li><span class="k">Module</span> ftp 2.4.14
+</li>
+<li><span class="k">Tested</span> none (needs IIS); code read
+</li>
+<li><span class="k">Cause</span> server-specific NLST name format
+</li>
+<li><span class="k">Prototype</span> none (the docs note is part of prototypes/1307714fff.patch)
+</li>
+<li><span class="k">Suggested action</span> close as Works as designed
+</li>
+<li><span class="k">Suggested ticket comment</span> NList returns names as the server sends them. The IIS backslashes and missing prefixes come from the server; the manual now mentions that prefixes are server-dependent.
+</li></ul></div></details><details class="t" id="1554121fff" data-s="1554121fff Camel case options snit NOT-A-BUG (documented restriction) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1554121fff</span><span class="yr">2006</span><span class="ti">Camel case options</span><span class="vd">NOT-A-BUG (documented restriction)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1554121fff">Open ticket 1554121fff</a> · Bug · snit · filed 2006-09-07</p><div class="lab">Full verdict</div><p>NOT-A-BUG (documented restriction)</p><ul>
+<li><span class="k">Module</span> snit 2.3.4
+</li>
+<li><span class="k">Tested</span> <code>option -thisOrThat</code> is rejected ("badly named option"). <code>-thisÄtsch</code> is accepted, because the check is <code>[A-Z ]</code> only.
+</li>
+<li><span class="k">Cause</span> main2.tcl: Comp.OptionNameIsValid. By design: resource/class names are derived from the option name, and the explicit form <code>option {-name resourceName ClassName}</code> gives camel-case resource names.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works as designed (optionally mention the non-ASCII loophole)
+</li>
+<li><span class="k">Suggested ticket comment</span> Lower-case option names are a documented rule. Use <code>option {-thisorthat thisOrThat ThisOrThat}</code> for a camel-case resource name. Closing.
+</li></ul></div></details><details class="t" id="1473699fff" data-s="1473699fff -? and -help broken cmdline NOT-A-BUG (by design and documented) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1473699fff</span><span class="yr">2006</span><span class="ti">-? and -help broken</span><span class="vd">NOT-A-BUG (by design and documented)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1473699fff">Open ticket 1473699fff</a> · Bug · cmdline · filed 2006-04-20</p><div class="lab">Full verdict</div><p>NOT-A-BUG (by design and documented)</p><ul>
+<li><span class="k">Module</span> cmdline 1.5.3
+</li>
+<li><span class="k">Tested</span> <code>-?</code>/<code>-help</code> throw the usage message with errorcode <code>CMDLINE USAGE</code> on 9.1 and 8.6. <code>?</code>/<code>help</code> without a dash are plain arguments.
+</li>
+<li><span class="k">Cause</span> documented since 1.3.2 (Bug 3041989): -? and -help "abort option processing by throwing an error". Since 1.5 the man page has a <code>try ... trap {CMDLINE USAGE}</code> example to print it and exit.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works as Designed
+</li>
+<li><span class="k">Suggested ticket comment</span> The error is how -?/-help deliver the usage text. Trap <code>{CMDLINE USAGE}</code> as in the man page example. See also <a class="h" href="https://core.tcl-lang.org/tcllib/info/472259ffff">472259ffff</a>.
+</li></ul></div></details><details class="t" id="1308006fff" data-s="1308006fff ftp::List problem on Windows ftp NOT-A-BUG (IIS answers LIST of a non-matching name with 550; Solaris ftpd answers 226 with an empty list. The package logs the 550 as an error and returns {} in both cases) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1308006fff</span><span class="yr">2005</span><span class="ti">ftp::List problem on Windows</span><span class="vd">NOT-A-BUG (IIS answers LIST of a non-matching name with 550; Solaris ftpd answers 226 with an empty list. The package logs the 550 as an error and …</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1308006fff">Open ticket 1308006fff</a> · Bug · ftp · filed 2005-09-29</p><div class="lab">Full verdict</div><p>NOT-A-BUG (IIS answers LIST of a non-matching name with 550; Solaris ftpd answers 226 with an empty list. The package logs the 550 as an error and returns {} in both cases)</p><ul>
+<li><span class="k">Module</span> ftp 2.4.14
+</li>
+<li><span class="k">Tested</span> code read (List returns {} on failure). ftpd behaves like Solaris.
+</li>
+<li><span class="k">Cause</span> server reply code. Same mechanism as 898067.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works as designed
+</li>
+<li><span class="k">Suggested ticket comment</span> IIS reports a 550 failure for a pattern with no matches. ftp::List still returns an empty list; the logged error just reflects the server's reply.
+</li></ul></div></details><details class="t" id="1273537fff" data-s="1273537fff uuencode pad character confusion/mess base64 NOT-A-BUG (the testsuite confusion was fixed in 2005, ChangeLog 2005-08-26). Pure Tcl and critcl pad with backtick, like GNU/perl. Only the optional Trf accelerator uses `~`, and Trf is not available for current Tcl here. uudecode accepts `` ` ``, `~`, `=` and space padding equally, because the length byte decides. " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1273537fff</span><span class="yr">2005</span><span class="ti">uuencode pad character confusion/mess</span><span class="vd">NOT-A-BUG (the testsuite confusion was fixed in 2005, ChangeLog 2005-08-26). Pure Tcl and critcl pad with backtick, like GNU/perl. Only the optiona…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1273537fff">Open ticket 1273537fff</a> · Bug · base64 · filed 2005-08-25</p><div class="lab">Full verdict</div><p>NOT-A-BUG (the testsuite confusion was fixed in 2005, ChangeLog 2005-08-26). Pure Tcl and critcl pad with backtick, like GNU/perl. Only the optional Trf accelerator uses <code>~</code>, and Trf is not available for current Tcl here. uudecode accepts `<code> </code> `<code>, </code>~<code>, </code>=` and space padding equally, because the length byte decides.</p><ul>
+<li><span class="k">Module</span> uuencode 1.1.6
+</li>
+<li><span class="k">Tested</span> uudecode with each padding character on 9.1; Trf not installable on 9.1/8.6
+</li>
+<li><span class="k">Cause</span> n/a
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works for me / Wont fix
+</li>
+<li><span class="k">Suggested ticket comment</span> The encoders pad with backtick (same as GNU uuencode), and the decoder accepts any padding character, because the length byte governs. The test confusion was fixed in 2005. Closing.
+</li></ul></div></details><details class="t" id="1008797fff" data-s="1008797fff bad multiple calls to logging command in log::log log NOT-A-BUG (deliberate since 2003-11-25, &quot;better handling of multiple lines&quot;. log::logsubst does the same) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>1008797fff</span><span class="yr">2004</span><span class="ti">bad multiple calls to logging command in log::log</span><span class="vd">NOT-A-BUG (deliberate since 2003-11-25, "better handling of multiple lines". log::logsubst does the same)</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/1008797fff">Open ticket 1008797fff</a> · Bug · log · filed 2004-08-13</p><div class="lab">Full verdict</div><p>NOT-A-BUG (deliberate since 2003-11-25, "better handling of multiple lines". log::logsubst does the same)</p><ul>
+<li><span class="k">Module</span> log 1.5
+</li>
+<li><span class="k">Tested</span> code review of log.tcl <code>::log::log</code> and <code>::log::logsubst</code>. Both call the command once per line.
+</li>
+<li><span class="k">Cause</span> <code>foreach line [split $text \n] {...}</code> in log::log. Changing it now would alter the output of every existing user.
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Won't fix. Optionally add a sentence to log.man saying the command runs once per line. Users who want one call per event can call the level command themselves or use logger.
+</li>
+<li><span class="k">Suggested ticket comment</span> The one-call-per-line behaviour is deliberate and has been in place for 20 years. Changing it would break existing log formats. Closing; logger, or a custom command fed by the caller, gives one call per event.
+</li></ul></div></details><details class="t" id="898067ffff" data-s="898067ffff ftp::NList error when directory empty ftp NOT-A-BUG (the server answers NLST on an empty directory with 450/550 &quot;No files found&quot;, as wu-ftpd/ProFTPD do. The package then logs an error and still returns {}, the same value as for an empty listing) " data-p="untouched"><summary><span class="id"><span class="pe" title="Untouched" aria-label="Untouched">⬜</span>898067ffff</span><span class="yr">2004</span><span class="ti">ftp::NList error when directory empty</span><span class="vd">NOT-A-BUG (the server answers NLST on an empty directory with 450/550 "No files found", as wu-ftpd/ProFTPD do. The package then logs an error and s…</span></summary><div class="d"><p class="meta"><a href="https://core.tcl-lang.org/tcllib/tktview/898067ffff">Open ticket 898067ffff</a> · Bug · ftp · filed 2004-02-16</p><div class="lab">Full verdict</div><p>NOT-A-BUG (the server answers NLST on an empty directory with 450/550 "No files found", as wu-ftpd/ProFTPD do. The package then logs an error and still returns {}, the same value as for an empty listing)</p><ul>
+<li><span class="k">Module</span> ftp 2.4.14
+</li>
+<li><span class="k">Tested</span> ftpd: NList/List on an empty directory → {} and no error. Code: NList/List return {} on failure. The only difference is the logged error message.
+</li>
+<li><span class="k">Cause</span> server reply code, not the client
+</li>
+<li><span class="k">Prototype</span> none
+</li>
+<li><span class="k">Suggested action</span> close as Works as designed
+</li>
+<li><span class="k">Suggested ticket comment</span> Some servers answer NLST on an empty directory with a 450/550 error. NList still returns an empty list; the logged message only reflects the server's failure code.
+</li></ul></div></details></section>
+<footer>Generated from the triage notes of each batch.</footer>
+</div>
+<script>
+(function(){
+  const chips=[...document.querySelectorAll('.chip')], pchips=[...document.querySelectorAll('.pchip')], q=document.getElementById('q'),
+        po=document.getElementById('patchonly'), shown=document.getElementById('shown'),
+        rows=[...document.querySelectorAll('details.t')], groups=[...document.querySelectorAll('.grp')];
+  function apply(){
+    const act=chips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.cat);
+    const pact=pchips.filter(c=>c.getAttribute('aria-pressed')==='true').map(c=>c.dataset.p);
+    const s=q.value.trim().toLowerCase(), p=po.getAttribute('aria-pressed')==='true';
+    let n=0;
+    groups.forEach(g=>{
+      const on=!act.length||act.includes(g.dataset.cat); let m=0;
+      g.querySelectorAll('details.t').forEach(r=>{
+        const ok=on&&(!pact.length||pact.includes(r.dataset.p))&&(!s||r.dataset.s.includes(s))&&(!p||r.querySelector('.patch'));
+        r.hidden=!ok; if(ok)m++;
+      });
+      g.hidden=!m; n+=m;
+    });
+    shown.textContent=n+' of '+rows.length+' shown';
+  }
+  pchips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  chips.forEach(c=>c.addEventListener('click',()=>{c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');apply();}));
+  po.addEventListener('click',()=>{po.setAttribute('aria-pressed',po.getAttribute('aria-pressed')==='true'?'false':'true');po.textContent=po.getAttribute('aria-pressed')==='true'?'All tickets':'Only with patch';apply();});
+  q.addEventListener('input',apply);
+  document.getElementById('expand').addEventListener('click',e=>{
+    const vis=rows.filter(r=>!r.hidden), open=vis.some(r=>!r.open);
+    vis.forEach(r=>r.open=open); e.target.textContent=open?'Collapse shown':'Expand shown';
+  });
+  function openHash(){const id=location.hash.slice(1);const r=id&&document.getElementById(id);if(r&&r.tagName==='DETAILS'){r.open=true;r.scrollIntoView();}}
+  window.addEventListener('hashchange',openHash); openHash(); apply();
+})();
+</script>

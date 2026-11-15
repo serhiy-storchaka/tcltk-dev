@@ -1,0 +1,103 @@
+Index: modules/yaml/yaml.tcl
+==================================================================
+--- modules/yaml/yaml.tcl
++++ modules/yaml/yaml.tcl
+@@ -86,10 +86,11 @@
+         TAB_IN_PLAIN        {Tabs can be used only in comments, and in quoted "..." '...'.}
+         AT_IN_PLAIN         {Reserved indicators {@} can't start a plain scalar.}
+         BT_IN_PLAIN         {Reserved indicators {`} can't start a plain scalar.}
+         SEQEND_NOT_IN_SEQ   {There is a flow-sequence end '\]' not in flow-sequence [v, ...].}
+         MAPEND_NOT_IN_MAP   {There is a flow-mapping end '\}' not in flow-mapping {k: v, ...}.}
++        MISSING_COMMA       {Flow collection entries must be separated by ','.}
+         ANCHOR_NOT_FOUND    {Could not find the anchor-name(current-version, "after refering" is not supported)}
+         MALFORM_D_QUOTE     {Double quote "..." parsing error. end of quote is missing?}
+         MALFORM_S_QUOTE     {Single quote '...' parsing error. end of quote is missing?}
+         TAG_NOT_FOUND       {The "$p1" handle wasn't declared.}
+         INVALID_MERGE_KEY   {merge-key "<<" is not impremented in not mapping scope(e.g. in sequence).}
+@@ -658,10 +659,11 @@
+ ####################
+ # Flow Node parser
+ ####################
+ proc ::yaml::_parseFlowNode {{status ""}} {
+     set scalar 0
++    set needSep 0
+     set result {}
+     set tag ""
+     set prev {}
+     while {1} {
+         _skipSpaces 1
+@@ -672,19 +674,27 @@
+             }
+             "?" -
+             ":" { ; # mapping value
+                 if {[_next_is_blank]} {
+                     set value [_parseFlowNode "NODE"]
++                    if {$status eq "SEQUENCE" && $needSep} {
++                        # single pair mapping in a flow sequence
++                        set key [lindex $result end]
++                        set result [lrange $result 0 end-1]
++                        set value [_set_huddle_mapping "" [list $key $value]]
++                        set needSep 0
++                    }
+                 } else {
+                     set scalar 1
+                 }
+             }
+             "," { ; # ends a flow collection entry
+                 if {$status eq"NODE"} {
+                     _ungetc
+                     return $value
+                 }
++                set needSep 0
+             }
+             "\{" { ; # starts a flow mapping
+                 set value [_parseFlowNode "MAPPING"]
+             }
+             "\}" { ; # ends a flow mapping
+@@ -729,11 +739,13 @@
+             if {[info exists anchor]} {
+                 _setAnchor $anchor $value
+                 unset anchor
+             }
+             if {$status eq "" || $status eq "NODE"} {return $value}
++            if {$needSep} {error [_getErrorMessage MISSING_COMMA]}
+             foreach {result prev} [_pushValue $result $prev $status $value "FLOW"] break
++            if {$status eq "SEQUENCE" || [llength $prev] == 0} {set needSep 1}
+             unset value
+         }
+     }
+     return $result
+ }
+
+Index: modules/yaml/yaml.test
+==================================================================
+--- modules/yaml/yaml.test
++++ modules/yaml/yaml.test
+@@ -775,10 +775,26 @@
+ test yaml-21.2 "explicit_tags float" -body {
+     set y {!!float 123=0}
+     yaml::yaml2dict $y
+ } -returnCodes error -result {expected floating-point number but got "123=0"}
+ 
++
++test yaml-41.1 "flow sequence without commas, ticket 3475081fff" -body {
++    yaml::yaml2dict {list-no-comma: [ "a" "b" "c" ]}
++} -returnCodes error -result {line(1): Flow collection entries must be separated by ','.}
++
++test yaml-41.2 "flow mapping without commas, ticket 3475081fff" -body {
++    yaml::yaml2dict {x: {a: b c: d}}
++} -returnCodes error -result {line(1): Flow collection entries must be separated by ','.}
++
++test yaml-41.3 "single pair mappings in flow sequence, ticket 3475081fff" -body {
++    yaml::yaml2dict {x: [ "a": "b", c, d: e ]}
++} -result {x {{a b} c {d e}}}
++
++test yaml-41.4 "single pair mappings in flow sequence, ticket 3475081fff" -body {
++    huddle type [huddle get [yaml::yaml2huddle {x: [ a: b, c ]}] x 0]
++} -result mapping
+ 
+ # ... Tests of addStrings ...
+ #     (Requires introspection of parser state)
+ 
+ 
+

@@ -1,0 +1,48 @@
+Index: modules/csv/csv.tcl
+==================================================================
+--- modules/csv/csv.tcl
++++ modules/csv/csv.tcl
+@@ -603,11 +603,11 @@
+ 		set line    $b
+ 		set sepChar $c
+ 		set expand  $d
+ 	    }
+ 	}
+-	4 {
++	5 {
+ 	    foreach {a b c d e} $args break
+ 	    if {![string equal $a "-alternate"]} {
+ 		return -code error "wrong#args: Should be ?-alternate? m line ?separator? ?expand?"
+ 	    }
+ 	    set alternate 1
+
+Index: modules/csv/csv.test
+==================================================================
+--- modules/csv/csv.test
++++ modules/csv/csv.test
+@@ -990,7 +990,24 @@
+     m destroy
+     set result
+ } {illegal separator character "foo", is a string}
+ 
+ 
++test csv-200.4 {splitting to matrix, -alternate with expand, ticket f2b25fff77} -setup {
++    ::struct::matrix m
++} -body {
++    ::csv::split2matrix -alternate m {a;"";c} \; auto
++    list [m columns] [m get row 0]
++} -cleanup {
++    m destroy
++} -result {3 {a {} c}}
++
++test csv-200.5 {splitting to matrix, 5 args without -alternate} -setup {
++    ::struct::matrix m
++} -body {
++    ::csv::split2matrix x m a , auto
++} -cleanup {
++    m destroy
++} -returnCodes error -result {wrong#args: Should be ?-alternate? m line ?separator? ?expand?}
++
+ testsuiteCleanup
+ return
+

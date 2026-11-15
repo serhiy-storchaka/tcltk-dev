@@ -1,0 +1,44 @@
+Index: modules/json/c/json.tab.c
+==================================================================
+--- modules/json/c/json.tab.c
++++ modules/json/c/json.tab.c
+@@ -79,14 +79,14 @@
+ 
+ #define TRUE_O  (Tcl_NewStringObj("true",  4)) /* OK tcl9 */
+ #define FALSE_O (Tcl_NewStringObj("false", 5)) /* OK tcl9 */
+ #define NULL_O  (Tcl_NewStringObj("null",  4)) /* OK tcl9 */
+ 
+-typedef union YYSTYPE YYSTYPE;
++union YYSTYPE; /* typedef provided by bison; C99 forbids repeating it */
+ 
+ static void jsonerror (struct context *, const char *);
+-static int  jsonlexp  (YYSTYPE *lvalp, struct context *context);
++static int  jsonlexp  (union YYSTYPE *lvalp, struct context *context);
+ 
+ #define yylex   jsonlexp
+ #define yyerror jsonerror
+ 
+ /* * ** *** ***** ******** ************* *********************
+
+Index: modules/json/c/json.y
+==================================================================
+--- modules/json/c/json.y
++++ modules/json/c/json.y
+@@ -22,14 +22,14 @@
+ 
+ #define TRUE_O  (Tcl_NewStringObj("true",  4)) /* OK tcl9 */
+ #define FALSE_O (Tcl_NewStringObj("false", 5)) /* OK tcl9 */
+ #define NULL_O  (Tcl_NewStringObj("null",  4)) /* OK tcl9 */
+ 
+-typedef union YYSTYPE YYSTYPE;
++union YYSTYPE; /* typedef provided by bison; C99 forbids repeating it */
+ 
+ static void jsonerror (struct context *, const char *);
+-static int  jsonlexp  (YYSTYPE *lvalp, struct context *context);
++static int  jsonlexp  (union YYSTYPE *lvalp, struct context *context);
+ 
+ #define yylex   jsonlexp
+ #define yyerror jsonerror
+ 
+ /* * ** *** ***** ******** ************* *********************
+

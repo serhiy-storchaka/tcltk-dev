@@ -1,0 +1,98 @@
+Index: modules/pluginmgr/pluginmgr.tcl
+==================================================================
+--- modules/pluginmgr/pluginmgr.tcl
++++ modules/pluginmgr/pluginmgr.tcl
+@@ -127,15 +127,19 @@
+ 		\[ \\\[ \] \\\]   \
+ 		(  \\(  )  \\)    \
+ 		. \\. \*  {(.*)} \
+ 		] $options(-pattern)]
+ 
++	# Force a scan of the package database. Derive the name of the
++	# bogus package from the pattern, so that Tcl modules living in
++	# the subdirectories the pattern refers to are found too.
+ 	# @mdgen NODEP: bogus-package
+-	$sip eval {catch {package require bogus-package}}
++	set bogus [string map {* bogus-package} $options(-pattern)]
++	$sip eval [list catch [list package require $bogus]]
+ 	foreach p [$sip eval {package names}] {
+-	    if {![regexp $pattern $p -> plugin]} continue
+-	    lappend result $plugin
++	    if {![regexp $pattern $p -> name]} continue
++	    lappend result $name
+ 	}
+ 
+ 	interp delete $sip
+ 	set sip $save
+ 	return $result
+
+ADDED    modules/pluginmgr/pluginmgr.test
+Index: modules/pluginmgr/pluginmgr.test
+==================================================================
+--- /dev/null
++++ modules/pluginmgr/pluginmgr.test
+@@ -0,0 +1,63 @@
++# -*- tcl -*-
++# pluginmgr.test:  Tests for the plugin manager.
++
++# -------------------------------------------------------------------------
++
++source [file join \
++	[file dirname [file dirname [file join [pwd] [info script]]]] \
++	devtools testutilities.tcl]
++
++testsNeedTcl     8.5
++testsNeedTcltest 2
++
++support {
++    use snit/snit.tcl      snit
++    use try/fhome.tcl      file::home
++}
++testing {
++    useLocal pluginmgr.tcl pluginmgr
++}
++
++# -------------------------------------------------------------------------
++## Plugins for the tests, as Tcl modules in a private module root.
++
++set tmroot [file normalize [tcltest::makeDirectory pmtm]]
++foreach n {x y} {
++    set f [open [file join $tmroot pmtest$n-1.0.tm] w]
++    puts $f [list proc hello {} [list return $n]]
++    close $f
++}
++file mkdir [file join $tmroot pmsub plugins]
++foreach n {p q} {
++    set f [open [file join $tmroot pmsub plugins $n-1.0.tm] w]
++    puts $f [list proc hello {} [list return $n]]
++    close $f
++}
++::tcl::tm::path add $tmroot
++
++# -------------------------------------------------------------------------
++
++test pluginmgr-ticket-8ab3be2e6a {list does not change the current plugin} -setup {
++    pluginmgr pm -pattern pmtest* -api hello
++    pm load x
++} -body {
++    list [lsort [pm list]] [pm plugin] [pm do hello]
++} -cleanup {
++    pm destroy
++} -result {{x y} x x}
++
++test pluginmgr-ticket-dffc63972b {list finds Tcl modules in subdirectories} -setup {
++    pluginmgr pm -pattern pmsub::plugins::* -api hello
++} -body {
++    lsort [pm list]
++} -cleanup {
++    pm destroy
++} -result {p q}
++
++# -------------------------------------------------------------------------
++
++::tcl::tm::path remove $tmroot
++tcltest::removeDirectory pmtm
++unset tmroot
++testsuiteCleanup
++return
+
