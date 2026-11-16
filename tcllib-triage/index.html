@@ -91,11 +91,19 @@ footer{margin-top:40px;color:var(--muted);font-size:13px}
 <div class="wrap">
 <header>
   <h1>Open tcllib tickets</h1>
-  <p class="sub">Triage of all 509 open and Pending tickets of <a href="https://core.tcl-lang.org/tcllib">tcllib</a> (bugs, patches and feature requests) on 2026-11-15. Each ticket was checked against tcllib trunk on Linux with Tcl 9.1, 9.0, 8.6 and 8.5, using local servers for the network modules and a Windows 11 VM for Windows-only tickets. Outdated, superseded, duplicate and misfiled tickets are listed separately. Rows marked <span class="patch">patch</span> link to a prototype fix with a regression test (147 in all, in <a href="https://github.com/serhiy-storchaka/tcltk-dev/tree/main/tcllib-triage/prototypes">tcllib-triage/prototypes</a>). Updated 2026-11-15.</p>
+  <p class="sub">Triage of all 509 open and Pending tickets of <a href="https://core.tcl-lang.org/tcllib">tcllib</a> (bugs, patches and feature requests) on 2026-11-15. Each ticket was checked against tcllib trunk on Linux with Tcl 9.1, 9.0, 8.6 and 8.5, using local servers for the network modules and a Windows 11 VM for Windows-only tickets. Outdated, superseded, duplicate and misfiled tickets are listed separately. Rows marked <span class="patch">patch</span> link to a prototype fix with a regression test (147 in all, in <a href="https://github.com/serhiy-storchaka/tcltk-dev/tree/main/tcllib-triage/prototypes">tcllib-triage/prototypes</a>). Updated 2026-11-16.</p>
   <nav class="filters" aria-label="Triage pages"><a class="navchip cur" href="index.html" aria-current="page">Overview</a><a class="navchip c-rep" href="reproduced.html"><span class="n">157</span> Reproduced</a><a class="navchip c-fixed" href="fixed.html"><span class="n">70</span> Already fixed or done</a><a class="navchip c-out" href="outdated.html"><span class="n">80</span> Outdated, superseded, duplicate</a><a class="navchip c-rfe" href="rfe.html"><span class="n">129</span> Feature requests</a><a class="navchip c-nab" href="not-a-bug.html"><span class="n">23</span> Not a bug</a><a class="navchip c-notrep" href="not-reproduced.html"><span class="n">23</span> Not reproduced</a><a class="navchip c-docs" href="docs.html"><span class="n">22</span> Docs</a><a class="navchip c-win" href="not-tested.html"><span class="n">5</span> Not tested</a></nav>
 </header>
 <details class="hl" open><summary>Highlights</summary>
+<h3>Since the triage (updated 2026-11-16)</h3><p>9 of 509 tickets are closed or pending (None 5; Invalid 2; Out of Date 1; Fixed 1); 40 more have fix check-ins and 0 more have comments. Rows show the progress with an emoji; open a row for the details.</p><ul><li>🔧 Fix in a branch, not merged: <a class="h" href="reproduced.html#d3d4117803">d3d4117803</a>, <a class="h" href="reproduced.html#0534941436">0534941436</a>, <a class="h" href="reproduced.html#0f65bfa2d3">0f65bfa2d3</a>, <a class="h" href="reproduced.html#523f7e0556">523f7e0556</a>, <a class="h" href="reproduced.html#29ff5c3abd">29ff5c3abd</a>, <a class="h" href="reproduced.html#61e49798ee">61e49798ee</a>, <a class="h" href="reproduced.html#1ae6b4775e">1ae6b4775e</a>, <a class="h" href="reproduced.html#69d33816bb">69d33816bb</a>, <a class="h" href="reproduced.html#cdbdd399e4">cdbdd399e4</a>, <a class="h" href="reproduced.html#8ac37e504d">8ac37e504d</a>, <a class="h" href="reproduced.html#146ae829a9">146ae829a9</a>, <a class="h" href="reproduced.html#1a7976b873">1a7976b873</a>, <a class="h" href="reproduced.html#7bd2d439ca">7bd2d439ca</a>, <a class="h" href="reproduced.html#34a589f660">34a589f660</a>, <a class="h" href="outdated.html#022bca0ff5">022bca0ff5</a>, <a class="h" href="reproduced.html#a1dec8173c">a1dec8173c</a>, <a class="h" href="reproduced.html#1dd19ccd14">1dd19ccd14</a>, <a class="h" href="reproduced.html#e2ba08b285">e2ba08b285</a>, <a class="h" href="reproduced.html#af927e957f">af927e957f</a>, <a class="h" href="reproduced.html#9833d8dca1">9833d8dca1</a>, <a class="h" href="reproduced.html#66b79317f3">66b79317f3</a>, <a class="h" href="reproduced.html#4c3e532500">4c3e532500</a>, <a class="h" href="reproduced.html#6bef0b5d0f">6bef0b5d0f</a>, <a class="h" href="reproduced.html#dbde846f53">dbde846f53</a>, <a class="h" href="reproduced.html#187a6fa7ae">187a6fa7ae</a>, <a class="h" href="reproduced.html#4811399edc">4811399edc</a>, <a class="h" href="reproduced.html#7446477f89">7446477f89</a>, <a class="h" href="reproduced.html#e3a6e3e02a">e3a6e3e02a</a>, <a class="h" href="reproduced.html#3578420fff">3578420fff</a>, <a class="h" href="reproduced.html#3308105fff">3308105fff</a>, <a class="h" href="reproduced.html#2853152fff">2853152fff</a>, <a class="h" href="reproduced.html#2848168fff">2848168fff</a>, <a class="h" href="reproduced.html#2526633fff">2526633fff</a>, <a class="h" href="reproduced.html#2426988fff">2426988fff</a>, <a class="h" href="reproduced.html#2055837fff">2055837fff</a>, <a class="h" href="reproduced.html#1924065fff">1924065fff</a>, <a class="h" href="reproduced.html#1749395fff">1749395fff</a>, <a class="h" href="reproduced.html#1491894fff">1491894fff</a>, <a class="h" href="reproduced.html#815405ffff">815405ffff</a>, <a class="h" href="reproduced.html#450914ffff">450914ffff</a></li><li>⏳ Pending: <a class="h" href="reproduced.html#d01de3281f">d01de3281f</a>, <a class="h" href="not-reproduced.html#9e2bb6d60f">9e2bb6d60f</a>, <a class="h" href="not-tested.html#e599462c22">e599462c22</a>, <a class="h" href="fixed.html#4aeded587b">4aeded587b</a>, <a class="h" href="not-reproduced.html#3428262fff">3428262fff</a>, <a class="h" href="not-reproduced.html#3427030fff">3427030fff</a>, <a class="h" href="not-reproduced.html#3035986fff">3035986fff</a>, <a class="h" href="outdated.html#3004301fff">3004301fff</a>, <a class="h" href="rfe.html#1213545fff">1213545fff</a></li><li>✅ Closed: </li></ul>
 <h3>Triage run 2026-11-15</h3><p>all 509 open and Pending tickets of tcllib: 308 bugs, 150 feature requests and 51 patches, many from the SourceForge era. They were checked in 26 batches on Linux against tcllib trunk (adeef82ca0, 2026-11-13) with Tcl 9.1, 9.0, 8.6 and 8.5. Network modules (ftp, ftpd, smtp, pop3, pop3d, dns, ldap, http, websocket, …) were tested against local servers on 127.0.0.1. A Windows 11 VM ran the Windows-only tickets and the whole test suite. 148 prototype patches were written. Every patch that changes code includes a regression test, which fails without the fix and passes with it on 9.1 and 8.6. Nothing has been committed or posted yet.</p>
+<h3>Progress (2026-11-16)</h3><p>35 fix branches are on the server for 40 tickets, each with a "Proposed fix in branch" comment on its ticket. The emoji in the rows show each ticket's state. The branches are the prototypes with their regression tests. The module tests pass on Linux with Tcl 9.1, 8.6 and 8.5, and on Windows with 9.1 and 8.6, with no failure that trunk does not have too.</p><ul>
+<li>The Windows runs found that two new tests needed changes, made on their branches: tar-tkt-<span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#7446477f89">7446477f89</a> needs paths longer than Windows' MAX_PATH, so it now runs on Unix only; practcl-snapshot-unpack-001 could not delete an archive that <code>ScmUnpack</code> leaves open, so the test now closes it.
+</li>
+<li>The 8.5 run found that mime cannot be loaded on 8.5, although it declares 8.5 support: <code>tcl::chan::memchan</code> and about 20 other virtchannel files use <code>try</code> since 14c9a08008 (2024-09-20, in tcllib 2.0).
+</li>
+<li>Left out for now, because the prototypes change behaviour: <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#1606391fff">1606391fff</a> (htmlparse script/style text), <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#1743868fff">1743868fff</a> (pop3d TOP line counting), <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#2526629fff">2526629fff</a> (SPF with several records), and the decisions listed below.
+</li></ul>
 <h3>Verdicts</h3><p>134 reproduced and 22 partly fixed. 129 feature requests are still open; many of those could be closed as stale. 22 docs issues, 22 not reproduced, 23 not a bug.</p><ul>
 <li>About 170 tickets can be closed:
 <ul>
@@ -109,32 +117,32 @@ footer{margin-top:40px;color:var(--muted);font-size:13px}
 </li></ul>
 </li></ul>
 <h3>Broken on trunk or in the last release (worth fixing first)</h3><ul>
-<li><a class="h" href="reproduced.html#61e49798ee">61e49798ee</a>: <code>package require nettool</code> always fails. Since 94a3829047 (2024-09-13, in tcllib 2.0) its pkgIndex.tcl names <code>nexttool.tcl</code>. The same check found four more index entries that don't match the code (<a class="h" href="reproduced.html#523f7e0556">523f7e0556</a>). Among them is <code>rest</code>: the index says 1.7 while rest.tcl provides 1.8, so <code>package require rest</code> fails on trunk (<a class="h" href="reproduced.html#cdbdd399e4">cdbdd399e4</a>).
+<li><span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#61e49798ee">61e49798ee</a>: <code>package require nettool</code> always fails. Since 94a3829047 (2024-09-13, in tcllib 2.0) its pkgIndex.tcl names <code>nexttool.tcl</code>. The same check found four more index entries that don't match the code (<span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#523f7e0556">523f7e0556</a>). Among them is <code>rest</code>: the index says 1.7 while rest.tcl provides 1.8, so <code>package require rest</code> fails on trunk (<span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#cdbdd399e4">cdbdd399e4</a>).
 </li>
-<li><a class="h" href="reproduced.html#af927e957f">af927e957f</a>: <code>ldap::starttls</code> and <code>ldap::info whoami</code> always fail with "invalid command name" in tcllib 1.21, 2.0 and trunk. The 2022 change 495ba2b8f5 calls <code>asnEncodeString</code>, which asn does not export.
+<li><span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#af927e957f">af927e957f</a>: <code>ldap::starttls</code> and <code>ldap::info whoami</code> always fail with "invalid command name" in tcllib 1.21, 2.0 and trunk. The 2022 change 495ba2b8f5 calls <code>asnEncodeString</code>, which asn does not export.
 </li>
-<li><a class="h" href="reproduced.html#3308105fff">3308105fff</a>: since tcllib 1.21 (1df85e69fb), when the server rejects a message, <code>smtp::sendmessage</code> returns code 7 with a raw dict instead of raising an error. A rejected Bcc copy is not reported at all.
+<li><span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#3308105fff">3308105fff</a>: since tcllib 1.21 (1df85e69fb), when the server rejects a message, <code>smtp::sendmessage</code> returns code 7 with a raw dict instead of raising an error. A rejected Bcc copy is not reported at all.
 </li>
 <li>Tcl 9:
 <ul>
-<li><a class="h" href="reproduced.html#29ff5c3abd">29ff5c3abd</a>: <code>autoproxy::tls_socket</code> uses the wrong host;
+<li><span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#29ff5c3abd">29ff5c3abd</a>: <code>autoproxy::tls_socket</code> uses the wrong host;
 </li>
-<li><a class="h" href="reproduced.html#34a589f660">34a589f660</a>: ftpd does not load;
+<li><span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#34a589f660">34a589f660</a>: ftpd does not load;
 </li>
-<li><a class="h" href="reproduced.html#d3d4117803">d3d4117803</a>: practcl generates <code>Tcl_InitStubs(interp, "8.6", 0)</code>;
+<li><span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#d3d4117803">d3d4117803</a>: practcl generates <code>Tcl_InitStubs(interp, "8.6", 0)</code>;
 </li>
-<li><a class="h" href="reproduced.html#8ac37e504d">8ac37e504d</a>, <a class="h" href="reproduced.html#146ae829a9">146ae829a9</a>: leftover <code>-encoding binary</code> in practcl and doctools::tcl::parse;
+<li><span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#8ac37e504d">8ac37e504d</a>, <span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#146ae829a9">146ae829a9</a>: leftover <code>-encoding binary</code> in practcl and doctools::tcl::parse;
 </li>
-<li><a class="h" href="reproduced.html#4c3e532500">4c3e532500</a>: <code>package require tool</code> fails when no USER/USERNAME variable is set;
+<li><span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#4c3e532500">4c3e532500</a>: <code>package require tool</code> fails when no USER/USERNAME variable is set;
 </li>
-<li><a class="h" href="reproduced.html#450914ffff">450914ffff</a>: the ftp hpupdate example uses a private Tk procedure.
+<li><span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#450914ffff">450914ffff</a>: the ftp hpupdate example uses a private Tk procedure.
 </li></ul>
 </li>
-<li><a class="h" href="reproduced.html#0f65bfa2d3">0f65bfa2d3</a>: <code>struct::graph::op::tarjan</code> hangs for node names with spaces. This is a regression of Bug 2815302: the 2009 fix was undone by the GSoC merge 42c21b6c75.
+<li><span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#0f65bfa2d3">0f65bfa2d3</a>: <code>struct::graph::op::tarjan</code> hangs for node names with spaces. This is a regression of Bug 2815302: the 2009 fix was undone by the GSoC merge 42c21b6c75.
 </li>
-<li><a class="h" href="reproduced.html#2848168fff">2848168fff</a>, confirmed on Windows: <code>::crc::Crc</code> gives a wrong CRC for non-reflected 32-bit CRCs, because <code>tcl_platform(wordSize)</code> is 4 there.
+<li><span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#2848168fff">2848168fff</a>, confirmed on Windows: <code>::crc::Crc</code> gives a wrong CRC for non-reflected 32-bit CRCs, because <code>tcl_platform(wordSize)</code> is 4 there.
 </li>
-<li><a class="h" href="reproduced.html#7bd2d439ca">7bd2d439ca</a>: with tcllibc, crc32 of files over 4 KiB fails on Tcl 9 on Windows (emulated on Linux).
+<li><span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#7bd2d439ca">7bd2d439ca</a>: with tcllibc, crc32 of files over 4 KiB fails on Tcl 9 on Windows (emulated on Linux).
 </li>
 <li>No ticket yet:
 <ul>
@@ -144,17 +152,17 @@ footer{margin-top:40px;color:var(--muted);font-size:13px}
 </li></ul>
 </li></ul>
 <h3>Unmerged branches that are ready, or nearly</h3><p>review and merge, or close:</p><ul>
-<li><code>tkt-4dd68ce4e76841f</code>: linear-model t values, <a class="h" href="reproduced.html#4dd68ce4e7">4dd68ce4e7</a>. Checked independently; correct.
+<li><code>tkt-4dd68ce4e76841f</code>: linear-model t values, <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#4dd68ce4e7">4dd68ce4e7</a>. Checked independently; correct.
 </li>
-<li><code>e15c2a7c-json-write-hao</code>: <a class="h" href="rfe.html#e15c2a7ce1">e15c2a7ce1</a>. It merges cleanly, but the test name json-write-6.2 is used twice.
+<li><code>e15c2a7c-json-write-hao</code>: <span class="pe" title="Untouched">⬜</span><a class="h" href="rfe.html#e15c2a7ce1">e15c2a7ce1</a>. It merges cleanly, but the test name json-write-6.2 is used twice.
 </li>
-<li><code>tkt-<a class="h" href="reproduced.html#d74e6561a2">d74e6561a2</a>-yaml-huddle</code>: <a class="h" href="reproduced.html#d74e6561a2">d74e6561a2</a>.
+<li><code>tkt-<span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#d74e6561a2">d74e6561a2</a>-yaml-huddle</code>: <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#d74e6561a2">d74e6561a2</a>.
 </li>
-<li><code>bug-f6624cf52ba4</code>: <a class="h" href="reproduced.html#f6624cf52b">f6624cf52b</a>. It breaks the bad-option message; the prototype fixes that.
+<li><code>bug-f6624cf52ba4</code>: <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#f6624cf52b">f6624cf52b</a>. It breaks the bad-option message; the prototype fixes that.
 </li>
 <li><code>fix-dns-udp-ipv6-7554bfed30</code>: needs tcludp to test.
 </li>
-<li><code>ak-tkt-<a class="h" href="rfe.html#b41b6f76b0">b41b6f76b0</a>-ftp-eprt</code>: ftp EPRT/EPSV for IPv6, from 2014; needs a rebase.
+<li><code>ak-tkt-<span class="pe" title="Untouched">⬜</span><a class="h" href="rfe.html#b41b6f76b0">b41b6f76b0</a>-ftp-eprt</code>: ftp EPRT/EPSV for IPv6, from 2014; needs a rebase.
 </li>
 <li><code>pbrooks-ticket-664392</code>: needs a Windows run.
 </li>
@@ -165,7 +173,7 @@ footer{margin-top:40px;color:var(--muted);font-size:13px}
 <h3>Prototypes that overlap</h3><p>some patches touch the same lines or each add the same new test file, so they must be merged by hand:</p><ul>
 <li>ftp: 8 patches from two batches each create <code>modules/ftp/ftp.test</code>. The module had no tests.
 </li>
-<li>ftpd: <a class="h" href="reproduced.html#1508656fff">1508656fff</a>, <a class="h" href="reproduced.html#2928355fff">2928355fff</a> and <a class="h" href="reproduced.html#3312860fff">3312860fff</a> stack on <a class="h" href="reproduced.html#34a589f660">34a589f660</a>.
+<li>ftpd: <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#1508656fff">1508656fff</a>, <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#2928355fff">2928355fff</a> and <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#3312860fff">3312860fff</a> stack on <span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#34a589f660">34a589f660</a>.
 </li>
 <li>rest: 3 patches, each creating <code>rest.test</code>. smtp: 3 patches, each creating <code>smtp.test</code>.
 </li>
@@ -173,36 +181,36 @@ footer{margin-top:40px;color:var(--muted);font-size:13px}
 </li>
 <li>httpd: 3 patches add tests at the same place.
 </li>
-<li>zip: <a class="h" href="reproduced.html#c976e4a85d">c976e4a85d</a> and <a class="h" href="reproduced.html#a0cbdc7e6f">a0cbdc7e6f</a> share a helper.
+<li>zip: <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#c976e4a85d">c976e4a85d</a> and <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#a0cbdc7e6f">a0cbdc7e6f</a> share a helper.
 </li>
-<li>oo::util: <a class="h" href="reproduced.html#3609183fff">3609183fff</a> and <a class="h" href="reproduced.html#f990aa37bc">f990aa37bc</a> change the same line.
+<li>oo::util: <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#3609183fff">3609183fff</a> and <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#f990aa37bc">f990aa37bc</a> change the same line.
 </li>
-<li>markdown: <a class="h" href="reproduced.html#0d824f26fb">0d824f26fb</a> and <a class="h" href="reproduced.html#a028a78b5b">a028a78b5b</a> change the same regexp line.
+<li>markdown: <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#0d824f26fb">0d824f26fb</a> and <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#a028a78b5b">a028a78b5b</a> change the same regexp line.
 </li>
-<li>nettool: <a class="h" href="reproduced.html#d879576438">d879576438</a> and <a class="h" href="reproduced.html#9a21637273">9a21637273</a> both change <code>dump</code>.
+<li>nettool: <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#d879576438">d879576438</a> and <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#9a21637273">9a21637273</a> both change <code>dump</code>.
 </li>
-<li>pluginmgr: <a class="h" href="reproduced.html#dffc63972b">dffc63972b</a> includes <a class="h" href="reproduced.html#8ab3be2e6a">8ab3be2e6a</a>.
+<li>pluginmgr: <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#dffc63972b">dffc63972b</a> includes <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#8ab3be2e6a">8ab3be2e6a</a>.
 </li>
-<li>Duplicate fixes: the nettool index typo is fixed by both <a class="h" href="reproduced.html#61e49798ee">61e49798ee</a> and <a class="h" href="reproduced.html#523f7e0556">523f7e0556</a>; the <code>-encoding binary</code> line by both <a class="h" href="reproduced.html#146ae829a9">146ae829a9</a> and <a class="h" href="reproduced.html#8ac37e504d">8ac37e504d</a>.
+<li>Duplicate fixes: the nettool index typo is fixed by both <span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#61e49798ee">61e49798ee</a> and <span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#523f7e0556">523f7e0556</a>; the <code>-encoding binary</code> line by both <span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#146ae829a9">146ae829a9</a> and <span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#8ac37e504d">8ac37e504d</a>.
 </li></ul>
 <h3>Behaviour changes in the prototypes</h3><p>these need a decision:</p><ul>
-<li><a class="h" href="reproduced.html#472259ffff">472259ffff</a>: cmdline adds an <code>INVALID</code> errorcode word.
+<li><span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#472259ffff">472259ffff</a>: cmdline adds an <code>INVALID</code> errorcode word.
 </li>
-<li><a class="h" href="reproduced.html#715193ffff">715193ffff</a>: htmlparse keeps whitespace text nodes.
+<li><span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#715193ffff">715193ffff</a>: htmlparse keeps whitespace text nodes.
 </li>
-<li><a class="h" href="reproduced.html#1f29f7baf9">1f29f7baf9</a>: <code>ncgi::encode</code> uses UTF-8, so <code>%C3%B6</code> instead of <code>%F6</code>.
+<li><span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#1f29f7baf9">1f29f7baf9</a>: <code>ncgi::encode</code> uses UTF-8, so <code>%C3%B6</code> instead of <code>%F6</code>.
 </li>
-<li><a class="h" href="reproduced.html#6abf74eec8">6abf74eec8</a>: the pure-Tcl md5crypt hashes UTF-8; Latin-1 passwords hash differently on 8.6.
+<li><span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#6abf74eec8">6abf74eec8</a>: the pure-Tcl md5crypt hashes UTF-8; Latin-1 passwords hash differently on 8.6.
 </li>
-<li><a class="h" href="reproduced.html#1519755fff">1519755fff</a>: deleting a missing struct::record now raises an error, as documented.
+<li><span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#1519755fff">1519755fff</a>: deleting a missing struct::record now raises an error, as documented.
 </li>
-<li><a class="h" href="reproduced.html#a316389e99">a316389e99</a>: <code>math::decimal::fromstr</code> raises an error on invalid input.
+<li><span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#a316389e99">a316389e99</a>: <code>math::decimal::fromstr</code> raises an error on invalid input.
 </li>
-<li><a class="h" href="reproduced.html#3612359fff">3612359fff</a>: <code>fileutil::lexnormalize</code> keeps leading <code>..</code> in relative paths.
+<li><span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#3612359fff">3612359fff</a>: <code>fileutil::lexnormalize</code> keeps leading <code>..</code> in relative paths.
 </li>
-<li><a class="h" href="reproduced.html#4f25e933fc">4f25e933fc</a>: yaml's null type is renamed <code>yaml_null</code>.
+<li><span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#4f25e933fc">4f25e933fc</a>: yaml's null type is renamed <code>yaml_null</code>.
 </li>
-<li><a class="h" href="reproduced.html#2144802fff">2144802fff</a> and <a class="h" href="reproduced.html#665fbc24eb">665fbc24eb</a>: snit <code>from</code> and destructor errors.
+<li><span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#2144802fff">2144802fff</a> and <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#665fbc24eb">665fbc24eb</a>: snit <code>from</code> and destructor errors.
 </li></ul>
 <h3>Test suite problems found</h3><ul>
 <li><code>websocket.test</code> uses the external echo server ws.ifelse.io and has no constraint, so a full <code>sak test run</code> contacts an outside host. It needs a local server (the triage used one) or a constraint that is off by default.
@@ -216,7 +224,7 @@ footer{margin-top:40px;color:var(--muted);font-size:13px}
 <li>snit 1: 27 failures on 9.1 (3 on 8.6), because <code>snit::typemethod</code>/<code>method</code> at runtime now need a fully qualified type name.
 </li></ul>
 </li>
-<li>doctools msgcat-2.0 fails in any non-C locale. Under 8.6 in a non-UTF-8 locale, mime, textutil, base64 and yaml fail too (<a class="h" href="reproduced.html#509776ffff">509776ffff</a> has a fix).
+<li>doctools msgcat-2.0 fails in any non-C locale. Under 8.6 in a non-UTF-8 locale, mime, textutil, base64 and yaml fail too (<span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#509776ffff">509776ffff</a> has a fix).
 </li>
 <li>mime.test leaves <code>checkmime.msg</code> in the current directory, and practcl.test leaves an empty <code>test</code> directory.
 </li>
@@ -225,11 +233,11 @@ footer{margin-top:40px;color:var(--muted);font-size:13px}
 <li>New test files were added for modules that had none: ftp, ftpd, rest, smtp, term, nmea, imap4, generator, pluginmgr, coroutine, coroutine::auto.
 </li></ul>
 <h3>Ticket housekeeping</h3><ul>
-<li><a class="h" href="fixed.html#b5092d5623">b5092d5623</a> has an e-mail address as its title, and three anonymous spam comments with personal data. Retitle it and hide the comments.
+<li><span class="pe" title="Untouched">⬜</span><a class="h" href="fixed.html#b5092d5623">b5092d5623</a> has an e-mail address as its title, and three anonymous spam comments with personal data. Retitle it and hide the comments.
 </li>
-<li><a class="h" href="fixed.html#3513149fff">3513149fff</a> has resolution Fixed but status Open; <a class="h" href="not-a-bug.html#01afa9345d">01afa9345d</a> is resolved Invalid but still Open; <a class="h" href="rfe.html#203aa0ea50">203aa0ea50</a> is Open with "Wont Fix". <a class="h" href="rfe.html#1213545fff">1213545fff</a> is Pending on a change from an unmerged, closed branch.
+<li><span class="pe" title="Untouched">⬜</span><a class="h" href="fixed.html#3513149fff">3513149fff</a> has resolution Fixed but status Open; <span class="pe" title="Untouched">⬜</span><a class="h" href="not-a-bug.html#01afa9345d">01afa9345d</a> is resolved Invalid but still Open; <span class="pe" title="Untouched">⬜</span><a class="h" href="rfe.html#203aa0ea50">203aa0ea50</a> is Open with "Wont Fix". <span class="pe" title="Pending">⏳</span><a class="h" href="rfe.html#1213545fff">1213545fff</a> is Pending on a change from an unmerged, closed branch.
 </li>
-<li>Several attachments referred to in tickets are missing from the repository: <a class="h" href="outdated.html#022bca0ff5">022bca0ff5</a>, <a class="h" href="reproduced.html#2eb11228fb">2eb11228fb</a>, <a class="h" href="rfe.html#3fff267fc4">3fff267fc4</a>, <a class="h" href="rfe.html#5af6381a8b">5af6381a8b</a>, <a class="h" href="reproduced.html#66063baec4">66063baec4</a>, <a class="h" href="reproduced.html#9a21637273">9a21637273</a>, <a class="h" href="reproduced.html#0f65bfa2d3">0f65bfa2d3</a>, <a class="h" href="outdated.html#a8218fdfc0">a8218fdfc0</a>, and the reporter's patches for <a class="h" href="reproduced.html#4f25e933fc">4f25e933fc</a>.
+<li>Several attachments referred to in tickets are missing from the repository: <span class="pe" title="Fix in a branch">🔧</span><a class="h" href="outdated.html#022bca0ff5">022bca0ff5</a>, <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#2eb11228fb">2eb11228fb</a>, <span class="pe" title="Untouched">⬜</span><a class="h" href="rfe.html#3fff267fc4">3fff267fc4</a>, <span class="pe" title="Untouched">⬜</span><a class="h" href="rfe.html#5af6381a8b">5af6381a8b</a>, <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#66063baec4">66063baec4</a>, <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#9a21637273">9a21637273</a>, <span class="pe" title="Fix in a branch">🔧</span><a class="h" href="reproduced.html#0f65bfa2d3">0f65bfa2d3</a>, <span class="pe" title="Untouched">⬜</span><a class="h" href="outdated.html#a8218fdfc0">a8218fdfc0</a>, and the reporter's patches for <span class="pe" title="Untouched">⬜</span><a class="h" href="reproduced.html#4f25e933fc">4f25e933fc</a>.
 </li></ul>
 </details>
 
