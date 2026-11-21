@@ -1,0 +1,86 @@
+Index: modules/http/autoproxy.tcl
+==================================================================
+--- modules/http/autoproxy.tcl
++++ modules/http/autoproxy.tcl
+@@ -455,17 +455,26 @@
+         set state(endpoint) [lrange $args end-1 end]
+         set state(state) connect
+         set state(data) ""
+         set state(useragent) [http::config -useragent]
+         set state(sock) [::socket $proxy_host $proxy_port]
+-        fileevent $state(sock) writable [namespace code [list tunnel_write $token]]
+-        vwait [set token](state)
++        # Talk to the proxy synchronously.  A nested [vwait] would run
++        # other event handlers, e.g. the -timeout handler of the http
++        # request we are opening the socket for, before the http package
++        # knows the socket.  See ticket [f084c0dc03].
++        tunnel_write $token
++        fileevent $state(sock) readable {}
++        if {$state(state) eq "connect"} {
++            fconfigure $state(sock) -blocking 1
++            while {$state(state) eq "connect"} {
++                tunnel_read $token
++            }
++        }
+ 
+         if {[string length $state(error)] > 0} {
+             set result $state(error)
+             close $state(sock)
+-            unset state
+             set code error
+         } elseif {[info exists state(code)] &&
+                   (($state(code) >= 300) ||
+                    ($state(code) < 200))} {
+             set result [lindex $state(headers) 0]
+
+Index: modules/http/autoproxy.test
+==================================================================
+--- modules/http/autoproxy.test
++++ modules/http/autoproxy.test
+@@ -218,10 +218,45 @@
+     set tok [http::geturl https://www.example.com]
+     http::status $tok
+ } -cleanup {
+     http::cleanup $tok
+ } -result ok
++
++test autoproxy-3.0 "tunnel_connect does not run other events, \[f084c0dc03\]" -setup {
++    packageReset
++    package require http
++    set f [makeFile {
++        proc accept {s args} {
++            fconfigure $s -translation crlf -buffering line
++            while {[gets $s line] > 0} {}
++            after 200
++            puts $s "HTTP/1.1 200 Connection established"
++            puts $s ""
++            close $s
++            set ::forever 1
++        }
++        set srv [socket -server accept -myaddr 127.0.0.1 0]
++        puts [lindex [fconfigure $srv -sockname] 2]
++        flush stdout
++        after 10000 {set ::forever 1}
++        vwait ::forever
++    } proxy.tcl]
++    set pipe [open |[list [info nameofexecutable] $f] r]
++    gets $pipe port
++    autoproxy::configure -proxy_host 127.0.0.1 -proxy_port $port
++    set ::fired 0
++    set event [after 0 {set ::fired 1}]
++} -body {
++    set s [autoproxy::tunnel_connect www.example.com 443]
++    set ::fired
++} -cleanup {
++    catch {close $s}
++    after cancel $event
++    close $pipe
++    removeFile proxy.tcl
++    unset -nocomplain f pipe port s event ::fired
++} -result 0
+ 
+ test autoproxy-2.1.1 "autoproxy::tls_socket (twapi) without proxy" -constraints {
+     have_twapi
+ } -setup {
+     packageReset
+

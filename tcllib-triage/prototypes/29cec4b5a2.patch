@@ -1,0 +1,171 @@
+Index: modules/yaml/huddle.man
+==================================================================
+--- modules/yaml/huddle.man
++++ modules/yaml/huddle.man
+@@ -1,6 +1,6 @@
+-[vset VERSION 0.5]
++[vset VERSION 0.5.1]
+ [comment {-*- tcl -*- doctools manpage}]
+ [manpage_begin huddle n [vset VERSION]]
+ [see_also yaml]
+ [keywords {data exchange}]
+ [keywords {exchange format}]
+@@ -187,10 +187,15 @@
+ Stripped all tags. Converted to normal Tcl's list/dict.
+ 
+ [call [cmd "huddle jsondump"] [arg object] [opt [arg offset]] [opt [arg newline]] [opt [arg begin_offset]]]
+ 
+ dump a json-stream from the huddle-object.
++Numbers which are not valid JSON numbers (for example [const 007],
++[const +5], [const .5] or [const 0x1F]) are written in JSON form
++([const 7], [const 5], [const 0.5], [const 31]); leading zeros of a
++decimal number are not treated as octal. Infinities and NaN cannot be
++represented in JSON and cause an error.
+ 
+ [para]
+ [list_begin options]
+ [opt_def "[const offset] \"\""]
+ 
+
+Index: modules/yaml/huddle.tcl
+==================================================================
+--- modules/yaml/huddle.tcl
++++ modules/yaml/huddle.tcl
+@@ -9,11 +9,11 @@
+ #
+ # Copyright (c) 2008-2011 KATO Kanryu <kanryu6@users.sourceforge.net>
+ # Copyright (c) 2015 Miguel Martínez López <aplicacionamedida@gmail.com>
+ 
+ package require Tcl 8.5 9
+-package provide huddle 0.5
++package provide huddle 0.5.1
+ 
+ namespace eval ::huddle {
+     namespace export huddle wrap unwrap isHuddle strip_node are_equal_nodes \
+ 	argument_to_node get_src
+ 
+@@ -487,13 +487,15 @@
+     if {[string equal $offset ""]} {set sp ""}
+ 
+     set type [huddle type $huddle_object]
+ 
+     switch -- $type {
+-        boolean -
++        boolean {
++            return [huddle get_stripped $huddle_object]
++        }
+         number {
+-            return [huddle get_stripped $huddle_object]
++            return [JsonNumber [huddle get_stripped $huddle_object]]
+         }
+ 	null {
+ 	    return null
+ 	}
+         string {
+@@ -540,10 +542,40 @@
+ 	    foreach {tag src} $node break
+ 	    return [$types(callback:$tag) jsondump $huddle_object $offset $newline $nextoff]
+         }
+     }
+ }
++
++# Convert a Tcl number to a valid JSON number. Numbers which already are
++# valid JSON are returned unchanged. Decimal numbers are normalized
++# textually (to keep all digits; leading zeros are decimal, not octal),
++# other integers (0x.., 0b.., 0o..) and doubles are converted with expr.
++# Infinities and NaN cannot be represented in JSON.
++
++proc ::huddle::JsonNumber {data} {
++    if {[regexp {^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?$} $data]} {
++        return $data
++    }
++    set num [string trim $data]
++    if {[regexp {^([-+]?)([0-9]*)(?:\.([0-9]*))?([eE][-+]?[0-9]+)?$} $num \
++            -> sign int frac exp] && ($int ne "" || $frac ne "")} {
++        if {$sign eq "+"} {set sign ""}
++        set int [string trimleft $int 0]
++        if {$int eq ""} {set int 0}
++        if {$frac ne ""} {append int . $frac}
++        return $sign$int$exp
++    }
++    if {[string is entier -strict $num]} {
++        return [expr {$num}]
++    }
++    if {[string is double -strict $num]
++            && ![catch {expr {double($num)}} num]
++            && ![regexp -nocase {inf|nan} $num]} {
++        return $num
++    }
++    return -code error "Cannot represent \"$data\" as a JSON number"
++}
+ 
+ # data is plain old tcl values
+ # spec is defined as follows:
+ # {string} - data is simply a string, "quote" it if it's not a number
+ # {list} - data is a tcl list of strings, convert to JSON arrays
+
+Index: modules/yaml/huddle.test
+==================================================================
+--- modules/yaml/huddle.test
++++ modules/yaml/huddle.test
+@@ -234,10 +234,46 @@
+     huddle jsondump {HUDDLE {D {a {s foo} b null}}}
+ } -result {{
+   "a": "foo",
+   "b": null
+ }}
++
++test huddle-3.7 "test of huddle jsondump - number with leading zeros" -body {
++    huddle jsondump [huddle create a [huddle number 007]] {} {}
++} -result {{"a":7}}
++
++test huddle-3.8 "test of huddle jsondump - numbers normalized to JSON" -body {
++    set data [huddle list]
++    foreach n {010 -007 +5 .5 -.5e3 5. 1.e5 -00.250 { 5 } 0x1F -0x10 0b101 0o17} {
++        huddle append data [huddle number $n]
++    }
++    huddle jsondump $data {} {}
++} -cleanup {
++    unset -nocomplain data n
++} -result {[10,-7,5,0.5,-0.5e3,5,1e5,-0.250,5,31,-16,5,15]}
++
++test huddle-3.9 "test of huddle jsondump - valid JSON numbers unchanged" -body {
++    set data [huddle list]
++    foreach n {0 -0 1.50 1E+05 2e-3 -12.5E10 123456789012345678901234567890} {
++        huddle append data [huddle number $n]
++    }
++    huddle jsondump $data {} {}
++} -cleanup {
++    unset -nocomplain data n
++} -result {[0,-0,1.50,1E+05,2e-3,-12.5E10,123456789012345678901234567890]}
++
++test huddle-3.10 "test of huddle jsondump - number not representable in JSON" -body {
++    huddle jsondump [huddle create a [huddle number Inf]]
++} -returnCodes error -result {Cannot represent "Inf" as a JSON number}
++
++test huddle-3.11 "test of huddle jsondump - original number is kept" -body {
++    set data [huddle create a [huddle number 007]]
++    huddle jsondump $data {} {}
++    huddle get_stripped $data a
++} -cleanup {
++    unset -nocomplain data
++} -result 007
+ 
+ # ... Tests of addStrings ...
+ #     (Requires introspection of parser state)
+ 
+ test huddle-4.1 "test of huddle set" -body {
+
+Index: modules/yaml/pkgIndex.tcl
+==================================================================
+--- modules/yaml/pkgIndex.tcl
++++ modules/yaml/pkgIndex.tcl
+@@ -1,6 +1,6 @@
+ 
+ if {![package vsatisfies [package provide Tcl] 8.5 9]} {return}
+ 
+ package ifneeded yaml         0.4.2 [list source [file join $dir yaml.tcl]]
+-package ifneeded huddle       0.5   [list source [file join $dir huddle.tcl]]
++package ifneeded huddle       0.5.1 [list source [file join $dir huddle.tcl]]
+ package ifneeded huddle::json 0.2   [list source [file join $dir json2huddle.tcl]]
+

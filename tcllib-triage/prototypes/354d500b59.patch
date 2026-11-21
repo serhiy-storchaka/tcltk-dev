@@ -1,0 +1,85 @@
+Index: modules/http/autoproxy.man
+==================================================================
+--- modules/http/autoproxy.man
++++ modules/http/autoproxy.man
+@@ -1,6 +1,6 @@
+-[vset VERSION 1.8.1]
++[vset VERSION 1.8.2]
+ [manpage_begin autoproxy n [vset VERSION]]
+ [see_also http(n)]
+ [keywords authentication]
+ [keywords http]
+ [keywords proxy]
+
+Index: modules/http/autoproxy.tcl
+==================================================================
+--- modules/http/autoproxy.tcl
++++ modules/http/autoproxy.tcl
+@@ -341,11 +341,12 @@
+         set options(basic) ""
+     } else {
+         # Store the encoded string to avoid re-encoding all the time.
+         set options(basic) [list "Proxy-Authorization" \
+                                 [concat "Basic" \
+-                                     [base64::encode $opts(user):$opts(passwd)]]]
++                                     [base64::encode -maxlen 0 \
++                                          $opts(user):$opts(passwd)]]]
+     }
+     return
+ }
+ 
+ # -------------------------------------------------------------------------
+@@ -576,13 +577,13 @@
+     return $s
+ }
+ 
+ # -------------------------------------------------------------------------
+ 
+-package provide autoproxy 1.8.1
++package provide autoproxy 1.8.2
+ 
+ # -------------------------------------------------------------------------
+ #
+ # Local variables:
+ #   mode: tcl
+ #   indent-tabs-mode: nil
+ # End:
+
+Index: modules/http/autoproxy.test
+==================================================================
+--- modules/http/autoproxy.test
++++ modules/http/autoproxy.test
+@@ -156,10 +156,23 @@
+     autoproxy::configure -basic -user test -password secret -realm tcllib
+ } -body {
+     autoproxy::configure -basic
+     autoproxy::cget -basic
+ } -result {}
++
++test autoproxy-1.2.3.1 "autoproxy::configure -basic long credentials not wrapped" -setup {
++    packageReset
++} -body {
++    set user [string repeat u 40]
++    set pass [string repeat p 40]
++    autoproxy::configure -basic -user $user -password $pass
++    set header [lindex [autoproxy::cget -basic] 1]
++    list [string match "Basic *" $header] [string first \n $header] \
++        [expr {[base64::decode [lindex $header 1]] eq "$user:$pass"}]
++} -cleanup {
++    unset -nocomplain user pass header
++} -result {1 -1 1}
+ 
+ test autoproxy-1.2.4.0 "autoproxy::configure -tls_package tls" -setup {
+     packageReset
+ } -body {
+     autoproxy::configure -tls_package tls
+
+Index: modules/http/pkgIndex.tcl
+==================================================================
+--- modules/http/pkgIndex.tcl
++++ modules/http/pkgIndex.tcl
+@@ -1,2 +1,2 @@
+ if {![package vsatisfies [package provide Tcl] 8.5 9]} {return}
+-package ifneeded autoproxy 1.8.1 [list source [file join $dir autoproxy.tcl]]
++package ifneeded autoproxy 1.8.2 [list source [file join $dir autoproxy.tcl]]
+

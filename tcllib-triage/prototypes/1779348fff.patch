@@ -1,0 +1,49 @@
+Index: support/devel/sak/util/anim.tcl
+==================================================================
+--- support/devel/sak/util/anim.tcl
++++ support/devel/sak/util/anim.tcl
+@@ -17,19 +17,42 @@
+ 
+ proc ::sak::animate::init {} {
+     variable prefix
+     variable n      0
+     variable max    [llength $prefix]
++    variable width  [Width]
++}
++
++# Width of the terminal, or 0 if unknown. Animated lines longer than the
++# terminal wrap, and \r then returns to the start of the wrapped part only,
++# leaving a stale row behind for each such line.
++proc ::sak::animate::Width {} {
++    if {[info exists ::env(COLUMNS)] && [string is integer -strict $::env(COLUMNS)]} {
++	return $::env(COLUMNS)
++    }
++    if {![catch {exec stty size <@stdin 2>@stderr} size] &&
++	[llength $size] == 2 && [string is integer -strict [lindex $size 1]]} {
++	return [lindex $size 1]
++    }
++    return 0
++}
++
++proc ::sak::animate::Clip {string} {
++    variable width
++    if {$width > 7 && [string length $string] > $width - 8} {
++	set string [string range $string 0 [expr {$width - 9}]]
++    }
++    return $string
+ }
+ 
+ proc ::sak::animate::next {string} {
+     variable prefix
+     variable n
+     variable max
+     variable eeol
+ 
+-    puts -nonewline stdout \r\[[lindex $prefix $n]\]\ $string$eeol
++    puts -nonewline stdout \r\[[lindex $prefix $n]\]\ [Clip $string]$eeol
+     flush           stdout
+ 
+     incr n ; if {$n >= $max} {set n 0}
+     return
+ }
+

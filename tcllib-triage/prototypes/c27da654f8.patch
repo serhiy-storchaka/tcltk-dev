@@ -1,0 +1,104 @@
+Index: modules/websocket/websocket.tcl
+==================================================================
+--- modules/websocket/websocket.tcl
++++ modules/websocket/websocket.tcl
+@@ -296,10 +296,15 @@
+     # Keep connection alive by issuing pings.
+     if { [info exists Connection(liveness)] } {
+ 	after cancel $Connection(liveness)
+     }
+     set when [expr {$Connection(-keepalive)*1000}]
++    if { $Connection(state) eq "CLOSED" } {
++	# Never schedule pings on a closed connection, e.g. when the
++	# handler reconfigures it from its disconnect callback.
++	set when 0
++    }
+     if { $when > 0 } {
+ 	set Connection(liveness) [after $when [namespace current]::Ping $sock]
+     } else {
+ 	set Connection(liveness) ""
+     }
+@@ -1040,10 +1045,16 @@
+     variable WS
+     variable log
+ 
+     set varname [namespace current]::Connection_$sock
+     upvar \#0 $varname Connection
++
++    # Cancel any keepalive timer left from an earlier use of this
++    # channel name, otherwise it would fire after the connection is gone.
++    if { [info exists Connection(liveness)] } {
++	after cancel $Connection(liveness)
++    }
+ 
+     set Connection(sock) $sock
+     set Connection(handler) $handler
+     set Connection(server) $server
+ 
+
+Index: modules/websocket/websocket.test
+==================================================================
+--- modules/websocket/websocket.test
++++ modules/websocket/websocket.test
+@@ -187,10 +187,60 @@
+     wsSleep
+     wsResetSleep
+     wsResetHandler
+ } -match exact -result {SOCKET text {Hello this is message NUMBER}
+ }
++
++# Keepalive timers must not outlive the connection (ticket [c27da654f8]).
++# These tests use a local socket pair, not the external server.
++
++proc wsKeepaliveRun {double reconfigure} {
++    set ::wsKaErrors {}
++    set ::wsKaReconfigure $reconfigure
++    set ::wsKaDouble $double
++    set ::wsKaSrv {}
++    set oldbgerror [interp bgerror {}]
++    interp bgerror {} [list apply {{msg opts} {lappend ::wsKaErrors $msg}}]
++    set ls [socket -server [list apply {{sock addr port} {
++        ::websocket::takeover $sock wsKaHandler 1
++        ::websocket::configure $sock -keepalive 1
++        if {$::wsKaDouble} {
++            ::websocket::takeover $sock wsKaHandler 1
++            ::websocket::configure $sock -keepalive 1
++        }
++        set ::wsKaSrv $sock
++    }}] -myaddr 127.0.0.1 0]
++    set c [socket 127.0.0.1 [lindex [fconfigure $ls -sockname] 2]]
++    vwait ::wsKaSrv
++    close $c
++    after 2000 {set ::wsKaDone 1}
++    vwait ::wsKaDone
++    close $ls
++    interp bgerror {} $oldbgerror
++    return $::wsKaErrors
++}
++
++proc wsKaHandler {sock type msg} {
++    if {$type eq "disconnect" && $::wsKaReconfigure} {
++        catch {::websocket::configure $sock -keepalive 1}
++    }
++}
++
++test websocket-keepalive-1.0 {no keepalive ping after disconnect} -body {
++    wsKeepaliveRun 0 0
++} -result {}
++
++test websocket-keepalive-1.1 {no orphan ping after repeated takeover} -body {
++    wsKeepaliveRun 1 0
++} -result {}
++
++test websocket-keepalive-1.2 {no ping scheduled from disconnect handler} -body {
++    wsKeepaliveRun 0 1
++} -result {}
++
++rename wsKeepaliveRun {}
++rename wsKaHandler {}
+ 
+ testsuiteCleanup
+ unset -nocomplain wsNum wsMsgCounter wsOutput wsMsgMax wsWAITER wsUrl expectNum ws1 ws2 newMessage
+ foreach pr {
+     wsResetHandler wsExpectHandler wsOutputHandler
+

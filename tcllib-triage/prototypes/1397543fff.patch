@@ -1,0 +1,68 @@
+Index: modules/snit/main2.tcl
+==================================================================
+--- modules/snit/main2.tcl
++++ modules/snit/main2.tcl
+@@ -2965,21 +2965,14 @@
+ # This is used to implement the "mymethod" command.
+ 
+ proc ::snit::RT.CallInstance {selfns args} {
+     namespace upvar $selfns Snit_instance self
+ 
+-    set retval [catch {uplevel 1 [linsert $args 0 $self]} result]
+-
+-    if {$retval} {
+-        if {$retval == 1} {
+-            global errorInfo
+-            global errorCode
+-            return -code error -errorinfo $errorInfo \
+-                -errorcode $errorCode $result
+-        } else {
+-            return -code $retval $result
+-        }
++    # Pass on all return options, also custom ones (Ticket 1397543fff).
++    if {[catch {uplevel 1 [linsert $args 0 $self]} result options]} {
++        dict incr options -level
++        return -options $options $result
+     }
+ 
+     return $result
+ }
+ 
+
+Index: modules/snit/snit.test
+==================================================================
+--- modules/snit/snit.test
++++ modules/snit/snit.test
+@@ -9104,10 +9104,31 @@
+ 
+     mywidget .mylabel
+ } -cleanup {
+     destroy .mylabel
+ } -result {.mylabel}
++
++test bug-5.1 {Ticket 1397543fff: mymethod keeps all return options} -constraints {
++    snit2
++} -body {
++    type dog {
++        method fail {} {
++            return -code error -errorcode {DOG FAIL} -custom yes failed
++        }
++        method brk {} { return -code break }
++        method five {} { return -code 5 five }
++        method cb {name} { mymethod $name }
++    }
++    dog spot
++    set rc [catch {{*}[spot cb fail]} msg opts]
++    set result [list $rc $msg [dict get $opts -errorcode] [dict get $opts -custom]]
++    set n 0
++    while 1 { incr n; {*}[spot cb brk]; set n bad }
++    lappend result $n [catch {{*}[spot cb five]} msg] $msg
++} -cleanup {
++    dog destroy
++} -result {1 failed {DOG FAIL} yes 1 5 five}
+ 
+ 
+ #---------------------------------------------------------------------
+ # Clean up
+ 
+

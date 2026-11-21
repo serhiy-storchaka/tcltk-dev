@@ -1,0 +1,332 @@
+Index: modules/json/json.man
+==================================================================
+--- modules/json/json.man
++++ modules/json/json.man
+@@ -1,7 +1,7 @@
+ [comment {-*- tcl -*- doctools manpage}]
+-[vset VERSION 1.3.6]
++[vset VERSION 1.3.7]
+ [manpage_begin json n [vset VERSION]]
+ [keywords {data exchange}]
+ [keywords {exchange format}]
+ [keywords javascript]
+ [keywords json]
+@@ -34,19 +34,27 @@
+ 
+ [section COMMANDS]
+ 
+ [list_begin definitions]
+ 
+-[call [cmd ::json::json2dict] [arg json_txt]]
++[call [cmd ::json::json2dict] [opt [option -strict]] [arg json_txt]]
+ 
+ [para]
+ Returns a [type dict] or [type list] (which itself may
+ contain nested [type dict]s and/or [type list]s) which is the result of
+ parsing the JSON formatted text passed in [arg json_txt].
+ 
+ [para] If [arg json_txt] contains more than one JSON entity only the
+-first one is returned.
++first one is returned, and any text after it is ignored. The Tcl
++implementation also ignores characters which cannot start a JSON token.
++
++[para] If [option -strict] is specified, an error is thrown instead if
++[arg json_txt] contains characters which are neither part of a JSON
++token nor JSON white space (space, tab, newline, carriage return), or if
++anything but white space follows the first JSON entity. Note that this
++does not make the parser fully conforming, e.g. numbers like [const .5]
++are still accepted.
+ 
+ [call [cmd ::json::many-json2dict] [arg json_txt] [opt [arg max]]]
+ 
+ [para]
+ Returns a [type list] (which itself will contain nested [type dict]s
+
+Index: modules/json/json.pcx
+==================================================================
+--- modules/json/json.pcx
++++ modules/json/json.pcx
+@@ -20,10 +20,18 @@
+ pcx::check 1.0 std ::json::json2dict \
+     {checkSimpleArgs 1 1 {
+ 	checkWord
+     }}
+ 
++pcx::check 1.3.7 std ::json::json2dict \
++    {checkSimpleArgs 1 2 {
++	{checkSwitches 1 {
++	    -strict
++	} {checkSimpleArgs 1 1 {
++	    checkWord
++	}}}
++    }}
+ pcx::check 1.2 std ::json::many-json2dict \
+     {checkSimpleArgs 1 2 {
+ 	checkWord checkInt
+     }}
+ 
+
+Index: modules/json/json.tcl
+==================================================================
+--- modules/json/json.tcl
++++ modules/json/json.tcl
+@@ -29,10 +29,15 @@
+     switch -exact -- $key {
+ 	critcl {
+ 	    if {[catch {package require tcllibc}]} {return 0}
+ 	    # Check for the jsonc 1.1.1 API we are fixing later.
+ 	    set r [llength [info commands ::json::many_json2dict_critcl]]
++	    # Wrap the C json2dict to add option processing (-strict).
++	    if {$r && ![llength [info commands ::json::json2dict_critcl_c]]} {
++		rename ::json::json2dict_critcl ::json::json2dict_critcl_c
++		interp alias {} ::json::json2dict_critcl {} ::json::Json2dictCritcl
++	    }
+ 	}
+ 	tcl {
+ 	    variable selfdir
+ 	    source [file join $selfdir json_tcl.tcl]
+ 	    set r 1
+@@ -160,10 +165,26 @@
+ ## Wrapper fix for the jsonc package to match APIs.
+ 
+ proc ::json::many-json2dict_critcl {args} {
+     eval [linsert $args 0 ::json::many_json2dict_critcl]
+ }
++
++# The C parser already rejects invalid characters (except that \f and
++# \v before a number are skipped), but it stops after the first entity.
++# In strict mode all entities are parsed and an error is raised if
++# there is more than one.
++proc ::json::Json2dictCritcl {args} {
++    set jsonText [Json2dictArgs $args strict]
++    if {!$strict} {
++	return [json2dict_critcl_c $jsonText]
++    }
++    set result [many_json2dict_critcl $jsonText]
++    if {[llength $result] > 1} {
++	TrailingText
++    }
++    return [lindex $result 0]
++}
+ 
+ # ### ### ### ######### ######### #########
+ ## Initialization: Choose an implementation,
+ ## most prefered first. Loads only one of the
+ ## possible implementations. And activates it.
+@@ -242,10 +263,34 @@
+ proc ::json::validate {jsonText} {
+     variable validJsonRE
+ 
+     return [regexp -- $validJsonRE $jsonText]
+ }
++
++# ### ### ### ######### ######### #########
++## Helpers for json2dict, shared between Tcl and Critcl implementations.
++
++# Parse the arguments of json2dict: ?-strict? jsonText
++# Returns the JSON text, sets the variable strictVar in the caller.
++proc ::json::Json2dictArgs {arguments strictVar} {
++    upvar 1 $strictVar strict
++    set strict 0
++    if {[llength $arguments] == 2 && [lindex $arguments 0] eq "-strict"} {
++	set strict 1
++	set arguments [lrange $arguments 1 end]
++    }
++    if {[llength $arguments] != 1} {
++	return -code error -level 2 \
++	    "wrong # args: should be \"json::json2dict ?-strict? jsonText\""
++    }
++    return [lindex $arguments 0]
++}
++
++proc ::json::TrailingText {} {
++    return -code error -level 2 -errorcode {JSON TRAILING} \
++	"unexpected trailing text after the JSON entity"
++}
+ 
+ # ### ### ### ######### ######### #########
+ ## These three procedures shared between Tcl and Critcl implementations.
+ ## See also package "json::write".
+ 
+@@ -278,6 +323,6 @@
+ }
+ 
+ # ### ### ### ######### ######### #########
+ ## Ready
+ 
+-package provide json 1.3.6
++package provide json 1.3.7
+
+Index: modules/json/json.testsuite
+==================================================================
+--- modules/json/json.testsuite
++++ modules/json/json.testsuite
+@@ -96,7 +96,85 @@
+     set input $JSON($first)
+     test json-${impl}-6.[incr i] "many-json2dict, bad limit, 3 over 1" -body {
+         json::many-json2dict $input 3
+     } -returnCodes error -result {Bad limit 3 of json entities to extract, found only 1.}
+ }
++
++# -------------------------------------------------------------------------
++# json2dict -strict
++# -------------------------------------------------------------------------
++
++set i 0
++foreach name [lsort -dict [array names JSON]] {
++    test json-${impl}-10.[incr i] "json2dict -strict, JSON $name" -body {
++	transform [json::json2dict -strict $JSON($name)] $name
++    } -result [resultfor $name]
++}
++
++test json-${impl}-11.0 {json2dict, wrong args, not enough} -body {
++    json::json2dict
++} -returnCodes error -result {wrong # args: should be "json::json2dict ?-strict? jsonText"}
++
++test json-${impl}-11.1 {json2dict, wrong args, too many} -body {
++    json::json2dict -strict {[]} X
++} -returnCodes error -result {wrong # args: should be "json::json2dict ?-strict? jsonText"}
++
++test json-${impl}-11.2 {json2dict, wrong args, bad option} -body {
++    json::json2dict -bogus {[]}
++} -returnCodes error -result {wrong # args: should be "json::json2dict ?-strict? jsonText"}
++
++test json-${impl}-11.3 {json2dict, trailing text ignored by default} -body {
++    json::json2dict {{"a":1} garbage}
++} -result {a 1}
++
++test json-${impl}-11.4 {json2dict, second entity ignored by default} -body {
++    json::json2dict {{"a":1} {"b":2}}
++} -result {a 1}
++
++test json-${impl}-11.5 {json2dict, invalid characters ignored by default} -constraints tcl -body {
++    json::json2dict {{"a": @@ 1}}
++} -result {a 1}
++
++test json-${impl}-11.6 {json2dict -strict, trailing white space} -body {
++    json::json2dict -strict "{\"a\":1} \n\t\r"
++} -result {a 1}
++
++test json-${impl}-11.7 {json2dict -strict, second entity} -body {
++    json::json2dict -strict {{"a":1} {"b":2}}
++} -returnCodes error -result {unexpected trailing text after the JSON entity}
++
++test json-${impl}-11.8 {json2dict -strict, second entity without white space} -body {
++    json::json2dict -strict {truefalse}
++} -returnCodes error -result {unexpected trailing text after the JSON entity}
++
++test json-${impl}-11.9 {json2dict -strict, error code for trailing text} -body {
++    catch {json::json2dict -strict {[1] [2]}}
++    set ::errorCode
++} -result {JSON TRAILING}
++
++test json-${impl}-11.10 {json2dict -strict, trailing garbage} -body {
++    json::json2dict -strict {{"a":1} garbage}
++} -returnCodes error -match glob -result *
++
++test json-${impl}-11.11 {json2dict -strict, invalid characters} -body {
++    json::json2dict -strict {{"a": @@ 1}}
++} -returnCodes error -match glob -result *
++
++test json-${impl}-11.12 {json2dict -strict, invalid characters} -constraints tcl -body {
++    json::json2dict -strict {{"a": @@ 1}}
++} -returnCodes error -result {unexpected character "@" at offset 6}
++
++test json-${impl}-11.13 {json2dict -strict, error code for invalid characters} -constraints tcl -body {
++    catch {json::json2dict -strict {[1] x}}
++    set ::errorCode
++} -result {JSON BAD-CHARACTER 4}
++
++# The C parser accepts \f and \v before numbers (strtod skips them).
++test json-${impl}-11.14 {json2dict -strict, non-JSON white space} -constraints tcl -body {
++    json::json2dict -strict "\[1,\f2\]"
++} -returnCodes error -match glob -result *
++
++test json-${impl}-11.15 {json2dict -strict, garbage after a word} -body {
++    json::json2dict -strict {nullx}
++} -returnCodes error -match glob -result *
+ 
+ # -------------------------------------------------------------------------
+
+Index: modules/json/json_tcl.tcl
+==================================================================
+--- modules/json/json_tcl.tcl
++++ modules/json/json_tcl.tcl
+@@ -12,22 +12,61 @@
+ if {![package vsatisfies [package provide Tcl] 8.5 9]} {
+     package require dict
+ }
+ 
+ # Parse JSON text into a dict
++# @param ?-strict? raise an error on invalid characters and trailing text
+ # @param jsonText JSON text
+ # @return dict (or list) containing the object represented by $jsonText
+-proc ::json::json2dict_tcl {jsonText} {
++proc ::json::json2dict_tcl {args} {
+     variable tokenRE
+ 
+-    set tokens [regexp -all -inline -- $tokenRE $jsonText]
++    set jsonText [Json2dictArgs $args strict]
++    if {$strict} {
++        set tokens [strictTokens $jsonText]
++    } else {
++        set tokens [regexp -all -inline -- $tokenRE $jsonText]
++    }
+     set nrTokens [llength $tokens]
+     set tokenCursor 0
+ 
+     #puts I:($jsonText)
+     #puts T:\t[join $tokens \nT:\t]
+-    return [parseValue $tokens $nrTokens tokenCursor]
++    set result [parseValue $tokens $nrTokens tokenCursor]
++    if {$strict && $tokenCursor < $nrTokens} {
++        TrailingText
++    }
++    return $result
++}
++
++# Split JSON text into tokens, raising an error if there is anything
++# but JSON white space between them.
++# @param jsonText JSON text
++# @return list of tokens
++proc ::json::strictTokens {jsonText} {
++    variable tokenRE
++
++    set tokens {}
++    set pos 0
++    foreach range [regexp -all -inline -indices -- $tokenRE $jsonText] {
++        lassign $range from to
++        checkWhiteSpace $jsonText $pos [expr {$from - 1}]
++        lappend tokens [string range $jsonText $from $to]
++        set pos [expr {$to + 1}]
++    }
++    checkWhiteSpace $jsonText $pos [string length $jsonText]
++    return $tokens
++}
++
++# Throw an exception if the text between two tokens is not JSON white space
++proc ::json::checkWhiteSpace {jsonText from to} {
++    set gap [string range $jsonText $from $to]
++    if {[regexp -indices -- {[^ \t\n\r]} $gap range]} {
++        set offset [expr {$from + [lindex $range 0]}]
++        return -code error -errorcode [list JSON BAD-CHARACTER $offset] \
++            "unexpected character \"[string index $jsonText $offset]\" at offset $offset"
++    }
+ }
+ 
+ # Parse multiple JSON entities in a string into a list of dictionaries
+ # @param jsonText JSON text to parse
+ # @param max      Max number of entities to extract.
+
+Index: modules/json/pkgIndex.tcl
+==================================================================
+--- modules/json/pkgIndex.tcl
++++ modules/json/pkgIndex.tcl
+@@ -1,5 +1,5 @@
+ # Tcl package index file, version 1.1
+ 
+ if {![package vsatisfies [package provide Tcl] 8.5 9]} {return}
+-package ifneeded json        1.3.6 [list source [file join $dir json.tcl]]
++package ifneeded json        1.3.7 [list source [file join $dir json.tcl]]
+ package ifneeded json::write 1.0.5 [list source [file join $dir json_write.tcl]]
+

@@ -1,0 +1,166 @@
+Index: modules/snit/main1.tcl
+==================================================================
+--- modules/snit/main1.tcl
++++ modules/snit/main1.tcl
+@@ -222,11 +222,13 @@
+         }
+ 
+         # Next, retrieve the command.
+ 	variable %TYPE%::Snit_typemethodCache
+         while 1 {
+-            if {[catch {set Snit_typemethodCache($method)} commandRec]} {
++            if {[info exists Snit_typemethodCache($method)]} {
++                set commandRec [set Snit_typemethodCache($method)]
++            } else {
+                 set commandRec [::snit::RT.CacheTypemethodCommand %TYPE% $method]
+ 
+                 if {[llength $commandRec] == 0} {
+                     return -code error  "\"%TYPE% $method\" is not defined"
+                 }
+@@ -326,11 +328,13 @@
+ # proc $instanceName {method args} ....
+ set ::snit::nominalInstanceProc {
+     set self [set %SELFNS%::Snit_instance]
+ 
+     while {1} {
+-        if {[catch {set %SELFNS%::Snit_methodCache($method)} commandRec]} {
++        if {[info exists %SELFNS%::Snit_methodCache($method)]} {
++            set commandRec [set %SELFNS%::Snit_methodCache($method)]
++        } else {
+             set commandRec [snit::RT.CacheMethodCommand %TYPE% %SELFNS% %WIN% $self $method]
+ 
+             if {[llength $commandRec] == 0} {
+                 return -code error \
+                     "\"$self $method\" is not defined"
+@@ -2626,11 +2630,13 @@
+ 
+ # Retrieves the object name given the component name.
+ proc ::snit::RT.Component {type selfns name} {
+     variable ${selfns}::Snit_components
+ 
+-    if {[catch {set Snit_components($name)} result]} {
++    if {[info exists Snit_components($name)]} {
++        set result [set Snit_components($name)]
++    } else {
+         variable ${selfns}::Snit_instance
+ 
+         error "component \"$name\" is undefined in $type $Snit_instance"
+     }
+ 
+@@ -3171,11 +3177,13 @@
+ # win           The instance's original name
+ # self          The instance's current name
+ # option        The name of the option
+ 
+ proc ::snit::RT.method.cget {type selfns win self option} {
+-    if {[catch {set ${selfns}::Snit_cgetCache($option)} command]} {
++    if {[info exists ${selfns}::Snit_cgetCache($option)]} {
++        set command [set ${selfns}::Snit_cgetCache($option)]
++    } else {
+         set command [snit::RT.CacheCgetCommand $type $selfns $win $self $option]
+ 
+         if {[llength $command] == 0} {
+             return -code error "unknown option \"$option\""
+         }
+@@ -3250,11 +3258,13 @@
+ proc ::snit::RT.method.configurelist {type selfns win self optionlist} {
+     variable ${type}::Snit_optionInfo
+ 
+     foreach {option value} $optionlist {
+         # FIRST, get the configure command, caching it if need be.
+-        if {[catch {set ${selfns}::Snit_configureCache($option)} command]} {
++        if {[info exists ${selfns}::Snit_configureCache($option)]} {
++            set command [set ${selfns}::Snit_configureCache($option)]
++        } else {
+             set command [snit::RT.CacheConfigureCommand \
+                              $type $selfns $win $self $option]
+ 
+             if {[llength $command] == 0} {
+                 return -code error "unknown option \"$option\""
+
+Index: modules/snit/main2.tcl
+==================================================================
+--- modules/snit/main2.tcl
++++ modules/snit/main2.tcl
+@@ -2486,11 +2486,13 @@
+ 
+ # Retrieves the object name given the component name.
+ proc ::snit::RT.Component {type selfns name} {
+     variable ${selfns}::Snit_components
+ 
+-    if {[catch {set Snit_components($name)} result]} {
++    if {[info exists Snit_components($name)]} {
++        set result [set Snit_components($name)]
++    } else {
+         variable ${selfns}::Snit_instance
+ 
+         error "component \"$name\" is undefined in $type $Snit_instance"
+     }
+     
+@@ -3061,11 +3063,13 @@
+ # win           The instance's original name
+ # self          The instance's current name
+ # option        The name of the option
+ 
+ proc ::snit::RT.method.cget {type selfns win self option} {
+-    if {[catch {set ${selfns}::Snit_cgetCache($option)} command]} {
++    if {[info exists ${selfns}::Snit_cgetCache($option)]} {
++        set command [set ${selfns}::Snit_cgetCache($option)]
++    } else {
+         set command [snit::RT.CacheCgetCommand $type $selfns $win $self $option]
+         
+         if {[llength $command] == 0} {
+             return -code error "unknown option \"$option\""
+         }
+@@ -3139,11 +3143,13 @@
+ proc ::snit::RT.method.configurelist {type selfns win self optionlist} {
+     variable ${type}::Snit_optionInfo
+ 
+     foreach {option value} $optionlist {
+         # FIRST, get the configure command, caching it if need be.
+-        if {[catch {set ${selfns}::Snit_configureCache($option)} command]} {
++        if {[info exists ${selfns}::Snit_configureCache($option)]} {
++            set command [set ${selfns}::Snit_configureCache($option)]
++        } else {
+             set command [snit::RT.CacheConfigureCommand \
+                              $type $selfns $win $self $option]
+ 
+             if {[llength $command] == 0} {
+                 return -code error "unknown option \"$option\""
+
+Index: modules/snit/snit.test
+==================================================================
+--- modules/snit/snit.test
++++ modules/snit/snit.test
+@@ -9104,10 +9104,30 @@
+ 
+     mywidget .mylabel
+ } -cleanup {
+     destroy .mylabel
+ } -result {.mylabel}
++
++test bug-4.1 {Ticket 1390477fff: cache misses do not clobber errorInfo} -body {
++    type dog {
++        option -name rex
++        method bark {} { return woof }
++        typemethod tm {} { return 1 }
++    }
++    set result {}
++    foreach cmd {
++        {dog create spot} {spot bark} {spot cget -name}
++        {spot configure -name x} {dog tm} {spot destroy}
++    } {
++        catch {error original}
++        eval $cmd
++        lappend result [lindex [split $::errorInfo \n] 0]
++    }
++    lsort -unique $result
++} -cleanup {
++    dog destroy
++} -result {original}
+ 
+ 
+ #---------------------------------------------------------------------
+ # Clean up
+ 
+
